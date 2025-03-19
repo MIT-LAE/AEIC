@@ -75,7 +75,7 @@ def parse_flight_level_data(fl_table):
 
     return json.dumps(fl_data, indent=4)
 
-file_path = "PTF/B738__.PTF"
+file_path = "data/B738__.PTF"
 
 with open(file_path, "r", encoding="utf-8") as file:
     for line in file:
