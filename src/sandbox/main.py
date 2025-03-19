@@ -1,6 +1,8 @@
 import json
 import re
 
+import interpolate as interp
+
 def parse_climb_data(file_path):
     """
     Reads a TASOPT performance file and extracts Flight Level (FL) data
@@ -77,3 +79,6 @@ print(f"Fuel consumption at FL {fl_query}: {fuel_consumption} kg/min")
 
 
 
+mass_level_query = "Nominal"
+interpolated_values = interp.interpolate_fuel_tas(climb_data, fl_query, mass_level_query)
+print(f"Interpolated values at FL {fl_query} at {mass_level_query} mass level: {interpolated_values}")
