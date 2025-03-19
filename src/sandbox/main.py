@@ -43,11 +43,37 @@ def parse_climb_data(file_path):
                         "Fuel_kg/min": float(climb_match[4])
                     }
     
-    return json.dumps(climb_data, indent=4)
+    #return json.dumps(climb_data, indent=4)
+    return climb_data
+
+
+def get_fuel_consumption(climb_data, flight_level):
+    """
+    Returns the fuel consumption in kg/min for a given flight level (FL) at nominal conditions.
+    """
+    flight_level_int = int(flight_level)  # Ensure key lookup uses string type
+    if flight_level_int in climb_data:
+        return climb_data[flight_level_int]["Fuel_kg/min"]
+    else:
+        return "Flight level not found."
+    
+    
+
 
 # Define file path
 file_path = "data/B738__.PTF"
 
 # Run the function to parse the FL climb data
-json_climb_data = parse_climb_data(file_path)
-print(json_climb_data)
+climb_data = parse_climb_data(file_path)
+
+
+
+fl_query = 100
+
+
+fuel_consumption = get_fuel_consumption(climb_data, fl_query)
+print(f"Fuel consumption at FL {fl_query}: {fuel_consumption} kg/min")
+
+
+
+
