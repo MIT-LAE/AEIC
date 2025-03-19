@@ -29,10 +29,8 @@ def parse_climb_data(file_path):
                 except ValueError:
                     continue  # Skip non-numeric FL lines
                 
-                print(parts[2])
-                
                 # Extract Climb data from the second column
-                climb_match = re.findall(r"\d+\.?\d*", parts[1])
+                climb_match = re.findall(r"\d+\.?\d*", parts[2])
                 
                 if len(climb_match) >= 5:
                     climb_data[fl] = {
@@ -52,4 +50,4 @@ file_path = "data/B738__.PTF"
 
 # Run the function to parse the FL climb data
 json_climb_data = parse_climb_data(file_path)
-#print(json_climb_data)
+print(json_climb_data)
