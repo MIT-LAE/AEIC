@@ -82,6 +82,14 @@ def parse_max_alt_payload(file_path):
 
     return {"Max Altitude [ft]": max_alt, "Max Payload [kg]": max_payload}
 
+def get_flight_levels(climb_data):
+    """
+    Returns an array of flight levels from the parsed climb data.
+    """
+    return list(climb_data.keys())
+
+
+
 
 # Define file path
 file_path = "data/B738__.PTF"
@@ -89,17 +97,11 @@ file_path = "data/B738__.PTF"
 # Run the function to parse the FL climb data
 climb_data = parse_climb_data(file_path)
 
-
+# Get the list of available flight levels from the parsed climb data
+flight_levels = get_flight_levels(climb_data)
 
 fl_query = 100
 
 
 fuel_consumption = get_fuel_consumption(climb_data, fl_query)
 print(f"Fuel consumption at FL {fl_query}: {fuel_consumption} kg/min")
-
-
-
-
-mass_level_query = "Nominal"
-interpolated_values = interp.interpolate_fuel_tas(climb_data, fl_query, mass_level_query)
-print(f"Interpolated values at FL {fl_query} at {mass_level_query} mass level: {interpolated_values}")
