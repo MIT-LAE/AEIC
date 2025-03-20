@@ -118,8 +118,16 @@ altStep = 1000
 # Set max altitude based on aircraft operating limits
 altEnd = max_design_alt - 7000
 
+####### DETERMINE STARTING MASS #########
+
+# Define the flight level at cruise
+FL = altEnd/100
 
 
+cruise_data = pars.parse_cruise_data(file_path)
+
+
+print(cruise_data)
 
 
     

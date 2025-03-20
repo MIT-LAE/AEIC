@@ -47,6 +47,51 @@ def parse_climb_data(file_path):
     return climb_data
 
 
+def parse_cruise_data(file_path):
+    """
+    Reads a TASOPT performance file and extracts Flight Level (FL) data
+    for cruise performance into a structured JSON format.
+    """
+    cruise_data = {}
+    capture = False
+
+    with open(file_path, "r", encoding="utf-8") as file:
+        for line in file:
+            # Start capturing after detecting the FL table header
+            if "FL |" in line:
+                capture = True
+                continue
+            
+            if capture:
+                # Extract FL values and corresponding data
+                parts = line.split("|")
+                if len(parts) < 3:
+                    continue  # Skip lines that don't have enough data
+                
+                # Extract FL
+                try:
+                    fl = int(parts[0].strip())
+                    
+                except ValueError:
+                    continue  # Skip non-numeric FL lines
+                
+                # Extract Climb data from the second column
+                cruise_match = re.findall(r"\d+\.?\d*", parts[1])
+                print(len(cruise_match))
+                if len(cruise_match) >= 3:
+                    cruise_data[fl] = {
+                        "TAS_kts": int(cruise_match[0]),
+                        "Fuel_flow_kgm": {
+                            "Low": float(cruise_match[1]),
+                            "Nominal": float(cruise_match[2]),
+                            "High": float(cruise_match[3])
+                        }
+                    }
+    
+    #return json.dumps(climb_data, indent=4)
+    return cruise_data
+
+
 
 def parse_max_alt_payload(file_path):
     """
