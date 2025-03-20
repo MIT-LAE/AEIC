@@ -1,10 +1,12 @@
 import json
 import re
+import numpy as np
 import pandas as pd
 
 import interpolate as interp
 import parser as pars
 import distance as dist
+
 
 
 
@@ -123,11 +125,19 @@ altEnd = max_design_alt - 7000
 # Define the flight level at cruise
 FL = altEnd/100
 
-
+# Parse the cruise data and find the closes flight level in PTF to the FL above
 cruise_data = pars.parse_cruise_data(file_path)
 
+# Convert FLs (dict keys) to a NumPy array
+FLs_array = np.array(list(cruise_data.keys()), dtype=float)
 
-print(cruise_data)
+# Find the index of the closest flight level
+FL_index1 = np.argmin(np.abs(FLs_array - FL))
+
+# Get the closest flight level
+closest_FL = FLs_array[FL_index1]
+
+
 
 
     
