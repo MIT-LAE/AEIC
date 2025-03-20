@@ -20,28 +20,6 @@ def get_fuel_consumption(climb_data, flight_level):
         return "Flight level not found."
     
     
-# Updated function to extract Max Altitude and Max Payload correctly
-def parse_max_alt_payload(file_path):
-    """
-    Reads an ASCII performance file and extracts Max Altitude [ft] and Max Payload [kg].
-    """
-    max_alt = None
-    max_payload = None
-    
-    with open(file_path, "r", encoding="utf-8") as file:
-        for line in file:
-            # Search for Max Altitude
-            match_alt = re.search(r"Max Alt\.\s*\[ft\]:\s*([\d,]+)", line)
-            if match_alt:
-                max_alt = int(match_alt.group(1).replace(",", ""))  # Remove commas if present
-            
-            # Search for Max Payload
-            match_payload = re.search(r"Max Payload\s*\[kg\]:\s*([\d,]+)", line)
-            if match_payload:
-                max_payload = int(match_payload.group(1).replace(",", ""))  # Remove commas if present
-
-    return {"Max Altitude [ft]": max_alt, "Max Payload [kg]": max_payload}
-
 def get_flight_levels(climb_data):
     """
     Returns an array of flight levels from the parsed climb data.
@@ -102,3 +80,46 @@ print("Arrival elevation:", elevation_arr_ft)
 #print(f"Fuel consumption at FL {fl_query}: {fuel_consumption} kg/min")
 
 
+####### INITIALIZE VARIABLES ########
+elapsedTime      = 0.
+fuelConsumed     = 0
+NOxEmitted       = 0
+distanceTraveled = 0
+currentAltitude  = elevation_dep_ft + 3000  # Start NON-LTO analysis at airport elevation + 3000 ft AGL
+currentLat       = flight_data['dep_lat']
+currentLong      = flight_data['dep_lon']
+
+endLat           = flight_data['arr_lat']
+endLong          = flight_data['arr_lon']
+
+
+# Assume constant load factor
+loadFactor = 0.70
+
+# Get aircraft operationl limits
+# Get max altitude and max payload
+alt_payload_data = pars.parse_max_alt_payload(file_path)
+
+max_design_alt = alt_payload_data['Max Altitude [ft]']
+max_design_payload = alt_payload_data['Max Payload [kg]']
+
+# If current altitude exceeds aircraft operational limits, use airport altitude
+if currentAltitude >= max_design_alt:
+    # Setting to the current airport elevation
+    currentAltitude = elevation_dep_ft
+#end
+
+# Setup paramters for climb
+altStart = currentAltitude
+
+# Set the altitude step to 1000 feet
+altStep = 1000
+
+# Set max altitude based on aircraft operating limits
+altEnd = max_design_alt - 7000
+
+
+
+
+
+    
