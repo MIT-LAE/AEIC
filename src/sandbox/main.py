@@ -87,8 +87,15 @@ flight_data = get_OAG_flight_data(OAG_file_path, row_index_query)
 print(f"Flight data at row {row_index_query}: {flight_data}")
 
 
+# Shortest distance in nm
 distance = dist.get_great_circle_distance(flight_data)
-print(f"Great-circle distance: {distance:.2f} NM")
+
+# Departure & arrival airport elevation
+elevation_dep_ft = flight_data['dep_elev_ft']
+elevation_arr_ft = flight_data['arr_elev_ft']
+
+print("Departure elevation:", elevation_dep_ft)
+print("Arrival elevation:", elevation_arr_ft)
 
 
 #fuel_consumption = get_fuel_consumption(climb_data, fl_query)
