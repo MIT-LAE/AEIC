@@ -77,8 +77,7 @@ def parse_cruise_data(file_path):
                 
                 # Extract Climb data from the second column
                 cruise_match = re.findall(r"\d+\.?\d*", parts[1])
-                print(len(cruise_match))
-                if len(cruise_match) >= 3:
+                if len(cruise_match) >= 4:
                     cruise_data[fl] = {
                         "TAS_kts": int(cruise_match[0]),
                         "Fuel_flow_kgm": {
