@@ -4,6 +4,7 @@ import pandas as pd
 
 import interpolate as interp
 import parser as pars
+import distance as dist
 
 
 
@@ -58,7 +59,9 @@ def get_OAG_flight_data(csv_file_path, row_index):
         row = df.iloc[row_index]
         return {
             "dep_lat": row["dep_lat"],
+            "dep_lon": row["dep_lon"],
             "arr_lat": row["arr_lat"],
+            "arr_lon": row["arr_lon"],
             "dep_elev_ft": row["dep_elev_ft"],
             "arr_elev_ft": row["arr_elev_ft"]
         }
@@ -84,7 +87,11 @@ flight_data = get_OAG_flight_data(OAG_file_path, row_index_query)
 print(f"Flight data at row {row_index_query}: {flight_data}")
 
 
-fuel_consumption = get_fuel_consumption(climb_data, fl_query)
-print(f"Fuel consumption at FL {fl_query}: {fuel_consumption} kg/min")
+distance = dist.get_great_circle_distance(flight_data)
+print(f"Great-circle distance: {distance:.2f} NM")
+
+
+#fuel_consumption = get_fuel_consumption(climb_data, fl_query)
+#print(f"Fuel consumption at FL {fl_query}: {fuel_consumption} kg/min")
 
 
