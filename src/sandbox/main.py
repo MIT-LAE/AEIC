@@ -1,5 +1,6 @@
 import json
 import re
+import pandas as pd
 
 import interpolate as interp
 
@@ -89,10 +90,27 @@ def get_flight_levels(climb_data):
     return list(climb_data.keys())
 
 
-
+def get_OAG_flight_data(csv_file_path, row_index):
+    """
+    Reads the CSV file and returns dep_lat, arr_lat, dep_elev_ft, and arr_elev_ft for a given row index.
+    """
+    df = pd.read_csv(csv_file_path)
+    
+    if 0 <= row_index < len(df):
+        row = df.iloc[row_index]
+        return {
+            "dep_lat": row["dep_lat"],
+            "arr_lat": row["arr_lat"],
+            "dep_elev_ft": row["dep_elev_ft"],
+            "arr_elev_ft": row["arr_elev_ft"]
+        }
+    else:
+        return "Invalid row index."
 
 # Define file path
 file_path = "data/B738__.PTF"
+
+OAG_file_path = "data/OAG_2024_SUBSET.csv"
 
 # Run the function to parse the FL climb data
 climb_data = parse_climb_data(file_path)
@@ -102,6 +120,13 @@ flight_levels = get_flight_levels(climb_data)
 
 fl_query = 100
 
+# Example query for flight data
+row_index_query = 9
+flight_data = get_OAG_flight_data(OAG_file_path, row_index_query)
+print(f"Flight data at row {row_index_query}: {flight_data}")
+
 
 fuel_consumption = get_fuel_consumption(climb_data, fl_query)
 print(f"Fuel consumption at FL {fl_query}: {fuel_consumption} kg/min")
+
+
