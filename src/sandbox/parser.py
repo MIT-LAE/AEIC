@@ -45,3 +45,26 @@ def parse_climb_data(file_path):
     
     #return json.dumps(climb_data, indent=4)
     return climb_data
+
+
+
+def parse_max_alt_payload(file_path):
+    """
+    Reads an ASCII performance file and extracts Max Altitude [ft] and Max Payload [kg].
+    """
+    max_alt = None
+    max_payload = None
+    
+    with open(file_path, "r", encoding="utf-8") as file:
+        for line in file:
+            # Search for Max Altitude
+            match_alt = re.search(r"Max Alt\.\s*\[ft\]:\s*([\d,]+)", line)
+            if match_alt:
+                max_alt = int(match_alt.group(1).replace(",", ""))  # Remove commas if present
+            
+            # Search for Max Payload
+            match_payload = re.search(r"Max Payload\s*\[kg\]:\s*([\d,]+)", line)
+            if match_payload:
+                max_payload = int(match_payload.group(1).replace(",", ""))  # Remove commas if present
+
+    return {"Max Altitude [ft]": max_alt, "Max Payload [kg]": max_payload}
