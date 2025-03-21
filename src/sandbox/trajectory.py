@@ -77,6 +77,30 @@ def alt_change(altStart, altEnd, altStep, currentMass, fuelConsumed, distanceTra
     else:
         altEnd_1st = altEnd
     
+    
+    # Make sure not to overshoot trajectory due to float error
+    
+    altEnd_1st -= altStep / 10.0
+    
+    ########## BEGIN RUNNING ALTITUDE CHANGE ###########
+    
+    
+    altitudes = np.arange(altStart, altEnd_1st + altStep/2, altStep)
+    
+    for altitudeNow in altitudes:
+       
+       # Advance altitude index
+       iAlt + 1
+       
+       # Determine current and next altitude
+       alt1 = altitudeNow
+       alt2 = alt1 + altStep
+       
+       if altChangeType == 'Climb':
+           print("We are in climb mode! at altitude:", altitudeNow)
+    
+    # Determine current and next altitude
+    
     print("done!")
     
     
