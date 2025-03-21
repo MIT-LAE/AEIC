@@ -112,3 +112,26 @@ def parse_max_alt_payload(file_path):
                 max_payload = int(match_payload.group(1).replace(",", ""))  # Remove commas if present
 
     return {"Max Altitude [ft]": max_alt, "Max Payload [kg]": max_payload}
+
+
+def parse_mass_levels(file_path):
+    low_mass = nominal_mass = high_mass = None
+    with open(file_path, 'r', errors='ignore') as file:
+        for line in file:
+            if 'low' in line and 'climb' in line:
+                match = re.search(r'low\s*-\s*(\d+)', line)
+                if match:
+                    low_mass = int(match.group(1))
+            elif 'nominal' in line and 'cruise' in line:
+                match = re.search(r'nominal\s*-\s*(\d+)', line)
+                if match:
+                    nominal_mass = int(match.group(1))
+            elif 'high' in line and 'descent' in line:
+                match = re.search(r'high\s*-\s*(\d+)', line)
+                if match:
+                    high_mass = int(match.group(1))
+    return {
+        'Low Mass': low_mass,
+        'Nominal Mass': nominal_mass,
+        'High Mass': high_mass
+    }

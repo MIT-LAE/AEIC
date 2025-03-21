@@ -235,7 +235,15 @@ rv_TOW = 1  # TODO: Change later
 startingMass = emptyWeight + payloadWeight + fuelWeightReserves + fuelWeight_Divert * fuelWeight_Hold
 startingMass = startingMass * rv_TOW    
 
-print(startingMass)
+
+# Get the maximum allowable mass from PTF
+mass_levels = pars.parse_mass_levels(file_path)
+max_mass_kg = mass_levels["High Mass"]
+
+print(max_mass_kg)
+
+# If starting mass exceeds the max weight in the PTF, clip to max weight
+
 
 
 
