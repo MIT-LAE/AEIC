@@ -6,6 +6,7 @@ import pandas as pd
 import interpolate as interp
 import parser as pars
 import distance as dist
+import trajectory as traj
 
 
 
@@ -260,4 +261,13 @@ if startingMass > max_mass_kg:
 currentMass = startingMass
 
 
+##########################################################
+###########---------CLIMB PHASE-------------##############
+##########################################################
 
+currentAz = 0
+
+traj.alt_change(altStart, altEnd, altStep, currentMass, fuelConsumed, distanceTraveled, elapsedTime,currentLat, currentLong, currentAz, endLat, endLong)
+
+
+    
