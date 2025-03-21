@@ -240,10 +240,24 @@ startingMass = startingMass * rv_TOW
 mass_levels = pars.parse_mass_levels(file_path)
 max_mass_kg = mass_levels["High Mass"]
 
-print(max_mass_kg)
-
 # If starting mass exceeds the max weight in the PTF, clip to max weight
+if startingMass > max_mass_kg:
+    print("Starting mass exceeds maximum design weight")
+    print("Flight distance (nm): ", distance)
+    print("Starting mass: ", startingMass)
+    print("Maximum allowable mass: ", max_mass_kg)
+    
+    print("Aircraft too heavy for the mission --> setting starting mass to max mass")
+    startingMass = max_mass_kg
+    #end
+    
 
+
+######----INITILIZATON COMPLETE----######
+
+#Set current mass to starting mass
+
+currentMass = startingMass
 
 
 
