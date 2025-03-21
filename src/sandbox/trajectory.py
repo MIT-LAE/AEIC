@@ -41,7 +41,7 @@ def alt_change(altStart, altEnd, altStep, currentMass, fuelConsumed, distanceTra
     # Round the number of stepsleg and store in matrixColumns
     matrixColumns = math.ceil(stepsleg)
     
-    
+    print("Initializing missio arrays.....")
     # --- Preallocate arrays (add +1 for starting point) ---
     fuelLeg     = np.zeros(matrixColumns + 1)
     NOxLeg      = np.zeros(matrixColumns + 1)
@@ -53,7 +53,22 @@ def alt_change(altStart, altEnd, altStep, currentMass, fuelConsumed, distanceTra
     longLeg     = np.zeros(matrixColumns + 1)
     azLeg       = np.zeros(matrixColumns + 1)
     fuelFlowLeg = np.zeros(matrixColumns + 1)
-    NOxFlowLeg  = np.zeros(matrixColumns + 1)
+    #NOxFlowLeg  = np.zeros(matrixColumns + 1)
     TAS_Leg     = np.zeros(matrixColumns + 1)
     
     # Initialize first index
+    iAlt = 0
+    fuelLeg[iAlt]     = fuelConsumed
+    #NOxLeg[iAlt]      = NOxEmitted
+    massLeg[iAlt]     = currentMass
+    distanceLeg[iAlt] = distanceTraveled
+    altsLeg[iAlt]     = currentAltitude
+    timeLeg[iAlt]     = elapsedTime
+    latLeg[iAlt]      = currentLat
+    longLeg[iAlt]     = currentLong
+    azLeg[iAlt]       = currentAz
+    
+    print("done!")
+    
+    
+    
