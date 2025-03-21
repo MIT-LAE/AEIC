@@ -188,17 +188,54 @@ else:
 # Setting a duy weight for now
 emptyWeight = 39.5*1000
 
-pyloadWeight = max_design_payload * loadFactor
+payloadWeight = max_design_payload * loadFactor
 
 # Use TOC TAS_kts and straign line distance to get flight duration in mins
 approxTimeFlight_min = distance/TAS_kts * 60
 
 # USE TOC fuel flow rate and flight time to get fuelWeightMission
 # NOTE: This assumption will overestimate fuel weight.
+fuelWeightMission = fuelFlowRate * approxTimeFlight_min
 
 # Add 5 % for reserves
-fuelWeightReserves = 
+fuelWeightReserves = fuelWeightMission * 0.05
 
 
-
+# Determine Diversio Fuel Weight and hold fuel
+if approxTimeFlight_min > 180:
+    # Long haul: 200 nm diversion + 30 min low alt hold
+    fuelWeight_Divert = 200/TAS_kts * 60 * fuelFlowRate
     
+    # Time at holding pattern
+    HOLD_min = 30
+    
+    # Holding pattern flight level
+    FL_HOLD = Cruise_FLs[0]
+    
+    # At holding pattern, use the fuel flow at "lo" mass fraction at the first cruise FL from PTF
+    fuelWeight_Hold = HOLD_min * cruise_data[FL_HOLD]['Fuel_flow_kgm']['Low']
+
+else:
+    # Short haul: 100 nm diversion + 45 min low alt hold
+    fuelWeight_Divert = 100/TAS_kts * 60 * fuelFlowRate
+    
+    # Time at holding pattern
+    HOLD_min = 45
+    
+    # Holding pattern flight level
+    FL_HOLD = Cruise_FLs[0]
+    
+    # At holding pattern, use the fuel flow at "lo" mass fraction at the first cruise FL from PTF
+    fuelWeight_Hold = HOLD_min * cruise_data[FL_HOLD]['Fuel_flow_kgm']['Low']
+    
+
+# Set starting mass
+rv_TOW = 1  # TODO: Change later
+
+startingMass = emptyWeight + payloadWeight + fuelWeightReserves + fuelWeight_Divert * fuelWeight_Hold
+startingMass = startingMass * rv_TOW    
+
+print(startingMass)
+
+
+
