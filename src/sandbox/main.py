@@ -128,15 +128,76 @@ FL = altEnd/100
 # Parse the cruise data and find the closes flight level in PTF to the FL above
 cruise_data = pars.parse_cruise_data(file_path)
 
-# Convert FLs (dict keys) to a NumPy array
-FLs_array = np.array(list(cruise_data.keys()), dtype=float)
+print(cruise_data)
 
-# Find the index of the closest flight level
-FL_index1 = np.argmin(np.abs(FLs_array - FL))
+# Convert FLs (dict keys) to a NumPy array
+Cruise_FLs = np.array(list(cruise_data.keys()), dtype=float)
+
+# Find the index of the cruise FL closest to the aircraft FL
+FL_index1 = np.argmin(np.abs(Cruise_FLs - FL))
+
+
+print("FL index closest to aircraft FL:", FL_index1)
 
 # Get the closest flight level
-closest_FL = FLs_array[FL_index1]
+closest_FL = Cruise_FLs[FL_index1]
 
+print("closest FL: ", closest_FL)
+
+print("First crusie index:", Cruise_FLs[0])
+print("Second crusie index:", Cruise_FLs[1])
+
+# See if the aircraft FL is either greater or lesser than than th first
+# PTF cruise FL and select the next flight level accordingly
+if FL > FL_index1:
+    FL_index2 = FL_index1 + 1
+elif FL < FL_index1:
+    FL_index2 = FL_index1 - 1
+elif FL == FL_index1:
+    FL_index2 = FL_index1
+else:
+    raise ValueError("Could not set FL index from PTF")
+
+# Interpoate for cruise fuel flow:
+    # Get the Flight levels based on the FL_indices
+FL_1 = Cruise_FLs[FL_index1]
+FL_2 = Cruise_FLs[FL_index2]
+
+print("First Flight level: ", FL_1)
+print("Second flight level: ", FL_2)
+
+
+# Extract the fuel flow at these flight levels
+FF_1 = cruise_data[FL_1]['Fuel_flow_kgm']['Nominal']
+FF_2 = cruise_data[FL_2]['Fuel_flow_kgm']['Nominal']
+
+# Extract the TAS at these flight levels
+TAS_KTS_1 = cruise_data[FL_1]['TAS_kts']
+TAS_KTS_2 = cruise_data[FL_2]['TAS_kts']
+
+# Skip NOX data for now.
+if FL_1 == FL_2:
+    fuelFlowRate = FF_1
+    TAS_kts = TAS_KTS_1
+else:
+    fuelFlowRate = FF_1 + (FF_2 - FF_1)/ (FL_2 - FL_1) * (FL - FL_1)
+    TAS_kts = TAS_KTS_1 + (TAS_KTS_2 - TAS_KTS_1)/ (FL_2 - FL_1) * (FL- FL_1)
+    
+# Guess the starting weight
+
+# Setting a duy weight for now
+emptyWeight = 39.5*1000
+
+pyloadWeight = max_design_payload * loadFactor
+
+# Use TOC TAS_kts and straign line distance to get flight duration in mins
+approxTimeFlight_min = distance/TAS_kts * 60
+
+# USE TOC fuel flow rate and flight time to get fuelWeightMission
+# NOTE: This assumption will overestimate fuel weight.
+
+# Add 5 % for reserves
+fuelWeightReserves = 
 
 
 
