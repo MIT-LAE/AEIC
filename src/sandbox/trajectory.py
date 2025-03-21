@@ -68,6 +68,15 @@ def alt_change(altStart, altEnd, altStep, currentMass, fuelConsumed, distanceTra
     longLeg[iAlt]     = currentLong
     azLeg[iAlt]       = currentAz
     
+    
+    # Account for precision issue when stepping though altitude in fixed
+    # -size increments
+    
+    if matrixColumns > stepsleg:
+        altEnd_1st = altStart + altStep * (matrixColumns - 1)
+    else:
+        altEnd_1st = altEnd
+    
     print("done!")
     
     
