@@ -85,7 +85,7 @@ def badaClimbfuel(start_alt, end_alt, currentMass, currentLat, currentLon):
         Mass_index2 = Mass_index1 - 1
         
     elif currentMass == MassMat[Mass_index1]:
-        Mass_index2 == Mass_index1
+        Mass_index2 = Mass_index1
     
     else:
         raise ValueError("Could not set mass index from PTF")
@@ -94,6 +94,8 @@ def badaClimbfuel(start_alt, end_alt, currentMass, currentLat, currentLon):
     Mass_1 = MassMat[Mass_index1]
     Mass_2 = MassMat[Mass_index2]
     
+    print("Mass index 1: ", Mass_1)
+    print("Mass index 2: ", Mass_2)
     # Setip ROC matrix
         
     
