@@ -69,6 +69,8 @@ def badaClimbfuel(start_alt, end_alt, currentMass, currentLat, currentLon):
     FL_1 = Climb_FLs[FL_index1]
     FL_2 = Climb_FLs[FL_index2]
     
+    
+
     # Setup the mass matrix
     MassMat = [mass_levels["Low Mass"], mass_levels["Nominal Mass"], mass_levels["High Mass"]]
     MassMat = np.array(MassMat)
@@ -94,9 +96,33 @@ def badaClimbfuel(start_alt, end_alt, currentMass, currentLat, currentLon):
     Mass_1 = MassMat[Mass_index1]
     Mass_2 = MassMat[Mass_index2]
     
-    print("Mass index 1: ", Mass_1)
-    print("Mass index 2: ", Mass_2)
-    # Setip ROC matrix
-        
     
+    
+    # Generate the stencil for bilinear interpolation
+    
+    print("FL index 1:", FL_index1)
+    print("FL index 2:", FL_index2)
+    
+    print("Mass index 1:", Mass_index1)
+    print("Mass index 2:", Mass_index2)
+    
+    print("Flight level PTF 1: ", Climb_FLs[FL_index1])
+    print("Flight level PTF 2: ", Climb_FLs[FL_index2])
+    
+    # Extract ROCS based on PTF flight level and mass indices
+    ROCD_11 = list(climb_data[FL_1]['ROCD_fpm'].values())[Mass_index1]
+    
+    print(ROCD_11)    
+    # Convert the mass dict to a list of items
+    #mass_items = list(mass_levels.items())
+    
+    # Extract keys and values by index
+    #key1, val1 = mass_items[Mass_index1]
+    #key2, val2 = mass_items[Mass_index2]
+         
+    #print("Mass level PTF 1: ", m[Mass_index1])
+    #print("Mass level PTF 2: ", mass_levels[Mass_index2])
+    
+    
+    #print(climb_data)
     
