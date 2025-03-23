@@ -63,3 +63,19 @@ def badaClimbfuel(start_alt, end_alt, currentMass, currentLat, currentLon):
         
     else:
         raise ValueError("Could not set climb FL index from PTF") 
+    
+    
+    # Get climb segment flight leveeks based on PTF
+    FL_1 = Climb_FLs[FL_index1]
+    FL_2 = Climb_FLs[FL_index2]
+    
+    # Setup the mass matrix
+    MassMat = [mass_levels["Low Mass"], mass_levels["Nominal Mass"], mass_levels["High Mass"]]
+    MassMat = np.array(MassMat)
+
+    # Find index of the closest value in MassMat to Mass
+    Mass_index1 = np.argmin(np.abs(currentMass - MassMat))
+    
+    
+    
+    
