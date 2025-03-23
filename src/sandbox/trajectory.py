@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import bada as bd
 
 def alt_change(altStart, altEnd, altStep, currentMass, fuelConsumed, distanceTraveled, elapsedTime,currentLat, currentLong, currentAz, endLat, endLong):
     
@@ -83,8 +84,6 @@ def alt_change(altStart, altEnd, altStep, currentMass, fuelConsumed, distanceTra
     altEnd_1st -= altStep / 10.0
     
     ########## BEGIN RUNNING ALTITUDE CHANGE ###########
-    
-    
     altitudes = np.arange(altStart, altEnd_1st + altStep/2, altStep)
     
     for altitudeNow in altitudes:
@@ -98,6 +97,9 @@ def alt_change(altStart, altEnd, altStep, currentMass, fuelConsumed, distanceTra
        
        if altChangeType == 'Climb':
            print("We are in climb mode! at altitude:", altitudeNow)
+           
+        # Call bada rountines here
+       bd.badaClimbfuel(alt1, alt2, currentMass, currentLat, currentLong)
     
     # Determine current and next altitude
     
