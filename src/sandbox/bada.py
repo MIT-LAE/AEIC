@@ -76,6 +76,25 @@ def badaClimbfuel(start_alt, end_alt, currentMass, currentLat, currentLon):
     # Find index of the closest value in MassMat to Mass
     Mass_index1 = np.argmin(np.abs(currentMass - MassMat))
     
+    # Set the mass index based on the three mass levels
     
+    if currentMass > MassMat[Mass_index1]:
+        Mass_index2 = Mass_index1 + 1
+    
+    elif currentMass < MassMat[Mass_index1]:
+        Mass_index2 = Mass_index1 - 1
+        
+    elif currentMass == MassMat[Mass_index1]:
+        Mass_index2 == Mass_index1
+    
+    else:
+        raise ValueError("Could not set mass index from PTF")
+    
+    # Get mass levels based on PTF indices
+    Mass_1 = MassMat[Mass_index1]
+    Mass_2 = MassMat[Mass_index2]
+    
+    # Setip ROC matrix
+        
     
     
