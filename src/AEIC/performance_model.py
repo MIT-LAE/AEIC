@@ -1,12 +1,13 @@
 import numpy as np
-import toml
+import tomllib
 import json
+import os
 from src.parsers.PTF_reader import parse_PTF
 from src.parsers.OPF_reader import parse_OPF
 from src.parsers.LTO_reader import parseLTO
 from src.BADA.aircraft_parameters import Bada3AircraftParameters
 from src.BADA.model import Bada3JetEngineModel
-from src.scheduling.OAG_filter import filter_OAG_schedule
+from src.missions.OAG_filter import filter_OAG_schedule
 class PerformanceModel:
     '''Performance model for an aircraft. Contains
         fuel flow, airspeed, ROC/ROD, LTO emissions,
@@ -15,12 +16,15 @@ class PerformanceModel:
     def __init__(self, config_file_loc="./IO/default_config.toml"):
         # Read config file and store all variables in self.config
         self.config = {}
-        with open(config_file_loc, 'r') as f:
-            config_data = toml.load(f)
+        with open(config_file_loc, 'rb') as f:
+            config_data = tomllib.load(f)
             self.config = {k: v for subdict in config_data.values() for k, v in subdict.items()}
 
-        # Get schedule data
+        # Get mission data
         # self.filter_OAG_schedule = filter_OAG_schedule
+        mission_file = os.path.join(self.config['missions_folder'], self.config['missions_in_file'])
+        with open(mission_file, 'r') as f:
+            self.missions = json.load(f)
         # self.schedule = filter_OAG_schedule()
 
         # Process input performance data
@@ -59,12 +63,12 @@ class PerformanceModel:
     def read_performance_data(self):
         '''Parses input json data of aircraft performance'''
         
-        # Read and load JSON data 
-        with open(self.config["performance_model_input_file"], 'r') as f:
-            data = json.load(f)
+        # Read and load TOML data 
+        with open(self.config["performance_model_input_file"], "rb") as f:
+            data = tomllib.load(f)
 
         self.LTO_data = data['LTO_performance']
-        self.create_performance_table(data['flight_performance'])
+        self.create_performance_table(data['flight_performance']['data'])
         del data["LTO_performance"]
         del data["flight_performance"]
         self.model_info = data

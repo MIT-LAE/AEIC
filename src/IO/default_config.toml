@@ -14,17 +14,17 @@ performance_model_input = "PerformanceModel"
                                 # "OPF" : Input as BADA type OPF file (FUNCTIONAL INPUT)
                                 # "PerformanceModel" : JSON file with state variables - fuel_flow = f(h, V, gamma, m_fuel) (TABULAR INPUT)
 
-performance_model_input_file = "./src/IO/default_performance_model.json" 
+performance_model_input_file = "./src/IO/sample_performance_model.toml" 
 
 ["LTO data"]
 LTO_input_mode = "PerformanceModel" # "PerformanceModel" : LTO data provided in PerformanceModel file
                           # "input_file" : Additional LTO data provided
 LTO_input_file = "./src/IO/B738__.LTO"
 
-["Scheduling"]
-schedule_folder = "scheduling/schedule_files/"
-schedule_in_file = "2019pandas_processed_forAEIC_normal.csv"
-airport_file = "all_airports.csv"
+["Missions"]
+missions_folder = "./src/missions/"
+missions_in_file = "sample_missions_10.json"
+airport_file = "airports.csv"
 stop_after_scheduling = true
 reference_schedule = ""         # File name for existing schedule
                                 # Empty string: Use OAG data and max range to get schedule
