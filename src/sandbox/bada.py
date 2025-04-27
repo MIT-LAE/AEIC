@@ -110,19 +110,21 @@ def badaClimbfuel(start_alt, end_alt, currentMass, currentLat, currentLon):
     print("Flight level PTF 2: ", Climb_FLs[FL_index2])
     
     # Extract ROCS based on PTF flight level and mass indices
-    ROCD_11 = list(climb_data[FL_1]['ROCD_fpm'].values())[Mass_index1]
+    ROC_11 = list(climb_data[FL_1]['ROCD_fpm'].values())[Mass_index1]
+    ROC_12 = list(climb_data[FL_1]['ROCD_fpm'].values())[Mass_index2]
+    ROC_21 = list(climb_data[FL_2]['ROCD_fpm'].values())[Mass_index1]
+    ROC_22 = list(climb_data[FL_2]['ROCD_fpm'].values())[Mass_index2]
     
-    print(ROCD_11)    
-    # Convert the mass dict to a list of items
-    #mass_items = list(mass_levels.items())
     
-    # Extract keys and values by index
-    #key1, val1 = mass_items[Mass_index1]
-    #key2, val2 = mass_items[Mass_index2]
-         
-    #print("Mass level PTF 1: ", m[Mass_index1])
-    #print("Mass level PTF 2: ", mass_levels[Mass_index2])
+    # Interpolate in FL dimension
     
+    if FL_1 == FL_2:
+        ROC_1 = ROC_11
+        ROC_2 = ROC_12
+        
+    else:
+        ROC_1 = ROC_11 + (ROC_21 - ROC_11) / (FL_2 - FL_1) * (FL - FL_1)
+        ROC_2 = ROC_12 + (ROC_22 - ROC_12) / (FL_2 - FL_1) * (FL - FL_1)
     
     #print(climb_data)
     
