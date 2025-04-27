@@ -47,8 +47,8 @@ def plot_era5_wind(grib_file, flight_level_hPa=None, flight_level_ft=None, skip=
     ds_level = ds.sel(isobaricInhPa=flight_level_hPa, method="nearest")
 
     # Extract variables
-    u = ds_level['u']
-    v = ds_level['v']
+    u = ds_level['u'].isel(time=0)
+    v = ds_level['v'].isel(time=0)
     lats = ds_level['latitude']
     lons = ds_level['longitude']
 
