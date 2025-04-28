@@ -51,13 +51,19 @@ def plot_era5_wind(grib_file, flight_level_hPa=None, flight_level_ft=None, skip=
     v = ds_level['v'].isel(time=0)
     lats = ds_level['latitude']
     lons = ds_level['longitude']
+    
+    print(lats.min().values, lats.max().values)
+    print(lons.min().values, lons.max().values)
 
     # Compute wind speed magnitude
     wind_speed = np.sqrt(u**2 + v**2)
+    
+    # Adjust longitudes from [0,360] to [-180,180]
+    lons_adjusted = xr.where(lons > 180, lons - 360, lons)
 
     # Create the plot
     fig = plt.figure(figsize=(14,10))
-    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax = plt.axes(projection=ccrs.Robinson())  # <<< Use Robinson projection!
 
     # Add map features
     ax.coastlines()
@@ -67,7 +73,7 @@ def plot_era5_wind(grib_file, flight_level_hPa=None, flight_level_ft=None, skip=
 
     # Plot background wind speed
     wind_plot = ax.pcolormesh(
-        lons, 
+        lons_adjusted,  # <
         lats, 
         wind_speed, 
         cmap=cmap, 
@@ -81,11 +87,11 @@ def plot_era5_wind(grib_file, flight_level_hPa=None, flight_level_ft=None, skip=
 
     # Plot wind vectors
     ax.quiver(
-        lons.values[::skip], 
+        lons_adjusted.values[::skip],
         lats.values[::skip], 
         u.values[::skip, ::skip], 
         v.values[::skip, ::skip],
-        scale=700, width=0.0025, headlength=3, color='black', transform=ccrs.PlateCarree()
+        scale=700, width=0.0025, headlength=1, color='black', transform=ccrs.PlateCarree()
     )
 
     # Title
