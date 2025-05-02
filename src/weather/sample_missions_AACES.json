@@ -1,0 +1,47 @@
+[
+  {
+    "dep_airport": "IAH",
+    "arr_airport": "LGA",
+    "dep_datetime": "2019-07-08T14:28:00Z",
+    "arr_datetime": "2019-07-08T17:59:00Z",
+    "ac_code": "221",
+    "seats": 109,
+    "distance_greatcircle_nm": 1230.932801
+  },
+  {
+    "dep_airport": "JFK",
+    "arr_airport": "LAX",
+    "dep_datetime": "2019-03-11T11:00:00Z",
+    "arr_datetime": "2019-03-11T17:40:00Z",
+    "ac_code": "32B",
+    "seats": 102,
+    "distance_greatcircle_nm": 2148.302753
+  },
+  {
+    "dep_airport": "LGA",
+    "arr_airport": "BOS",
+    "dep_datetime": "2019-04-27T18:00:00Z",
+    "arr_datetime": "2019-04-27T19:20:00Z",
+    "ac_code": "221",
+    "seats": 109,
+    "distance_greatcircle_nm": 160.378406
+  },
+  {
+    "dep_airport": "DFW",
+    "arr_airport": "PHX",
+    "dep_datetime": "2019-01-01T23:30:00Z",
+    "arr_datetime": "2019-01-02T02:10:00Z",
+    "ac_code": "32B",
+    "seats": 102,
+    "distance_greatcircle_nm": 753.450444
+  },
+  {
+    "dep_airport": "DCA",
+    "arr_airport": "ORD",
+    "dep_datetime": "2019-02-03T13:00:00Z",
+    "arr_datetime": "2019-02-03T15:27:00Z",
+    "ac_code": "32B",
+    "seats": 102,
+    "distance_greatcircle_nm": 531.156785
+  }
+]

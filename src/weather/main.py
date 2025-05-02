@@ -52,9 +52,6 @@ def plot_era5_wind(grib_file, flight_level_hPa=None, flight_level_ft=None, skip=
     lats = ds_level['latitude']
     lons = ds_level['longitude']
     
-    print(lats.min().values, lats.max().values)
-    print(lons.min().values, lons.max().values)
-
     # Compute wind speed magnitude
     wind_speed = np.sqrt(u**2 + v**2)
     
@@ -62,14 +59,28 @@ def plot_era5_wind(grib_file, flight_level_hPa=None, flight_level_ft=None, skip=
     lons_adjusted = xr.where(lons > 180, lons - 360, lons)
 
     # Create the plot
-    fig = plt.figure(figsize=(14,10))
-    ax = plt.axes(projection=ccrs.Robinson())  # <<< Use Robinson projection!
+    fig = plt.figure(figsize=(14,10), dpi=300)  # <--- Set DPI here!
+    #ax = plt.axes(projection=ccrs.Robinson())  # <<< Use Robinson projection!
+    
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_extent([-125, -66.5, 24.5, 49.5], crs=ccrs.PlateCarree())
+
 
     # Add map features
     ax.coastlines()
     ax.add_feature(cfeature.BORDERS, linestyle=':')
     ax.add_feature(cfeature.LAND, edgecolor='black')
-    ax.set_extent([lons.min(), lons.max(), lats.min(), lats.max()], crs=ccrs.PlateCarree())
+    
+    
+    # Add latitude and longitude gridlines
+    gl = ax.gridlines(draw_labels=True, linestyle='--', linewidth=0.5, color='gray')
+    gl.top_labels = False
+    gl.right_labels = False
+    gl.xlabel_style = {'size': 10}
+    gl.ylabel_style = {'size': 10}
+    
+    
+    #ax.set_extent([lons.min(), lons.max(), lats.min(), lats.max()], crs=ccrs.PlateCarree())
 
     # Plot background wind speed
     wind_plot = ax.pcolormesh(
@@ -82,21 +93,28 @@ def plot_era5_wind(grib_file, flight_level_hPa=None, flight_level_ft=None, skip=
     )
 
     # Add colorbar
-    cbar = plt.colorbar(wind_plot, orientation='vertical', pad=0.02, aspect=30)
+    cbar = plt.colorbar(
+        wind_plot,
+        orientation='horizontal',
+        pad=0.05,   # Padding from plot
+        fraction=0.046,  # Size of colorbar relative to plot
+        aspect=30
+    )
     cbar.set_label('Wind Speed (m/s)', fontsize=14)
 
     # Plot wind vectors
-    ax.quiver(
-        lons_adjusted.values[::skip],
-        lats.values[::skip], 
-        u.values[::skip, ::skip], 
-        v.values[::skip, ::skip],
-        scale=700, width=0.0025, headlength=1, color='black', transform=ccrs.PlateCarree()
-    )
+    #ax.quiver(
+    #    lons_adjusted.values[::skip],
+    #    lats.values[::skip], 
+    #    u.values[::skip, ::skip], 
+    #    v.values[::skip, ::skip],
+    #    scale=700, width=0.0025, headlength=1, color='black', transform=ccrs.PlateCarree()
+    #)
 
     # Title
     plt.title(f"ERA-5 Wind Field at {flight_level_hPa:.1f} hPa", fontsize=18)
-    plt.show()
+    plt.tight_layout()
+    plt.savefig("Wind_field.png")
 
 # Example usage
 if __name__ == "__main__":
