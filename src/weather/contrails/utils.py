@@ -92,4 +92,26 @@ def preprocess(grib_file_path):
     
     # Compute RHi
     df['RHi'] = (df['vapor_pressure'] / df['saturation_esi']) * 100
+    
+    # Compute ISSR flag: 1 if RHi > 100, else 0
+    df['ISSR_flag'] = (df['RHi'] > 100).astype(int)
+    
     return df
+
+
+def pressure_to_altitude_ft(pressure_hPa):
+    """
+    Converts pressure level (in hPa) to altitude (in feet) using the standard atmosphere.
+
+    Parameters:
+    - pressure_hPa: Scalar or array-like pressure values in hPa
+
+    Returns:
+    - altitude_ft: Altitude in feet (same shape as input)
+    """
+    # Convert pressure to altitude in meters using the barometric formula
+    altitude_m = 44330.0 * (1.0 - (np.asarray(pressure_hPa) / 1013.25) ** (1.0 / 5.255))
+
+    # Convert to feet
+    altitude_ft = altitude_m * 3.28084
+    return altitude_ft
