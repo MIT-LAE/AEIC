@@ -99,6 +99,48 @@ def preprocess(grib_file_path):
     return df
 
 
+def preprocess_beta(grib_file_path):
+    """
+    Optimized version: loads minimal variables, uses xarray efficiently, and reduces memory load.
+    """
+    try:
+        ds = xr.open_dataset(grib_file_path, engine="cfgrib", decode_timedelta=True)
+    except Exception as e:
+        print("Failed to open GRIB file:", e)
+        return None
+
+    # Fix longitude
+    if 'longitude' in ds.coords:
+        lon_fixed = ((ds['longitude'] + 180) % 360) - 180
+        ds = ds.assign_coords(longitude=lon_fixed)
+        ds = ds.sortby('longitude')
+
+    # Keep only relevant variables before flattening
+    required_vars = ['q', 't']
+    ds = ds[required_vars]
+
+    # Flatten early, on selected variables only
+    df = ds.to_dataframe().reset_index()
+
+    # Quick filter for needed columns
+    if not {'q', 't', 'isobaricInhPa'}.issubset(df.columns):
+        print("Missing required columns")
+        return df
+
+    df['p_Pa'] = df['isobaricInhPa'] * 100
+    df['vapor_pressure'] = (df['q'] * df['p_Pa']) / (0.622 + 0.378 * df['q'])
+
+    T = df['t']
+    ln_esi = (9.550426 - (5723.265 / T) + 3.53068 * np.log(T) - 0.00728332 * T)
+    df['saturation_esi'] = np.exp(ln_esi)
+
+    df['RHi'] = (df['vapor_pressure'] / df['saturation_esi']) * 100
+    df['ISSR_flag'] = (df['RHi'] > 100).astype(np.uint8)
+
+    return df
+
+
+
 def pressure_to_altitude_ft(pressure_hPa):
     """
     Converts pressure level (in hPa) to altitude (in feet) using the standard atmosphere.
