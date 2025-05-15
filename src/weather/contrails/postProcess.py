@@ -9,7 +9,7 @@ import matplotlib.ticker as mticker
 import utils as util
 
 
-def plot_issr_conus_by_altitude(df):
+def plot_issr_conus_by_altitude(df, time_index):
     """
     Plots ISSR=1 points over the CONUS, colored by altitude (in feet), derived from pressure.
 
@@ -22,6 +22,7 @@ def plot_issr_conus_by_altitude(df):
     # Filter for ISSR only
     df_issr = df[df['ISSR_flag'] == 1].copy()
 
+    
     # Filter for CONUS
     conus_bounds = {
         'lat_min': 24.5,
@@ -29,6 +30,8 @@ def plot_issr_conus_by_altitude(df):
         'lon_min': -125.0,
         'lon_max': -66.5
     }
+    
+    
 
     df_conus = df_issr[
         (df_issr['latitude'] >= conus_bounds['lat_min']) &
@@ -36,15 +39,28 @@ def plot_issr_conus_by_altitude(df):
         (df_issr['longitude'] >= conus_bounds['lon_min']) &
         (df_issr['longitude'] <= conus_bounds['lon_max'])
     ].copy()
-
+    
+    print("Pressure levels in df: ", df['isobaricInhPa'].values)
+    print("Pressure levels in df ISSR: ", df_issr['isobaricInhPa'].values)
+    print("Pressure levels in df CONUS: ", df_conus['isobaricInhPa'].values)
+    
     # Convert pressure to altitude in feet using the function
     df_conus['altitude_ft'] = util.pressure_to_altitude_ft(df_conus['isobaricInhPa'])
     
+    df['altitude_ft'] = util.pressure_to_altitude_ft(df['isobaricInhPa'])
+    
     # Normalzie altitude for alpha scaling (high altitude = more transparent)
-    alt_min = df_conus['altitude_ft'].min()
-    alt_max = df_conus['altitude_ft'].max()
+    #alt_min = df_conus['altitude_ft'].min()
+    #alt_max = df_conus['altitude_ft'].max()
+    
+    alt_min = df['altitude_ft'].min()
+    alt_max = df['altitude_ft'].max()
+    
+    print("Min altitude: ", alt_min)
+    print("Max altitude: ", alt_max)
 
     alpha_values = 1.0 - (df_conus['altitude_ft'] - alt_min) / (alt_max - alt_min)
+    #alpha_values = 1.0 - (df['altitude_ft'] - alt_min) / (alt_max - alt_min)
     alpha_values = np.clip(alpha_values, 0.1, 0.8)  # avoid fully invisible
     
     
@@ -101,7 +117,7 @@ def plot_issr_conus_by_altitude(df):
         t.set_fontsize(14)
         
     plt.tight_layout()
-    plt.savefig('Plots/CONUS_ISSR_MAP.png')
+    plt.savefig(f'Plots/CONUS_ISSR_MAP_time_index_{time_index}.png')
     #plt.show()
 
 def save_issr_animation(df, filename="issr_animation.mp4", fps=2):

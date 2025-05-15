@@ -162,15 +162,16 @@ def preprocess_by_levels(grib_file_path, levels_to_extract):
         print("No valid levels processed.")
         return None
 
-def preprocess_by_time_slice(grib_file_path):
+def preprocess_single_time_slice(grib_file_path, time_index):
     """
-    Processes each time slice individually to reduce memory usage.
-    
+    Processes a single time slice from the GRIB file.
+
     Parameters:
     - grib_file_path: path to the GRIB file
-    
+    - time_index: index of the time coordinate to process (e.g., 0 for first hour)
+
     Returns:
-    - combined_df: pandas DataFrame with ISSR flag and other derived fields
+    - df: pandas DataFrame with ISSR flag and derived fields for the selected time
     """
     try:
         ds = xr.open_dataset(grib_file_path, engine="cfgrib")
@@ -178,39 +179,39 @@ def preprocess_by_time_slice(grib_file_path):
         print("Failed to open GRIB file:", e)
         return None
 
-    # Fix longitude
+    # Fix longitude to [-180, 180]
     if 'longitude' in ds.coords:
         ds = ds.assign_coords(longitude=((ds.longitude + 180) % 360) - 180)
         ds = ds.sortby('longitude')
 
+    # Validate required variables
     required_vars = ['q', 't']
     if not all(var in ds.variables for var in required_vars):
         print("Missing required variables:", [v for v in required_vars if v not in ds.variables])
         return None
 
-    dfs = []
+    # Slice by time index
+    if time_index >= ds.sizes['time']:
+        print(f"time_index {time_index} out of bounds. Available range: 0 to {ds.sizes['time']-1}")
+        return None
 
-    for i in range(ds.sizes['time']):
-        print(f"Processing time index {i}")
-        sub_ds = ds.isel(time=i)[required_vars]
+    sub_ds = ds.isel(time=time_index)[required_vars]
 
-        df = sub_ds.to_dataframe().reset_index()
-        df['p_Pa'] = df['isobaricInhPa'] * 100
+    # Convert to DataFrame
+    df = sub_ds.to_dataframe().reset_index()
+    df['p_Pa'] = df['isobaricInhPa'] * 100
+    df['vapor_pressure'] = (df['q'] * df['p_Pa']) / (0.622 + 0.378 * df['q'])
 
-        df['vapor_pressure'] = (df['q'] * df['p_Pa']) / (0.622 + 0.378 * df['q'])
-        T = df['t']
-        ln_esi = (9.550426 - (5723.265 / T) + 3.53068 * np.log(T) - 0.00728332 * T)
-        df['saturation_esi'] = np.exp(ln_esi)
+    T = df['t']
+    ln_esi = (9.550426 - (5723.265 / T) + 3.53068 * np.log(T) - 0.00728332 * T)
+    df['saturation_esi'] = np.exp(ln_esi)
 
-        df['RHi'] = (df['vapor_pressure'] / df['saturation_esi']) * 100
-        df['ISSR_flag'] = (df['RHi'] > 100).astype(np.uint8)
+    df['RHi'] = (df['vapor_pressure'] / df['saturation_esi']) * 100
+    df['ISSR_flag'] = (df['RHi'] > 100).astype(np.uint8)
+    df['valid_time'] = ds['time'].values[time_index]
 
-        df['valid_time'] = ds['time'].values[i]
+    return df
 
-        dfs.append(df)
-
-    combined_df = pd.concat(dfs, ignore_index=True)
-    return combined_df
 
 
 
