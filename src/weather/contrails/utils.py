@@ -99,45 +99,118 @@ def preprocess(grib_file_path):
     return df
 
 
-def preprocess_beta(grib_file_path):
+import xarray as xr
+import pandas as pd
+import numpy as np
+
+def preprocess_by_levels(grib_file_path, levels_to_extract):
     """
-    Optimized version: loads minimal variables, uses xarray efficiently, and reduces memory load.
+    Processes GRIB file one pressure level at a time to reduce memory usage.
+    
+    Parameters:
+    - grib_file_path: path to .grib or .grib2 file
+    - levels_to_extract: list of pressure levels (in hPa) to process
+
+    Returns:
+    - df_all: pandas DataFrame with ISSR_flag and derived variables across selected levels
+    """
+    dfs = []
+
+    for level in levels_to_extract:
+        try:
+            ds = xr.open_dataset(
+                grib_file_path,
+                engine="cfgrib",
+                backend_kwargs={"filter_by_keys": {"typeOfLevel": "isobaricInhPa", "level": level}}
+            )
+        except Exception as e:
+            print(f"Failed to load level {level} hPa:", e)
+            continue
+
+        # Fix longitude
+        if 'longitude' in ds.coords:
+            lon_fixed = ((ds['longitude'] + 180) % 360) - 180
+            ds = ds.assign_coords(longitude=lon_fixed)
+            ds = ds.sortby('longitude')
+
+        # Ensure required variables are present
+        required_vars = ['q', 't']
+        if not all(var in ds.variables for var in required_vars):
+            print(f"Missing required variables at level {level}")
+            continue
+
+        # Convert to dataframe and add level
+        df = ds[required_vars].to_dataframe().reset_index()
+        df['isobaricInhPa'] = level
+        df['p_Pa'] = df['isobaricInhPa'] * 100
+
+        # Derived variables
+        df['vapor_pressure'] = (df['q'] * df['p_Pa']) / (0.622 + 0.378 * df['q'])
+        T = df['t']
+        ln_esi = (9.550426 - (5723.265 / T) + 3.53068 * np.log(T) - 0.00728332 * T)
+        df['saturation_esi'] = np.exp(ln_esi)
+        df['RHi'] = (df['vapor_pressure'] / df['saturation_esi']) * 100
+        df['ISSR_flag'] = (df['RHi'] > 100).astype(np.uint8)
+
+        dfs.append(df)
+
+    # Combine all levels
+    if dfs:
+        df_all = pd.concat(dfs, ignore_index=True)
+        return df_all
+    else:
+        print("No valid levels processed.")
+        return None
+
+def preprocess_by_time_slice(grib_file_path):
+    """
+    Processes each time slice individually to reduce memory usage.
+    
+    Parameters:
+    - grib_file_path: path to the GRIB file
+    
+    Returns:
+    - combined_df: pandas DataFrame with ISSR flag and other derived fields
     """
     try:
-        ds = xr.open_dataset(grib_file_path, engine="cfgrib", decode_timedelta=True)
+        ds = xr.open_dataset(grib_file_path, engine="cfgrib")
     except Exception as e:
         print("Failed to open GRIB file:", e)
         return None
 
     # Fix longitude
     if 'longitude' in ds.coords:
-        lon_fixed = ((ds['longitude'] + 180) % 360) - 180
-        ds = ds.assign_coords(longitude=lon_fixed)
+        ds = ds.assign_coords(longitude=((ds.longitude + 180) % 360) - 180)
         ds = ds.sortby('longitude')
 
-    # Keep only relevant variables before flattening
     required_vars = ['q', 't']
-    ds = ds[required_vars]
+    if not all(var in ds.variables for var in required_vars):
+        print("Missing required variables:", [v for v in required_vars if v not in ds.variables])
+        return None
 
-    # Flatten early, on selected variables only
-    df = ds.to_dataframe().reset_index()
+    dfs = []
 
-    # Quick filter for needed columns
-    if not {'q', 't', 'isobaricInhPa'}.issubset(df.columns):
-        print("Missing required columns")
-        return df
+    for i in range(ds.sizes['time']):
+        print(f"Processing time index {i}")
+        sub_ds = ds.isel(time=i)[required_vars]
 
-    df['p_Pa'] = df['isobaricInhPa'] * 100
-    df['vapor_pressure'] = (df['q'] * df['p_Pa']) / (0.622 + 0.378 * df['q'])
+        df = sub_ds.to_dataframe().reset_index()
+        df['p_Pa'] = df['isobaricInhPa'] * 100
 
-    T = df['t']
-    ln_esi = (9.550426 - (5723.265 / T) + 3.53068 * np.log(T) - 0.00728332 * T)
-    df['saturation_esi'] = np.exp(ln_esi)
+        df['vapor_pressure'] = (df['q'] * df['p_Pa']) / (0.622 + 0.378 * df['q'])
+        T = df['t']
+        ln_esi = (9.550426 - (5723.265 / T) + 3.53068 * np.log(T) - 0.00728332 * T)
+        df['saturation_esi'] = np.exp(ln_esi)
 
-    df['RHi'] = (df['vapor_pressure'] / df['saturation_esi']) * 100
-    df['ISSR_flag'] = (df['RHi'] > 100).astype(np.uint8)
+        df['RHi'] = (df['vapor_pressure'] / df['saturation_esi']) * 100
+        df['ISSR_flag'] = (df['RHi'] > 100).astype(np.uint8)
 
-    return df
+        df['valid_time'] = ds['time'].values[i]
+
+        dfs.append(df)
+
+    combined_df = pd.concat(dfs, ignore_index=True)
+    return combined_df
 
 
 
