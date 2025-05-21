@@ -20,15 +20,20 @@ for time_index in range(1,24):
 
     try:
         
-        # Pre-process daa for a single time slice
+        # Pre-process data for a single time slice
         weather = util.preprocess_single_time_slice(weather_grib, time_index)
-
+        
+        # Compute 1D CDF using RHi
+        weather = util.compute_contrail_probability(weather,sigma_rhi = 3.0)
+        
+        
 
 
 #print(weather.head())
 
         # Plot ISSR contour onver CONUS
-        proc.plot_issr_conus_by_altitude(weather, time_index )
+        #proc.plot_issr_conus_by_altitude(weather, time_index )
+        proc.plot_pcon_conus_by_altitude(weather, time_index )
     except Exception as e:
         print(f"Failed at time index {time_index}: {e}")
 #proc.save_issr_animation(weather, filename="issr_animation.mp4", fps=2)

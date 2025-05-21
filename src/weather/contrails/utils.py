@@ -2,6 +2,7 @@ import xarray as xr
 import pandas as pd
 import numpy as np
 
+from scipy.stats import norm
 
 def inspect_grib_fields(grib_file_path):
     """
@@ -231,3 +232,19 @@ def pressure_to_altitude_ft(pressure_hPa):
     # Convert to feet
     altitude_ft = altitude_m * 3.28084
     return altitude_ft
+
+
+def compute_contrail_probability(df,sigma_rhi=5.0):
+    """
+    Appends a contrail probability column to the dataframe based on RHi using a CDF model.
+
+    Parameters:
+    - df: pandas DataFrame with 'RHi' column
+    - sigma_rhi: Standard deviation (in %) for uncertainty in RHi threshold
+
+    Returns:
+    - df: same DataFrame with a new 'P_contrail' column
+    """
+    
+    df['P_contrail'] = norm.cdf((df['RHi'] - 100) / sigma_rhi)
+    return df
