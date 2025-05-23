@@ -1,4 +1,4 @@
-from ..utils.custom_types import FloatOrNDArray
+from .custom_types import FloatOrNDArray
 
 
 def knots_to_mps(knots: FloatOrNDArray) -> FloatOrNDArray:
