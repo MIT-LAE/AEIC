@@ -4,6 +4,9 @@ Energy_MJ_per_kg = 43.2
 EI_H2O            = 1233.3865 # gH2O/kgfuel
 EI_CO2            = 3155.6 # gCO2/kgfuel
 nvolCarbCont      = 0.95
+LC_CO2            = 89 # gCO2e/MJfuel
+                        # CI of conventional jet fuel (89 g/MJ) from this source: 89 gCO2e/MJfuel
+                        # https://www.icao.int/environmental-protection/CORSIA/Documents/CORSIA%20Supporting%20Document_CORSIA%20Eligible%20Fuels_LCA%20Methodology.pdf
 
 # Sulfur content and sulfate yield
 FSCnom            = 600.0    # gS/kgfuel
