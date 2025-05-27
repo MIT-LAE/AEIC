@@ -4,12 +4,13 @@ def EI_NOx(
         fuel_flow: np.ndarray,
         NOX_EI_matrix: np.ndarray,
         fuelfactor: np.ndarray,
-        P3:float = np.ndarray,
-        T3:float = np.ndarray,
+        P3_kPa:np.ndarray,
+        T3_K:np.ndarray,
         cruiseCalc: bool = False,
         Tamb: float = 288.15,
         Pamb: float = 101325.0,
-        mode:str = "P3T3"
+        mode:str = "P3T3",
+        sp_humidity: float = 0.00634
     ):
     """
     Calculates NOx emissions indices and speciation.
@@ -30,7 +31,12 @@ def EI_NOx(
     """
 
     if mode == "P3T3":
-        pass
+        a,b,c,d,e,f,g,h,i,j = [ 8.46329738,  0.00980137, -8.55054025,  0.00981223,  0.02928154,
+            0.01037376,  0.03666156,  0.01037419,  0.03664096,  0.01037464]
+
+        H = -19.0*(sp_humidity - 0.00634)
+        
+        NOxEI = np.exp(H)*(P3_kPa**0.4) * (a * np.exp(b * T3_K) + c * np.exp(d * T3_K) + e * np.exp(f * T3_K) + g * np.exp(h * T3_K) + i * np.exp(j * T3_K))
     elif mode == "BFFM2":
         # Fit log-log linear models per row
         slopes = np.zeros(fuel_flow.shape[0])
