@@ -1,17 +1,11 @@
-def co2_eis_func(HCEI, COEI, OCicEI, PMnvolEI):
+def EI_CO2(fuel):
     """
     Calculate carbon-balanced CO2 emissions index (EI).
 
     Parameters
     ----------
-    HCEI : ndarray
-        Emissions index for hydrocarbons [g/kg fuel].
-    COEI : ndarray
-        Emissions index for CO [g/kg fuel].
-    OCicEI : ndarray
-        Emissions index for organic carbon [g/kg fuel].
-    PMnvolEI : ndarray
-        Emissions index for non-volatile particulate matter [g/kg fuel].
+    fuel : dictionary
+        Fuel information (input from toml file)
 
     Returns
     -------
@@ -27,16 +21,7 @@ def co2_eis_func(HCEI, COEI, OCicEI, PMnvolEI):
     #     CO2EInom = trirnd(3148, 3173, 3160, rv)
     #     nvolCarbCont = 0.9 + (0.98 - 0.9) * np.random.rand()
     # else:
-    CO2EInom = 3160.0
-    nvolCarbCont = 0.95
+    CO2EInom = fuel['EI_CO2']
+    nvolCarbCont = fuel['nvolCarbCont']
 
-    # Compute CO2EI with broadcast over array shapes
-    CO2EI = (
-        CO2EInom
-        - (44/28)   * COEI
-        - (44/(82/5)) * HCEI
-        - (44/(55/4)) * OCicEI
-        - (44/12)   * nvolCarbCont * PMnvolEI
-    )
-
-    return CO2EI, CO2EInom, nvolCarbCont
+    return CO2EInom, nvolCarbCont

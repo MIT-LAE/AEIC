@@ -1,6 +1,6 @@
 import numpy as np
 
-def sox_eis_func(fuelflow: np.ndarray):
+def EI_SOx(fuelflow: np.ndarray, fuel: dict):
     """
     Calculate universal SOx emissions indices (SO2EI and SO4EI).
 
@@ -8,6 +8,9 @@ def sox_eis_func(fuelflow: np.ndarray):
     ----------
     fuelflow : ndarray
         Fuel flow array (any shape), units kg of fuel.
+
+    fuel : dictionary
+        Fuel information (input from toml file)
 
     Returns
     -------
@@ -17,8 +20,8 @@ def sox_eis_func(fuelflow: np.ndarray):
         SO4 emissions index [g SO4 per kg fuel], same shape as fuelflow.
     """
     # Nominal values
-    FSCnom = 600.0  # g S per kg fuel
-    Epsnom = 0.02   # fraction to sulfate
+    FSCnom = fuel['FSCnom']
+    Epsnom = fuel['Epsnom']
 
     # Apply MC for FSC
     # if mcsFSC == 1:
