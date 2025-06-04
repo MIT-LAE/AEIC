@@ -44,11 +44,11 @@ NOX_EI = 8.63727
 
 [flight_performance]
 cols = [
-  "FUEL_FLOW",
-  "FL",
-  "TAS",
-  "ROCD",
-  "MASS"
+  "FUEL_FLOW",  # kg/s
+  "FL",  # Flight levels
+  "TAS",  # m/s
+  "ROCD",  # m/s
+  "MASS"  # kg
 ]
 
 data = [

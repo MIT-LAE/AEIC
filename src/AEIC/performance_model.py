@@ -7,7 +7,8 @@ from src.parsers.OPF_reader import parse_OPF
 from src.parsers.LTO_reader import parseLTO
 from src.BADA.aircraft_parameters import Bada3AircraftParameters
 from src.BADA.model import Bada3JetEngineModel
-from src.missions.OAG_filter import filter_OAG_schedule
+# from src.missions.OAG_filter import filter_OAG_schedule
+
 class PerformanceModel:
     '''Performance model for an aircraft. Contains
         fuel flow, airspeed, ROC/ROD, LTO emissions,

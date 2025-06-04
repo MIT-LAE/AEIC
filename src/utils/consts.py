@@ -12,3 +12,7 @@ R_air = 287.05287  # BADA4
 
 beta_tropo = -0.0065
 h_p_tropo = 11000
+
+
+# Earth radius in meters
+R_E = 6378100.0

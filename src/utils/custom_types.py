@@ -5,4 +5,4 @@ import numpy as np
 from numpy.typing import NDArray
 
 # create a type for Union[float, NDArray]
-FloatOrNDArray = Union[float, NDArray[np.float_]]
+FloatOrNDArray = Union[float, NDArray[np.float64]]
