@@ -6,6 +6,7 @@ from src.AEIC.trajectories.trajectory import Trajectory
 from src.emissions.EI_CO2 import EI_CO2
 from src.emissions.EI_H2O import EI_H2O
 from src.emissions.EI_SOx import EI_SOx
+from src.emissions.EI_NOx import EI_NOx
 
 class Emission:
     '''Model for determining flight emissions.
@@ -23,6 +24,9 @@ class Emission:
             ('EI_H2O',     np.float64, self.Ntot),
             ('EI_HCCO',   np.float64, self.Ntot),
             ('EI_NOx', np.float64, self.Ntot),
+            ('EI_NO', np.float64, self.Ntot),
+            ('EI_NO2', np.float64, self.Ntot),
+            ('EI_HONO', np.float64, self.Ntot),
             ('EI_PMnvol',  np.float64, self.Ntot),
             ('EI_PMvol',   np.float64, self.Ntot),
             ('EI_SO2',   np.float64, self.Ntot),
@@ -35,9 +39,13 @@ class Emission:
             ('H2O',     np.float64, self.Ntot),
             ('HCCO',   np.float64, self.Ntot),
             ('NOx', np.float64, self.Ntot),
+            ('NO', np.float64, self.Ntot),
+            ('NO2', np.float64, self.Ntot),
+            ('HONO', np.float64, self.Ntot),
             ('PMnvol',   np.float64, self.Ntot),
             ('PMvol',   np.float64, self.Ntot),
-            ('SOx',  np.float64, self.Ntot)
+            ('SO2',  np.float64, self.Ntot),
+            ('SO4',  np.float64, self.Ntot)
         ]
         self.emission_g = np.empty((), dtype=emissions_dtype)
 
@@ -57,7 +65,20 @@ class Emission:
 
         # SOx
         self.emission_indices['EI_SO2'],self.emission_indices['EI_SO4'] = EI_SOx(self.fuel)
-        self.emission_g['SOx'] = (self.emission_indices['EI_SO2'] * self.fuel_burn_per_segment)\
-                                    + (self.emission_indices['EI_SO4'] * self.fuel_burn_per_segment)
+        self.emission_g['SO2'],self.emission_g['SO4'] = (self.emission_indices['EI_SO2'] * self.fuel_burn_per_segment),\
+                                                (self.emission_indices['EI_SO4'] * self.fuel_burn_per_segment)
+        
+        # NOx
+        self.emission_indices['EI_NOx'], self.emission_indices['EI_NO'], \
+        self.emission_indices['EI_NO2'], self.emission_indices['EI_HONO'], \
+        noProp, no2Prop, honoProp = \
+            EI_NOx(trajectory.traj_data['fuelFlow'],
+                   ac_performance.fuel_flow_values, ac_performance.EI_NOx_values,
+                   )
+        
+        self.emission_g['NOx'] = self.emission_indices['EI_NOx'] * self.fuel_burn_per_segment
+        self.emission_g['NO'] = self.emission_indices['EI_NO'] * self.fuel_burn_per_segment
+        self.emission_g['NO2'] = self.emission_indices['EI_NO2'] * self.fuel_burn_per_segment
+        self.emission_g['HONO'] = self.emission_indices['EI_HONO'] * self.fuel_burn_per_segment
 
 
