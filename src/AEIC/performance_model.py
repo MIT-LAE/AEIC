@@ -82,14 +82,16 @@ class PerformanceModel:
         tas_values = sorted(set(row[2] for row in data))
         rocd_values = sorted(set(row[3] for row in data))
         mass_values = sorted(set(row[4] for row in data))
+        ei_nox_values = sorted(set(row[5] for row in data))
         
         # Create mapping dictionaries for fast lookups
         fl_indices = {val: idx for idx, val in enumerate(fl_values)}
         tas_indices = {val: idx for idx, val in enumerate(tas_values)}
         rocd_indices = {val: idx for idx, val in enumerate(rocd_values)}
         mass_indices = {val: idx for idx, val in enumerate(mass_values)}
+        ei_nox_indices = {val: idx for idx, val in enumerate(ei_nox_values)}
         
-        shape = (len(fl_values), len(tas_values), len(rocd_values), len(mass_values))
+        shape = (len(fl_values), len(tas_values), len(rocd_values), len(mass_values), len(ei_nox_values))
         fuel_flow_array = np.empty(shape)
         
         # Populate the array using vectorized approach
@@ -97,12 +99,13 @@ class PerformanceModel:
         tas_idx = np.array([tas_indices[row[2]] for row in data])
         rocd_idx = np.array([rocd_indices[row[3]] for row in data])
         mass_idx = np.array([mass_indices[row[4]] for row in data])
+        ei_nox_idx = np.array([mass_indices[row[5]] for row in data])
         fuel_flow = np.array([row[0] for row in data])
         
         # Use advanced indexing to assign values
-        fuel_flow_array[fl_idx, tas_idx, rocd_idx, mass_idx] = fuel_flow
+        fuel_flow_array[fl_idx, tas_idx, rocd_idx, mass_idx, ei_nox_idx] = fuel_flow
         
         self.performance_table = fuel_flow_array
-        self.performance_table_cols = [fl_values, tas_values, rocd_values, mass_values]
+        self.performance_table_cols = [fl_values, tas_values, rocd_values, mass_values, ei_nox_values]
 
 
