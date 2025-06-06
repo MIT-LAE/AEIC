@@ -17,9 +17,9 @@ performance_model_input = "PerformanceModel"
 performance_model_input_file = "./src/IO/sample_performance_model.toml" 
 
 ["LTO data"]
-LTO_input_mode = "PerformanceModel" # "PerformanceModel" : LTO data provided in PerformanceModel file
-                          # "input_file" : Additional LTO data provided
-LTO_input_file = "./src/IO/B738__.LTO"
+LTO_input_mode = "EDB"  # "PerformanceModel" : LTO data provided in PerformanceModel file
+                        # "EDB" : Use EDB data to get LTO performance
+edb_engine_file = "./src/emissions/engine_data/full_engine_edb_data.toml"
 
 ["Missions"]
 missions_folder = "./src/missions/"

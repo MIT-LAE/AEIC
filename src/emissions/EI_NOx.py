@@ -5,11 +5,12 @@ def EI_NOx(
         fuel_flow_input: np.ndarray,
         NOX_EI_input: np.ndarray,
         fuel_flow_output: np.ndarray,
+        Tamb: np.ndarray,
+        Pamb: np.ndarray,
+        mach_number: np.ndarray,
         P3_kPa = None,
         T3_K = None,
         cruiseCalc: bool = True,
-        Tamb: float = 288.15,
-        Pamb: float = 101325.0,
         mode:str = "BFFM2",
         sp_humidity: float = 0.00634
     ):
@@ -39,9 +40,9 @@ def EI_NOx(
         
         NOxEI = np.exp(H)*(P3_kPa**0.4) * (a * np.exp(b * T3_K) + c * np.exp(d * T3_K) + e * np.exp(f * T3_K) + g * np.exp(h * T3_K) + i * np.exp(j * T3_K))
     elif mode == "BFFM2":
-        return BFFM2_EINOx(fuel_flow_input,NOX_EI_input,fuel_flow_output,cruiseCalc,Tamb,Pamb)
+        return BFFM2_EINOx(fuel_flow_input,NOX_EI_input,fuel_flow_output,Tamb,Pamb,mach_number)
     else:
-        raise Exception("Invalid mode input in EI NOx function (LOG, P3T3)")
+        raise Exception("Invalid mode input in EI NOx function (BFFM2, P3T3)")
 
     # Thrust category assignment
     if cruiseCalc:
@@ -111,9 +112,10 @@ def BFFM2_EINOx(
     fuelfactor: np.ndarray,
     NOX_EI_matrix: np.ndarray,
     fuelflow_KGperS: np.ndarray,
+    Tamb: np.ndarray,
+    Pamb: np.ndarray,
+    mach_number: np.ndarray,
     cruiseCalc: bool = True,
-    Tamb: float = 288.15,
-    Pamb: float = 101325.0
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate NOx, NO, NO2, and HONO emission indices 
@@ -153,56 +155,61 @@ def BFFM2_EINOx(
     honoProp: ndarray, shape (n_times,)
         Fraction of HONO within total NOy (unitless).
     """
+    # -----------------------------
+    # 0. Convert Wf_alt → Wf_SL (Eq. (40)):
+    # -----------------------------
+    # δ_amb = Pamb / 101325
+    delta_amb = Pamb / 101325.0
 
-    # ----------------------------------------------------------------------------
-    # 1. Fit a linear model in log10-space: log10(NOx_EI) vs. log10(fuelflow)
-    # ----------------------------------------------------------------------------
-    # Ensure no non-positive calibration fuel flows
+    # Exponent z = 3.8
+    z = 3.8
+
+    # Mach factor = exp(0.2 * M3^2)
+    mach_term = np.exp(0.2 * mach_number**2)
+
+    # Sea-level fuel flow (per engine) = Wf_alt * (1/δ_amb)^z * Mach-term
+    Wf_SL = fuelfactor * ( (1.0 / delta_amb) ** z ) * mach_term
+
+    # Now use Wf_SL as the “fuelfactor” for the log–log interpolation:
+    fuelfactor = Wf_SL.copy()
+
+    # (Proceed with steps 1, 2, 3 exactly as in the paper)
+    # 1) Fit log10(NOX_EI_matrix) vs. log10(fuelflow_KGperS)
     ff_cal = fuelflow_KGperS.copy()
-    ff_cal[ff_cal <= 0] = 0.01
-
-    # Take logs
+    ff_cal[ff_cal <= 0.0] = 1e-2
     x_log = np.log10(ff_cal)
     y_log = np.log10(NOX_EI_matrix)
-
-    # Perform linear regression (slope, intercept)
     slope, intercept = np.polyfit(x_log, y_log, 1)
 
-    # ----------------------------------------------------------------------------
-    # 2. Interpolate NOxEI for each fuelfactor point
-    # ----------------------------------------------------------------------------
-    # If any fuelfactor <= 0, set to small positive to avoid log10 issues
+    # 2) Interpolate NOxEI at log10(fuelfactor)
     ff_eval = fuelfactor.copy()
-    ff_eval[ff_eval <= 0] = 0.01
+    ff_eval[ff_eval <= 0.0] = 1e-2
+    NOxEI_sl = 10.0 ** (slope * np.log10(ff_eval) + intercept)
 
-    NOxEI = 10.0 ** (np.log10(ff_eval) * slope + intercept)
-
-    # ----------------------------------------------------------------------------
-    # 3. Apply cruise ambient corrections if requested
-    # ----------------------------------------------------------------------------
+    # 3) If cruiseCalc=True, apply the humidity/θ/δ correction (Eqs. 44–45)
     if cruiseCalc:
-        # θ_amb = Tamb / 288.15
         theta_amb = Tamb / 288.15
-        # δ_amb = Pamb / 101325
         delta_amb = Pamb / 101325.0
-        # Pamb in psia
         Pamb_psia = delta_amb * 14.696
 
-        # Compute saturation vapor pressure term β (per BFFM2)
+        # Compute β (saturation vapor – Eq. 44)
         beta = (
-            7.90298 * (1.0 - (373.16) / (Tamb + 0.01))
+            7.90298 * (1.0 - 373.16 / (Tamb + 0.01))
             + 3.00571
-            + 5.02808 * np.log10((373.16) / (Tamb + 0.01))
+            + 5.02808 * np.log10(373.16 / (Tamb + 0.01))
             + 1.3816e-7 * (1.0 - (10.0 ** (11.344 * (1.0 - ((Tamb + 0.01) / 373.16)))))
-            + 8.1328e-3 * ((10.0 ** (3.49149 * (1.0 - (373.16) / (Tamb + 0.01)))) - 1.0)
+            + 8.1328e-3 * ((10.0 ** (3.49149 * (1.0 - (373.16 / (Tamb + 0.01))))) - 1.0)
         )
-        Pv = 0.014504 * (10.0 ** beta)  # [psia]
-        phi = 0.6  # 60% relative humidity
+        Pv = 0.014504 * (10.0 ** beta)    # [psia]
+        phi = 0.6                        # 60% relative humidity
         omega = (0.62198 * phi * Pv) / (Pamb_psia - (phi * Pv))
         H = -19.0 * (omega - 0.0063)
 
+        # Eq. (45) ambient correction:
         correction = np.exp(H) * ((delta_amb ** 1.02) / (theta_amb ** 3.3)) ** 0.5
-        NOxEI = NOxEI * correction
+        NOxEI = NOxEI_sl * correction
+    else:
+        NOxEI = NOxEI_sl
 
     # ----------------------------------------------------------------------------
     # 4. Determine thrust category for each fuelfactor point

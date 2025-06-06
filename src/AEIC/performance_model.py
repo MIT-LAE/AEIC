@@ -2,6 +2,7 @@ import numpy as np
 import tomllib
 import json
 import os
+import gc
 from src.parsers.PTF_reader import parse_PTF
 from src.parsers.OPF_reader import parse_OPF
 from src.parsers.LTO_reader import parseLTO
@@ -56,10 +57,6 @@ class PerformanceModel:
 
         # Initialize BADA engine model
         self.engine_model = Bada3JetEngineModel(self.ac_params)
-
-        if self.config["LTO_input_mode"] == "input_file":
-            # Load LTO data
-            self.LTO_data = parseLTO(self.config['LTO_input_file'])
         
     def read_performance_data(self):
         '''Parses input json data of aircraft performance'''
@@ -69,7 +66,18 @@ class PerformanceModel:
             data = tomllib.load(f)
 
         self.LTO_data = data['LTO_performance']
+        if self.config["LTO_input_mode"] == "EDB":
+            # Read UID 
+            UID = data['LTO_performance']['ICAO_UID']
+            # Read EDB file and get engine 
+            engine_info = self.get_engine_by_uid(UID, self.config["edb_engine_file"])
+            if engine_info is not None:
+                self.EDB_data = engine_info
+            else:
+                ValueError(f"No engine with UID={UID} found.")
+
         self.create_performance_table(data['flight_performance']['data'])
+
         del data["LTO_performance"]
         del data["flight_performance"]
         self.model_info = data
@@ -107,5 +115,45 @@ class PerformanceModel:
         
         self.performance_table = fuel_flow_array
         self.performance_table_cols = [fl_values, tas_values, rocd_values, mass_values]
+
+    def get_engine_by_uid(self, uid: str, toml_path: str) -> dict:
+        """
+        Reads a TOML file containing multiple [[engine]] tables, finds and returns
+        the engine dict whose 'UID' field matches the given uid. After locating
+        the matching table, the entire TOML parse tree is deleted to free memory.
+
+        Parameters
+        ----------
+        uid : str
+            The UID string to search for (e.g. "1RR021").
+        toml_path : str
+            Path to the TOML file to read.
+
+        Returns
+        -------
+        dict or None
+            The dict corresponding to the matching [[engine]] table if found;
+            otherwise, None.
+        """
+        # Open and parse the TOML file
+        with open(toml_path, 'rb') as f:
+            data = tomllib.load(f)
+
+        # data["engine"] is a list of dicts (one per [[engine]] table)
+        engines = data.get("engine", [])
+
+        # Search for the matching UID
+        match = None
+        for engine in engines:
+            if engine.get("UID") == uid:
+                match = engine
+                break
+
+        # Remove the parsed data from memory
+        del data
+        del engines
+        gc.collect()
+
+        return match
 
 

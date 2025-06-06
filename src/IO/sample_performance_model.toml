@@ -21,27 +21,25 @@ cas_hi = 149.18876
 mach = 0.80
 
 [LTO_performance]
+ENG_NAME = "CFM56-7B26_nan"
+ICAO_UID = "8CM051"
 Foo_kN = 102.695
 
 [LTO_performance.thrust_settings.approach]
 THRUST_FRAC = 0.3
-FUEL_KGs = 0.62344
-NOX_EI = 14.53833
+FUEL_KGs    = 0.278
 
 [LTO_performance.thrust_settings.climb]
 THRUST_FRAC = 0.85
-FUEL_KGs = 0.87489
-NOX_EI = 39.71234
+FUEL_KGs    = 0.754
 
 [LTO_performance.thrust_settings.takeoff]
 THRUST_FRAC = 1.0
-FUEL_KGs = 0.95898
-NOX_EI = 53.12635
+FUEL_KGs    = 0.903
 
 [LTO_performance.thrust_settings.idle]
 THRUST_FRAC = 0.07
-FUEL_KGs = 0.37251
-NOX_EI = 8.63727
+FUEL_KGs    = 0.102
 
 [flight_performance]
 cols = [
