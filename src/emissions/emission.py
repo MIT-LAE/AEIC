@@ -27,41 +27,11 @@ class Emission:
         self.Ntot, self.NClm, self.NCrz, self.NDes = \
             trajectory.Ntot, trajectory.NClm, trajectory.NCrz, trajectory.NDes
         
-        EIs_dtype = [
-            ('EI_CO2',   np.float64, self.Ntot),
-            ('EI_H2O',     np.float64, self.Ntot),
-            ('EI_HC',   np.float64, self.Ntot),
-            ('EI_CO',   np.float64, self.Ntot),
-            ('EI_NOx', np.float64, self.Ntot),
-            ('EI_NO', np.float64, self.Ntot),
-            ('EI_NO2', np.float64, self.Ntot),
-            ('EI_HONO', np.float64, self.Ntot),
-            ('EI_PMnvol',  np.float64, self.Ntot),
-            ('EI_PMnvolN',  np.float64, self.Ntot),
-            ('EI_PMnvolGMD',  np.float64, self.Ntot),
-            ('EI_PMvol',   np.float64, self.Ntot),
-            ('EI_OCic',   np.float64, self.Ntot),
-            ('EI_SO2',   np.float64, self.Ntot),
-            ('EI_SO4',   np.float64, self.Ntot)
-        ]
-        self.emission_indices = np.empty((), dtype=EIs_dtype)
+        self.emission_indices = np.empty((), dtype=self.__emission_dtype(self.Ntot))
 
-        emissions_dtype = [
-            ('CO2',   np.float64, self.Ntot),
-            ('H2O',     np.float64, self.Ntot),
-            ('HC',   np.float64, self.Ntot),
-            ('CO',   np.float64, self.Ntot),
-            ('NOx', np.float64, self.Ntot),
-            ('NO', np.float64, self.Ntot),
-            ('NO2', np.float64, self.Ntot),
-            ('HONO', np.float64, self.Ntot),
-            ('PMnvol',   np.float64, self.Ntot),
-            ('PMvol',   np.float64, self.Ntot),
-            ('OCic',   np.float64, self.Ntot),
-            ('SO2',  np.float64, self.Ntot),
-            ('SO4',  np.float64, self.Ntot)
-        ]
-        self.emission_g = np.empty((), dtype=emissions_dtype)
+        self.LTO_emission_indices = np.empty((), dtype=self.__emission_dtype(11))
+
+        self.emission_g = np.empty((), dtype=self.__emission_dtype(self.Ntot))
         
         # Fuel burn per segment
         fuel_mass = trajectory.traj_data['fuelMass']
@@ -69,42 +39,63 @@ class Emission:
         fuel_burn[1:] = fuel_mass[:-1] - fuel_mass[1:]
         self.fuel_burn_per_segment = fuel_burn
 
+        # Calculate cruise emission indices
         self.cruise_emissions(trajectory, ac_performance)
 
-        self.calculate_emission_g()
+        # Calculate LTO emissions
+        self.LTO_emissions(ac_performance)
+        # Calculate lifecycle emissions
+
+        # Calculate APU emissions
+
+        # Calculate GSE emissions
+
+        # Calculate total emissions (Cruise + LTO + APU + GSE + Lifecycle)
+        # self.total_sum_emissions()
         
-    def calculate_emission_g(self):
+    def total_sum_emissions(self, pmnvolSwitch = "SCOPE11"):
         # CO2
-        self.emission_g['CO2'] = self.emission_indices['EI_CO2'] * self.fuel_burn_per_segment
+        self.emission_g['CO2'] = self.emission_indices['CO2'] * self.fuel_burn_per_segment
 
         # H20
-        self.emission_g['H2O'] = self.emission_indices['EI_H2O'] * self.fuel_burn_per_segment
+        self.emission_g['H2O'] = self.emission_indices['H2O'] * self.fuel_burn_per_segment
 
         # SOx
-        self.emission_g['SO2'],self.emission_g['SO4'] = (self.emission_indices['EI_SO2'] * self.fuel_burn_per_segment),\
-                                                (self.emission_indices['EI_SO4'] * self.fuel_burn_per_segment)
+        self.emission_g['SO2'],self.emission_g['SO4'] = (self.emission_indices['SO2'] * self.fuel_burn_per_segment),\
+                                                (self.emission_indices['SO4'] * self.fuel_burn_per_segment)
         
         # NOx
-        self.emission_g['NOx'] = self.emission_indices['EI_NOx'] * self.fuel_burn_per_segment
-        self.emission_g['NO'] = self.emission_indices['EI_NO'] * self.fuel_burn_per_segment
-        self.emission_g['NO2'] = self.emission_indices['EI_NO2'] * self.fuel_burn_per_segment
-        self.emission_g['HONO'] = self.emission_indices['EI_HONO'] * self.fuel_burn_per_segment
+        self.emission_g['NOx'] = self.emission_indices['NOx'] * self.fuel_burn_per_segment
+        self.emission_g['NO'] = self.emission_indices['NO'] * self.fuel_burn_per_segment
+        self.emission_g['NO2'] = self.emission_indices['NO2'] * self.fuel_burn_per_segment
+        self.emission_g['HONO'] = self.emission_indices['HONO'] * self.fuel_burn_per_segment
 
         # HC, CO
-        self.emission_g['HC'] = self.emission_indices['EI_HC'] * self.fuel_burn_per_segment
-        self.emission_g['CO'] = self.emission_indices['EI_CO'] * self.fuel_burn_per_segment
+        self.emission_g['HC'] = self.emission_indices['HC'] * self.fuel_burn_per_segment
+        self.emission_g['CO'] = self.emission_indices['CO'] * self.fuel_burn_per_segment
+
+        # PMvol, OCic
+        self.emission_g['PMvol'] = self.emission_indices['PMvol'] * self.fuel_burn_per_segment
+        self.emission_g['OCic'] = self.emission_indices['OCic'] * self.fuel_burn_per_segment
+
+        # PMnvol, add PMnvolN, PMnvolGMD if SCOPE11
+        self.emission_g['PMnvol'] = self.emission_indices['PMnvol'] * self.fuel_burn_per_segment
+        if pmnvolSwitch == "SCOPE11":
+            self.emission_g['PMnvolN'] = self.emission_indices['PMnvolN'] * self.fuel_burn_per_segment
+            self.emission_g['PMnvolGMD'] = self.emission_indices['PMnvolGMD'] * self.fuel_burn_per_segment
+
 
     def cruise_emissions(self, trajectory, ac_performance, EDB_data = True):
 
         # CO2
-        self.emission_indices['EI_CO2'][self.NClm:-self.NDes],nvolCarbCont = EI_CO2(self.fuel)
+        self.emission_indices['CO2'][self.NClm:-self.NDes],nvolCarbCont = EI_CO2(self.fuel)
         
         # H20
-        self.emission_indices['EI_H2O'][self.NClm:-self.NDes] = EI_H2O(self.fuel)
+        self.emission_indices['H2O'][self.NClm:-self.NDes] = EI_H2O(self.fuel)
 
         # SOx
-        self.emission_indices['EI_SO2'][self.NClm:-self.NDes],\
-        self.emission_indices['EI_SO4'][self.NClm:-self.NDes] = EI_SOx(self.fuel)
+        self.emission_indices['SO2'][self.NClm:-self.NDes],\
+        self.emission_indices['SO4'][self.NClm:-self.NDes] = EI_SOx(self.fuel)
         
         # NOx
         # Temperature and Pressures during flight
@@ -113,13 +104,14 @@ class Emission:
         # Mach number
         mach_number = trajectory.traj_data['tas'][self.NClm:-self.NDes] / np.sqrt(kappa * R_air * flight_temps)
 
-
         # TODO: Check fuel factor ... and also check EDB ff if only 1 engine or both
-        noProp, no2Prop, honoProp = \
+        self.emission_indices['NOx'][self.NClm:-self.NDes],self.emission_indices['NO'][self.NClm:-self.NDes],\
+            self.emission_indices['NO2'][self.NClm:-self.NDes],self.emission_indices['HONO'][self.NClm:-self.NDes],\
+                noProp, no2Prop, honoProp = \
             BFFM2_EINOx(fuelflow_trajectory=trajectory.traj_data['fuelFlow'][self.NClm:-self.NDes],
                    NOX_EI_matrix=np.array(ac_performance.EDB_data['NOX_EI_matrix']),
                    fuelflow_performance=np.array(ac_performance.EDB_data['fuelflow_KGperS']), 
-                   Pamb=flight_pressures, Tamb=flight_temps, mach_number=mach_number
+                   Pamb=flight_pressures, Tamb=flight_temps
                    )
 
         # HC, CO
@@ -135,26 +127,203 @@ class Emission:
             lto_ff_array = np.array([mode['FUEL_KGs'] for mode in ac_performance.LTO_data['thrust_settings'].values()])
             
 
-        self.emission_indices['EI_HC'][self.NClm:-self.NDes] = hccoEIsFunc(trajectory.traj_data['fuelFlow'][self.NClm:-self.NDes],lto_hc_ei_array,lto_ff_array)
-        self.emission_indices['EI_CO'][self.NClm:-self.NDes] = hccoEIsFunc(trajectory.traj_data['fuelFlow'][self.NClm:-self.NDes],lto_co_ei_array,lto_ff_array)
+        self.emission_indices['HC'][self.NClm:-self.NDes] = hccoEIsFunc(trajectory.traj_data['fuelFlow'][self.NClm:-self.NDes],lto_hc_ei_array,lto_ff_array)
+        self.emission_indices['CO'][self.NClm:-self.NDes] = hccoEIsFunc(trajectory.traj_data['fuelFlow'][self.NClm:-self.NDes],lto_co_ei_array,lto_ff_array)
 
         # OC/PMvolo EIs
         thrustCat = get_thrust_cat(trajectory.traj_data['fuelFlow'][self.NClm:-self.NDes],
                                     ac_performance.fuel_flow_values, cruiseCalc=True)
-        self.emission_indices['EI_PMvol'][self.NClm:-self.NDes],\
-        self.emission_indices['EI_OCic'][self.NClm:-self.NDes] = EI_PMvol_NEW(
+        self.emission_indices['PMvol'][self.NClm:-self.NDes],\
+        self.emission_indices['OCic'][self.NClm:-self.NDes] = EI_PMvol_NEW(
                 trajectory.traj_data['fuelFlow'][self.NClm:-self.NDes], thrustCat
             )
         
         # BC EIs
-        self.emission_indices['EI_PMnvolGMD'][self.NClm:-self.NDes],\
-        self.emission_indices['EI_PMnvol'][self.NClm:-self.NDes],\
-        self.emission_indices['EI_PMnvolN'][self.NClm:-self.NDes] = self.nvPM_processing(ac_performance.EDB_data,
+        self.emission_indices['PMnvolGMD'][self.NClm:-self.NDes],\
+        self.emission_indices['PMnvol'][self.NClm:-self.NDes],\
+        self.emission_indices['PMnvolN'][self.NClm:-self.NDes] = self.__nvPM_processing(ac_performance.EDB_data,
                             meters_to_feet(trajectory.traj_data['altitude'][self.NClm:-self.NDes]),
                             flight_temps, flight_pressures, mach_number,
                             trajectory.traj_data['fuelFlow'][self.NClm:-self.NDes])
 
-    def nvPM_processing(self,EDB_data,altitudes,Tamb_cruise,Pamb_cruise,machFlight,fuel_flow_cruise,pmnvolSwitch_cruise = 'SCOPE11'):
+    def LTO_emissions(self, ac_performance, EDB_LTO = True, pmnvol_switch_lc = "SCOPE11"):
+        NATSGRP = np.array(ac_performance.EDB_data['NATSGRP'])
+        N = NATSGRP.size
+        # Get thrust levels at 11 LTO points
+        taxi_in   = 5.5
+        taxi_out  = taxi_in
+        hold      = taxi_out
+        landing   = taxi_in
+        taxi_acc  = 10.0
+        takeoff   = 100.0
+        inclimb   = takeoff
+        climb_out = 85.0
+        approach  = 30.0
+
+        #TODO Lookup reverse thrust per NATS group
+        reverse = 0.50#np.asarray(thrusts_reverseNats)[NATSGRP]
+
+        # Build the base thrust matrix (N rows × 11 modes)
+        thrusts = np.column_stack([
+            np.full(N, taxi_out),    # 0: TaxiOut
+            np.full(N, taxi_acc),    # 1: TaxiAccDecel
+            np.full(N, hold),        # 2: Hold
+            np.full(N, takeoff),     # 3: TakeOff
+            np.full(N, inclimb),     # 4: InClimb
+            np.full(N, climb_out),   # 5: ClimbOut
+            np.full(N, approach),    # 6: Approach
+            np.full(N, landing),     # 7: Landing
+            np.full(N, reverse),     # 8: Reverse
+            np.full(N, taxi_in),     # 9: TaxiIn
+            np.full(N, taxi_acc),    # 10: TaxiAccel
+        ])
+
+        if NATSGRP >=7:
+            # For “large jets” (NATSGRP >= 7), enforce maximum thrust in T/O & InClimb,
+            # and reset ClimbOut to 85%
+            mask = (NATSGRP >= 7)
+            thrusts[mask, 3] = 100.0              # TakeOff → 100%
+            thrusts[mask, 4] = thrusts[mask, 3]   # InClimb = same as TakeOff
+            thrusts[mask, 5] = 85.0               # ClimbOut → 85%
+
+
+        # Linerarly interpolate to get fuel flows at LTO points
+        thurst_levels_4 = np.array([7, 30, 85, 100])
+        fuel_flows_4 = np.array(ac_performance.EDB_data['fuelflow_KGperS']) if EDB_LTO else np.array([mode['FUEL_KGs'] for mode in ac_performance.LTO_data['thrust_settings'].values()])
+        fuel_flows_LTO = np.interp(thrusts, thurst_levels_4, fuel_flows_4)[0]
+
+        # Calculate EIs at each LTO point
+
+        # CO2
+        self.LTO_emission_indices['CO2'],nvolCarbCont = EI_CO2(self.fuel)
+        
+        # H20
+        self.LTO_emission_indices['H2O'] = EI_H2O(self.fuel)
+
+        # SOx
+        self.LTO_emission_indices['SO2'],\
+        self.LTO_emission_indices['SO4'] = EI_SOx(self.fuel)
+        
+        # NOx
+
+        # TODO: Check fuel factor ... and also check EDB ff if only 1 engine or both
+        self.LTO_emission_indices['NOx'],self.LTO_emission_indices['NO'],\
+            self.LTO_emission_indices['NO2'],self.LTO_emission_indices['HONO'],\
+                noProp, no2Prop, honoProp = \
+            BFFM2_EINOx(fuelflow_trajectory=fuel_flows_LTO,
+                   NOX_EI_matrix=np.array(ac_performance.EDB_data['NOX_EI_matrix']),
+                   fuelflow_performance=np.array(ac_performance.EDB_data['fuelflow_KGperS']), 
+                   Pamb=np.empty_like(fuel_flows_LTO), Tamb=np.empty_like(fuel_flows_LTO), cruiseCalc=False
+                   )
+
+        # HC, CO
+        # If using EDB data
+        if EDB_LTO:
+            lto_co_ei_array = np.array(ac_performance.EDB_data['CO_EI_matrix'])
+            lto_hc_ei_array = np.array(ac_performance.EDB_data['HC_EI_matrix'])
+            lto_ff_array = np.array(ac_performance.EDB_data['fuelflow_KGperS'])
+        else:
+            # If using LTO data
+            lto_co_ei_array = np.array([mode['CO_EI'] for mode in ac_performance.LTO_data['thrust_settings'].values()])
+            lto_hc_ei_array = np.array([mode['HC_EI'] for mode in ac_performance.LTO_data['thrust_settings'].values()])
+            lto_ff_array = np.array([mode['FUEL_KGs'] for mode in ac_performance.LTO_data['thrust_settings'].values()])
+            
+
+        self.LTO_emission_indices['HC'] = hccoEIsFunc(fuel_flows_LTO,lto_hc_ei_array,lto_ff_array,cruiseCalc=False)
+        self.LTO_emission_indices['CO'] = hccoEIsFunc(fuel_flows_LTO,lto_co_ei_array,lto_ff_array,cruiseCalc=False)
+
+        # OC/PMvolo EIs
+        thrustCat = get_thrust_cat(fuel_flows_LTO,
+                                    ac_performance.fuel_flow_values, cruiseCalc=False)
+        self.LTO_emission_indices['PMvol'],\
+        self.LTO_emission_indices['OCic'] = EI_PMvol_NEW(
+                fuel_flows_LTO, thrustCat
+            )
+        
+        # BC EIs
+
+        if pmnvol_switch_lc in ('foa3', 'newsnci'):
+            PMnvolEI_ICAOthrust = ac_performance.EDB_data['PMnvolEI_best_ICAOthrust']
+
+        elif pmnvol_switch_lc in ('fox', 'dop', 'sst'):
+            PMnvolEI_ICAOthrust = ac_performance.EDB_data['PMnvolEI_new_ICAOthrust']
+
+        elif pmnvol_switch_lc == 'SCOPE11':
+            PMnvolEI_ICAOthrust     = ac_performance.EDB_data['PMnvolEI_best_ICAOthrust']
+            PMnvolEIN_ICAOthrust    = ac_performance.EDB_data['PMnvolEIN_best_ICAOthrust']
+            PMnvolEI_lo_ICAOthrust  = ac_performance.EDB_data['PMnvolEI_lower_ICAOthrust']
+            PMnvolEIN_lo_ICAOthrust = ac_performance.EDB_data['PMnvolEIN_lower_ICAOthrust']
+            PMnvolEI_hi_ICAOthrust  = ac_performance.EDB_data['PMnvolEI_upper_ICAOthrust']
+            PMnvolEIN_hi_ICAOthrust = ac_performance.EDB_data['PMnvolEIN_upper_ICAOthrust']
+
+        else:
+            raise ValueError(f"Re-define PMnvol estimation method: pmnvolSwitch = {pmnvol_switch_lc}")
+
+        print(fuel_flows_4,PMnvolEI_ICAOthrust)
+        self.LTO_emission_indices['PMnvol'] = EI_PMnvol(
+            fuel_flows_LTO,
+            fuel_flows_4,
+            PMnvolEI_ICAOthrust,
+        )
+
+        if pmnvol_switch_lc == 'SCOPE11':
+            self.LTO_emission_indices['PMnvol_lo'] = EI_PMnvol(
+                fuel_flows_LTO,
+                fuel_flows_4,
+                PMnvolEI_lo_ICAOthrust
+            )
+            self.LTO_emission_indices['PMnvol_hi'] = EI_PMnvol(
+                fuel_flows_LTO,
+                fuel_flows_4,
+                PMnvolEI_hi_ICAOthrust
+            )
+            # For number-based EI
+            self.LTO_emission_indices['PMnvolN']     = EI_PMnvolN(thrusts, PMnvolEIN_ICAOthrust)
+            self.LTO_emission_indices['PMnvolN_lo']  = EI_PMnvolN(thrusts, PMnvolEIN_lo_ICAOthrust)
+            self.LTO_emission_indices['PMnvolN_hi']  = EI_PMnvolN(thrusts, PMnvolEIN_hi_ICAOthrust)
+    
+    ###################
+    # PRIVATE METHODS #
+    ###################
+    def __emission_dtype(self, n, scope11 = True):
+        return [
+            ('CO2',   np.float64, n),
+            ('H2O',     np.float64, n),
+            ('HC',   np.float64, n),
+            ('CO',   np.float64, n),
+            ('NOx', np.float64, n),
+            ('NO', np.float64, n),
+            ('NO2', np.float64, n),
+            ('HONO', np.float64, n),
+            ('PMnvol',   np.float64, n),
+            ('PMnvol_lo',   np.float64, n),
+            ('PMnvol_hi',   np.float64, n),
+            ('PMnvolN',   np.float64, n),
+            ('PMnvolN_lo',   np.float64, n),
+            ('PMnvolN_hi',   np.float64, n),
+            ('PMnvolGMD',   np.float64, n),
+            ('PMvol',   np.float64, n),
+            ('OCic',   np.float64, n),
+            ('SO2',  np.float64, n),
+            ('SO4',  np.float64, n)
+        ] if scope11 else [
+            ('CO2',   np.float64, n),
+            ('H2O',     np.float64, n),
+            ('HC',   np.float64, n),
+            ('CO',   np.float64, n),
+            ('NOx', np.float64, n),
+            ('NO', np.float64, n),
+            ('NO2', np.float64, n),
+            ('HONO', np.float64, n),
+            ('PMnvol',   np.float64, n),
+            ('PMnvolGMD',   np.float64, n),
+            ('PMvol',   np.float64, n),
+            ('OCic',   np.float64, n),
+            ('SO2',  np.float64, n),
+            ('SO4',  np.float64, n)
+        ]
+
+    def __nvPM_processing(self,EDB_data,altitudes,Tamb_cruise,Pamb_cruise,machFlight,fuel_flow_cruise,pmnvolSwitch_cruise = 'SCOPE11'):
         # nvPM processing function written by Carla
         # This implementation follows the implementation by Ahrens et al (2022)
         # which is based on SCOPE11, and Peck et al (2013)  
@@ -393,85 +562,3 @@ class Emission:
             EI_PMnvol[EI_PMnvol < 0] = 0.0
 
         return EI_PMnvol_GMD,EI_PMnvol,EI_PMnvolN
-
-    def LTO_emissions(self):
-        # PMvolo (Organic Carbon) 
-
-        pmvolo_switch = "new" #CHANGE THIS
-        if pmvolo_switch == 'foa3':
-            # HCEI is already computed (hccoEIsFunc applied earlier)
-            self.emission_indices['EI_PMvol'], self.emission_indices['EI_OCic'] = \
-                EI_PMvol_FOA3(thrusts, self.emission_indices['EI_HC'])
-
-        elif pmvolo_switch == 'new':
-            # Use deterministic “rv” values instead of pulling from mcrv_vector
-            self.emission_indices['EI_PMvol'], self.emission_indices['EI_OCic'] = \
-                EI_PMvol_NEW(
-                trajectory.traj_data['fuelFlow'],
-            )
-
-        else:
-            raise ValueError(f"Re-define PMvolo estimation method: pmvoloSwitch = {pmvolo_switch}")
-        
-        # PMnvol (Black Carbon) 
-        pmnvolo_switch = "SCOPE11"
-        pmnvol_switch_lc = pmnvolo_switch.lower()
-
-        if pmnvol_switch_lc in ('foa3', 'newsnci'):
-            PMnvolEI_ICAOthrust = ac_performance.EDB_data['PMnvolEI_best_ICAOthrust']
-
-        elif pmnvol_switch_lc in ('fox', 'dop', 'sst'):
-            PMnvolEI_ICAOthrust = ac_performance.EDB_data['PMnvolEI_new_ICAOthrust']
-
-        elif pmnvol_switch_lc == 'scope11':
-            PMnvolEI_ICAOthrust     = ac_performance.EDB_data['PMnvolEI_best_ICAOthrust']
-            PMnvolEIN_ICAOthrust    = ac_performance.EDB_data['PMnvolEIN_best_ICAOthrust']
-            PMnvolEI_lo_ICAOthrust  = ac_performance.EDB_data['PMnvolEI_lower_ICAOthrust']
-            PMnvolEIN_lo_ICAOthrust = ac_performance.EDB_data['PMnvolEIN_lower_ICAOthrust']
-            PMnvolEI_hi_ICAOthrust  = ac_performance.EDB_data['PMnvolEI_upper_ICAOthrust']
-            PMnvolEIN_hi_ICAOthrust = ac_performance.EDB_data['PMnvolEIN_upper_ICAOthrust']
-
-        else:
-            raise ValueError(f"Re-define PMnvol estimation method: pmnvolSwitch = {pmnvol_switch_lc}")
-
-        self.emission_indices['EI_PMnvol'] = EI_PMnvol(
-            thrusts,
-            PMnvolEI_ICAOthrust,
-        )
-
-        if pmnvol_switch_lc == 'scope11':
-            self.emission_indices['EI_PMvol_lo'] = EI_PMnvol(
-                thrusts,
-                PMnvolEI_lo_ICAOthrust
-            )
-            self.emission_indices['EI_PMvol_hi'] = EI_PMnvol(
-                thrusts,
-                PMnvolEI_hi_ICAOthrust
-            )
-            # For number-based EI
-            self.emission_indices['EI_PMnvolN']     = EI_PMnvolN(thrusts, PMnvolEIN_ICAOthrust)
-            self.emission_indices['EI_PMnvolN_lo']  = EI_PMnvolN(thrusts, PMnvolEIN_lo_ICAOthrust)
-            self.emission_indices['EI_PMnvolN_hi']  = EI_PMnvolN(thrusts, PMnvolEIN_hi_ICAOthrust)
-
-#         # PMvol
-#         self.emission_indices['EI_PMvol'], self.emission_indices['EI_OCic'] =  EI_PMvol_NEW(trajectory.traj_data['fuelFlow'])
-        
-#         self.emission_g['PMvol'] = self.emission_indices['EI_PMvol'] * self.fuel_burn_per_segment
-#         self.emission_g['OCic'] = self.emission_indices['EI_OCic'] * self.fuel_burn_per_segment
-
-#         # PMnvol
-#         EI_PMnvol(trajectory.traj_data['fuelFlow'],lto_ff_array,
-#     fuel_flow_flight: np.ndarray,
-#     fuel_flow_performance_model: np.ndarray,
-#     PMnvolEI_ICAOthrust: np.ndarray
-# )
-#         self.emission_indices['EI_PMnvol'] = EI_PMnvol(trajectory.traj_data['fuelFlow'],lto_ff_array
-#     fuel_flow_flight: np.ndarray,
-#     fuel_flow_performance_model: np.ndarray,
-#     PMnvolEI_ICAOthrust: np.ndarray
-# ) -> np.ndarray
-
-
-
-
-

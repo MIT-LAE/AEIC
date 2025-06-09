@@ -55,16 +55,7 @@ def EI_PMnvolN(thrusts: np.ndarray,
         Interpolated non-volatile PM EI [g/kg fuel].
     """
     # Define reference thrust levels
-    ICAO_thrust = np.array([0, 7, 30, 85, 100], dtype=float)
-
-    # Allocate output array
-    n_types, n_times = thrusts.shape
-    PMnvolEI_N = np.zeros((n_types, n_times), dtype=float)
-
-    # Perform interpolation for each type (row)
-    for i in range(n_types):
-        PMnvolEI_N[i, :] = np.interp(thrusts[i, :],
-                                     ICAO_thrust,
-                                     PMnvolEIN_ICAOthrust[i, :])
+    ICAO_thrust = np.array([7, 30, 85, 100], dtype=float)
+    PMnvolEI_N = np.interp(thrusts, ICAO_thrust, PMnvolEIN_ICAOthrust)
 
     return PMnvolEI_N

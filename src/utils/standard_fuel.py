@@ -5,7 +5,7 @@ def get_thrust_cat(ff_eval, ff_cal, cruiseCalc):
     thrustCat = np.zeros(n_times, dtype=int)
 
     if cruiseCalc:
-        if ff_cal.size < 3:
+        if ff_eval.size < 3:
             raise ValueError("fuelflow_KGperS must have at least 3 entries when cruiseCalc=True.")
         # Define thresholds from the first three calibration points
         lowLimit = (ff_cal[0] + ff_cal[1]) / 2.0
@@ -20,7 +20,7 @@ def get_thrust_cat(ff_eval, ff_cal, cruiseCalc):
     else:
         # LTO case: assume exactly 11 calibration points (LTO modes)
         # Categories fixed: [2,2,2,1,1,1,3,2,3,2,2]
-        if ff_cal.size != 11:
+        if ff_eval.size != 11:
             raise ValueError("When cruiseCalc=False, fuelflow_KGperS must have length 11.")
         base = np.array([2, 2, 2, 1, 1, 1, 3, 2, 3, 2, 2], dtype=int)
         # We linearly interpolate each fuelfactor against the 11-point calibration?

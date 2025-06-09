@@ -107,7 +107,6 @@ def BFFM2_EINOx(
     fuelflow_performance: np.ndarray,
     Tamb: np.ndarray,
     Pamb: np.ndarray,
-    mach_number: np.ndarray,
     cruiseCalc: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -193,7 +192,7 @@ def BFFM2_EINOx(
     #    Categories: 1=High (H), 2=Low (L), 3=Approach (A)
     # ----------------------------------------------------------------------------
     n_times = ff_eval.shape[0]
-    thrustCat = get_thrust_cat(ff_eval, ff_cal, cruiseCalc)
+    thrustCat = get_thrust_cat(ff_eval,ff_cal, cruiseCalc)
 
     # ----------------------------------------------------------------------------
     # 5. Speciation (no Monte Carlo; use nominal percentages)
