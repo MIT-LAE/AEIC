@@ -64,7 +64,7 @@ ECMWF_IDS = {
     "u_component_of_wind": 131,
     "v_component_of_wind": 132,
     "specific_humidity": 133,
-    "lnsp": 152
+    "lnsp": 152,
 }
 
 ECMWF_TYPE = [
@@ -225,7 +225,7 @@ def download_ERA5_data(
         )
 
         path_lnsp = path.split("/")[-1]
-        path_lnsp = "/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/model/" + path_lnsp
+        path_lnsp = "/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/model/lnsp/" + path_lnsp
         c.retrieve(
             ecwmf_type,
             request_lnsp,
@@ -273,7 +273,7 @@ def get_dir(product: str) -> str:
 
 if __name__ == "__main__":
     start_time = datetime(2024, 12, 23)
-    times = [start_time + timedelta(days=i) for i in range(5)]
+    times = [start_time + timedelta(days=i) for i in range(2)]
     
     ncpus = 5
     
