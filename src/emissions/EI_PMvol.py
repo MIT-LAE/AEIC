@@ -1,6 +1,6 @@
 import numpy as np
 
-def EI_PMvol_NEW(fuelflow: np.ndarray):
+def EI_PMvol_NEW(fuelflow: np.ndarray, thrustCat: np.ndarray):
     """
     Calculate EI(PMvolo) and OCicEI based on fuel flow and Monte Carlo switches.
 
@@ -16,35 +16,21 @@ def EI_PMvol_NEW(fuelflow: np.ndarray):
     OCicEI : ndarray, shape (n_types, 11)
         Emissions index for organic carbon internal [g/kg fuel].
     """
-    # Determine nominal OC internal EI (g/kg)
-    # if mcsEI == 1:
-    #     OCic_scalar = trirnd(1, 40, 20, rvEI) / 1000.0
-    # else:
-    OCic_scalar = 20.0 / 1000.0
 
-    # Lube oil contribution fractions
-    # if mcsLube == 1:
-    #     lubeContrL = 0.1 + rvLube * (0.2 - 0.1)
-    #     lubeContrH = 0.4 + rvLube * (0.6 - 0.4)
-    # else:
-    lubeContrL = 0.15
-    lubeContrH = 0.5
+    # 1) Fixed OC_ic = 20 mg/kg → 0.02 g/kg
+    OCic_val = 20.0e-3  # g/kg
 
-    # Thrust category per of 11 modes
-    thrustCat = np.array(['L','L','L','H','H','H','L','L','L','L','L'])
-
-    # Compute lube contribution per mode
+    # 2) Deterministic lube-oil contributions (midpoints of low/high ranges)
+    lubeContrL = 0.15   # midpoint of 10–20%
+    lubeContrH = 0.50   # midpoint of 40–60%
     lubeContr = np.where(thrustCat == 'L', lubeContrL, lubeContrH)
 
-    # Compute PMvolo EI per mode (g/kg)
-    PMvolo_per_mode = OCic_scalar / (1.0 - lubeContr)
+    # 3) Compute PMvoloEI = OCicEI / (1 − lubeContr)
+    PMvolo_vec = OCic_val / (1.0 - lubeContr)
 
-    # Replicate across types
-    n_types = fuelflow.shape[0]
-    PMvoloEI = np.tile(PMvolo_per_mode, (n_types, 1))
-
-    # Replicate OCicEI across fuelflow shape
-    OCicEI = np.full_like(fuelflow, OCic_scalar)
+    # 4) Tile to match fuelflow shape
+    OCicEI   = np.full_like(fuelflow, OCic_val, dtype=float)
+    PMvoloEI = PMvolo_vec.copy()
 
     return PMvoloEI, OCicEI
 

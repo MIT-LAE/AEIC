@@ -1,7 +1,8 @@
 import numpy as np
 
 def EI_PMnvol(
-    thrusts: np.ndarray,
+    fuel_flow_flight: np.ndarray,
+    fuel_flow_performance_model: np.ndarray,
     PMnvolEI_ICAOthrust: np.ndarray
 ) -> np.ndarray:
     """
@@ -25,15 +26,13 @@ def EI_PMnvol(
         Interpolated black carbon emissions index [g/kg fuel].
     """
     # Define reference thrust levels
-    ICAO_thrust = np.array([0, 7, 30, 85, 100], dtype=float)
+    # ICAO_thrust = np.array([0, 7, 30, 85, 100], dtype=float)
 
     # Allocate output
-    n_types, n_times = thrusts.shape
-    PMnvolEI = np.zeros((n_types, n_times), dtype=float)
+    PMnvolEI = np.zeros_like(fuel_flow_flight)
 
     # Perform interpolation row-by-row
-    for i in range(n_types):
-        PMnvolEI[i, :] = np.interp(thrusts[i, :], ICAO_thrust, PMnvolEI_ICAOthrust[i, :])
+    PMnvolEI = np.interp(fuel_flow_flight, fuel_flow_performance_model, PMnvolEI_ICAOthrust)
 
     return PMnvolEI
 

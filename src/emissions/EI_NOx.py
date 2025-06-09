@@ -1,10 +1,11 @@
 import numpy as np 
+from src.utils.standard_fuel import get_fuel_factor, get_thrust_cat
 import warnings
 
 def EI_NOx(
-        fuel_flow_input: np.ndarray,
+        fuel_flow_trajectory: np.ndarray,
         NOX_EI_input: np.ndarray,
-        fuel_flow_output: np.ndarray,
+        fuel_flow_performance: np.ndarray,
         Tamb: np.ndarray,
         Pamb: np.ndarray,
         mach_number: np.ndarray,
@@ -40,20 +41,12 @@ def EI_NOx(
         
         NOxEI = np.exp(H)*(P3_kPa**0.4) * (a * np.exp(b * T3_K) + c * np.exp(d * T3_K) + e * np.exp(f * T3_K) + g * np.exp(h * T3_K) + i * np.exp(j * T3_K))
     elif mode == "BFFM2":
-        return BFFM2_EINOx(fuel_flow_input,NOX_EI_input,fuel_flow_output,Tamb,Pamb,mach_number)
+        return BFFM2_EINOx(fuel_flow_trajectory,NOX_EI_input,fuel_flow_performance,Tamb,Pamb,mach_number)
     else:
         raise Exception("Invalid mode input in EI NOx function (BFFM2, P3T3)")
 
     # Thrust category assignment
-    if cruiseCalc:
-        lowLimit = (fuel_flow_input[0, :] + fuel_flow_input[1, :]) / 2
-        approachLimit = (fuel_flow_input[1, :] + fuel_flow_input[2, :]) / 2
-        thrustCat = np.where(
-            fuel_flow_output <= lowLimit, 2,
-            np.where(fuel_flow_output > approachLimit, 1, 3)
-        )
-    else:
-        thrustCat = np.array([2,2,2,1,1,1,3,2,3,2,2])  # for 11 modes
+    thrustCat = get_thrust_cat(fuel_flow_trajectory, fuel_flow_performance, cruiseCalc)
 
     # Speciation bounds
     hono_bounds = {
@@ -109,9 +102,9 @@ import numpy as np
 
 
 def BFFM2_EINOx(
-    fuelfactor: np.ndarray,
+    fuelflow_trajectory: np.ndarray,
     NOX_EI_matrix: np.ndarray,
-    fuelflow_KGperS: np.ndarray,
+    fuelflow_performance: np.ndarray,
     Tamb: np.ndarray,
     Pamb: np.ndarray,
     mach_number: np.ndarray,
@@ -155,27 +148,11 @@ def BFFM2_EINOx(
     honoProp: ndarray, shape (n_times,)
         Fraction of HONO within total NOy (unitless).
     """
-    # -----------------------------
-    # 0. Convert Wf_alt → Wf_SL (Eq. (40)):
-    # -----------------------------
-    # δ_amb = Pamb / 101325
-    delta_amb = Pamb / 101325.0
-
-    # Exponent z = 3.8
-    z = 3.8
-
-    # Mach factor = exp(0.2 * M3^2)
-    mach_term = np.exp(0.2 * mach_number**2)
-
-    # Sea-level fuel flow (per engine) = Wf_alt * (1/δ_amb)^z * Mach-term
-    Wf_SL = fuelfactor * ( (1.0 / delta_amb) ** z ) * mach_term
-
-    # Now use Wf_SL as the “fuelfactor” for the log–log interpolation:
-    fuelfactor = Wf_SL.copy()
+    fuelfactor = fuelflow_trajectory#get_fuel_factor(fuelflow_trajectory, Pamb, mach_number)
 
     # (Proceed with steps 1, 2, 3 exactly as in the paper)
     # 1) Fit log10(NOX_EI_matrix) vs. log10(fuelflow_KGperS)
-    ff_cal = fuelflow_KGperS.copy()
+    ff_cal = fuelflow_performance.copy()
     ff_cal[ff_cal <= 0.0] = 1e-2
     x_log = np.log10(ff_cal)
     y_log = np.log10(NOX_EI_matrix)
@@ -216,33 +193,7 @@ def BFFM2_EINOx(
     #    Categories: 1=High (H), 2=Low (L), 3=Approach (A)
     # ----------------------------------------------------------------------------
     n_times = ff_eval.shape[0]
-    thrustCat = np.zeros(n_times, dtype=int)
-
-    if cruiseCalc:
-        if ff_cal.size < 3:
-            raise ValueError("fuelflow_KGperS must have at least 3 entries when cruiseCalc=True.")
-        # Define thresholds from the first three calibration points
-        lowLimit = (ff_cal[0] + ff_cal[1]) / 2.0
-        approachLimit = (ff_cal[1] + ff_cal[2]) / 2.0
-
-        # Assign categories elementwise
-        thrustCat[ff_eval <= lowLimit] = 2
-        thrustCat[ff_eval > approachLimit] = 1
-        # The remainder (where thrustCat == 0) are Approach
-        thrustCat[thrustCat == 0] = 3
-
-    else:
-        # LTO case: assume exactly 11 calibration points (LTO modes)
-        # Categories fixed: [2,2,2,1,1,1,3,2,3,2,2]
-        if ff_cal.size != 11:
-            raise ValueError("When cruiseCalc=False, fuelflow_KGperS must have length 11.")
-        base = np.array([2, 2, 2, 1, 1, 1, 3, 2, 3, 2, 2], dtype=int)
-        # We linearly interpolate each fuelfactor against the 11-point calibration?
-        # But MATLAB simply tiles these 11 categories across each column. Since here we have
-        # 1D fuelfactor, we assume it also has length 11 in the pure LTO scenario.
-        if n_times != 11:
-            raise ValueError("When cruiseCalc=False, fuelfactor must have length 11.")
-        thrustCat = base.copy()
+    thrustCat = get_thrust_cat(ff_eval, ff_cal, cruiseCalc)
 
     # ----------------------------------------------------------------------------
     # 5. Speciation (no Monte Carlo; use nominal percentages)
