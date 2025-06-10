@@ -31,7 +31,12 @@ class Emission:
 
         self.LTO_emission_indices = np.empty((), dtype=self.__emission_dtype(11))
 
-        self.emission_g = np.empty((), dtype=self.__emission_dtype(self.Ntot))
+        self.APU_emission_indices = np.empty((), dtype=self.__emission_dtype(1))
+        self.APU_emissions_g = np.empty((), dtype=self.__emission_dtype(1))
+
+        self.pointwise_emissions_g = np.empty((), dtype=self.__emission_dtype(self.Ntot))
+
+        self.emission_g = np.empty((), dtype=self.__emission_dtype(1))
         
         # Fuel burn per segment
         fuel_mass = trajectory.traj_data['fuelMass']
@@ -44,45 +49,50 @@ class Emission:
 
         # Calculate LTO emissions
         self.LTO_emissions(ac_performance)
-        # Calculate lifecycle emissions
 
         # Calculate APU emissions
+        self.APU_emissions(ac_performance.EDB_data)
 
         # Calculate GSE emissions
 
-        # Calculate total emissions (Cruise + LTO + APU + GSE + Lifecycle)
-        # self.total_sum_emissions()
+        # Grid emissions (todo in v1)
+
+        # Calculate total emissions (For now just cruise) Will add LTO + APU + GSE when TIMs resolved
+        self.total_sum_emissions()
+
+        # Calculate lifecycle emissions
+        # self.lifecycle_emissions(self.fuel,trajectory)
         
     def total_sum_emissions(self, pmnvolSwitch = "SCOPE11"):
         # CO2
-        self.emission_g['CO2'] = self.emission_indices['CO2'] * self.fuel_burn_per_segment
+        self.emission_g['CO2'] = np.sum(self.emission_indices['CO2'] * self.fuel_burn_per_segment)
 
         # H20
-        self.emission_g['H2O'] = self.emission_indices['H2O'] * self.fuel_burn_per_segment
+        self.emission_g['H2O'] = np.sum(self.emission_indices['H2O'] * self.fuel_burn_per_segment)
 
         # SOx
-        self.emission_g['SO2'],self.emission_g['SO4'] = (self.emission_indices['SO2'] * self.fuel_burn_per_segment),\
-                                                (self.emission_indices['SO4'] * self.fuel_burn_per_segment)
+        self.emission_g['SO2'],self.emission_g['SO4'] = np.sum(self.emission_indices['SO2'] * self.fuel_burn_per_segment),\
+                                                np.sum(self.emission_indices['SO4'] * self.fuel_burn_per_segment)
         
         # NOx
-        self.emission_g['NOx'] = self.emission_indices['NOx'] * self.fuel_burn_per_segment
-        self.emission_g['NO'] = self.emission_indices['NO'] * self.fuel_burn_per_segment
-        self.emission_g['NO2'] = self.emission_indices['NO2'] * self.fuel_burn_per_segment
-        self.emission_g['HONO'] = self.emission_indices['HONO'] * self.fuel_burn_per_segment
+        self.emission_g['NOx'] = np.sum(self.emission_indices['NOx'] * self.fuel_burn_per_segment)
+        self.emission_g['NO'] = np.sum(self.emission_indices['NO'] * self.fuel_burn_per_segment)
+        self.emission_g['NO2'] = np.sum(self.emission_indices['NO2'] * self.fuel_burn_per_segment)
+        self.emission_g['HONO'] = np.sum(self.emission_indices['HONO'] * self.fuel_burn_per_segment)
 
         # HC, CO
-        self.emission_g['HC'] = self.emission_indices['HC'] * self.fuel_burn_per_segment
-        self.emission_g['CO'] = self.emission_indices['CO'] * self.fuel_burn_per_segment
+        self.emission_g['HC'] = np.sum(self.emission_indices['HC'] * self.fuel_burn_per_segment)
+        self.emission_g['CO'] = np.sum(self.emission_indices['CO'] * self.fuel_burn_per_segment)
 
         # PMvol, OCic
-        self.emission_g['PMvol'] = self.emission_indices['PMvol'] * self.fuel_burn_per_segment
-        self.emission_g['OCic'] = self.emission_indices['OCic'] * self.fuel_burn_per_segment
+        self.emission_g['PMvol'] = np.sum(self.emission_indices['PMvol'] * self.fuel_burn_per_segment)
+        self.emission_g['OCic'] = np.sum(self.emission_indices['OCic'] * self.fuel_burn_per_segment)
 
         # PMnvol, add PMnvolN, PMnvolGMD if SCOPE11
-        self.emission_g['PMnvol'] = self.emission_indices['PMnvol'] * self.fuel_burn_per_segment
+        self.emission_g['PMnvol'] = np.sum(self.emission_indices['PMnvol'] * self.fuel_burn_per_segment)
         if pmnvolSwitch == "SCOPE11":
-            self.emission_g['PMnvolN'] = self.emission_indices['PMnvolN'] * self.fuel_burn_per_segment
-            self.emission_g['PMnvolGMD'] = self.emission_indices['PMnvolGMD'] * self.fuel_burn_per_segment
+            self.emission_g['PMnvolN'] = np.sum(self.emission_indices['PMnvolN'] * self.fuel_burn_per_segment)
+            self.emission_g['PMnvolGMD'] = np.sum(self.emission_indices['PMnvolGMD'] * self.fuel_burn_per_segment)
 
 
     def cruise_emissions(self, trajectory, ac_performance, EDB_data = True):
@@ -209,13 +219,12 @@ class Emission:
         # TODO: Check fuel factor ... and also check EDB ff if only 1 engine or both
         self.LTO_emission_indices['NOx'],self.LTO_emission_indices['NO'],\
             self.LTO_emission_indices['NO2'],self.LTO_emission_indices['HONO'],\
-                noProp, no2Prop, honoProp = \
+                self.LTO_noProp, self.LTO_no2Prop, self.LTO_honoProp = \
             BFFM2_EINOx(fuelflow_trajectory=fuel_flows_LTO,
                    NOX_EI_matrix=np.array(ac_performance.EDB_data['NOX_EI_matrix']),
                    fuelflow_performance=np.array(ac_performance.EDB_data['fuelflow_KGperS']), 
                    Pamb=np.empty_like(fuel_flows_LTO), Tamb=np.empty_like(fuel_flows_LTO), cruiseCalc=False
                    )
-
         # HC, CO
         # If using EDB data
         if EDB_LTO:
@@ -259,29 +268,70 @@ class Emission:
         else:
             raise ValueError(f"Re-define PMnvol estimation method: pmnvolSwitch = {pmnvol_switch_lc}")
 
-        print(fuel_flows_4,PMnvolEI_ICAOthrust)
         self.LTO_emission_indices['PMnvol'] = EI_PMnvol(
             fuel_flows_LTO,
             fuel_flows_4,
-            PMnvolEI_ICAOthrust,
+            PMnvolEI_ICAOthrust[1:],
         )
 
         if pmnvol_switch_lc == 'SCOPE11':
             self.LTO_emission_indices['PMnvol_lo'] = EI_PMnvol(
                 fuel_flows_LTO,
                 fuel_flows_4,
-                PMnvolEI_lo_ICAOthrust
+                PMnvolEI_lo_ICAOthrust[1:]
             )
             self.LTO_emission_indices['PMnvol_hi'] = EI_PMnvol(
                 fuel_flows_LTO,
                 fuel_flows_4,
-                PMnvolEI_hi_ICAOthrust
+                PMnvolEI_hi_ICAOthrust[1:]
             )
             # For number-based EI
-            self.LTO_emission_indices['PMnvolN']     = EI_PMnvolN(thrusts, PMnvolEIN_ICAOthrust)
-            self.LTO_emission_indices['PMnvolN_lo']  = EI_PMnvolN(thrusts, PMnvolEIN_lo_ICAOthrust)
-            self.LTO_emission_indices['PMnvolN_hi']  = EI_PMnvolN(thrusts, PMnvolEIN_hi_ICAOthrust)
+            self.LTO_emission_indices['PMnvolN']     = EI_PMnvolN(thrusts, PMnvolEIN_ICAOthrust[1:])
+            self.LTO_emission_indices['PMnvolN_lo']  = EI_PMnvolN(thrusts, PMnvolEIN_lo_ICAOthrust[1:])
+            self.LTO_emission_indices['PMnvolN_hi']  = EI_PMnvolN(thrusts, PMnvolEIN_hi_ICAOthrust[1:])
     
+    def APU_emissions(self, EDB_data, apu_tim_arr=1050, apu_tim_dep=1804):
+        mask = (EDB_data['APU_fuelflow_ref'] != 0.0)
+
+        # SOx
+        self.APU_emission_indices['SO2'] = self.LTO_emission_indices['SO2'][0] if mask else 0.0
+        self.APU_emission_indices['SO4'] = self.LTO_emission_indices['SO4'][0] if mask else 0.0
+
+        # Particulate‐matter breakdown (deterministic BC fraction of 0.95)
+        APU_PM10 = max(EDB_data['APU_PM10EI_ref'] - self.APU_emission_indices['SO4'], 0.0)
+        bc_prop = 0.95
+        self.APU_emission_indices['PMnvol'] = APU_PM10 * bc_prop
+        self.APU_emission_indices['PMvol'] = APU_PM10 - self.APU_emission_indices['PMnvol']
+
+        # NO/NO2/HONO speciation
+        self.APU_emission_indices['NO']   = EDB_data['APU_PM10EI_ref'][0] * self.LTO_noProp[0]
+        self.APU_emission_indices['NO2']  = EDB_data['APU_PM10EI_ref'][0] * self.LTO_no2Prop[0]
+        self.APU_emission_indices['HONO'] = EDB_data['APU_PM10EI_ref'][0] * self.LTO_honoProp[0]
+
+        self.APU_emission_indices['NOx'] = EDB_data['APU_NOxEI_ref'][0]
+        self.APU_emission_indices['HC'] = EDB_data['APU_HCEI_ref'][0]
+        self.APU_emission_indices['CO'] = EDB_data['APU_COEI_ref'][0]
+
+        # CO2 via mass balance
+        if mask:
+            co2_ei_nom = 3160
+            nvol_carb_cont = 0.95
+
+            co2 = co2_ei_nom
+            co2 -= (44/28)     * self.APU_emission_indices['CO']
+            co2 -= (44/(82/5)) * self.APU_emission_indices['HC']
+            co2 -= (44/(55/4)) * self.APU_emission_indices['PMvol']
+            co2 -= (44/12)     * nvol_carb_cont * self.APU_emission_indices['PMnvol']
+            self.APU_emission_indices['CO2'] = co2
+        else:
+            self.APU_emission_indices['CO2'] = 0.0
+
+
+    def lifecycle_emissions(self, fuel, traj):
+        # add lifecycle CO2 emissions for climate model run
+        lc_CO2 = (fuel['LC_CO2'] * (traj.fuel_mass * fuel['Energy_MJ_per_kg'])) - self.emission_g['CO2']
+        self.emission_g['CO2'] += lc_CO2
+
     ###################
     # PRIVATE METHODS #
     ###################
