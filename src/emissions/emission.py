@@ -30,6 +30,7 @@ class Emission:
         self.emission_indices = np.empty((), dtype=self.__emission_dtype(self.Ntot))
 
         self.LTO_emission_indices = np.empty((), dtype=self.__emission_dtype(11))
+        self.LTO_emissions_g = np.empty((), dtype=self.__emission_dtype(11))
 
         self.APU_emission_indices = np.empty((), dtype=self.__emission_dtype(1))
         self.APU_emissions_g = np.empty((), dtype=self.__emission_dtype(1))
@@ -37,8 +38,7 @@ class Emission:
         self.GSE_emissions_g = np.empty((), dtype=self.__emission_dtype(1))
 
         self.pointwise_emissions_g = np.empty((), dtype=self.__emission_dtype(self.Ntot))
-
-        self.emission_g = np.empty((), dtype=self.__emission_dtype(1))
+        self.summed_emission_g = np.empty((), dtype=self.__emission_dtype(1))
         
         # Fuel burn per segment
         fuel_mass = trajectory.traj_data['fuelMass']
@@ -50,7 +50,7 @@ class Emission:
         self.cruise_emissions(trajectory, ac_performance)
 
         # Calculate LTO emissions
-        self.LTO_emissions(ac_performance)
+        self.LTO_emissions(ac_performance, mission)
 
         # Calculate APU emissions
         self.APU_emissions(ac_performance.EDB_data)
@@ -60,42 +60,17 @@ class Emission:
 
         # Grid emissions (todo in v1)
 
-        # Calculate total emissions (For now just cruise) Will add LTO + APU + GSE when TIMs resolved
+        # Calculate total emissions Cruise + LTO + APU + GSE 
         self.total_sum_emissions()
 
         # Calculate lifecycle emissions
         self.lifecycle_emissions(self.fuel,trajectory)
         
-    def total_sum_emissions(self, pmnvolSwitch = "SCOPE11"):
-        # CO2
-        self.emission_g['CO2'] = np.sum(self.emission_indices['CO2'] * self.fuel_burn_per_segment)
+    def total_sum_emissions(self):
 
-        # H20
-        self.emission_g['H2O'] = np.sum(self.emission_indices['H2O'] * self.fuel_burn_per_segment)
-
-        # SOx
-        self.emission_g['SO2'],self.emission_g['SO4'] = np.sum(self.emission_indices['SO2'] * self.fuel_burn_per_segment),\
-                                                np.sum(self.emission_indices['SO4'] * self.fuel_burn_per_segment)
-        
-        # NOx
-        self.emission_g['NOx'] = np.sum(self.emission_indices['NOx'] * self.fuel_burn_per_segment)
-        self.emission_g['NO'] = np.sum(self.emission_indices['NO'] * self.fuel_burn_per_segment)
-        self.emission_g['NO2'] = np.sum(self.emission_indices['NO2'] * self.fuel_burn_per_segment)
-        self.emission_g['HONO'] = np.sum(self.emission_indices['HONO'] * self.fuel_burn_per_segment)
-
-        # HC, CO
-        self.emission_g['HC'] = np.sum(self.emission_indices['HC'] * self.fuel_burn_per_segment)
-        self.emission_g['CO'] = np.sum(self.emission_indices['CO'] * self.fuel_burn_per_segment)
-
-        # PMvol, OCic
-        self.emission_g['PMvol'] = np.sum(self.emission_indices['PMvol'] * self.fuel_burn_per_segment)
-        self.emission_g['OCic'] = np.sum(self.emission_indices['OCic'] * self.fuel_burn_per_segment)
-
-        # PMnvol, add PMnvolN, PMnvolGMD if SCOPE11
-        self.emission_g['PMnvol'] = np.sum(self.emission_indices['PMnvol'] * self.fuel_burn_per_segment)
-        if pmnvolSwitch == "SCOPE11":
-            self.emission_g['PMnvolN'] = np.sum(self.emission_indices['PMnvolN'] * self.fuel_burn_per_segment)
-            self.emission_g['PMnvolGMD'] = np.sum(self.emission_indices['PMnvolGMD'] * self.fuel_burn_per_segment)
+        for field in self.summed_emission_g.dtype.names:
+            self.summed_emission_g[field] = np.sum(self.emission_indices[field] * self.fuel_burn_per_segment) +\
+                                np.sum(self.LTO_emissions_g[field]) + self.APU_emissions_g[field] + self.GSE_emissions_g[field]
 
 
     def cruise_emissions(self, trajectory, ac_performance, EDB_data = True):
@@ -159,7 +134,7 @@ class Emission:
                             flight_temps, flight_pressures, mach_number,
                             trajectory.traj_data['fuelFlow'][self.NClm:-self.NDes])
 
-    def LTO_emissions(self, ac_performance, EDB_LTO = True, pmnvol_switch_lc = "SCOPE11"):
+    def LTO_emissions(self, ac_performance, mission, EDB_LTO = True, pmnvol_switch_lc = "SCOPE11"):
         NATSGRP = np.array(ac_performance.EDB_data['NATSGRP'])
         N = NATSGRP.size
         # Get thrust levels at 11 LTO points
@@ -190,6 +165,28 @@ class Emission:
             np.full(N, taxi_in),     # 9: TaxiIn
             np.full(N, taxi_acc),    # 10: TaxiAccel
         ])
+
+        TIM_Approach,TIM_Landing,TIM_Reverse,TIM_Hold,TIM_TakeOff,TIM_InClimb,TIM_ClimbOut = \
+            286,60,15,0,29.5,38,61.1
+        TIM_TaxiIn,TIM_TaxiOut = mission['taxi_in'],mission['taxi_out']
+        # Taxiway acceleration: departure depends on whether hold > 0, arrival always 10
+        first_hold = TIM_Hold#[0] 
+        accel_dep  = 20.0 if first_hold > 0 else 10.0
+        TIM_TaxiAccD = accel_dep
+        TIM_TaxiAccA = 10.0
+        LTO_TIMs = np.array([
+                TIM_Approach,
+                TIM_Landing,
+                TIM_Reverse,
+                TIM_TaxiIn,
+                TIM_TaxiAccA,
+                TIM_TaxiOut,
+                TIM_TaxiAccD,
+                TIM_Hold,
+                TIM_TakeOff,
+                TIM_InClimb,
+                TIM_ClimbOut
+            ])
 
         if NATSGRP >=7:
             # For “large jets” (NATSGRP >= 7), enforce maximum thrust in T/O & InClimb,
@@ -292,6 +289,15 @@ class Emission:
             self.LTO_emission_indices['PMnvolN']     = EI_PMnvolN(thrusts, PMnvolEIN_ICAOthrust[1:])
             self.LTO_emission_indices['PMnvolN_lo']  = EI_PMnvolN(thrusts, PMnvolEIN_lo_ICAOthrust[1:])
             self.LTO_emission_indices['PMnvolN_hi']  = EI_PMnvolN(thrusts, PMnvolEIN_hi_ICAOthrust[1:])
+
+        # LTO Emission (g)
+
+        # Get fuel burn at each mode
+        LTO_fuel_burn = LTO_TIMs * fuel_flows_LTO
+
+        for field in self.LTO_emission_indices.dtype.names:
+            self.LTO_emissions_g[field] = self.LTO_emission_indices[field] * LTO_fuel_burn
+
     
     def APU_emissions(self, EDB_data, apu_tim=2854):
         mask = (EDB_data['APU_fuelflow_ref'] != 0.0)
@@ -380,8 +386,8 @@ class Emission:
 
     def lifecycle_emissions(self, fuel, traj):
         # add lifecycle CO2 emissions for climate model run
-        lc_CO2 = (fuel['LC_CO2'] * (traj.fuel_mass * fuel['Energy_MJ_per_kg'])) - self.emission_g['CO2']
-        self.emission_g['CO2'] += lc_CO2
+        lc_CO2 = (fuel['LC_CO2'] * (traj.fuel_mass * fuel['Energy_MJ_per_kg'])) - self.summed_emission_g['CO2']
+        self.summed_emission_g['CO2'] += lc_CO2
 
     ###################
     # PRIVATE METHODS #
