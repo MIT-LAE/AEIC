@@ -34,6 +34,8 @@ class Emission:
         self.APU_emission_indices = np.empty((), dtype=self.__emission_dtype(1))
         self.APU_emissions_g = np.empty((), dtype=self.__emission_dtype(1))
 
+        self.GSE_emissions_g = np.empty((), dtype=self.__emission_dtype(1))
+
         self.pointwise_emissions_g = np.empty((), dtype=self.__emission_dtype(self.Ntot))
 
         self.emission_g = np.empty((), dtype=self.__emission_dtype(1))
@@ -54,6 +56,7 @@ class Emission:
         self.APU_emissions(ac_performance.EDB_data)
 
         # Calculate GSE emissions
+        self.GSE_emissions(ac_performance.EDB_data['WNSF'])
 
         # Grid emissions (todo in v1)
 
@@ -61,7 +64,7 @@ class Emission:
         self.total_sum_emissions()
 
         # Calculate lifecycle emissions
-        # self.lifecycle_emissions(self.fuel,trajectory)
+        self.lifecycle_emissions(self.fuel,trajectory)
         
     def total_sum_emissions(self, pmnvolSwitch = "SCOPE11"):
         # CO2
@@ -326,6 +329,49 @@ class Emission:
         else:
             self.APU_emission_indices['CO2'] = 0.0
 
+    def GSE_emissions(self, wnsf):
+        # Map letter → index into nominal lists
+        mapping = {'w': 0, 'n': 1, 's': 2, 'f': 3}
+        i = mapping.get(wnsf.lower())
+        if i is None:
+            raise ValueError("Invalid WNSF code; must be one of 'w','n','s','f'")
+
+        # Nominal EIs by category [w, n, s, f]
+        CO2_nom = [58e3,   18e3,  10e3, 58e3]    # g/cycle
+        NOx_nom = [0.9e3,  0.4e3, 0.3e3, 0.9e3]   # g/cycle
+        HC_nom  = [0.07e3, 0.04e3,0.03e3,0.07e3]  # g/cycle (NMVOC)
+        CO_nom  = [0.3e3,  0.15e3,0.1e3, 0.3e3]   # g/cycle
+        PM10_nom= [0.055e3,0.025e3,0.020e3,0.055e3]# g/cycle (≈PM2.5)
+
+        # Pick out the scalar values
+        self.GSE_emissions_g['CO2'] = CO2_nom[i]
+        self.GSE_emissions_g['NOx'] = NOx_nom[i]
+        self.GSE_emissions_g['HC']  = HC_nom[i]
+        self.GSE_emissions_g['CO']  = CO_nom[i]
+        pm_core = PM10_nom[i]
+
+        # Fuel (kg/cycle) from CO2:
+        #   EI_CO2 = fuel * 3.16 * 1000  ⇒  fuel = EI_CO2/(3.16*1000)
+        # TODO: add to total fuel burn when APU TIMs done
+        gse_fuel = self.GSE_emissions_g['CO2'] / (3.16 * 1000.0)
+
+        # NOx split
+        self.GSE_emissions_g['NO']   = self.GSE_emissions_g['NOx'] * 0.90
+        self.GSE_emissions_g['NO2']  = self.GSE_emissions_g['NOx'] * 0.09
+        self.GSE_emissions_g['HONO'] = self.GSE_emissions_g['NOx'] * 0.01
+
+        # Sulfate / SO2 fraction (independent of WNSF)
+        GSE_FSC = 5.0    # fuel‐sulfur concentration (ppm)
+        GSE_EPS = 0.02   # fraction → sulfate
+        # g SO4 per kg fuel:
+        self.GSE_emissions_g['SO4'] = (GSE_FSC / 1e6) * 1000.0 * GSE_EPS * (96.0/32.0)
+        # g SO2 per kg fuel:
+        self.GSE_emissions_g['SO2'] = (GSE_FSC / 1e6) * 1000.0 * (1.0 - GSE_EPS) * (64.0/32.0)
+
+        # Subtract sulfate from the core PM₁₀ then split 50:50
+        pm_minus_so4 = pm_core - self.GSE_emissions_g['SO4']
+        self.GSE_emissions_g['PMvol']   = pm_minus_so4 * 0.5
+        self.GSE_emissions_g['PMnvol']   = pm_minus_so4 * 0.5
 
     def lifecycle_emissions(self, fuel, traj):
         # add lifecycle CO2 emissions for climate model run
@@ -335,7 +381,8 @@ class Emission:
     ###################
     # PRIVATE METHODS #
     ###################
-    def __emission_dtype(self, n, scope11 = True):
+    def __emission_dtype(self, shape, scope11 = True):
+        n = (shape,)
         return [
             ('CO2',   np.float64, n),
             ('H2O',     np.float64, n),
