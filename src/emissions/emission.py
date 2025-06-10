@@ -293,8 +293,10 @@ class Emission:
             self.LTO_emission_indices['PMnvolN_lo']  = EI_PMnvolN(thrusts, PMnvolEIN_lo_ICAOthrust[1:])
             self.LTO_emission_indices['PMnvolN_hi']  = EI_PMnvolN(thrusts, PMnvolEIN_hi_ICAOthrust[1:])
     
-    def APU_emissions(self, EDB_data, apu_tim_arr=1050, apu_tim_dep=1804):
+    def APU_emissions(self, EDB_data, apu_tim=2854):
         mask = (EDB_data['APU_fuelflow_ref'] != 0.0)
+
+        apu_fuel_burn = EDB_data['APU_fuelflow_ref'][0] * apu_tim 
 
         # SOx
         self.APU_emission_indices['SO2'] = self.LTO_emission_indices['SO2'][0] if mask else 0.0
@@ -328,6 +330,9 @@ class Emission:
             self.APU_emission_indices['CO2'] = co2
         else:
             self.APU_emission_indices['CO2'] = 0.0
+
+        for field in self.APU_emission_indices.dtype.names:
+            self.APU_emissions_g[field] = self.APU_emission_indices[field] * apu_fuel_burn
 
     def GSE_emissions(self, wnsf):
         # Map letter → index into nominal lists
