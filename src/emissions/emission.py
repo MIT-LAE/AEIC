@@ -28,9 +28,10 @@ class Emission:
         self.Ntot, self.NClm, self.NCrz, self.NDes = \
             trajectory.Ntot, trajectory.NClm, trajectory.NCrz, trajectory.NDes
         
-        self.emission_indices = np.empty((), dtype=self.__emission_dtype(self.Ntot))
-
         traj_emissions_all = ac_performance.config['climb_descent_usage']
+        self.pmnvol_mode = ac_performance.config['pmnvol_switch_lc']
+
+        self.emission_indices = np.empty((), dtype=self.__emission_dtype(self.Ntot))
 
         # If takeoff, climb and approach calculated via performance model and NOT LTO
         # Then only do LTO calculations for taxi 
@@ -59,7 +60,7 @@ class Emission:
         self.get_trajectory_emissions(trajectory, ac_performance, EDB_data=EDB_data, traj_emissions_all=traj_emissions_all)
 
         # Calculate LTO emissions
-        self.get_LTO_emissions(ac_performance, traj_emissions_all=traj_emissions_all, pmnvol_switch_lc=ac_performance.config['pmnvol_switch_lc'])
+        self.get_LTO_emissions(ac_performance, traj_emissions_all=traj_emissions_all, pmnvol_switch_lc=self.pmnvol_mode)
 
         # Calculate APU emissions
         self.APU_emission_indices, self.APU_emissions_g = \
@@ -81,9 +82,8 @@ class Emission:
     def sum_total_emissions(self):
 
         for field in self.summed_emission_g.dtype.names:
-            self.summed_emission_g[field] = np.sum(self.emission_indices[field] * self.fuel_burn_per_segment) 
-            # +\
-            #                     np.sum(self.LTO_emissions_g[field]) + self.APU_emissions_g[field] + self.GSE_emissions_g[field]
+            self.summed_emission_g[field] = np.sum(self.pointwise_emissions_g[field]) +\
+            np.sum(self.LTO_emissions_g[field]) + self.APU_emissions_g[field] + self.GSE_emissions_g[field]
 
 
     def get_trajectory_emissions(self, trajectory, ac_performance, EDB_data = True, traj_emissions_all = True):
@@ -296,7 +296,7 @@ class Emission:
     ###################
     # PRIVATE METHODS #
     ###################
-    def __emission_dtype(self, shape, scope11 = True):
+    def __emission_dtype(self, shape):
         n = (shape,)
         return [
             ('CO2',   np.float64, n),
@@ -318,7 +318,7 @@ class Emission:
             ('OCic',   np.float64, n),
             ('SO2',  np.float64, n),
             ('SO4',  np.float64, n)
-        ] if scope11 else [
+        ] if self.pmnvol_mode else [
             ('CO2',   np.float64, n),
             ('H2O',     np.float64, n),
             ('HC',   np.float64, n),
@@ -334,6 +334,3 @@ class Emission:
             ('SO2',  np.float64, n),
             ('SO4',  np.float64, n)
         ]
-
-    # def __nvPM_processing(self,EDB_data,altitudes,Tamb_cruise,Pamb_cruise,machFlight,fuel_flow_cruise,pmnvolSwitch_cruise = 'SCOPE11'):
-        
