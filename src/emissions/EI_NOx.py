@@ -191,12 +191,28 @@ def BFFM2_EINOx(
     # 4. Determine thrust category for each fuelfactor point
     #    Categories: 1=High (H), 2=Low (L), 3=Approach (A)
     # ----------------------------------------------------------------------------
-    n_times = ff_eval.shape[0]
     thrustCat = get_thrust_cat(ff_eval,ff_cal, cruiseCalc)
 
     # ----------------------------------------------------------------------------
-    # 5. Speciation (no Monte Carlo; use nominal percentages)
+    # 5. Speciation 
     # ----------------------------------------------------------------------------
+    noProp, no2Prop, honoProp = NOx_speciation(thrustCat)
+
+    # ----------------------------------------------------------------------------
+    # 6. Compute component EIs
+    # ----------------------------------------------------------------------------
+    if np.isnan(NOxEI).any():
+        warnings.warn("NaN encountered in NOxEI calculation.", RuntimeWarning)
+
+    NOEI = NOxEI * noProp     # g NO / kg fuel
+    NO2EI = NOxEI * no2Prop   # g NO2 / kg fuel
+    HONOEI = NOxEI * honoProp # g HONO / kg fuel
+
+    return NOxEI, NOEI, NO2EI, HONOEI, noProp, no2Prop, honoProp
+
+
+def NOx_speciation(thrustCat):
+    n_times = thrustCat.shape[0]
     # HONO nominal (% of NOy)
     honoHnom, honoLnom, honoAnom = 0.75, 4.5, 4.5
     # NO2 nominal computed from (NO2/(NOy - HONO)) * (100 - HONO)
@@ -227,15 +243,4 @@ def BFFM2_EINOx(
     noProp[thrustCat == 1] = noHnom / 100.0
     noProp[thrustCat == 2] = noLnom / 100.0
     noProp[thrustCat == 3] = noAnom / 100.0
-
-    # ----------------------------------------------------------------------------
-    # 6. Compute component EIs
-    # ----------------------------------------------------------------------------
-    if np.isnan(NOxEI).any():
-        warnings.warn("NaN encountered in NOxEI calculation.", RuntimeWarning)
-
-    NOEI = NOxEI * noProp     # g NO / kg fuel
-    NO2EI = NOxEI * no2Prop   # g NO2 / kg fuel
-    HONOEI = NOxEI * honoProp # g HONO / kg fuel
-
-    return NOxEI, NOEI, NO2EI, HONOEI, noProp, no2Prop, honoProp
+    return noProp, no2Prop, honoProp

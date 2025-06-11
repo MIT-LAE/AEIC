@@ -6,14 +6,14 @@ def EI_PMvol_NEW(fuelflow: np.ndarray, thrustCat: np.ndarray):
 
     Parameters
     ----------
-    fuelflow : ndarray, shape (n_types, 11)
-        Fuel flow factor per type and 11 thrust modes.
+    fuelflow : ndarray, shape (n_types, 4)
+        Fuel flow factor per type and 4 thrust modes.
 
     Returns
     -------
-    PMvoloEI : ndarray, shape (n_types, 11)
+    PMvoloEI : ndarray, shape (n_types, 4)
         Emissions index for volatile organic PM [g/kg fuel].
-    OCicEI : ndarray, shape (n_types, 11)
+    OCicEI : ndarray, shape (n_types, 4)
         Emissions index for organic carbon internal [g/kg fuel].
     """
 
@@ -55,8 +55,8 @@ def EI_PMvol_FOA3(thrusts: np.ndarray, HCEI: np.ndarray):
         Same as PMvoloEI (internal organic carbon component).
     """
     # FOA3 delta values (mg organic carbon per g fuel)
-    ICAO_thrust = np.array([0, 7, 30, 85, 100], dtype=float)
-    delta = np.array([6.17, 6.17, 56.25, 76.0, 115.0], dtype=float)
+    ICAO_thrust = np.array([7, 30, 85, 100], dtype=float)
+    delta = np.array([6.17, 56.25, 76.0, 115.0], dtype=float)
 
     # Interpolate delta for each thrust value
     delta_matrix = np.interp(thrusts, ICAO_thrust, delta)
