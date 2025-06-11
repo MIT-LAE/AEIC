@@ -1,4 +1,4 @@
-
+import numpy as np
 
 def get_APU_emissions(APU_emission_indices, APU_emissions_g, 
                   LTO_emission_indices, EDB_data, 
@@ -15,8 +15,8 @@ def get_APU_emissions(APU_emission_indices, APU_emissions_g,
     # Particulate‐matter breakdown (deterministic BC fraction of 0.95)
     APU_PM10 = max(EDB_data['APU_PM10EI_ref'] - APU_emission_indices['SO4'], 0.0)
     bc_prop = 0.95
-    APU_emission_indices['PMnvol'] = APU_PM10 * bc_prop
-    APU_emission_indices['PMvol'] = APU_PM10 - APU_emission_indices['PMnvol']
+    APU_emission_indices['PMnvol'] = np.array(APU_PM10 * bc_prop).item()
+    APU_emission_indices['PMvol'] = np.array(APU_PM10 - APU_emission_indices['PMnvol']).item()
 
     # NO/NO2/HONO speciation
     APU_emission_indices['NO']   = EDB_data['APU_PM10EI_ref'][0] * LTO_noProp[0]
