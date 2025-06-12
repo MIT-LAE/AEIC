@@ -10,6 +10,8 @@ Welcome to AEIC's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   emission
+
 
 
 Indices and tables
