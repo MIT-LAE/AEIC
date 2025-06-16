@@ -1,9 +1,6 @@
 import numpy as np
 import xarray as xr
 
-import numpy as np
-import xarray as xr
-
 def compute_vapor_pressure_and_rhi(ds):
     """
     Compute vapor pressure, saturation vapor pressure over ice (Murphy & Koop 2005),
@@ -43,6 +40,7 @@ def compute_vapor_pressure_and_rhi(ds):
         "description": "Saturation vapor pressure over ice (Murphy & Koop 2005)"
     }
 
+    print("Computing RHi... ", end = ' ')
     # Compute RHi
     RHi = (vapor_pressure / saturation_esi) * 100.0
     RHi.name = "RHi"
@@ -50,19 +48,24 @@ def compute_vapor_pressure_and_rhi(ds):
         "units": "%",
         "description": "Relative Humidity with respect to ice (RHi > 100% → ISSR)"
     }
+    print("done!")
 
     # Compute ISSR flag
+    print("Computing ISSR... ", end = ' ')
     ISSR_flag = (RHi > 100).astype(np.int8)
     ISSR_flag.name = "ISSR_flag"
     ISSR_flag.attrs = {
         "description": "Ice Supersaturated Region Flag (1 if RHi > 100%)"
     }
+    print("done!")
 
     # Add computed fields to dataset
+    print("Append to data structure...", end = ' ')
     ds['vapor_pressure'] = vapor_pressure
     ds['saturation_esi'] = saturation_esi
     ds['RHi'] = RHi
     ds['ISSR_flag'] = ISSR_flag
+    print("done!")
 
     return ds
 
@@ -80,27 +83,42 @@ def print_pressure_levels_with_altitudes(ds):
 
     pressure_hPa = ds['pressure_level'].values
     pressure_Pa = pressure_hPa * 100.0
-
+    
     # Convert pressure to altitude (meters) using barometric formula
     # Valid roughly for the troposphere (standard atmosphere)
     altitude_m = 44330.0 * (1.0 - (pressure_Pa / 101325.0)**(1 / 5.255))
     altitude_ft = altitude_m * 3.28084
+    
+    # Compute difference in altitude from previous level
+    delta_altitude_ft = np.insert(np.diff(altitude_ft), 0, np.nan)
 
-    print(f"{'Level':>5} | {'Pressure (hPa)':>15} | {'Altitude (ft)':>15}")
-    print("-" * 43)
-    for i, (p, alt) in enumerate(zip(pressure_hPa, altitude_ft)):
-        print(f"{i+1:5d} | {p:15.1f} | {alt:15.0f}")
+    print(f"{'Level':>5} | {'Pressure (hPa)':>15} | {'Altitude (ft)':>15} | {'Δ Altitude (ft)':>17}")
+    print("-" * 65)
+    for i, (p, alt, dalt) in enumerate(zip(pressure_hPa, altitude_ft, delta_altitude_ft)):
+        dalt_str = f"{dalt:17.0f}" if not np.isnan(dalt) else f"{'–':>17}"
+        print(f"{i+1:5d} | {p:15.1f} | {alt:15.0f} | {dalt_str}")
 
 
 
-file_path = "/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/RAW/20241201.nc"
+
+
+
+fileName = "20241201.nc"
+
+file_path = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/RAW/{fileName}"
+
+out_path = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/PROCESSED/RHi_{fileName}"
 
 ds = xr.open_dataset(file_path)
 
 print_pressure_levels_with_altitudes(ds)
 
-#print(ds)
-
 ds_RHI = compute_vapor_pressure_and_rhi(ds)
 
-#print(ds_RHI)
+# Save RHi dataset to NetCDF
+ds_RHI.to_netcdf(out_path)
+
+print(f"RHi dataset written to {out_path}")
+
+
+
