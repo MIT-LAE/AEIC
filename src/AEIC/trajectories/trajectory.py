@@ -1,6 +1,6 @@
 import numpy as np
-from src.AEIC.performance_model import PerformanceModel
-from src.utils.helpers import nautmiles_to_meters
+from AEIC.performance_model import PerformanceModel
+from utils.helpers import nautmiles_to_meters
 from pyproj import Geod
 class Trajectory:
     '''Model for determining flight trajectories.

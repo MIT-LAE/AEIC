@@ -1,8 +1,8 @@
 import numpy as np
-from src.AEIC.performance_model import PerformanceModel
-from src.AEIC.trajectories.trajectory import Trajectory
-from src.utils.helpers import feet_to_meters, meters_to_feet, nautmiles_to_meters, filter_order_duplicates
-from src.utils.weather_utils import compute_ground_speed
+from AEIC.performance_model import PerformanceModel
+from AEIC.trajectories.trajectory import Trajectory
+from utils.helpers import feet_to_meters, meters_to_feet, nautmiles_to_meters, filter_order_duplicates
+from utils.weather_utils import compute_ground_speed
 import pandas as pd
 
 class LegacyTrajectory(Trajectory):

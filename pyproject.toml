@@ -17,7 +17,10 @@ license = "MIT"
 
 dependencies = [
     "numpy",
-    "scipy"
+    "scipy",
+    "pandas",
+    "pyproj",
+    "xarray"
 ]
 
 [dependency-groups]

@@ -23,7 +23,7 @@ LTO_input_file = "IO/B738__.LTO"
 
 ["Missions"]
 missions_folder = "missions"
-missions_in_file = "sample_missions_10.json"
+missions_in_file = "sample_missions_10.toml"
 airport_file = "airports.csv"
 stop_after_scheduling = true
 reference_schedule = ""         # File name for existing schedule

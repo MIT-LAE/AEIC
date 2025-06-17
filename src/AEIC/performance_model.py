@@ -28,8 +28,9 @@ class PerformanceModel:
         mission_file = file_location(
             os.path.join(self.config['missions_folder'], self.config['missions_in_file'])
         )
-        with open(mission_file, 'r') as f:
-            self.missions = json.load(f)
+        with open(mission_file, 'rb') as f:
+            all_missions = tomllib.load(f)
+            self.missions = all_missions['flight']
         # self.schedule = filter_OAG_schedule()
 
         # Process input performance data
