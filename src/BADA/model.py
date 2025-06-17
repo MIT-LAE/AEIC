@@ -3,17 +3,16 @@ import numpy as np
 # from scipy.integrate import cumulative_trapezoid
 from abc import ABC, abstractmethod
 
-from ..utils.helpers import *
-from ..BADA.fuel_burn_base import BaseFuelBurnModel
-from ..utils.custom_types import FloatOrNDArray
-from ..BADA.aircraft_parameters import Bada3AircraftParameters
-from ..utils.consts import *
-from ..utils.standard_atmosphere import * 
-# (
-#     temperature_at_altitude_isa_bada4,
-#     calculate_air_density,
-#     pressure_at_altitude_isa_bada4,
-# )
+from utils.helpers import mps_to_knots, meters_to_feet
+from .fuel_burn_base import BaseFuelBurnModel
+from utils.custom_types import FloatOrNDArray
+from .aircraft_parameters import Bada3AircraftParameters
+from utils.consts import g0
+from utils.standard_atmosphere import (
+    temperature_at_altitude_isa_bada4,
+    calculate_air_density,
+    pressure_at_altitude_isa_bada4,
+)
 
 
 class Bada3EngineModel(ABC):

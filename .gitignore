@@ -173,6 +173,11 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Direnv control.
+.envrc
+
+# Emacs local variables.
+.dir-locals.el
 
 # Jupyter Notebooks
 *.ipynb
