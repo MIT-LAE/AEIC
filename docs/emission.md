@@ -151,15 +151,15 @@ The private helper `__emission_dtype(shape)` defines a structured NumPy dtype wi
 * **NO**: Nitric oxide
 * **NO2**: Nitrogen dioxide
 * **HONO**: Nitrous acid
-* **PMnvol**: Black carbon number (volumetric)
-* **PMnvol\_lo**: Lower bound black carbon number
-* **PMnvol\_hi**: Upper bound black carbon number
-* **PMnvolN**: Black carbon number (# particles)
+* **PMnvol**: Black carbon
+* **PMnvol\_lo**: Lower bound black carbon
+* **PMnvol\_hi**: Upper bound black carbon
+* **PMnvolN**: Black carbon number
 * **PMnvolN\_lo**: Lower bound number
 * **PMnvolN\_hi**: Upper bound number
 * **PMnvolGMD**: Geometric mean diameter of black carbon (nm)
 * **PMvol**: Organic particulate matter mass
-* **OCic**: Organic carbon (incorporated)
+* **OCic**: Organic carbon (incomplete combustion)
 * **SO2**: Sulfur dioxide
 * **SO4**: Sulfate
 
