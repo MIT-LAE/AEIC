@@ -9,7 +9,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 project = 'AEIC'
 copyright = '2025, Wyatt Giroux, Prashanth Prakash, Prateek Ranjan, Aditeya Shukla, Raymond Speth'
@@ -36,3 +36,7 @@ coverage_skip_undoc_in_source = False  # Include items without docstrings in the
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+html_theme_options = {
+    "collapse_navigation": False,
+    "navigation_depth": 4,
+}
