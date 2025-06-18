@@ -364,7 +364,7 @@ class Emission:
             Wide, Narrow, Small, or Freight ('w','n','s','f').
         """
         # Map WNSF letter to index for nominal emission lists
-        mapping = {'wide': 0, 'narrow': 1, 'small': 2, 'freigh': 3}
+        mapping = {'wide': 0, 'narrow': 1, 'small': 2, 'freight': 3}
         idx = mapping.get(wnsf.lower())
         if idx is None:
             raise ValueError("Invalid WNSF code; must be one of 'w','n','s','f'")

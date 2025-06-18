@@ -1,5 +1,5 @@
 import pytest
-import json
+import tomllib
 import numpy as np
 import warnings
 from unittest.mock import patch, MagicMock
@@ -7,25 +7,26 @@ import sys
 import os
 
 # Add the src directory to the path to import modules
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from emissions.emission import Emission
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories.legacy_trajectory import LegacyTrajectory
+from emissions.emission import Emission
 from emissions.EI_CO2 import EI_CO2
 from emissions.EI_H2O import EI_H2O
 from emissions.EI_SOx import EI_SOx
 from emissions.EI_NOx import BFFM2_EINOx,NOx_speciation
-from emissions.EI_HCCO import hccoEIsFunc
+from emissions.EI_HCCO import EI_HCCO
 from emissions.APU_emissions import get_APU_emissions
+from utils import file_location
 
 # Path to a real fuel TOML file in your repo
-FUEL_FILE = "/Users/aditeyashukla/Dropbox/Mac (2)/Documents/LAE/AEIC/src/emissions/fuels/convential_jetA.toml"
-perf = PerformanceModel('./src/IO/default_config.toml')
-with open('./src/missions/sample_missions_10.json', 'r') as file:
-    mis = json.load(file)[0]
+performance_model_file = file_location("IO/default_config.toml")
+
+perf = PerformanceModel(performance_model_file)
+mis = perf.missions[0]
+
 traj = LegacyTrajectory(perf, mis, False, False)
 traj.fly_flight()
-em = Emission(perf, traj,True,FUEL_FILE)
+em = Emission(perf, traj,True)
 
 class TestEI_CO2:
     """Tests for EI_CO2 function"""
@@ -93,93 +94,77 @@ class TestEI_H2O:
             EI_H2O({})
 
 
-class TestHccoEIsFunc:
-    """Tests for hccoEIsFunc function"""
-    
+class TestEI_HCCO:
+    """Tests for EI_HCCO function"""
+
     def setup_method(self):
         """Set up test data"""
-        self.fuelfactor = np.array([0.1, 0.5, 1.0, 2.0])
+        self.fuelflow_evaluate = np.array([0.1, 0.5, 1.0, 2.0])
         self.x_EI_matrix = np.array([100.0, 50.0, 10.0, 8.0])
-        self.fuelflow_KGperS = np.array([0.2, 0.6, 1.5, 2.0])
-        
+        self.fuelflow_calibrate = np.array([0.2, 0.6, 1.5, 2.0])
+
     def test_basic_functionality(self):
         """Test basic HC+CO emissions calculation"""
-        result = hccoEIsFunc(
-            self.fuelfactor, self.x_EI_matrix, self.fuelflow_KGperS
+        result = EI_HCCO(
+            self.fuelflow_evaluate, self.x_EI_matrix, self.fuelflow_calibrate
         )
-        
+
         assert isinstance(result, np.ndarray)
-        assert result.shape == self.fuelfactor.shape
-        assert len(result) == len(self.fuelfactor)
-    
+        assert result.shape == self.fuelflow_evaluate.shape
+        assert len(result) == len(self.fuelflow_evaluate)
+
     def test_non_negativity(self):
         """Test that outputs are non-negative"""
-        result = hccoEIsFunc(
-            self.fuelfactor, self.x_EI_matrix, self.fuelflow_KGperS
+        result = EI_HCCO(
+            self.fuelflow_evaluate, self.x_EI_matrix, self.fuelflow_calibrate
         )
         assert np.all(result >= 0)
-    
+
     def test_finiteness(self):
         """Test that outputs are finite"""
-        result = hccoEIsFunc(
-            self.fuelfactor, self.x_EI_matrix, self.fuelflow_KGperS
+        result = EI_HCCO(
+            self.fuelflow_evaluate, self.x_EI_matrix, self.fuelflow_calibrate
         )
         assert np.all(np.isfinite(result))
-    
+
     def test_shape_consistency(self):
-        """Test shape consistency"""
-        # Different input shapes
-        fuelfactor_2d = np.array([[0.1, 0.5], [1.0, 2.0]])
-        
-        with pytest.raises(ValueError, match="fuelfactor must be a 1D array"):
-            hccoEIsFunc(fuelfactor_2d, self.x_EI_matrix, self.fuelflow_KGperS)
-    
+        """Test shape consistency for fuel flow input"""
+        fuelflow_2d = np.array([[0.1, 0.5], [1.0, 2.0]])
+        with pytest.raises(ValueError, match="fuelflow_evaluate must be a 1D array"):
+            EI_HCCO(fuelflow_2d, self.x_EI_matrix, self.fuelflow_calibrate)
+
     def test_input_validation(self):
-        """Test input validation"""
-        # Wrong x_EI_matrix shape
+        """Test input validation for EI and calibration vectors"""
         with pytest.raises(ValueError, match="x_EI_matrix must be a 1D array of length 4"):
-            hccoEIsFunc(
-                self.fuelfactor, 
-                np.array([1, 2, 3]), 
-                self.fuelflow_KGperS
-            )
-        
-        # Wrong fuelflow_KGperS shape
-        with pytest.raises(ValueError, match="fuelflow_KGperS must be a 1D array of length 4"):
-            hccoEIsFunc(
-                self.fuelfactor, 
-                self.x_EI_matrix, 
-                np.array([1, 2, 3])
-            )
-    
+            EI_HCCO(self.fuelflow_evaluate, np.array([1, 2, 3]), self.fuelflow_calibrate)
+
+        with pytest.raises(ValueError, match="fuelflow_calibrate must be a 1D array of length 4"):
+            EI_HCCO(self.fuelflow_evaluate, self.x_EI_matrix, np.array([0.1, 0.2, 0.3]))
+
     def test_cruise_correction(self):
-        """Test cruise correction functionality"""
-        result_no_cruise = hccoEIsFunc(
-            self.fuelfactor, self.x_EI_matrix, self.fuelflow_KGperS, 
+        """Test cruise correction modifies output as expected"""
+        result_no_cruise = EI_HCCO(
+            self.fuelflow_evaluate, self.x_EI_matrix, self.fuelflow_calibrate,
             cruiseCalc=False
         )
-        
-        result_with_cruise = hccoEIsFunc(
-            self.fuelfactor, self.x_EI_matrix, self.fuelflow_KGperS,
+        result_with_cruise = EI_HCCO(
+            self.fuelflow_evaluate, self.x_EI_matrix, self.fuelflow_calibrate,
             cruiseCalc=True, Tamb=250.0, Pamb=25000.0
         )
-        
-        # Results should be different when cruise correction is applied
+
         assert not np.allclose(result_no_cruise, result_with_cruise)
         assert np.all(np.isfinite(result_with_cruise))
-    
-    def test_zero_fuel_flow_handling(self):
-        """Test handling of zero/negative fuel flows"""
-        fuelfactor_with_zeros = np.array([0.0, -0.1, 0.5, 1.0])
-        result = hccoEIsFunc(
-            fuelfactor_with_zeros, self.x_EI_matrix, self.fuelflow_KGperS
+
+    def test_zero_and_negative_fuel_flows(self):
+        """Test how zero and negative fuel flows are handled"""
+        test_flow = np.array([0.0, -0.01, 0.1, 1.0])
+        result = EI_HCCO(
+            test_flow, self.x_EI_matrix, self.fuelflow_calibrate
         )
-        
-        # Should handle zeros gracefully
+        assert result.shape == test_flow.shape
         assert np.all(np.isfinite(result))
-        assert np.all(result >= 0)
-
-
+        assert np.all(result >= 0.0)
+        
 class TestBFFM2_EINOx:
     """Tests for BFFM2_EINOx function"""
     
@@ -415,134 +400,117 @@ class TestGetAPUEmissions:
     
     def setup_method(self):
         """Set up test data"""
-        # Create structured arrays to match expected input format
-        self.APU_emission_indices = np.zeros(1, dtype=[
+        dtype = [
             ('SO2', 'f8'), ('SO4', 'f8'), ('PMnvol', 'f8'), ('PMvol', 'f8'),
             ('NO', 'f8'), ('NO2', 'f8'), ('HONO', 'f8'), ('NOx', 'f8'),
             ('HC', 'f8'), ('CO', 'f8'), ('CO2', 'f8')
-        ])[0]
-        
-        self.APU_emissions_g = np.zeros(1, dtype=[
-            ('SO2', 'f8'), ('SO4', 'f8'), ('PMnvol', 'f8'), ('PMvol', 'f8'),
-            ('NO', 'f8'), ('NO2', 'f8'), ('HONO', 'f8'), ('NOx', 'f8'),
-            ('HC', 'f8'), ('CO', 'f8'), ('CO2', 'f8')
-        ])[0]
-        
+        ]
+        self.APU_emission_indices = np.zeros(1, dtype=dtype)[0]
+        self.APU_emissions_g = np.zeros(1, dtype=dtype)[0]
+
         self.LTO_emission_indices = {
             'SO2': np.array([1.2]),
             'SO4': np.array([0.8])
         }
-        
-        self.EDB_data = {
-            'APU_fuelflow_ref': np.array([0.1]),
-            'APU_PM10EI_ref': np.array([0.5]),
-            'APU_NOxEI_ref': np.array([15.0]),
-            'APU_HCEI_ref': np.array([2.0]),
-            'APU_COEI_ref': np.array([25.0])
+
+        self.APU_data = {
+            'fuel_kg_per_s': 0.1,
+            'PM10_g_per_kg': 0.5,
+            'NOx_g_per_kg': 15.0,
+            'HC_g_per_kg': 2.0,
+            'CO_g_per_kg': 25.0
         }
-        
+
         self.LTO_noProp = np.array([0.85])
         self.LTO_no2Prop = np.array([0.10])
         self.LTO_honoProp = np.array([0.05])
-    
+
     def test_basic_functionality(self):
         """Test basic APU emissions calculation"""
         apu_ei, apu_g = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
-            self.EDB_data,
+            self.APU_data,
             self.LTO_noProp,
             self.LTO_no2Prop,
             self.LTO_honoProp
         )
-        
-        # Check that values were set
+
         assert apu_ei['SO2'] > 0
         assert apu_ei['NOx'] > 0
         assert apu_g['SO2'] > 0
-    
+
     def test_non_negativity(self):
         """Test that all emissions are non-negative"""
         apu_ei, apu_g = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
-            self.EDB_data,
+            self.APU_data,
             self.LTO_noProp,
             self.LTO_no2Prop,
             self.LTO_honoProp
         )
-        
+
         for field in apu_ei.dtype.names:
             assert apu_ei[field] >= 0, f"{field} emission index is negative"
             assert apu_g[field] >= 0, f"{field} total emission is negative"
-    
+
     def test_consistency_between_ei_and_total(self):
         """Test consistency between emission indices and total emissions"""
+        apu_tim = 2854
         apu_ei, apu_g = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
-            self.EDB_data,
+            self.APU_data,
             self.LTO_noProp,
             self.LTO_no2Prop,
-            self.LTO_honoProp
+            self.LTO_honoProp,
+            apu_tim=apu_tim
         )
-        
-        # Total emissions should equal EI * fuel_burn
-        apu_tim = 2854  # default value
-        fuel_burn = self.EDB_data['APU_fuelflow_ref'][0] * apu_tim
-        
+
+        fuel_burn = self.APU_data['fuel_kg_per_s'] * apu_tim
         for field in apu_ei.dtype.names:
-            expected_total = apu_ei[field] * fuel_burn
-            assert np.isclose(apu_g[field], expected_total, rtol=1e-10)
-    
+            expected = apu_ei[field] * fuel_burn
+            assert np.isclose(apu_g[field], expected, rtol=1e-10), f"Mismatch in {field}"
+
     def test_nox_speciation_consistency(self):
-        """Test that NOx speciation is consistent"""
-        apu_ei, apu_g = get_APU_emissions(
+        """Test NOx speciation consistency via PM10_g_per_kg scaling"""
+        apu_ei, _ = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
-            self.EDB_data,
+            self.APU_data,
             self.LTO_noProp,
             self.LTO_no2Prop,
             self.LTO_honoProp
         )
-        
-        # Check that proportions are used correctly
-        total_nox_from_components = (
-            apu_ei['NO'] / self.LTO_noProp[0] + 
-            apu_ei['NO2'] / self.LTO_no2Prop[0] + 
-            apu_ei['HONO'] / self.LTO_honoProp[0]
-        ) / 3  # Average since they should all equal the same base value
-        
-        # This is a simplified check - the actual implementation uses PM10 data
-        # so we just check that the values are reasonable
-        assert apu_ei['NO'] > 0
-        assert apu_ei['NO2'] > 0
-        assert apu_ei['HONO'] > 0
-    
+
+        assert apu_ei['NO'] == self.APU_data['PM10_g_per_kg'] * self.LTO_noProp[0]
+        assert apu_ei['NO2'] == self.APU_data['PM10_g_per_kg'] * self.LTO_no2Prop[0]
+        assert apu_ei['HONO'] == self.APU_data['PM10_g_per_kg'] * self.LTO_honoProp[0]
+
     def test_zero_fuel_flow_handling(self):
-        """Test handling when APU fuel flow is zero"""
-        edb_data_zero = self.EDB_data.copy()
-        edb_data_zero['APU_fuelflow_ref'] = np.array([0.0])
-        
+        """Test handling of zero fuel flow"""
+        apu_data_zero = self.APU_data.copy()
+        apu_data_zero['fuel_kg_per_s'] = 0.0
+
         apu_ei, apu_g = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
-            edb_data_zero,
+            apu_data_zero,
             self.LTO_noProp,
             self.LTO_no2Prop,
             self.LTO_honoProp
         )
-        
-        # Most emissions should be zero when fuel flow is zero
+
         assert apu_ei['SO2'] == 0.0
         assert apu_ei['SO4'] == 0.0
         assert apu_ei['CO2'] == 0.0
-
+        assert apu_g['CO2'] == 0.0
 
 # Integration tests
 class TestIntegration:

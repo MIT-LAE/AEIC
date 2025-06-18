@@ -1,21 +1,23 @@
 import pytest
-import json
+import tomllib
 import numpy as np
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from emissions.emission import Emission
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories.legacy_trajectory import LegacyTrajectory
+from utils import file_location
 
 # Path to a real fuel TOML file in your repo
-FUEL_FILE = "/Users/aditeyashukla/Dropbox/Mac (2)/Documents/LAE/AEIC/src/emissions/fuels/convential_jetA.toml"
-perf = PerformanceModel('./src/IO/default_config.toml')
-with open('./src/missions/sample_missions_10.json', 'r') as file:
-    mis = json.load(file)[0]
+performance_model_file = file_location("IO/default_config.toml")
+
+# Path to a real fuel TOML file in your repo
+perf = PerformanceModel(performance_model_file)
+mis = perf.missions[0]
+
 traj = LegacyTrajectory(perf, mis, False, False)
 traj.fly_flight()
-em = Emission(perf, traj,True,FUEL_FILE)
+em = Emission(perf, traj,True)
 
 # --- Unit tests ---
 
@@ -107,7 +109,7 @@ def test_sox_speciation():
 
 def test_gse_wnsf_mapping():
     """Test GSE emissions for different WNSF categories"""
-    wnsf_codes = ['w', 'n', 's', 'f']
+    wnsf_codes = ['wide', 'narrow', 'small', 'freight']
     for wnsf in wnsf_codes:
         # Create temporary emission object to test GSE mapping
         temp_em = Emission.__new__(Emission)  # Create without calling __init__

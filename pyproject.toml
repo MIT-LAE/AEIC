@@ -20,7 +20,10 @@ dependencies = [
     "scipy",
     "pandas",
     "pyproj",
-    "xarray"
+    "xarray",
+    "tomllib",
+    "os",
+    "gc"
 ]
 
 [dependency-groups]
