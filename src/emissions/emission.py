@@ -1,20 +1,22 @@
 # Emissions class
 import numpy as np
 import tomllib
-from src.AEIC.performance_model import PerformanceModel
-from src.AEIC.trajectories.trajectory import Trajectory
-from src.emissions.EI_CO2 import EI_CO2
-from src.emissions.EI_H2O import EI_H2O
-from src.emissions.EI_SOx import EI_SOx
-from src.emissions.EI_NOx import BFFM2_EINOx,NOx_speciation
-from src.emissions.EI_HCCO import hccoEIsFunc
-from src.emissions.EI_PMvol import EI_PMvol_NEW
-from src.emissions.EI_PMnvol import PMnvol_MEEM
-from src.emissions.APU_emissions import get_APU_emissions
-from src.utils.standard_atmosphere import temperature_at_altitude_isa_bada4,pressure_at_altitude_isa_bada4
-from src.utils.helpers import meters_to_feet
-from src.utils.standard_fuel import get_thrust_cat
-from src.utils.consts import kappa, R_air
+from AEIC.performance_model import PerformanceModel
+from AEIC.trajectories.trajectory import Trajectory
+from emissions.EI_CO2 import EI_CO2
+from emissions.EI_H2O import EI_H2O
+from emissions.EI_SOx import EI_SOx
+from emissions.EI_NOx import BFFM2_EINOx,NOx_speciation
+from emissions.EI_HCCO import hccoEIsFunc
+from emissions.EI_PMvol import EI_PMvol_NEW
+from emissions.EI_PMnvol import PMnvol_MEEM
+from emissions.APU_emissions import get_APU_emissions
+from utils.standard_atmosphere import temperature_at_altitude_isa_bada4,pressure_at_altitude_isa_bada4
+from utils.helpers import meters_to_feet
+from utils.standard_fuel import get_thrust_cat
+from utils.consts import kappa, R_air
+from utils import file_location
+
 class Emission:
     """
     Model for determining and aggregating flight emissions across all mission segments,
@@ -23,7 +25,7 @@ class Emission:
     """
     
     def __init__(self, ac_performance:PerformanceModel, trajectory:Trajectory,
-                 EDB_data:bool, fuel_file:str):
+                 EDB_data:bool):
         """
         Initialize emissions model:
 
@@ -40,7 +42,8 @@ class Emission:
         """
         
         # Load fuel properties from TOML
-        with open(fuel_file, 'rb') as f:
+        fuel_file_loc = file_location(ac_performance.config['fuel_file'])
+        with open(fuel_file_loc, 'rb') as f:
             self.fuel = tomllib.load(f)
 
         # Unpack trajectory lengths: total, climb, cruise, descent points
@@ -97,14 +100,14 @@ class Emission:
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
-            ac_performance.EDB_data,
+            ac_performance.APU_data,
             self.LTO_noProp,
             self.LTO_no2Prop,
             self.LTO_honoProp,
         )
 
         # Compute Ground Service Equipment (GSE) emissions based on WNSF type
-        self.get_GSE_emissions(ac_performance.EDB_data['WNSF'])
+        self.get_GSE_emissions(ac_performance.model_info['General_Information']['aircraft_class'])
 
         # Sum all emission contributions: trajectory + LTO + APU + GSE
         self.sum_total_emissions()
@@ -358,10 +361,10 @@ class Emission:
         Parameters
         ----------
         wnsf : str
-            One-letter code for Wide, Narrow, Small, or Freight ('w','n','s','f').
+            Wide, Narrow, Small, or Freight ('w','n','s','f').
         """
         # Map WNSF letter to index for nominal emission lists
-        mapping = {'w': 0, 'n': 1, 's': 2, 'f': 3}
+        mapping = {'wide': 0, 'narrow': 1, 'small': 2, 'freigh': 3}
         idx = mapping.get(wnsf.lower())
         if idx is None:
             raise ValueError("Invalid WNSF code; must be one of 'w','n','s','f'")

@@ -1,31 +1,31 @@
 import numpy as np
 
 def get_APU_emissions(APU_emission_indices, APU_emissions_g, 
-                  LTO_emission_indices, EDB_data, 
+                  LTO_emission_indices, APU_data, 
                   LTO_noProp, LTO_no2Prop, LTO_honoProp, apu_tim=2854):
     
-    mask = (EDB_data['APU_fuelflow_ref'] != 0.0)
+    mask = (APU_data['fuel_kg_per_s'] != 0.0)
 
-    apu_fuel_burn = EDB_data['APU_fuelflow_ref'][0] * apu_tim 
+    apu_fuel_burn = APU_data['fuel_kg_per_s'] * apu_tim 
 
     # SOx
     APU_emission_indices['SO2'] = LTO_emission_indices['SO2'][0] if mask else 0.0
     APU_emission_indices['SO4'] = LTO_emission_indices['SO4'][0] if mask else 0.0
 
     # Particulate‐matter breakdown (deterministic BC fraction of 0.95)
-    APU_PM10 = max(EDB_data['APU_PM10EI_ref'] - APU_emission_indices['SO4'], 0.0)
+    APU_PM10 = max(APU_data['PM10_g_per_kg'] - APU_emission_indices['SO4'], 0.0)
     bc_prop = 0.95
     APU_emission_indices['PMnvol'] = np.array(APU_PM10 * bc_prop).item()
     APU_emission_indices['PMvol'] = np.array(APU_PM10 - APU_emission_indices['PMnvol']).item()
 
     # NO/NO2/HONO speciation
-    APU_emission_indices['NO']   = EDB_data['APU_PM10EI_ref'][0] * LTO_noProp[0]
-    APU_emission_indices['NO2']  = EDB_data['APU_PM10EI_ref'][0] * LTO_no2Prop[0]
-    APU_emission_indices['HONO'] = EDB_data['APU_PM10EI_ref'][0] * LTO_honoProp[0]
+    APU_emission_indices['NO']   = APU_data['PM10_g_per_kg'] * LTO_noProp[0]
+    APU_emission_indices['NO2']  = APU_data['PM10_g_per_kg'] * LTO_no2Prop[0]
+    APU_emission_indices['HONO'] = APU_data['PM10_g_per_kg'] * LTO_honoProp[0]
 
-    APU_emission_indices['NOx'] = EDB_data['APU_NOxEI_ref'][0]
-    APU_emission_indices['HC'] = EDB_data['APU_HCEI_ref'][0]
-    APU_emission_indices['CO'] = EDB_data['APU_COEI_ref'][0]
+    APU_emission_indices['NOx'] = APU_data['NOx_g_per_kg']
+    APU_emission_indices['HC'] = APU_data['HC_g_per_kg']
+    APU_emission_indices['CO'] = APU_data['CO_g_per_kg']
 
     # CO2 via mass balance
     if mask:

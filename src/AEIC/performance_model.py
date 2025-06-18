@@ -2,6 +2,7 @@ import numpy as np
 import tomllib
 import json
 import os
+import gc
 from parsers.PTF_reader import parse_PTF
 from parsers.OPF_reader import parse_OPF
 from parsers.LTO_reader import parseLTO
@@ -82,6 +83,30 @@ class PerformanceModel:
             else:
                 ValueError(f"No engine with UID={UID} found.")
 
+        # Read APU data
+        apu_name = data['General_Information']['APU_name']
+        with open(file_location("engines/APU_data.toml"), "rb") as f:
+            APU_data = tomllib.load(f)
+
+        for apu in APU_data.get("APU", []):
+            if apu["name"] == apu_name:
+                self.APU_data = {
+                    "fuel_kg_per_s": apu["fuel_kg_per_s"],
+                    "PM10_g_per_kg": apu["PM10_g_per_kg"],
+                    "NOx_g_per_kg": apu["NOx_g_per_kg"],
+                    "CO_g_per_kg": apu["CO_g_per_kg"],
+                    "HC_g_per_kg": apu["HC_g_per_kg"],
+                }
+            else:
+                self.APU_data = {
+                    "fuel_kg_per_s": 0.0,
+                    "PM10_g_per_kg": 0.0,
+                    "NOx_g_per_kg": 0.0,
+                    "CO_g_per_kg": 0.0,
+                    "HC_g_per_kg": 0.0,
+                }
+        
+
         self.create_performance_table(data['flight_performance']['data'])
 
         del data["LTO_performance"]
@@ -142,7 +167,8 @@ class PerformanceModel:
             otherwise, None.
         """
         # Open and parse the TOML file
-        with open(toml_path, 'rb') as f:
+        edb_file_loc = file_location(toml_path)
+        with open(edb_file_loc, 'rb') as f:
             data = tomllib.load(f)
 
         # data["engine"] is a list of dicts (one per [[engine]] table)

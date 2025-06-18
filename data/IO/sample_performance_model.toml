@@ -1,9 +1,10 @@
 [General_Information]
 aircraft_name = "B738"
-engine_name = "CFM56-7B"
+aircraft_class = "narrow" # wide, narrow, small, freight
 ISA_offset = 0
 max_alt_ft = 41000
 max_payload_kg = 22422
+APU_name = "APU 131-9" # None: APU emissions not calculated
 
 [speeds.climb]
 cas_lo = 128.611
@@ -21,8 +22,7 @@ cas_hi = 149.18876
 mach = 0.80
 
 [LTO_performance]
-ENG_NAME = "CFM56-7B26_nan"
-ICAO_UID = "8CM051"
+ICAO_UID = "01P11CM121" # Add UID for EDB data
 Foo_kN = 102.695
 
 [LTO_performance.thrust_settings.approach]

@@ -1,5 +1,6 @@
 import pandas as pd
 import toml
+import numpy as np
 
 def generate_engines_toml(excel_path: str, toml_path: str):
     """
@@ -50,7 +51,7 @@ def generate_engines_toml(excel_path: str, toml_path: str):
         toml.dump({'engine': engines}, f)
 
 if __name__ == '__main__':
-    excel_file = '/Users/aditeyashukla/Dropbox/Mac (2)/Downloads/edb-emissions-databank_v30__web_ (1).xlsx'  # adjust 
+    excel_file = 'edb-emissions-databank_v30__web_ (1).xlsx'  # adjust 
     output_toml = 'engines.toml'
     generate_engines_toml(excel_file, output_toml)
     print(f'Generated TOML file: {output_toml}')

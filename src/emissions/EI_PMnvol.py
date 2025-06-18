@@ -132,7 +132,7 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,machFlight,fuel_flow_
 
     else:
         # EI from measurements (mg/kg)
-        nvPM_mass_mode = EDB_data['nvPM_mass_matrix'].astype(float)
+        nvPM_mass_mode = np.array(EDB_data['nvPM_mass_matrix']).astype(float)
 
 
     # if not defined, do the number calculation
@@ -150,7 +150,7 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,machFlight,fuel_flow_
             )
         )
     else:
-        nvPM_num_mode = EDB_data['nvPM_num_matrix'].astype(float)
+        nvPM_num_mode =np.array(EDB_data['nvPM_num_matrix']).astype(float)
 
 
     # Step 1: Determine In-flight thermodynamic conditions
