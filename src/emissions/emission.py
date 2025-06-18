@@ -367,7 +367,7 @@ class Emission:
         mapping = {'wide': 0, 'narrow': 1, 'small': 2, 'freight': 3}
         idx = mapping.get(wnsf.lower())
         if idx is None:
-            raise ValueError("Invalid WNSF code; must be one of 'w','n','s','f'")
+            raise ValueError("Invalid WNSF code; must be one of 'wide','narrow','small','freight'")
 
         # Nominal emissions per engine start cycle [g/cycle]
         CO2_nom = [58e3, 18e3, 10e3, 58e3]        # g/cycle

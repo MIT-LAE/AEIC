@@ -21,9 +21,7 @@ dependencies = [
     "pandas",
     "pyproj",
     "xarray",
-    "tomllib",
-    "os",
-    "gc"
+    "tomllib"
 ]
 
 [dependency-groups]
