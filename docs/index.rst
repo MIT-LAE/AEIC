@@ -6,17 +6,36 @@
 Welcome to AEIC's documentation!
 ================================
 
+The **Aviation Emissions Inventory Tool** (``AEIC``) is a Python library for modelling and aggregating global aviation emissions over time. 
+Based on a previous version made using ``MATLAB`` by Simone et al. (found `here <https://zenodo.org/records/6461767>`_), this updated
+library seeks to migrate the MATLAB functionality to Python and add support for previously unsupported performance models, 
+updated trajectory dynamics, parallelization, and more.
+
+.. note::
+   This project is under active development
+
+.. include:: main_page.rst
+   :start-after: .. begin-getting-started
+   :end-before: .. end-getting-started
+
 .. toctree::
+   :hidden:
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Getting Started
 
-   emission
+   main_page
 
+.. toctree::
+   :hidden:
+   :maxdepth: 2
+   :caption: AEIC Modules
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   src/AEIC/performance_model
+   src/AEIC/trajectories/trajectories
+   src/BADA/bada
+   src/gridding/gridding
+   data/IO/io_formats
+   src/missions/mission
+   src/parsers/parsers
+   src/utils/utils
+   src/weather/weather

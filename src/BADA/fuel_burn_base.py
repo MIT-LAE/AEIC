@@ -49,7 +49,7 @@ class BaseFuelBurnModel(ABC):
             specific_ground_range < 1, np.inf, specific_ground_range
         )
         # backwards means last element stays and the rest get adjusted by addition instead of subtraction
-        cumulative_integral = cumtrapz(
+        cumulative_integral = cumulative_trapezoid(
             1 / specific_ground_range_corrected[::-1], dx=segment_distance
         )[::-1]
         mass[:-1] = mass[-1] + cumulative_integral

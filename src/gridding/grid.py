@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from numpy.typing import NDArray, ArrayLike
 from typing import Optional, Dict, Any, Tuple
 import numpy as np
-from src.utils.helpers import great_circle_distance, meters_to_feet, feet_to_meters, unix_to_datetime_utc,calculate_line_parameters,crosses_dateline
+from utils.helpers import great_circle_distance, meters_to_feet, feet_to_meters, unix_to_datetime_utc,calculate_line_parameters,crosses_dateline
 from shapely.geometry import Polygon
 import itertools
 import warnings

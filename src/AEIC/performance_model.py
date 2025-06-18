@@ -2,21 +2,22 @@ import numpy as np
 import tomllib
 import json
 import os
-import gc
-from src.parsers.PTF_reader import parse_PTF
-from src.parsers.OPF_reader import parse_OPF
-from src.parsers.LTO_reader import parseLTO
-from src.BADA.aircraft_parameters import Bada3AircraftParameters
-from src.BADA.model import Bada3JetEngineModel
+from parsers.PTF_reader import parse_PTF
+from parsers.OPF_reader import parse_OPF
+from parsers.LTO_reader import parseLTO
+from BADA.aircraft_parameters import Bada3AircraftParameters
+from BADA.model import Bada3JetEngineModel
 # from src.missions.OAG_filter import filter_OAG_schedule
+from utils import file_location
 
 class PerformanceModel:
     '''Performance model for an aircraft. Contains
         fuel flow, airspeed, ROC/ROD, LTO emissions,
         and OAG schedule'''
 
-    def __init__(self, config_file_loc="./IO/default_config.toml"):
+    def __init__(self, config_file="IO/default_config.toml"):
         # Read config file and store all variables in self.config
+        config_file_loc = file_location(config_file)
         self.config = {}
         with open(config_file_loc, 'rb') as f:
             config_data = tomllib.load(f)
@@ -24,9 +25,12 @@ class PerformanceModel:
 
         # Get mission data
         # self.filter_OAG_schedule = filter_OAG_schedule
-        mission_file = os.path.join(self.config['missions_folder'], self.config['missions_in_file'])
-        with open(mission_file, 'r') as f:
-            self.missions = json.load(f)
+        mission_file = file_location(
+            os.path.join(self.config['missions_folder'], self.config['missions_in_file'])
+        )
+        with open(mission_file, 'rb') as f:
+            all_missions = tomllib.load(f)
+            self.missions = all_missions['flight']
         # self.schedule = filter_OAG_schedule()
 
         # Process input performance data
@@ -39,7 +43,9 @@ class PerformanceModel:
         self.ac_params = Bada3AircraftParameters()
         # If OPF data input
         if self.config["performance_model_input"] == "OPF":
-            opf_params = parse_OPF(self.config["performance_model_input_file"])
+            opf_params = parse_OPF(
+                file_location(self.config["performance_model_input_file"])
+            )
             for key in opf_params:
                 setattr(self.ac_params, key, opf_params[key])
         # If fuel flow function input
@@ -62,7 +68,7 @@ class PerformanceModel:
         '''Parses input json data of aircraft performance'''
         
         # Read and load TOML data 
-        with open(self.config["performance_model_input_file"], "rb") as f:
+        with open(file_location(self.config["performance_model_input_file"]), "rb") as f:
             data = tomllib.load(f)
 
         self.LTO_data = data['LTO_performance']

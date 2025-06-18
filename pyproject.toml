@@ -1,17 +1,7 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "AEIC"
 
 version = "0!1.0.0a1"
-
-dependencies = [
-    "pytest",
-    "sphinx",
-    "sphinx_rtd_theme",
-]
 
 authors = [
     {name = "Wyatt Giroux", email = "girouxw@mit.edu"},
@@ -24,3 +14,22 @@ authors = [
 readme = "README.md"
 
 license = "MIT"
+
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "pyproj",
+    "xarray"
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "sphinx",
+    "sphinx_rtd_theme",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

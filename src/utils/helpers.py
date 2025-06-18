@@ -1,5 +1,5 @@
-from ..utils.custom_types import FloatOrNDArray
-from ..utils.consts import R_E
+from .custom_types import FloatOrNDArray
+from .consts import R_E
 import numpy as np
 from typing import Tuple
 from numpy.typing import NDArray

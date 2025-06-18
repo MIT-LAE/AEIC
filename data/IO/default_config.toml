@@ -14,18 +14,16 @@ performance_model_input = "PerformanceModel"
                                 # "OPF" : Input as BADA type OPF file (FUNCTIONAL INPUT)
                                 # "PerformanceModel" : JSON file with state variables - fuel_flow = f(h, V, gamma, m_fuel) (TABULAR INPUT)
 
-performance_model_input_file = "./src/IO/sample_performance_model.toml" 
-climb_descent_usage = true # If true, then full trajectory is used for emissions calculate (including takeoff, landing)
-                           # If false, then only cruise used, LTO data used for takeoff, climb, approach
+performance_model_input_file = "IO/sample_performance_model.toml" 
 
 ["LTO data"]
-LTO_input_mode = "EDB"  # "PerformanceModel" : LTO data provided in PerformanceModel file
-                        # "EDB" : Use EDB data to get LTO performance
-edb_engine_file = "./src/emissions/engine_data/full_engine_edb_data.toml"
+LTO_input_mode = "PerformanceModel" # "PerformanceModel" : LTO data provided in PerformanceModel file
+                          # "input_file" : Additional LTO data provided
+LTO_input_file = "IO/B738__.LTO"
 
 ["Missions"]
-missions_folder = "./src/missions/"
-missions_in_file = "sample_missions_10.json"
+missions_folder = "missions"
+missions_in_file = "sample_missions_10.toml"
 airport_file = "airports.csv"
 stop_after_scheduling = true
 reference_schedule = ""         # File name for existing schedule
@@ -33,8 +31,5 @@ reference_schedule = ""         # File name for existing schedule
 sample_schedule = false         # Sample schedule distribution to get smaller collection
 sample_number = 1000            # If sample_schedule: how many flights for the sample
 
-["Emissions"]
-pmnvol_switch_lc = "SCOPE11" # PMnvol estimation method for LTO (SCOPE11, fox, foa3, dop, sst, newsnci)
-
 ["OUTPUT"]
-output_folder = "Emission_Files/"
+output_folder = "Emission_Files"
