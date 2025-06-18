@@ -114,33 +114,11 @@ Attributes
 
 ----
 
-Public Methods
+Methods
 --------------
 
-``get_trajectory_emissions(trajectory, ac_performance, EDB_data=True)``
-   Calculate emission indices and per-segment emissions for the entire flight profile.
-
-   :param trajectory: ``Trajectory`` – flight trajectory
-   :param ac_performance: ``PerformanceModel`` – performance data
-   :param EDB_data: ``bool`` – whether to use tabulated EDB emissions (default: ``True``)
-
-``get_LTO_emissions(ac_performance, EDB_LTO=True, pmnvol_switch_lc="SCOPE11")``
-   Compute Landing-and-Take-Off cycle emission indices & quantities.
-
-   :param ac_performance: ``PerformanceModel``
-   :param EDB_LTO: ``bool`` – use EDB LTO settings (default: ``True``)
-   :param pmnvol_switch_lc: ``str`` – black carbon number emissions model (default: ``"SCOPE11"``)
-
-``get_GSE_emissions(wnsf: str)``
-   Calculate Ground Service Equipment emissions based on aircraft type.
-
-   :param wnsf: ``str`` – one of ``"w"``, ``"n"``, ``"s"``, or ``"f"``
-
-``sum_total_emissions()``
-   Aggregate pointwise trajectory, LTO, APU, and GSE emissions into ``summed_emission_g``.
-
-``get_lifecycle_emissions(fuel: dict, traj: Trajectory)``
-   Add life-cycle CO₂ (g) for fuel production to ``summed_emission_g['CO2']``.
+.. autoclass:: Emission
+    :members:
 
 ----
 
