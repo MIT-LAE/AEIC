@@ -1,105 +1,101 @@
 import numpy as np 
-from src.utils.standard_fuel import get_fuel_factor, get_thrust_cat
+from utils.standard_fuel import get_fuel_factor, get_thrust_cat
 import warnings
 
-def EI_NOx(
-        fuel_flow_trajectory: np.ndarray,
-        NOX_EI_input: np.ndarray,
-        fuel_flow_performance: np.ndarray,
-        Tamb: np.ndarray,
-        Pamb: np.ndarray,
-        mach_number: np.ndarray,
-        P3_kPa = None,
-        T3_K = None,
-        cruiseCalc: bool = True,
-        mode:str = "BFFM2",
-        sp_humidity: float = 0.00634
-    ):
-    """
-    Calculates NOx emissions indices and speciation.
+# TODO: add P3T3 method support
+# def EI_NOx(
+#         fuel_flow_trajectory: np.ndarray,
+#         NOX_EI_input: np.ndarray,
+#         fuel_flow_performance: np.ndarray,
+#         Tamb: np.ndarray,
+#         Pamb: np.ndarray,
+#         mach_number: np.ndarray,
+#         P3_kPa = None,
+#         T3_K = None,
+#         cruiseCalc: bool = True,
+#         mode:str = "BFFM2",
+#         sp_humidity: float = 0.00634
+#     ):
+#     """
+#     Calculates NOx emissions indices and speciation.
 
-    Parameters
-    ----------
-    fuelfactor : ndarray, shape (n_types, n_times)
-    NOX_EI : ndarray, same shape as fuel_flow
-    fuel_flow : ndarray, shape (n_types, n_times)
-    cruiseCalc : bool, whether to apply cruise corrections
-    Tamb : float, ambient temperature [K]
-    Pamb : float, ambient pressure [Pa]
+#     Parameters
+#     ----------
+#     fuelfactor : ndarray, shape (n_types, n_times)
+#     NOX_EI : ndarray, same shape as fuel_flow
+#     fuel_flow : ndarray, shape (n_types, n_times)
+#     cruiseCalc : bool, whether to apply cruise corrections
+#     Tamb : float, ambient temperature [K]
+#     Pamb : float, ambient pressure [Pa]
 
-    Returns
-    -------
-    NOxEI, NOEI, NO2EI, HONOEI : ndarrays same shape as fuel_flow
-    noProp, no2Prop, honoProp : ndarrays same shape as fuel_flow
-    """
+#     Returns
+#     -------
+#     NOxEI, NOEI, NO2EI, HONOEI : ndarrays same shape as fuel_flow
+#     noProp, no2Prop, honoProp : ndarrays same shape as fuel_flow
+#     """
 
-    if mode == "P3T3":
-        a,b,c,d,e,f,g,h,i,j = [ 8.46329738,  0.00980137, -8.55054025,  0.00981223,  0.02928154,
-            0.01037376,  0.03666156,  0.01037419,  0.03664096,  0.01037464]
+#     if mode == "P3T3":
+#         a,b,c,d,e,f,g,h,i,j = [ 8.46329738,  0.00980137, -8.55054025,  0.00981223,  0.02928154,
+#             0.01037376,  0.03666156,  0.01037419,  0.03664096,  0.01037464]
 
-        H = -19.0*(sp_humidity - 0.00634)
+#         H = -19.0*(sp_humidity - 0.00634)
         
-        NOxEI = np.exp(H)*(P3_kPa**0.4) * (a * np.exp(b * T3_K) + c * np.exp(d * T3_K) + e * np.exp(f * T3_K) + g * np.exp(h * T3_K) + i * np.exp(j * T3_K))
-    elif mode == "BFFM2":
-        return BFFM2_EINOx(fuel_flow_trajectory,NOX_EI_input,fuel_flow_performance,Tamb,Pamb,mach_number)
-    else:
-        raise Exception("Invalid mode input in EI NOx function (BFFM2, P3T3)")
+#         NOxEI = np.exp(H)*(P3_kPa**0.4) * (a * np.exp(b * T3_K) + c * np.exp(d * T3_K) + e * np.exp(f * T3_K) + g * np.exp(h * T3_K) + i * np.exp(j * T3_K))
+#     elif mode == "BFFM2":
+#         return BFFM2_EINOx(fuel_flow_trajectory,NOX_EI_input,fuel_flow_performance,Tamb,Pamb,mach_number)
+#     else:
+#         raise Exception("Invalid mode input in EI NOx function (BFFM2, P3T3)")
 
-    # Thrust category assignment
-    thrustCat = get_thrust_cat(fuel_flow_trajectory, fuel_flow_performance, cruiseCalc)
+#     # Thrust category assignment
+#     thrustCat = get_thrust_cat(fuel_flow_trajectory, fuel_flow_performance, cruiseCalc)
 
-    # Speciation bounds
-    hono_bounds = {
-        'H': (0.5, 1.0, 0.75),
-        'L': (2.0, 7.0, 4.5),
-        'A': (2.0, 7.0, 4.5)
-    }
-    no2_bounds = {
-        'H': (5.0, 10.0 * (100-1)/100, 7.5 * (100-0.75)/100),
-        'L': (75.0, 98.0 * (100-4.5)/100, 86.5 * (100-4.5)/100),
-        'A': (12.0, 20.0 * (100-4.5)/100, 16.0 * (100-4.5)/100)
-    }
-    # TODO: check if Monte Carlo for speciation needed
-    # if mcsHONO == 1:
-    #     honoH = trirnd(*hono_bounds['H'], rvHONO)
-    #     honoL = trirnd(*hono_bounds['L'], rvHONO)
-    #     honoA = trirnd(*hono_bounds['A'], rvHONO)
-    # else:
-    honoH_nom = hono_bounds['H'][2]
-    honoL_nom = hono_bounds['L'][2]
-    honoA_nom = hono_bounds['A'][2]
-    honoH, honoL, honoA = honoH_nom, honoL_nom, honoA_nom
+#     # Speciation bounds
+#     hono_bounds = {
+#         'H': (0.5, 1.0, 0.75),
+#         'L': (2.0, 7.0, 4.5),
+#         'A': (2.0, 7.0, 4.5)
+#     }
+#     no2_bounds = {
+#         'H': (5.0, 10.0 * (100-1)/100, 7.5 * (100-0.75)/100),
+#         'L': (75.0, 98.0 * (100-4.5)/100, 86.5 * (100-4.5)/100),
+#         'A': (12.0, 20.0 * (100-4.5)/100, 16.0 * (100-4.5)/100)
+#     }
+#     # TODO: check if Monte Carlo for speciation needed
+#     # if mcsHONO == 1:
+#     #     honoH = trirnd(*hono_bounds['H'], rvHONO)
+#     #     honoL = trirnd(*hono_bounds['L'], rvHONO)
+#     #     honoA = trirnd(*hono_bounds['A'], rvHONO)
+#     # else:
+#     honoH_nom = hono_bounds['H'][2]
+#     honoL_nom = hono_bounds['L'][2]
+#     honoA_nom = hono_bounds['A'][2]
+#     honoH, honoL, honoA = honoH_nom, honoL_nom, honoA_nom
 
-    # if mcsNO2 == 1:
-    #     no2H = trirnd(*no2_bounds['H'], rvNO2)
-    #     no2L = trirnd(*no2_bounds['L'], rvNO2)
-    #     no2A = trirnd(*no2_bounds['A'], rvNO2)
-    # else:
-    no2H, no2L, no2A = no2_bounds['H'][2], no2_bounds['L'][2], no2_bounds['A'][2]
+#     # if mcsNO2 == 1:
+#     #     no2H = trirnd(*no2_bounds['H'], rvNO2)
+#     #     no2L = trirnd(*no2_bounds['L'], rvNO2)
+#     #     no2A = trirnd(*no2_bounds['A'], rvNO2)
+#     # else:
+#     no2H, no2L, no2A = no2_bounds['H'][2], no2_bounds['L'][2], no2_bounds['A'][2]
 
-    noH = 100 - honoH - no2H
-    noL = 100 - honoL - no2L
-    noA = 100 - honoA - no2A
+#     noH = 100 - honoH - no2H
+#     noL = 100 - honoL - no2L
+#     noA = 100 - honoA - no2A
 
-    # Proportion arrays
-    honoProp = np.where(thrustCat == 1, honoH,
-                 np.where(thrustCat == 2, honoL, honoA)) / 100.0
-    no2Prop  = np.where(thrustCat == 1, no2H,
-                 np.where(thrustCat == 2, no2L, no2A)) / 100.0
-    noProp   = np.where(thrustCat == 1, noH,
-                 np.where(thrustCat == 2, noL, noA)) / 100.0
+#     # Proportion arrays
+#     honoProp = np.where(thrustCat == 1, honoH,
+#                  np.where(thrustCat == 2, honoL, honoA)) / 100.0
+#     no2Prop  = np.where(thrustCat == 1, no2H,
+#                  np.where(thrustCat == 2, no2L, no2A)) / 100.0
+#     noProp   = np.where(thrustCat == 1, noH,
+#                  np.where(thrustCat == 2, noL, noA)) / 100.0
 
-    # Compute speciation EIs
-    NOEI   = NOxEI * noProp[:, None]
-    NO2EI  = NOxEI * no2Prop[:, None]
-    HONOEI = NOxEI * honoProp[:, None]
+#     # Compute speciation EIs
+#     NOEI   = NOxEI * noProp[:, None]
+#     NO2EI  = NOxEI * no2Prop[:, None]
+#     HONOEI = NOxEI * honoProp[:, None]
 
-    return NOxEI, NOEI, NO2EI, HONOEI, noProp, no2Prop, honoProp
-
-
-
-import numpy as np
-
+#     return NOxEI, NOEI, NO2EI, HONOEI, noProp, no2Prop, honoProp
 
 def BFFM2_EINOx(
     fuelflow_trajectory: np.ndarray,
@@ -116,13 +112,12 @@ def BFFM2_EINOx(
 
     Parameters
     ----------
-    fuelfactor : ndarray, shape (n_times,)
-        Fuel flow factors (including delta, theta, and Mach corrections) at which to compute EI.
+    fuelflow_trajectory : ndarray, shape (n_times,)
+        Fuel flow at which to compute EI.
     NOX_EI_matrix : ndarray, shape (n_cal,)
         Baseline NOx EI values [g NOx / kg fuel] corresponding to calibration fuel flows.
-    fuelflow_KGperS : ndarray, shape (n_cal,)
+    fuelflow_performance : ndarray, shape (n_cal,)
         Calibration fuel flow values [kg/s] for which NOX_EI_matrix is defined.
-        Must have at least three entries if cruiseCalc=True.
     cruiseCalc : bool
         If True, apply cruise ambient corrections (temperature and pressure) to NOx EI.
     Tamb : float

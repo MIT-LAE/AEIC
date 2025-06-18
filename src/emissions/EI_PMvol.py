@@ -2,7 +2,7 @@ import numpy as np
 
 def EI_PMvol_NEW(fuelflow: np.ndarray, thrustCat: np.ndarray):
     """
-    Calculate EI(PMvolo) and OCicEI based on fuel flow and Monte Carlo switches.
+    Calculate EI(PMvolo) and OCicEI based on fuel flow 
 
     Parameters
     ----------

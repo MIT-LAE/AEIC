@@ -1,4 +1,4 @@
-Emissions
+Emissions Module
 =========
 
 The ``Emission`` class encapsulates the full calculation of aircraft emissions for a mission:
@@ -81,44 +81,105 @@ Upon instantiation, the following steps occur:
 
 Attributes
 ----------
+.. list-table:: Emission Class Attributes
+   :header-rows: 1
+   :widths: 25 10 65
 
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| Name                             | Type      | Description                                                        |
-+==================================+===========+====================================================================+
-| ``fuel``                         | ``dict``  | Fuel properties loaded from TOML (e.g. ``EI_CO2``, ``LC_CO2``).    |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``Ntot``, ``NClm``, ``NCrz``, ``NDes`` | ``int`` | Total, climb, cruise, descent time-step counts.                    |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``traj_emissions_all``          | ``bool``  | Whether climb/descent use performance model or LTO‐data.           |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``pmnvol_mode``                 | ``str``   | PM number estimation method for LTO (e.g. ``"SCOPE11"``).          |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``fuel_burn_per_segment``        | ``ndarray``| Fuel burned (kg) each time step.                                   |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``emission_indices``             | ``ndarray``| Emission indices (g per kg fuel) for every species & time step.    |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``pointwise_emissions_g``        | ``ndarray``| Emissions (g) per time step for trajectory phase.                  |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``LTO_emission_indices``         | ``ndarray``| Emission indices for each LTO mode.                                |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``LTO_emissions_g``              | ``ndarray``| Emissions (g) for each LTO mode.                                   |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``APU_emission_indices``         | ``ndarray``| APU emission indices (g per kg fuel).                              |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``APU_emissions_g``              | ``ndarray``| APU emissions (g).                                                 |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``GSE_emissions_g``              | ``ndarray``| GSE emissions (g) per engine‐start cycle.                          |
-+----------------------------------+-----------+--------------------------------------------------------------------+
-| ``summed_emission_g``            | ``ndarray``| Total emissions (g) aggregated over all sources per species.       |
-+----------------------------------+-----------+--------------------------------------------------------------------+
+   * - Name
+     - Type
+     - Description
+   * - ``fuel``
+     - ``dict``
+     - Fuel properties loaded from TOML (e.g. ``EI_CO2``, ``LC_CO2``).
+   * - ``Ntot``, ``NClm``, ``NCrz``, ``NDes``
+     - ``int``
+     - Total, climb, cruise, and descent time-step counts.
+   * - ``traj_emissions_all``
+     - ``bool``
+     - Whether climb/descent uses performance model or LTO data.
+   * - ``pmnvol_mode``
+     - ``str``
+     - PM number estimation method (e.g. ``"SCOPE11"``).
+   * - ``fuel_burn_per_segment``
+     - ``ndarray``
+     - Fuel burned (kg) per time step.
+   * - ``emission_indices``
+     - ``ndarray``
+     - Emission indices (g/kg fuel) per species and time step.
+   * - ``pointwise_emissions_g``
+     - ``ndarray``
+     - Emissions (g) per time step.
+   * - ``LTO_emission_indices``
+     - ``ndarray``
+     - Emission indices for each LTO mode.
+   * - ``LTO_emissions_g``
+     - ``ndarray``
+     - Emissions (g) for each LTO mode.
+   * - ``APU_emission_indices``
+     - ``ndarray``
+     - APU emission indices (g/kg fuel).
+   * - ``APU_emissions_g``
+     - ``ndarray``
+     - APU emissions (g).
+   * - ``GSE_emissions_g``
+     - ``ndarray``
+     - GSE emissions (g) per engine-start cycle.
+   * - ``summed_emission_g``
+     - ``ndarray``
+     - Total emissions (g) across all sources.
+
 
 ----
 
 Methods
 --------------
+.. autoclass:: emissions.emission.Emission
+   :members:
 
-.. autoclass:: Emission
-    :members:
+.. automodule:: emissions.APU_emissions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: emissions.EI_CO2
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: emissions.EI_H2O
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: emissions.EI_SOx
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: emissions.EI_HCCO
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: emissions.EI_NOx
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: emissions.EI_PMnvol
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: emissions.EI_PMvol
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: emissions.lifecycle_CO2
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 ----
 

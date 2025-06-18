@@ -8,15 +8,15 @@ import os
 
 # Add the src directory to the path to import modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src.emissions.emission import Emission
-from src.AEIC.performance_model import PerformanceModel
-from src.AEIC.trajectories.legacy_trajectory import LegacyTrajectory
-from src.emissions.EI_CO2 import EI_CO2
-from src.emissions.EI_H2O import EI_H2O
-from src.emissions.EI_SOx import EI_SOx
-from src.emissions.EI_NOx import BFFM2_EINOx,NOx_speciation
-from src.emissions.EI_HCCO import hccoEIsFunc
-from src.emissions.APU_emissions import get_APU_emissions
+from emissions.emission import Emission
+from AEIC.performance_model import PerformanceModel
+from AEIC.trajectories.legacy_trajectory import LegacyTrajectory
+from emissions.EI_CO2 import EI_CO2
+from emissions.EI_H2O import EI_H2O
+from emissions.EI_SOx import EI_SOx
+from emissions.EI_NOx import BFFM2_EINOx,NOx_speciation
+from emissions.EI_HCCO import hccoEIsFunc
+from emissions.APU_emissions import get_APU_emissions
 
 # Path to a real fuel TOML file in your repo
 FUEL_FILE = "/Users/aditeyashukla/Dropbox/Mac (2)/Documents/LAE/AEIC/src/emissions/fuels/convential_jetA.toml"
@@ -279,7 +279,7 @@ class TestBFFM2_EINOx:
         # NOx EI should be different
         assert not np.allclose(results_no_cruise[0], results_with_cruise[0])
     
-    @patch('src.utils.standard_fuel.get_thrust_cat')
+    @patch('utils.standard_fuel.get_thrust_cat')
     def test_thrust_categorization(self, mock_get_thrust_cat):
         """Test thrust categorization functionality"""
         # Mock thrust categories

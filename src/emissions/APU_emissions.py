@@ -3,6 +3,31 @@ import numpy as np
 def get_APU_emissions(APU_emission_indices, APU_emissions_g, 
                   LTO_emission_indices, APU_data, 
                   LTO_noProp, LTO_no2Prop, LTO_honoProp, apu_tim=2854):
+    """
+    Calculate APU emissions using time in modes and given APU data.
+
+    Parameters
+    ----------
+    APU_emission_indices : ndarray
+        self.APU_emission_indices from Emissions class
+    APU_emissions_g: ndarray
+        self.APU_emissions_g from Emissions class
+    LTO_emission_indices : ndarray
+        self.LTO_emission_indices from Emissions class
+    APU_data: dict
+        dictionary containing fuel flows and EIs of chosen APU
+    LTO_noProp, LTO_no2Prop, LTO_honoProp: float
+        NOx speciation elements from LTO analysis
+    apu_time: float
+        Time in mode for APU; default value = 2854 seconds
+
+    Returns
+    -------
+    APU_emission_indices : ndarray
+        self.APU_emission_indices from Emissions class
+    APU_emissions_g: ndarray
+        self.APU_emissions_g from Emissions class
+    """
     
     mask = (APU_data['fuel_kg_per_s'] != 0.0)
 

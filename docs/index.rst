@@ -32,7 +32,7 @@ updated trajectory dynamics, parallelization, and more.
 
    src/AEIC/performance_model
    src/AEIC/trajectories/trajectories
-   src/emissions/emissions
+   src/emissions/emission
    src/BADA/bada
    src/gridding/gridding
    data/IO/io_formats

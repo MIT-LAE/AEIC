@@ -7,7 +7,7 @@ from emissions.EI_CO2 import EI_CO2
 from emissions.EI_H2O import EI_H2O
 from emissions.EI_SOx import EI_SOx
 from emissions.EI_NOx import BFFM2_EINOx,NOx_speciation
-from emissions.EI_HCCO import hccoEIsFunc
+from emissions.EI_HCCO import EI_HCCO
 from emissions.EI_PMvol import EI_PMvol_NEW
 from emissions.EI_PMnvol import PMnvol_MEEM
 from emissions.APU_emissions import get_APU_emissions
@@ -193,12 +193,12 @@ class Emission:
         )
 
         # --- Compute HC and CO indices ---
-        self.emission_indices['HC'][i_start:i_end] = hccoEIsFunc(
+        self.emission_indices['HC'][i_start:i_end] = EI_HCCO(
             trajectory.traj_data['fuelFlow'][i_start:i_end],
             lto_hc_ei_array,
             lto_ff_array,
         )
-        self.emission_indices['CO'][i_start:i_end] = hccoEIsFunc(
+        self.emission_indices['CO'][i_start:i_end] = EI_HCCO(
             trajectory.traj_data['fuelFlow'][i_start:i_end],
             lto_co_ei_array,
             lto_ff_array,

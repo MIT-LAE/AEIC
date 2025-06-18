@@ -8,7 +8,6 @@ from parsers.OPF_reader import parse_OPF
 from parsers.LTO_reader import parseLTO
 from BADA.aircraft_parameters import Bada3AircraftParameters
 from BADA.model import Bada3JetEngineModel
-# from src.missions.OAG_filter import filter_OAG_schedule
 from utils import file_location
 
 class PerformanceModel:

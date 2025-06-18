@@ -4,9 +4,9 @@ import numpy as np
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src.emissions.emission import Emission
-from src.AEIC.performance_model import PerformanceModel
-from src.AEIC.trajectories.legacy_trajectory import LegacyTrajectory
+from emissions.emission import Emission
+from AEIC.performance_model import PerformanceModel
+from AEIC.trajectories.legacy_trajectory import LegacyTrajectory
 
 # Path to a real fuel TOML file in your repo
 FUEL_FILE = "/Users/aditeyashukla/Dropbox/Mac (2)/Documents/LAE/AEIC/src/emissions/fuels/convential_jetA.toml"

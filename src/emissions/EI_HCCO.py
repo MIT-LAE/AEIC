@@ -1,32 +1,26 @@
 import numpy as np 
 
-def hccoEIsFunc(
-    fuelfactor: np.ndarray,
+def EI_HCCO(
+    fuelflow_evaluate: np.ndarray,
     x_EI_matrix: np.ndarray,
-    fuelflow_KGperS: np.ndarray,
+    fuelflow_calibrate: np.ndarray,
     cruiseCalc: bool = True,
     Tamb: float = 288.15,
     Pamb: float = 101325.0
 ) -> np.ndarray:
     """
-    Calculate HC+CO emission index (xEI) for a single EQP/engine type,
+    Calculate HC+CO emission index (xEI),
     using a two‐segment (slanted + horizontal) BFFM2 curve, an ACRP low‐thrust correction,
-    and an optional cruise correction. Monte Carlo variability has been removed.
+    and an optional cruise correction. 
 
     Parameters
     ----------
-    fuelfactor : ndarray, shape (n_points,)
-        Fuel flow factors [kg/s] at which to compute xEI. Must be 1D.
+    fuelflow_evaluate : ndarray, shape (n_points,)
+        Fuel flows [kg/s] at which to compute xEI. Must be 1D.
     x_EI_matrix : ndarray, shape (4,)
         Baseline emission indices [g x / kg fuel] at four calibration fuel‐flow points.
-        x_EI_matrix[0] ≡ EI at lowest calibration flow (≈7% thrust),
-        x_EI_matrix[1] ≡ next calibration point (≈30% thrust),
-        x_EI_matrix[2] and [3] ≡ two higher‐thrust points (used to define horizontal segment).
-    fuelflow_KGperS : ndarray, shape (4,)
-        Calibration fuel flows [kg/s] corresponding to x_EI_matrix. Must be strictly positive.
-        fuelflow_KGperS[0] ≡ "7% thrust" flow,
-        fuelflow_KGperS[1] ≡ "30% thrust" flow,
-        fuelflow_KGperS[2], [3] ≡ higher thrust flows (e.g., 85% and 100%).
+    fuelflow_calibrate : ndarray, shape (4,)
+        Calibration fuel flows [kg/s] corresponding to x_EI_matrix
     cruiseCalc : bool
         If True, apply cruise correction (ambient T and P) to the final xEI.
     Tamb : float
@@ -37,21 +31,21 @@ def hccoEIsFunc(
     Returns
     -------
     xEI : ndarray, shape (n_points,)
-        The HC+CO emission index [g x / kg fuel] at each fuelfactor.
+        The HC+CO emission index [g x / kg fuel] at each fuelflow_evaluate.
     """
 
     # Validate inputs
     if x_EI_matrix.ndim != 1 or x_EI_matrix.size != 4:
         raise ValueError("x_EI_matrix must be a 1D array of length 4.")
-    if fuelflow_KGperS.ndim != 1 or fuelflow_KGperS.size != 4:
-        raise ValueError("fuelflow_KGperS must be a 1D array of length 4.")
-    if fuelfactor.ndim != 1:
-        raise ValueError("fuelfactor must be a 1D array (n_points,).")
+    if fuelflow_calibrate.ndim != 1 or fuelflow_calibrate.size != 4:
+        raise ValueError("fuelflow_calibrate must be a 1D array of length 4.")
+    if fuelflow_evaluate.ndim != 1:
+        raise ValueError("fuelflow_evaluate must be a 1D array (n_points,).")
 
     # Make copies to avoid modifying originals
     x_EI = x_EI_matrix.astype(float).copy()
-    ff_cal = fuelflow_KGperS.astype(float).copy()
-    ff_eval = fuelfactor.astype(float).copy()
+    ff_cal = fuelflow_calibrate.astype(float).copy()
+    ff_eval = fuelflow_evaluate.astype(float).copy()
 
     # ----------------------------------------------------------------------------
     # 1. Compute slanted‐line parameters in log10 space
@@ -149,8 +143,8 @@ def hccoEIsFunc(
 
     # ----------------------------------------------------------------------------
     # 6. ACRP low‐thrust correction:
-    #    For any fuelfactor < ff_cal[0], use:
-    #       xEI_acrp = xEI * [1 + (–52) * (fuelfactor – ff_cal[0])]
+    #    For any fuelflow_evaluate < ff_cal[0], use:
+    #       xEI_acrp = xEI * [1 + (–52) * (fuelflow_evaluate – ff_cal[0])]
     #    Then overwrite those points with xEI_acrp.
     # ----------------------------------------------------------------------------
     ACRP_slope = -52.0

@@ -1,72 +1,118 @@
 import numpy as np
-from src.utils.standard_fuel import get_fuel_factor
-from src.utils.consts import kappa
+from utils.standard_fuel import get_fuel_factor
+from utils.consts import kappa
 
-def EI_PMnvol(
-    fuel_flow_flight: np.ndarray,
-    fuel_flow_performance_model: np.ndarray,
-    PMnvolEI_ICAOthrust: np.ndarray
-) -> np.ndarray:
-    """
-    Calculate EI(PMnvol) (black carbon) [g/kg fuel] via linear interpolation
-    from reference thrust-specific values.
+# def EI_PMnvol(
+#     fuel_flow_flight: np.ndarray,
+#     fuel_flow_performance_model: np.ndarray,
+#     PMnvolEI_ICAOthrust: np.ndarray
+# ) -> np.ndarray:
+#     """
+#     Calculate EI(PMnvol) (black carbon) [g/kg fuel] via linear interpolation
+#     from reference thrust-specific values.
 
-    Parameters
-    ----------
-    thrusts : ndarray, shape (n_types, n_times)
-        ICAO thrust settings (%) for each mode and time.
-    PMnvolEI_ICAOthrust : ndarray, shape (n_types, 5)
-        Emissions indices at thrusts [7, 30, 85, 100] (%).
-    mcs7, mcs30, mcs85 : ints
-        Monte Carlo switches (unused, commented out in original).
-    rv7, rv30, rv85 : floats
-        Random variates (unused, commented out in original).
+#     Parameters
+#     ----------
+#     thrusts : ndarray, shape (n_types, n_times)
+#         ICAO thrust settings (%) for each mode and time.
+#     PMnvolEI_ICAOthrust : ndarray, shape (n_types, 5)
+#         Emissions indices at thrusts [7, 30, 85, 100] (%).
+#     mcs7, mcs30, mcs85 : ints
+#         Monte Carlo switches (unused, commented out in original).
+#     rv7, rv30, rv85 : floats
+#         Random variates (unused, commented out in original).
 
-    Returns
-    -------
-    PMnvolEI : ndarray, shape (n_types, n_times)
-        Interpolated black carbon emissions index [g/kg fuel].
-    """
-    # Define reference thrust levels
-    # ICAO_thrust = np.array([7, 30, 85, 100], dtype=float)
+#     Returns
+#     -------
+#     PMnvolEI : ndarray, shape (n_types, n_times)
+#         Interpolated black carbon emissions index [g/kg fuel].
+#     """
+#     # Define reference thrust levels
+#     # ICAO_thrust = np.array([7, 30, 85, 100], dtype=float)
 
-    # Allocate output
-    PMnvolEI = np.zeros_like(fuel_flow_flight)
+#     # Allocate output
+#     PMnvolEI = np.zeros_like(fuel_flow_flight)
 
-    # Perform interpolation row-by-row
-    PMnvolEI = np.interp(fuel_flow_flight, fuel_flow_performance_model, PMnvolEI_ICAOthrust)
+#     # Perform interpolation row-by-row
+#     PMnvolEI = np.interp(fuel_flow_flight, fuel_flow_performance_model, PMnvolEI_ICAOthrust)
 
-    return PMnvolEI
+#     return PMnvolEI
 
-def EI_PMnvolN(thrusts: np.ndarray,
-                      PMnvolEIN_ICAOthrust: np.ndarray) -> np.ndarray:
-    """
-    Interpolate non-volatile particulate matter number-based EI (PMnvolEI_N)
-    across ICAO thrust settings.
+# def EI_PMnvolN(thrusts: np.ndarray,
+#                       PMnvolEIN_ICAOthrust: np.ndarray) -> np.ndarray:
+#     """
+#     Interpolate non-volatile particulate matter number-based EI (PMnvolEI_N)
+#     across ICAO thrust settings.
 
-    Parameters
-    ----------
-    thrusts : ndarray, shape (n_types, n_times)
-        ICAO thrust settings (%) for each mode and time.
-    PMnvolEIN_ICAOthrust : ndarray, shape (n_types, 4)
-        Reference EI values at thrusts [7, 30, 85, 100] (%).
+#     Parameters
+#     ----------
+#     thrusts : ndarray, shape (n_types, n_times)
+#         ICAO thrust settings (%) for each mode and time.
+#     PMnvolEIN_ICAOthrust : ndarray, shape (n_types, 4)
+#         Reference EI values at thrusts [7, 30, 85, 100] (%).
 
-    Returns
-    -------
-    PMnvolEI_N : ndarray, shape (n_types, n_times)
-        Interpolated non-volatile PM EI [g/kg fuel].
-    """
-    # Define reference thrust levels
-    ICAO_thrust = np.array([7, 30, 85, 100], dtype=float)
-    PMnvolEI_N = np.interp(thrusts, ICAO_thrust, PMnvolEIN_ICAOthrust)
+#     Returns
+#     -------
+#     PMnvolEI_N : ndarray, shape (n_types, n_times)
+#         Interpolated non-volatile PM EI [g/kg fuel].
+#     """
+#     # Define reference thrust levels
+#     ICAO_thrust = np.array([7, 30, 85, 100], dtype=float)
+#     PMnvolEI_N = np.interp(thrusts, ICAO_thrust, PMnvolEIN_ICAOthrust)
 
-    return PMnvolEI_N
+#     return PMnvolEI_N
 
 
 def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,machFlight,fuel_flow_cruise,pmnvolSwitch_cruise = 'SCOPE11'):
-    # This implementation follows the implementation by Ahrens et al (2022)
-    # The nvPM Mission Emissions Estimation Methodology (MEEM) 
-    # which is based on SCOPE11, and Peck et al (2013)  
+    """
+    Estimate non-volatile particulate matter (nvPM) emissions at cruise using the 
+    Mission Emissions Estimation Methodology (MEEM) based on Ahrens et al. (2022),
+    SCOPE11, and the methodology of Peck et al. (2013).
+
+    This function computes:
+    - Geometric mean diameter (GMD) of emitted particles
+    - Mass-based emissions index (EI) in g/kg of fuel
+    - Number-based emissions index (EI) in #/kg of fuel
+
+    Parameters
+    ----------
+    EDB_data : dict
+        EDB data containing engine type, bypass ratio, pressure ratio,
+        smoke number (SN) matrix, and emission indices (mass and number).
+    altitudes : ndarray
+        Array of flight altitudes [m] over the mission trajectory.
+    Tamb_cruise : ndarray
+        Ambient temperature [K] at each point in the trajectory.
+    Pamb_cruise : ndarray
+        Ambient pressure [Pa] at each point in the trajectory.
+    machFlight : ndarray
+        Mach number at each point in the trajectory.
+    fuel_flow_cruise : ndarray
+        Fuel flow [kg/s] at each point in the trajectory.
+    pmnvolSwitch_cruise : str, optional
+        Method to use for GMD estimation; default is 'SCOPE11'.
+
+    Returns
+    -------
+    EI_PMnvol_GMD : ndarray
+        Geometric mean diameter of particles [nm], constant along the trajectory.
+    EI_PMnvol : ndarray
+        Emissions index of non-volatile PM mass [g/kg fuel] along the trajectory.
+    EI_PMnvolN : ndarray
+        Emissions index of non-volatile PM number [#/kg fuel] along the trajectory.
+
+    Notes
+    -----
+    - If `nvPM_mass_matrix` or `nvPM_num_matrix` is undefined or negative in the
+      `EDB_data`, this function reconstructs the values using the SN matrix and 
+      correlations from the literature.
+    - Adjustments for altitude and in-flight thermodynamic conditions are made using
+      combustor inlet temperature and pressure estimates derived from ambient 
+      conditions and engine pressure ratio.
+    - Interpolated values account for max thrust EI values where provided.
+    - Results with invalid SN or negative EI are set to zero with a warning.
+    """
+    
 
     # -----------------------------
     # 0. Get fuel factor (sea-level equivalent fuel flow):
