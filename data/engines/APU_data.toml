@@ -1,0 +1,169 @@
+# APU emission data 
+#  
+#  Watterson, John, Charles Walker, and Simon Eggleston. 
+#  "Revision to the method of estimating emissions from aircraft,
+#  in the UK greenhouse gas inventory." 
+#  Report to Global Atmosphere Division,
+#  UK Defra. Report number ED47052 (2004).
+
+[[APU]]
+name = "APU 131-9"
+defra = "131-9"
+fuel_kg_per_s = 0.0321
+NOx_g_per_kg = 6.64
+CO_g_per_kg = 4.88
+HC_g_per_kg = 0.37
+PM10_g_per_kg = 0.054165420212751
+
+[[APU]]
+name = "APU GTCP30-54"
+defra = "30-54"
+fuel_kg_per_s = 0.0087
+NOx_g_per_kg = 3.57
+CO_g_per_kg = 36.3
+HC_g_per_kg = 4.31
+PM10_g_per_kg = 0.166960446268063
+
+[[APU]]
+name = "APU GTCP331-200ER (143 HP)"
+defra = "331-200ER"
+fuel_kg_per_s = 0.0338
+NOx_g_per_kg = 9.51
+CO_g_per_kg = 4.13
+HC_g_per_kg = 0.43
+PM10_g_per_kg = 0.0534525124499441
+
+[[APU]]
+name = "APU GTCP 331-350"
+defra = "331-350"
+fuel_kg_per_s = 0.0571
+NOx_g_per_kg = 9.9
+CO_g_per_kg = 1.86
+HC_g_per_kg = 0.23
+PM10_g_per_kg = 0.0333532507117425
+
+[[APU]]
+name = "APU GTCP331-500 (143 HP)"
+defra = "331-500"
+fuel_kg_per_s = 0.0675
+NOx_g_per_kg = 11.41
+CO_g_per_kg = 1.89
+HC_g_per_kg = 0.2
+PM10_g_per_kg = 0.0290409248235342
+
+[[APU]]
+name = "APU GTCP 36-100"
+defra = "36-100"
+fuel_kg_per_s = 0.0184
+NOx_g_per_kg = 5.33
+CO_g_per_kg = 31.1
+HC_g_per_kg = 0.57
+PM10_g_per_kg = 0.0878891063464452
+
+[[APU]]
+name = "APU GTCP 36-150[]"
+defra = "36-150[ ]"
+fuel_kg_per_s = 0.0188
+NOx_g_per_kg = 5.1
+CO_g_per_kg = 6.45
+HC_g_per_kg = 0.61
+PM10_g_per_kg = 0.0858377858398328
+
+[[APU]]
+name = "APU GTCP 36-150[RR]"
+defra = "36-150[RR]"
+fuel_kg_per_s = 0.0231
+NOx_g_per_kg = 5.29
+CO_g_per_kg = 7.26
+HC_g_per_kg = 0.49
+PM10_g_per_kg = 0.0714593207126891
+
+[[APU]]
+name = "APU GTCP 36-300 (80HP)"
+defra = "36-300"
+fuel_kg_per_s = 0.0278
+NOx_g_per_kg = 10.1
+CO_g_per_kg = 2.05
+HC_g_per_kg = 0.15
+PM10_g_per_kg = 0.0641736730184733
+
+[[APU]]
+name = "APU GTCP 36-4A"
+defra = "36-4A"
+fuel_kg_per_s = 0.0169
+NOx_g_per_kg = 5.1
+CO_g_per_kg = 13.47
+HC_g_per_kg = 0.36
+PM10_g_per_kg = 0.0945430866745208
+
+[[APU]]
+name = "APU GTCP 660 (300 HP)"
+defra = "600-4"
+fuel_kg_per_s = 0.0966
+NOx_g_per_kg = 5.33
+CO_g_per_kg = 8.65
+HC_g_per_kg = 0.28
+PM10_g_per_kg = 0.0195438363652955
+
+[[APU]]
+name = "APU TSCP700-4B (142 HP)"
+defra = "700-4B"
+fuel_kg_per_s = 0.0583
+NOx_g_per_kg = 8.23
+CO_g_per_kg = 3.73
+HC_g_per_kg = 0.37
+PM10_g_per_kg = 0.0321705301270729
+
+[[APU]]
+name = "APU GTCP85-129 (200 HP)"
+defra = "85-129"
+fuel_kg_per_s = 0.0296
+NOx_g_per_kg = 4.75
+CO_g_per_kg = 17.99
+HC_g_per_kg = 1.03
+PM10_g_per_kg = 0.0565023389259929
+
+[[APU]]
+name = "APU GTCP 85 (200 HP)"
+defra = "85-129"
+fuel_kg_per_s = 0.0296
+NOx_g_per_kg = 4.75
+CO_g_per_kg = 17.99
+HC_g_per_kg = 1.03
+PM10_g_per_kg = 0.0565023389259929
+
+[[APU]]
+name = "APU GTC 85"
+defra = "85-129"
+fuel_kg_per_s = 0.0296
+NOx_g_per_kg = 4.75
+CO_g_per_kg = 17.99
+HC_g_per_kg = 1.03
+PM10_g_per_kg = 0.0565023389259929
+
+[[APU]]
+name = "APU PW901A"
+defra = "PW901A"
+fuel_kg_per_s = 0.1087
+NOx_g_per_kg = 3.15
+CO_g_per_kg = 16.78
+HC_g_per_kg = 1.5
+PM10_g_per_kg = 0.0167192713707183
+
+[[APU]]
+name = "APU ST-6"
+defra = "ST6L-73"
+fuel_kg_per_s = 0.0554
+NOx_g_per_kg = 8.9
+CO_g_per_kg = 0.05
+HC_g_per_kg = 0.02
+PM10_g_per_kg = 0.0339407617626929
+
+[[APU]]
+name = "None"
+defra = "0"
+fuel_kg_per_s = 0.0
+NOx_g_per_kg = 0.0
+CO_g_per_kg = 0.0
+HC_g_per_kg = 0.0
+PM10_g_per_kg = 0.0
