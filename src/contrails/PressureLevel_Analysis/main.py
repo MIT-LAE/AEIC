@@ -1,5 +1,7 @@
 import numpy as np
 import xarray as xr
+import os
+import glob
 
 def compute_vapor_pressure_and_rhi(ds):
     """
@@ -103,22 +105,33 @@ def print_pressure_levels_with_altitudes(ds):
 
 
 
-fileName = "20241201.nc"
-
-file_path = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/RAW/{fileName}"
-
-out_path = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/PROCESSED/RHi_{fileName}"
-
-ds = xr.open_dataset(file_path)
-
-print_pressure_levels_with_altitudes(ds)
-
-ds_RHI = compute_vapor_pressure_and_rhi(ds)
-
-# Save RHi dataset to NetCDF
-ds_RHI.to_netcdf(out_path)
-
-print(f"RHi dataset written to {out_path}")
 
 
+raw_dir = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/RAW"
 
+processed_dir = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/PROCESSED"
+
+
+# Create the processed directory if it doesn't exist
+os.makedirs(processed_dir, exist_ok=True)
+
+file_list = sorted(glob.glob(os.path.join(raw_dir, "*.nc")))
+
+#print("FILE LIST --->\n")
+#print(file_list)
+
+for file_path in file_list:
+    file_name = os.path.basename(file_path)
+    out_path = os.path.join(processed_dir, f"RHi_{file_name}")
+
+    print(f"\nProcessing: {file_name}")
+    ds = xr.open_dataset(file_path)
+
+    # print pressure levels and altitude info
+    #print_pressure_levels_with_altitudes(ds)
+
+    ds_RHI = compute_vapor_pressure_and_rhi(ds)
+
+    ds_RHI.to_netcdf(out_path)
+    
+    print(f"Saved RHi dataset to: {out_path}")
