@@ -4,15 +4,15 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.ticker as mticker
-
+import os
+from matplotlib.colors import ListedColormap
 
 def pressure_to_altitude_ft(pressure_hPa):
     """Convert pressure (hPa) to altitude (ft) using the barometric formula."""
     altitude_m = 44330.0 * (1.0 - (np.asarray(pressure_hPa) / 1013.25) ** (1.0 / 5.255))
     return altitude_m * 3.28084
 
-
-def plot_issr_conus_by_altitude(ds_RHI, time_index):
+def plot_issr_conus_by_altitude(ds_RHI, fileName, time_index):
     """
     Plot ISSR = 1 points over CONUS colored by altitude (ft), with a colorbar in flight levels.
 
@@ -20,9 +20,14 @@ def plot_issr_conus_by_altitude(ds_RHI, time_index):
     - ds_RHI: xarray.Dataset with dimensions [valid_time, pressure_level, latitude, longitude]
     - time_index: index into the valid_time dimension
     """
+    
+    # Create output directory if it doesn't exist
+    output_dir = os.path.join("Plots", fileName)
+    os.makedirs(output_dir, exist_ok=True)
+    
     # Subset at the selected time
     ds = ds_RHI.isel(valid_time=time_index)
-
+    
     # Define CONUS bounds
     conus_bounds = {
         'lat_min': 24.5,
@@ -118,9 +123,101 @@ def plot_issr_conus_by_altitude(ds_RHI, time_index):
     for t in cbar.ax.get_xticklabels():
         t.set_fontname('Times New Roman')
         t.set_fontsize(14)
-
+        
     plt.tight_layout()
-    plt.savefig(f'Plots/CONUS_ISSR_MAP_time_index_{time_index}.png')
+    save_path = os.path.join(output_dir, f'CONUS_ISSR_MAP_time_index_{time_index}.png')
+    plt.savefig(save_path)
+    plt.close(fig)
+
+def pressure_to_altitude_ft(pressure_hPa):
+    """Convert pressure (hPa) to altitude in feet using the barometric formula."""
+    altitude_m = 44330.0 * (1.0 - (np.asarray(pressure_hPa) / 1013.25) ** (1.0 / 5.255))
+    return altitude_m * 3.28084
+
+def plot_issr_conus_multilevel_filled(ds_RHI, levels_to_plot=None, threshold=0.1, save_path="ISSR_CONUS_FL_filled.png"):
+    """
+    Plot filled contours of time-averaged ISSR over CONUS for multiple pressure levels,
+    each shaded and labeled by Flight Level, with a Flight Level colorbar.
+
+    Parameters:
+    - ds_RHI: xarray.Dataset with 'ISSR_flag' and 'pressure_level'
+    - levels_to_plot: list of pressure levels to overlay (default: all in dataset)
+    - threshold: ISSR fraction threshold for filled contours
+    - save_path: path to save final figure
+    """
+    # Define CONUS bounds
+    conus_bounds = {
+        'lat_min': 24.5,
+        'lat_max': 49.5,
+        'lon_min': -125.0,
+        'lon_max': -66.5
+    }
+
+    # Subset to CONUS and to first 13 time indices
+    ds_conus = ds_RHI.isel(valid_time=slice(0, 13)).sel(
+        latitude=slice(conus_bounds['lat_max'], conus_bounds['lat_min']),
+        longitude=slice(conus_bounds['lon_min'], conus_bounds['lon_max'])
+    )
+
+    # Compute time-averaged ISSR at each pressure level
+    issr_avg = ds_conus['ISSR_flag'].mean(dim="valid_time", skipna=True)
+
+    # Choose pressure levels to plot
+    pressure_levels = issr_avg.pressure_level.values
+    if levels_to_plot is not None:
+        pressure_levels = [p for p in pressure_levels if p in levels_to_plot]
+
+    alt_ft = pressure_to_altitude_ft(pressure_levels)
+    flight_levels = [f"FL{int(a/100):02d}" for a in alt_ft]
+
+    # Setup colormap
+    cmap = plt.cm.plasma
+    colors = cmap(np.linspace(0.2, 0.95, len(pressure_levels)))
+
+    # Setup plot
+    fig = plt.figure(figsize=(12, 6), dpi=200)
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_extent([
+        conus_bounds['lon_min'], conus_bounds['lon_max'],
+        conus_bounds['lat_min'], conus_bounds['lat_max']
+    ])
+    ax.coastlines()
+    ax.add_feature(cfeature.BORDERS, linewidth=0.3)
+    ax.add_feature(cfeature.STATES, linewidth=0.3)
+
+    # Draw each filled contour
+    for i, p in enumerate(pressure_levels):
+        field = issr_avg.sel(pressure_level=p)
+        cf = ax.contourf(
+            field.longitude,
+            field.latitude,
+            field.where(field >= threshold),
+            levels=[threshold, 1.0],
+            colors=[colors[i]],
+            transform=ccrs.PlateCarree(),
+            alpha=0.6
+        )
+
+    # Create colorbar for Flight Levels
+    sm = plt.cm.ScalarMappable(cmap=ListedColormap(colors))
+    sm.set_array([])  # required dummy for colorbar
+
+    cbar = plt.colorbar(sm, ax=ax, orientation='horizontal', pad=0.05, fraction=0.046, aspect=30)
+    cbar.set_label('Flight Level', fontsize=22, fontname='Times New Roman')
+    cbar.set_ticks(np.linspace(0.5 / len(flight_levels), 1 - 0.5 / len(flight_levels), len(flight_levels)))
+    cbar.ax.set_xticklabels(flight_levels)
+
+    for t in cbar.ax.get_xticklabels():
+        t.set_fontname('Times New Roman')
+        t.set_fontsize(14)
+
+    plt.tight_layout()    
+    plt.savefig(save_path, dpi=300)
+    plt.close(fig)
+    print(f"\nSaved filled-contour plot with FL colorbar to: {save_path}")
+
+
+
 
 
 # === RUN SCRIPT ===
@@ -128,4 +225,23 @@ fileName = "20241201.nc"
 file_path = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/PROCESSED/RHi_{fileName}"
 
 ds_RHI = xr.open_dataset(file_path)
-plot_issr_conus_by_altitude(ds_RHI, time_index=0)
+
+ds_RHI = ds_RHI[["ISSR_flag", "pressure_level"]].load()
+
+
+#plot_issr_conus_multilevel_filled(ds_RHI, levels_to_plot=None, threshold=0.1, save_path="ISSR_CONUS_FL_filled.png")
+
+
+
+#plot_issr_conus_by_altitude(ds_RHI, time_index=0)
+
+
+# Loop over all available time indices
+for t_idx in range(ds_RHI.sizes['valid_time']):
+    print(f"Plotting time index {t_idx}...")
+    plot_issr_conus_by_altitude(ds_RHI, fileName, time_index=t_idx )
+    
+    
+
+    
+#create_issr_animation(ds_RHI)
