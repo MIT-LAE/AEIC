@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from geopy.distance import geodesic
 from pyproj import Geod
 import xarray as xr
-
+from collections import defaultdict
 
 # (Data source: Fig. 9) Rädel, G. and Shine, K.P., 2008. Radiative forcing by persistent contrails and its dependence on cruise altitudes. Journal of Geophysical Research: Atmospheres, 113(D7).
 def interpolate_rf_from_altitude(alt_km, rf_df):
@@ -16,6 +16,8 @@ def pressure_to_altitude_km(pressure_hPa):
     altitude_m = 44330.0 * (1.0 - (pressure_hPa / 1013.25)**(1.0 / 5.255))
     return altitude_m / 1000.0  # meters to kilometers
 
+
+
 def plot_issr_from_origin_to_multiple_destinations(
     ds,
     rf_df,
@@ -25,34 +27,42 @@ def plot_issr_from_origin_to_multiple_destinations(
     save_path="issr_geodesic_multiple.png"
 ):
     """
-    Plot ISSR altitude vs geodesic distance for multiple destination locations from a fixed origin.
+    Plot ISSR altitude vs geodesic distance for multiple destinations from a fixed origin.
+    Compute total ISSR extent along continuous segments, and report length per altitude level.
 
     Parameters:
         ds (xarray.Dataset): Dataset with ISSR_flag, pressure_level, latitude, longitude
-        rf_df (pd.DataFrame): Not used in current plot, but kept for extension
-        origin (tuple): (lat, lon) for the fixed start point
-        destinations (list of tuple): List of (lat, lon) tuples for end points
-        valid_time_index (int): Time index to subset the dataset
-        save_path (str): File path to save the resulting plot
-    """
-    import matplotlib.cm as cm
+        rf_df (pd.DataFrame): (not used here but retained for extensibility)
+        origin (tuple): (lat, lon) start point
+        destinations (list of tuple): list of (lat, lon) endpoints
+        valid_time_index (int): time index to subset dataset
+        save_path (str): file path for saved figure
 
+    Returns:
+        total_issr_km (float): total ISSR segment length [km]
+        issr_extent_by_level (dict): altitude_km → ISSR extent [km]
+    """
     ds_t = ds.isel(valid_time=valid_time_index)
-    colors = cm.tab10.colors
+    geod = Geod(ellps='WGS84')
+    total_issr_km = 0.0
+    issr_extent_by_level = defaultdict(float)
 
     plt.figure(figsize=(10, 6), dpi=300)
+    colors = plt.cm.tab10.colors
 
     for i, destination in enumerate(destinations):
-        # Bounding box
+        # Subset region around O-D pair
         lat_min, lat_max = min(origin[0], destination[0]) - 5, max(origin[0], destination[0]) + 5
         lon_min, lon_max = min(origin[1], destination[1]) - 5, max(origin[1], destination[1]) + 5
         ds_subset = ds_t.sel(latitude=slice(lat_max, lat_min), longitude=slice(lon_min, lon_max))
 
+        # Mask ISSR=1 regions
         mask = ds_subset['ISSR_flag'] == 1
         if not mask.any():
             print(f"No ISSR regions found for path to {destination}. Skipping.")
             continue
 
+        # Extract coordinates and pressure
         lat_1d = ds_subset.latitude.values
         lon_1d = ds_subset.longitude.values
         p_1d = ds_subset.pressure_level.values
@@ -61,11 +71,12 @@ def plot_issr_from_origin_to_multiple_destinations(
         issr_mask = mask.transpose('pressure_level', 'latitude', 'longitude').values
         lon_vals = LON[issr_mask]
         lat_vals = LAT[issr_mask]
-        p_vals = P[issr_mask]
+        p_vals   = P[issr_mask]
 
+        # Convert pressure to altitude (km)
         alt_vals_km = pressure_to_altitude_km(p_vals)
 
-        geod = Geod(ellps='WGS84')
+        # Distance from origin
         _, _, dists_m = geod.inv(
             np.full_like(lon_vals, origin[1]),
             np.full_like(lat_vals, origin[0]),
@@ -74,10 +85,12 @@ def plot_issr_from_origin_to_multiple_destinations(
         )
         dists_km = dists_m / 1000.0
 
+        # Sort by distance
         sort_idx = np.argsort(dists_km)
         dists_km = dists_km[sort_idx]
         alt_vals_km = alt_vals_km[sort_idx]
 
+        # Plot ISSR points
         plt.plot(
             dists_km,
             alt_vals_km,
@@ -88,7 +101,46 @@ def plot_issr_from_origin_to_multiple_destinations(
             color=colors[i % len(colors)]
         )
 
-    plt.xlabel(f"Distance ({origin[0]:.1f}°, {origin[1]:.1f}°) [km]", fontsize=13)
+        # Segment computation
+        threshold_km = 50.0
+        segment_lengths = []
+        segment_altitudes = []
+
+        current_segment_len = 0.0
+        current_segment_alt = [alt_vals_km[0]]
+
+        for j in range(1, len(dists_km)):
+            
+            gap = geod.inv(
+            lon_vals[sort_idx][j - 1],
+            lat_vals[sort_idx][j - 1],
+            lon_vals[sort_idx][j],
+            lat_vals[sort_idx][j]
+            )[2] / 1000.0  # in km
+            
+            
+            if gap < threshold_km:
+                current_segment_len += gap
+                current_segment_alt.append(alt_vals_km[j])
+            else:
+                if current_segment_len > 0:
+                    segment_lengths.append(current_segment_len)
+                    segment_altitudes.append(np.mean(current_segment_alt))
+                current_segment_len = 0.0
+                current_segment_alt = [alt_vals_km[j]]
+
+        if current_segment_len > 0:
+            segment_lengths.append(current_segment_len)
+            segment_altitudes.append(np.mean(current_segment_alt))
+
+        # Accumulate per flight level
+        for seg_len, seg_alt in zip(segment_lengths, segment_altitudes):
+            level = round(seg_alt, 2)
+            issr_extent_by_level[level] += seg_len
+            total_issr_km += seg_len
+
+    # Final plot
+    plt.xlabel(f"Distance from Origin ({origin[0]:.1f}°, {origin[1]:.1f}°) [km]", fontsize=13)
     plt.ylabel("Altitude (km)", fontsize=13)
     plt.title("ISSR Altitude along Multiple Geodesics", fontsize=14)
     plt.grid(True, linestyle=':', linewidth=0.5)
@@ -96,6 +148,14 @@ def plot_issr_from_origin_to_multiple_destinations(
     plt.tight_layout()
     plt.savefig(save_path, dpi=300)
     plt.close()
+
+    # Print summary
+    print(f"\nTotal ISSR extent across all destinations: {total_issr_km:.1f} km")
+    print("ISSR extent per altitude level:")
+    for level in sorted(issr_extent_by_level):
+        print(f"  {level:.2f} km: {issr_extent_by_level[level]:.1f} km")
+
+    return total_issr_km, dict(issr_extent_by_level)
 
 
 
