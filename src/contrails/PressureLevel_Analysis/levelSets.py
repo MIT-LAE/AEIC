@@ -75,6 +75,12 @@ def plot_issr_along_geodesic(ds, valid_time_index=0):
     plt.savefig("sample.png", dpi=300)
     plt.close()
 
+    # Dummy RF values (update later)
+    rf_per_km = 0.3  # mW/m² per km of ISSR
+    
+    total_rf_by_km = {}
+    total_issr_by_km = {}
+
     # Print ISSR segment lengths by altitude
     print("=== ISSR Segment Lengths by Altitude (consecutive only, in km) ===")
     unique_alts = np.unique(alt_vals_km)
@@ -98,12 +104,21 @@ def plot_issr_along_geodesic(ds, valid_time_index=0):
                 segment = [dists_sorted[i]]
         if len(segment) > 1:
             segments.append(segment)
+            
+            
 
         total_length_km = sum(seg[-1] - seg[0] for seg in segments)
-        print(f"{alt:.1f} km: {total_length_km:.1f} km")
-
-
-
+        total_issr_by_km[alt] = total_length_km
+        total_rf_by_km[alt] = total_length_km * rf_per_km
+        
+        
+    # Print per-altitude RF and ISSR length
+    for alt in sorted(total_rf_by_km.keys()):
+        length = total_issr_by_km[alt]
+        rf = total_rf_by_km[alt]
+        print(f"{alt:.2f} km: {length:.1f} km → {rf:.2f} mW/m²")
+        
+        
 # === RUN SCRIPT ===
 fileName = "20241201.nc"
 file_path = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/PROCESSED/12_2024/RHi_{fileName}"
