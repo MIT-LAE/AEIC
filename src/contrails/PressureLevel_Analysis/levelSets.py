@@ -5,6 +5,41 @@ from geopy.distance import geodesic
 from pyproj import Geod
 import xarray as xr
 
+def plot_rf_extent_altitude_contour(total_issr_by_km, total_rf_by_km, save_path="rf_extent_altitude_contour.png"):
+    """
+    Plot 2D contour of RF (mW/m²) as a function of horizontal ISSR extent and altitude.
+
+    Parameters:
+        total_issr_by_km (dict): {altitude_km: issr_length_km}
+        total_rf_by_km (dict): {altitude_km: rf_mW_per_m2}
+        save_path (str): Path to save the output PNG
+    """
+    # Prepare data
+    altitudes = np.array(sorted(total_rf_by_km.keys()))
+    extents = np.array([total_issr_by_km.get(alt, 0) for alt in altitudes])
+    rfs = np.array([total_rf_by_km.get(alt, 0) for alt in altitudes])
+
+    # Create 2D grid using simple outer product model (alt vs extent)
+    X, Y = np.meshgrid(np.linspace(extents.min(), extents.max(), 100),
+                       np.linspace(altitudes.min(), altitudes.max(), 100))
+    Z = np.interp(Y, altitudes, rfs) * np.interp(X, extents, np.ones_like(extents))
+
+    # Plot contour
+    plt.figure(figsize=(8, 6), dpi=300)
+    contour = plt.contourf(X, Y, Z, levels=20, cmap='plasma')
+    cbar = plt.colorbar(contour)
+    cbar.set_label("Radiative Forcing (mW/m²)", fontsize=11)
+
+    plt.xlabel("ISSR Horizontal Extent (km)", fontsize=12)
+    plt.ylabel("Altitude (km)", fontsize=12)
+    plt.title("2D Contour of Radiative Forcing", fontsize=14)
+    plt.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+    print(f"Saved RF contour plot to: {save_path}")
+
+
 
 def pressure_to_altitude_km(pressure_hPa):
     """Convert pressure to altitude in kilometers using the barometric formula."""
@@ -117,6 +152,8 @@ def plot_issr_along_geodesic(ds, valid_time_index=0):
         length = total_issr_by_km[alt]
         rf = total_rf_by_km[alt]
         print(f"{alt:.2f} km: {length:.1f} km → {rf:.2f} mW/m²")
+        
+    plot_rf_extent_altitude_contour(total_issr_by_km, total_rf_by_km)
         
         
 # === RUN SCRIPT ===
