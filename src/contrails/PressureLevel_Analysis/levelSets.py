@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from geopy.distance import geodesic
 from pyproj import Geod
 import xarray as xr
+import csv
 
 # (Data source: Fig. 9) Rädel, G. and Shine, K.P., 2008. Radiative forcing by persistent contrails and its dependence on cruise altitudes. Journal of Geophysical Research: Atmospheres, 113(D7).
 def interpolate_rf_from_altitude(alt_km, rf_df):
@@ -52,22 +53,22 @@ def pressure_to_altitude_km(pressure_hPa):
     altitude_m = 44330.0 * (1.0 - (pressure_hPa / 1013.25)**(1.0 / 5.255))
     return altitude_m / 1000.0  # meters to kilometers
 
-def plot_issr_along_geodesic(ds, rf_df, valid_time_index=0):
+def plot_issr_along_geodesic(ds, rf_df, origin, destination, valid_time_index=0):
     """
     Plot ISSR occurrence along the geodesic arc between Boston and Dallas,
     with altitude in km vs distance in km. Also prints total ISSR arc length
     per altitude, counting only consecutive segments.
     """
     # Define locations (lat, lon)
-    boston = (42.3656, -71.0096)
-    dallas = (32.8968, -97.0370)
+    #boston = (42.3656, -71.0096)
+    #dallas = (32.8968, -97.0370)
 
     # Subset dataset at a specific time
     ds_t = ds.isel(valid_time=valid_time_index)
 
     # Subset around Boston–Dallas corridor
-    lat_min, lat_max = min(boston[0], dallas[0]) - 5, max(boston[0], dallas[0]) + 5
-    lon_min, lon_max = min(boston[1], dallas[1]) - 5, max(boston[1], dallas[1]) + 5
+    lat_min, lat_max = min(origin[0], destination[0]) - 5, max(origin[0], destination[0]) + 5
+    lon_min, lon_max = min(origin[1], destination[1]) - 5, max(origin[1], destination[1]) + 5
     ds_subset = ds_t.sel(latitude=slice(lat_max, lat_min), longitude=slice(lon_min, lon_max))
 
     # Mask ISSR = 1
@@ -90,11 +91,11 @@ def plot_issr_along_geodesic(ds, rf_df, valid_time_index=0):
     # Convert pressure → altitude in km
     alt_vals_km = pressure_to_altitude_km(p_vals)
 
-    # Compute geodesic distance from Boston (in km)
+    # Compute geodesic distance from origin (in km)
     geod = Geod(ellps='WGS84')
     _, _, dists_m = geod.inv(
-        np.full_like(lon_vals, boston[1]),
-        np.full_like(lat_vals, boston[0]),
+        np.full_like(lon_vals, origin[1]),
+        np.full_like(lat_vals, origin[0]),
         lon_vals,
         lat_vals
     )
@@ -170,4 +171,10 @@ rf_table_path = "/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/PressureLe
 rf_df = pd.read_csv(rf_table_path)
 ds_RHI = xr.open_dataset(file_path)
 
-plot_issr_along_geodesic(ds_RHI, rf_df, valid_time_index=0)
+
+origin = (42.3656, -71.0096)    # Boston
+destination = (32.8968, -97.0370)  # Dallas
+
+plot_issr_along_geodesic(ds_RHI, rf_df, origin, destination, valid_time_index=0)
+
+
