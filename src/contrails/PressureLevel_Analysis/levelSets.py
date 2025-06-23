@@ -12,6 +12,26 @@ def interpolate_rf_from_altitude(alt_km, rf_df):
     return np.interp(alt_km, rf_df["height (km)"], rf_df["RF (mW/m^2)"])
 
 
+def write_issr_rf_to_csv(total_issr_by_km, total_rf_by_km, output_path="issr_rf_by_altitude.csv"):
+    """
+    Write ISSR extent and radiative forcing data by altitude into a CSV file.
+
+    Parameters:
+        total_issr_by_km (dict): Dictionary of {altitude_km: issr_extent_km}
+        total_rf_by_km (dict): Dictionary of {altitude_km: rf_mW_per_m2}
+        output_path (str): Path to save the CSV file
+    """
+    with open(output_path, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Altitude_km", "ISSR_extent_km", "RF_mW_per_m2"])
+        for alt in sorted(total_rf_by_km.keys()):
+            writer.writerow([
+                f"{alt:.2f}",
+                f"{total_issr_by_km.get(alt, 0):.3f}",
+                f"{total_rf_by_km.get(alt, 0):.11f}"
+            ])
+    print(f"Saved ISSR extent and RF data to: {output_path}")
+
 def plot_rf_extent_altitude_contour(total_issr_by_km, total_rf_by_km, save_path="rf_extent_altitude_contour.png"):
     """
     Plot 2D contour of RF (mW/m²) as a function of horizontal ISSR extent and altitude.
@@ -53,7 +73,7 @@ def pressure_to_altitude_km(pressure_hPa):
     altitude_m = 44330.0 * (1.0 - (pressure_hPa / 1013.25)**(1.0 / 5.255))
     return altitude_m / 1000.0  # meters to kilometers
 
-def plot_issr_along_geodesic(ds, rf_df, origin, destination, valid_time_index=0):
+def plot_issr_along_geodesic(ds, rf_df, origin, destination, fileName, valid_time_index=0):
     """
     Plot ISSR occurrence along the geodesic arc between Boston and Dallas,
     with altitude in km vs distance in km. Also prints total ISSR arc length
@@ -114,7 +134,7 @@ def plot_issr_along_geodesic(ds, rf_df, origin, destination, valid_time_index=0)
     plt.title("ISSR Altitude along Boston → Dallas Geodesic", fontsize=14)
     plt.grid(True, linestyle=':', linewidth=0.01)
     plt.tight_layout()
-    plt.savefig("sample.png", dpi=300)
+    plt.savefig(f"Plots/Slices/{fileName}ISSR_slice.png", dpi=300)
     plt.close()
     
     
@@ -161,7 +181,9 @@ def plot_issr_along_geodesic(ds, rf_df, origin, destination, valid_time_index=0)
         rf = total_rf_by_km[alt]
         print(f"{alt:.2f} km: {length:.1f} km → {rf:.11f} mW/m²")
         
-    plot_rf_extent_altitude_contour(total_issr_by_km, total_rf_by_km)
+    #plot_rf_extent_altitude_contour(total_issr_by_km, total_rf_by_km)
+    
+    write_issr_rf_to_csv(total_issr_by_km, total_rf_by_km, output_path=f"Raw/{fileName}.csv")
         
         
 # === RUN SCRIPT ===
@@ -171,10 +193,14 @@ rf_table_path = "/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/PressureLe
 rf_df = pd.read_csv(rf_table_path)
 ds_RHI = xr.open_dataset(file_path)
 
-
+fileName = "Bos-SEA"
 origin = (42.3656, -71.0096)    # Boston
-destination = (32.8968, -97.0370)  # Dallas
+#destination = (32.8968, -97.0370)  # Dallas
+#destination = (34.0522, -118.2437)  # Los Angeles
+destination = (47.4502, -122.3088)  # Seattle
 
-plot_issr_along_geodesic(ds_RHI, rf_df, origin, destination, valid_time_index=0)
+
+
+plot_issr_along_geodesic(ds_RHI, rf_df, origin, destination, fileName, valid_time_index=0)
 
 
