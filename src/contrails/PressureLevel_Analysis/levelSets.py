@@ -5,6 +5,12 @@ from geopy.distance import geodesic
 from pyproj import Geod
 import xarray as xr
 
+# (Data source: Fig. 9) Rädel, G. and Shine, K.P., 2008. Radiative forcing by persistent contrails and its dependence on cruise altitudes. Journal of Geophysical Research: Atmospheres, 113(D7).
+def interpolate_rf_from_altitude(alt_km, rf_df):
+    """Interpolate RF (mW/m²) from altitude in km using Radel_Shine.csv data."""
+    return np.interp(alt_km, rf_df["height (km)"], rf_df["RF (mW/m^2)"])
+
+
 def plot_rf_extent_altitude_contour(total_issr_by_km, total_rf_by_km, save_path="rf_extent_altitude_contour.png"):
     """
     Plot 2D contour of RF (mW/m²) as a function of horizontal ISSR extent and altitude.
@@ -46,7 +52,7 @@ def pressure_to_altitude_km(pressure_hPa):
     altitude_m = 44330.0 * (1.0 - (pressure_hPa / 1013.25)**(1.0 / 5.255))
     return altitude_m / 1000.0  # meters to kilometers
 
-def plot_issr_along_geodesic(ds, valid_time_index=0):
+def plot_issr_along_geodesic(ds, rf_df, valid_time_index=0):
     """
     Plot ISSR occurrence along the geodesic arc between Boston and Dallas,
     with altitude in km vs distance in km. Also prints total ISSR arc length
@@ -109,9 +115,7 @@ def plot_issr_along_geodesic(ds, valid_time_index=0):
     plt.tight_layout()
     plt.savefig("sample.png", dpi=300)
     plt.close()
-
-    # Dummy RF values (update later)
-    rf_per_km = 0.3  # mW/m² per km of ISSR
+    
     
     total_rf_by_km = {}
     total_issr_by_km = {}
@@ -144,6 +148,9 @@ def plot_issr_along_geodesic(ds, valid_time_index=0):
 
         total_length_km = sum(seg[-1] - seg[0] for seg in segments)
         total_issr_by_km[alt] = total_length_km
+        
+        rf_per_km = interpolate_rf_from_altitude(alt, rf_df) * 10**(-9)
+        
         total_rf_by_km[alt] = total_length_km * rf_per_km
         
         
@@ -151,7 +158,7 @@ def plot_issr_along_geodesic(ds, valid_time_index=0):
     for alt in sorted(total_rf_by_km.keys()):
         length = total_issr_by_km[alt]
         rf = total_rf_by_km[alt]
-        print(f"{alt:.2f} km: {length:.1f} km → {rf:.2f} mW/m²")
+        print(f"{alt:.2f} km: {length:.1f} km → {rf:.11f} mW/m²")
         
     plot_rf_extent_altitude_contour(total_issr_by_km, total_rf_by_km)
         
@@ -159,6 +166,8 @@ def plot_issr_along_geodesic(ds, valid_time_index=0):
 # === RUN SCRIPT ===
 fileName = "20241201.nc"
 file_path = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/PROCESSED/12_2024/RHi_{fileName}"
+rf_table_path = "/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/PressureLevel_Analysis/Radel_Shine.csv"
+rf_df = pd.read_csv(rf_table_path)
 ds_RHI = xr.open_dataset(file_path)
 
-plot_issr_along_geodesic(ds_RHI, valid_time_index=0)
+plot_issr_along_geodesic(ds_RHI, rf_df, valid_time_index=0)
