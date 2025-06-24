@@ -16,7 +16,8 @@ class PerformanceModel:
         and OAG schedule'''
 
     def __init__(self, config_file="IO/default_config.toml"):
-        # Read config file and store all variables in self.config
+        ''' Initializes the performance model by reading the configuration, 
+        loading mission data, and setting up performance and engine models.'''
         config_file_loc = file_location(config_file)
         self.config = {}
         with open(config_file_loc, 'rb') as f:
@@ -37,8 +38,8 @@ class PerformanceModel:
         self.initialize_performance()
 
     def initialize_performance(self):
-        '''Takes input data given on aircraft performance
-            and creates the state variable array'''
+        '''Initializes aircraft performance characteristics from TOML sourcee. 
+        Also loads LTO/EDB data and sets up the engine model using BADA3 parameters.'''
         
         self.ac_params = Bada3AircraftParameters()
         # If OPF data input
@@ -69,7 +70,8 @@ class PerformanceModel:
             self.LTO_data = parseLTO(self.config['LTO_input_file'])
         
     def read_performance_data(self):
-        '''Parses input json data of aircraft performance'''
+        '''Parses the TOML input file containing flight and LTO performance data. 
+        Separates model metadata and prepares the data for table generation.'''
         
         # Read and load TOML data 
         with open(file_location(self.config["performance_model_input_file"]), "rb") as f:
