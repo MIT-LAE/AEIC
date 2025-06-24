@@ -16,7 +16,8 @@ class PerformanceModel:
         and OAG schedule'''
 
     def __init__(self, config_file="IO/default_config.toml"):
-        # Read config file and store all variables in self.config
+        ''' Initializes the performance model by reading the configuration, 
+        loading mission data, and setting up performance and engine models.'''
         config_file_loc = file_location(config_file)
         self.config = {}
         with open(config_file_loc, 'rb') as f:
@@ -37,8 +38,8 @@ class PerformanceModel:
         self.initialize_performance()
 
     def initialize_performance(self):
-        '''Takes input data given on aircraft performance
-            and creates the state variable array'''
+        '''Initializes aircraft performance characteristics from TOML sourcee. 
+        Also loads LTO/EDB data and sets up the engine model using BADA3 parameters.'''
         
         self.ac_params = Bada3AircraftParameters()
         # If OPF data input
@@ -65,7 +66,8 @@ class PerformanceModel:
         self.engine_model = Bada3JetEngineModel(self.ac_params)
         
     def read_performance_data(self):
-        '''Parses input json data of aircraft performance'''
+        '''Parses the TOML input file containing flight and LTO performance data. 
+        Separates model metadata and prepares the data for table generation.'''
         
         # Read and load TOML data 
         with open(file_location(self.config["performance_model_input_file"]), "rb") as f:
@@ -108,43 +110,59 @@ class PerformanceModel:
 
         self.create_performance_table(data['flight_performance']['data'])
 
+        self.create_performance_table(data['flight_performance'])
         del data["LTO_performance"]
         del data["flight_performance"]
         self.model_info = data
 
-    def create_performance_table(self,data):
-        # Extract unique values for each dimension
+    def create_performance_table(self, data_dict):
+        """
+        Dynamically creates a multidimensional performance table
+        where fuel flow is a function of input variables such as
+        flight level, true airspeed, rate of climb/descent, and mass.
 
-        # TODO: need to somehow do this dynamically since not certain that col order is the same/more values
-        self.fuel_flow_values = np.array([row[0] for row in data])
-        # self.EI_NOx_values = np.array([row[5] for row in data])
-        fl_values = sorted(set(row[1] for row in data))
-        tas_values = sorted(set(row[2] for row in data))
-        rocd_values = sorted(set(row[3] for row in data))
-        mass_values = sorted(set(row[4] for row in data))
-        
-        
-        # Create mapping dictionaries for fast lookups
-        fl_indices = {val: idx for idx, val in enumerate(fl_values)}
-        tas_indices = {val: idx for idx, val in enumerate(tas_values)}
-        rocd_indices = {val: idx for idx, val in enumerate(rocd_values)}
-        mass_indices = {val: idx for idx, val in enumerate(mass_values)}
-        
-        shape = (len(fl_values), len(tas_values), len(rocd_values), len(mass_values))
+        Parameters
+        ----------
+        data_dict : dict
+            Dictionary containing keys 'cols' and 'data' from the input TOML.
+        """
+
+        cols = data_dict["cols"]
+        data = data_dict["data"]
+
+        # Identify output column (we assume it's the first column or explicitly labeled as fuel flow)
+        try:
+            output_col_idx = cols.index("FUEL_FLOW")  # Output is fuel flow
+        except ValueError:
+            raise ValueError("FUEL_FLOW column not found in performance data.")
+
+        input_col_names = [c for i, c in enumerate(cols) if i != output_col_idx]
+
+        # Extract and sort unique values for each input dimension
+        input_values = {col: sorted(set(row[cols.index(col)] for row in data)) for col in input_col_names}
+        input_indices = {col: {val: idx for idx, val in enumerate(input_values[col])} for col in input_col_names}
+
+        # Prepare multidimensional shape and index arrays
+        shape = tuple(len(input_values[col]) for col in input_col_names)
         fuel_flow_array = np.empty(shape)
-        
-        # Populate the array using vectorized approach
-        fl_idx = np.array([fl_indices[row[1]] for row in data])
-        tas_idx = np.array([tas_indices[row[2]] for row in data])
-        rocd_idx = np.array([rocd_indices[row[3]] for row in data])
-        mass_idx = np.array([mass_indices[row[4]] for row in data])
-        fuel_flow = np.array([row[0] for row in data])
-        
-        # Use advanced indexing to assign values
-        fuel_flow_array[fl_idx, tas_idx, rocd_idx, mass_idx] = fuel_flow
-        
+
+        # Get index arrays for each input variable
+        index_arrays = [
+            np.array([input_indices[col][row[cols.index(col)]] for row in data])
+            for col in input_col_names
+        ]
+        index_arrays = tuple(index_arrays)
+
+        # Extract output (fuel flow) values
+        fuel_flow = np.array([row[output_col_idx] for row in data])
+
+        # Assign to multidimensional array using advanced indexing
+        fuel_flow_array[index_arrays] = fuel_flow
+
+        # Save results
         self.performance_table = fuel_flow_array
-        self.performance_table_cols = [fl_values, tas_values, rocd_values, mass_values]
+        self.performance_table_cols = [input_values[col] for col in input_col_names]
+        self.performance_table_colnames = input_col_names  # Save for external reference
 
     def get_engine_by_uid(self, uid: str, toml_path: str) -> dict:
         """
