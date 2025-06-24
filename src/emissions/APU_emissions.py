@@ -2,7 +2,7 @@ import numpy as np
 
 def get_APU_emissions(APU_emission_indices, APU_emissions_g, 
                   LTO_emission_indices, APU_data, 
-                  LTO_noProp, LTO_no2Prop, LTO_honoProp, apu_tim=2854):
+                  LTO_noProp, LTO_no2Prop, LTO_honoProp, apu_tim=900):
     """
     Calculate APU emissions using time in modes and given APU data.
 
@@ -19,7 +19,7 @@ def get_APU_emissions(APU_emission_indices, APU_emissions_g,
     LTO_noProp, LTO_no2Prop, LTO_honoProp: float
         NOx speciation elements from LTO analysis
     apu_time: float
-        Time in mode for APU; default value = 2854 seconds
+        Time in mode for APU; default value = 900 seconds (Stettler et al. 2011)
 
     Returns
     -------
