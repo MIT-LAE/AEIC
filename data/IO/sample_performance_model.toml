@@ -1,8 +1,10 @@
 [General_Information]
 aircraft_name = "B738"
+aircraft_class = "narrow" # wide, narrow, small, freight
 ISA_offset = 0
 max_alt_ft = 41000
 max_payload_kg = 22422
+APU_name = "APU 131-9" # None: APU emissions not calculated
 
 [speeds.climb]
 cas_lo = 128.611
@@ -20,31 +22,28 @@ cas_hi = 149.18876
 mach = 0.80
 
 [LTO_performance]
+ICAO_UID = "01P11CM121" # Add UID for EDB data
 Foo_kN = 102.695
 
 [LTO_performance.thrust_settings.approach]
 THRUST_FRAC = 0.3
-FUEL_KGs = 0.62344
-NOX_EI = 14.53833
+FUEL_KGs    = 0.278
 
 [LTO_performance.thrust_settings.climb]
 THRUST_FRAC = 0.85
-FUEL_KGs = 0.87489
-NOX_EI = 39.71234
+FUEL_KGs    = 0.754
 
 [LTO_performance.thrust_settings.takeoff]
 THRUST_FRAC = 1.0
-FUEL_KGs = 0.95898
-NOX_EI = 53.12635
+FUEL_KGs    = 0.903
 
 [LTO_performance.thrust_settings.idle]
 THRUST_FRAC = 0.07
-FUEL_KGs = 0.37251
-NOX_EI = 8.63727
+FUEL_KGs    = 0.102
 
 [flight_performance]
 cols = [
-  "FUEL_FLOW",  # kg/s
+  "FUEL_FLOW",  # kg/s - REQUIRED; OUTPUT COLUMN
   "FL",  # Flight levels
   "TAS",  # m/s
   "ROCD",  # m/s
