@@ -9,9 +9,7 @@ def EI_HCCO(
     Pamb: float = 101325.0
 ) -> np.ndarray:
     """
-    Calculate HC+CO emission index (xEI),
-    using a two‐segment (slanted + horizontal) BFFM2 curve, an ACRP low‐thrust correction,
-    and an optional cruise correction. 
+    BFFM2 bilinear HC/CO fit to SLS data
 
     Parameters
     ----------

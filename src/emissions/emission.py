@@ -13,7 +13,7 @@ from emissions.EI_PMnvol import PMnvol_MEEM
 from emissions.APU_emissions import get_APU_emissions
 from utils.standard_atmosphere import temperature_at_altitude_isa_bada4,pressure_at_altitude_isa_bada4
 from utils.helpers import meters_to_feet
-from utils.standard_fuel import get_thrust_cat
+from utils.standard_fuel import get_thrust_cat, get_SLS_equivalent_fuel_flow
 from utils.consts import kappa, R_air
 from utils import file_location
 
@@ -178,6 +178,8 @@ class Emission:
             trajectory.traj_data['tas'][i_start:i_end]
             / np.sqrt(kappa * R_air * flight_temps)
         )
+        sls_equiv_fuel_flow = get_SLS_equivalent_fuel_flow(trajectory.traj_data['fuelFlow'][i_start:i_end], flight_pressures, mach_number)
+
         (
             self.emission_indices['NOx'][i_start:i_end],
             self.emission_indices['NO'][i_start:i_end],
@@ -185,7 +187,7 @@ class Emission:
             self.emission_indices['HONO'][i_start:i_end],
             *_
         ) = BFFM2_EINOx(
-            fuelflow_trajectory=trajectory.traj_data['fuelFlow'][i_start:i_end],
+            sls_equiv_fuel_flow=sls_equiv_fuel_flow,
             NOX_EI_matrix=lto_nox_ei_array,
             fuelflow_performance=lto_ff_array,
             Pamb=flight_pressures,
@@ -194,12 +196,12 @@ class Emission:
 
         # --- Compute HC and CO indices ---
         self.emission_indices['HC'][i_start:i_end] = EI_HCCO(
-            trajectory.traj_data['fuelFlow'][i_start:i_end],
+            sls_equiv_fuel_flow,
             lto_hc_ei_array,
             lto_ff_array,
         )
         self.emission_indices['CO'][i_start:i_end] = EI_HCCO(
-            trajectory.traj_data['fuelFlow'][i_start:i_end],
+            sls_equiv_fuel_flow,
             lto_co_ei_array,
             lto_ff_array,
         )
@@ -228,7 +230,7 @@ class Emission:
             flight_temps,
             flight_pressures,
             mach_number,
-            trajectory.traj_data['fuelFlow'][i_start:i_end],
+            sls_equiv_fuel_flow,
         )
 
         # Multiply each index by fuel burn per segment to get g emissions/time-step

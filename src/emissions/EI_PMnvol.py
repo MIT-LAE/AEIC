@@ -1,5 +1,4 @@
 import numpy as np
-from utils.standard_fuel import get_fuel_factor
 from utils.consts import kappa
 
 # def EI_PMnvol(
@@ -63,7 +62,7 @@ from utils.consts import kappa
 #     return PMnvolEI_N
 
 
-def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,machFlight,fuel_flow_cruise,pmnvolSwitch_cruise = 'SCOPE11'):
+def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,pmnvolSwitch_cruise = 'SCOPE11'):
     """
     Estimate non-volatile particulate matter (nvPM) emissions at cruise using the 
     Mission Emissions Estimation Methodology (MEEM) based on Ahrens et al. (2022),
@@ -87,8 +86,8 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,machFlight,fuel_flow_
         Ambient pressure [Pa] at each point in the trajectory.
     machFlight : ndarray
         Mach number at each point in the trajectory.
-    fuel_flow_cruise : ndarray
-        Fuel flow [kg/s] at each point in the trajectory.
+    sls_equiv_fuel_flow : ndarray
+        SL equivalent Fuel flow [kg/s] at each point in the trajectory.
     pmnvolSwitch_cruise : str, optional
         Method to use for GMD estimation; default is 'SCOPE11'.
 
@@ -113,11 +112,6 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,machFlight,fuel_flow_
     - Results with invalid SN or negative EI are set to zero with a warning.
     """
     
-
-    # -----------------------------
-    # 0. Get fuel factor (sea-level equivalent fuel flow):
-    # -----------------------------
-    fuelFactor = get_fuel_factor(fuel_flow_cruise, Pamb_cruise, machFlight)
 
     # [idle, approach, climb-out, take-off]
     # geometric mean diameter (nm)

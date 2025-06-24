@@ -1,5 +1,5 @@
 import numpy as np 
-from utils.standard_fuel import get_fuel_factor, get_thrust_cat
+from utils.standard_fuel import get_thrust_cat
 import warnings
 
 # TODO: add P3T3 method support
@@ -98,7 +98,7 @@ import warnings
 #     return NOxEI, NOEI, NO2EI, HONOEI, noProp, no2Prop, honoProp
 
 def BFFM2_EINOx(
-    fuelflow_trajectory: np.ndarray,
+    sls_equiv_fuel_flow: np.ndarray,
     NOX_EI_matrix: np.ndarray,
     fuelflow_performance: np.ndarray,
     Tamb: np.ndarray,
@@ -142,20 +142,18 @@ def BFFM2_EINOx(
     honoProp: ndarray, shape (n_times,)
         Fraction of HONO within total NOy (unitless).
     """
-    fuelfactor = fuelflow_trajectory#get_fuel_factor(fuelflow_trajectory, Pamb, mach_number)
-
-    # (Proceed with steps 1, 2, 3 exactly as in the paper)
+    
     # 1) Fit log10(NOX_EI_matrix) vs. log10(fuelflow_KGperS)
-    ff_cal = fuelflow_performance.copy()
-    ff_cal[ff_cal <= 0.0] = 1e-2
-    x_log = np.log10(ff_cal)
+    fuelflow_performance[fuelflow_performance <= 0.0] = 1e-2
+    print("ff perf", fuelflow_performance)
+    print("nox ei mat", NOX_EI_matrix)
+    x_log = np.log10(fuelflow_performance)
     y_log = np.log10(NOX_EI_matrix)
     slope, intercept = np.polyfit(x_log, y_log, 1)
 
     # 2) Interpolate NOxEI at log10(fuelfactor)
-    ff_eval = fuelfactor.copy()
-    ff_eval[ff_eval <= 0.0] = 1e-2
-    NOxEI_sl = 10.0 ** (slope * np.log10(ff_eval) + intercept)
+    sls_equiv_fuel_flow[sls_equiv_fuel_flow <= 0.0] = 1e-2
+    NOxEI_sl = 10.0 ** (slope * np.log10(sls_equiv_fuel_flow) + intercept)
 
     # 3) If cruiseCalc=True, apply the humidity/θ/δ correction (Eqs. 44–45)
     if cruiseCalc:
@@ -186,7 +184,7 @@ def BFFM2_EINOx(
     # 4. Determine thrust category for each fuelfactor point
     #    Categories: 1=High (H), 2=Low (L), 3=Approach (A)
     # ----------------------------------------------------------------------------
-    thrustCat = get_thrust_cat(ff_eval,ff_cal, cruiseCalc)
+    thrustCat = get_thrust_cat(sls_equiv_fuel_flow,fuelflow_performance, cruiseCalc)
 
     # ----------------------------------------------------------------------------
     # 5. Speciation 
