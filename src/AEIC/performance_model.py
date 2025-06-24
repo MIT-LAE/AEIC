@@ -117,7 +117,7 @@ class PerformanceModel:
 
         # TODO: need to somehow do this dynamically since not certain that col order is the same/more values
         self.fuel_flow_values = np.array([row[0] for row in data])
-        self.EI_NOx_values = np.array([row[5] for row in data])
+        # self.EI_NOx_values = np.array([row[5] for row in data])
         fl_values = sorted(set(row[1] for row in data))
         tas_values = sorted(set(row[2] for row in data))
         rocd_values = sorted(set(row[3] for row in data))
