@@ -145,8 +145,6 @@ def BFFM2_EINOx(
     
     # 1) Fit log10(NOX_EI_matrix) vs. log10(fuelflow_KGperS)
     fuelflow_performance[fuelflow_performance <= 0.0] = 1e-2
-    print("ff perf", fuelflow_performance)
-    print("nox ei mat", NOX_EI_matrix)
     x_log = np.log10(fuelflow_performance)
     y_log = np.log10(NOX_EI_matrix)
     slope, intercept = np.polyfit(x_log, y_log, 1)
