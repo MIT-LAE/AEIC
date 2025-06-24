@@ -106,9 +106,6 @@ class PerformanceModel:
                     "CO_g_per_kg": 0.0,
                     "HC_g_per_kg": 0.0,
                 }
-        
-
-        self.create_performance_table(data['flight_performance']['data'])
 
         self.create_performance_table(data['flight_performance'])
         del data["LTO_performance"]

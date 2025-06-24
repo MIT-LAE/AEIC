@@ -209,7 +209,7 @@ class Emission:
         # --- Compute volatile organic PM and organic carbon ---
         thrustCat = get_thrust_cat(
             trajectory.traj_data['fuelFlow'][i_start:i_end],
-            ac_performance.fuel_flow_values,
+            lto_ff_array,
             cruiseCalc=True,
         )
         (
