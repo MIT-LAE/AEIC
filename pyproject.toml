@@ -1,3 +1,35 @@
+[project]
+name = "AEIC"
+
+version = "0!1.0.0a1"
+
+authors = [
+    {name = "Wyatt Giroux", email = "girouxw@mit.edu"},
+    {name = "Prakash Prashanth", email = "prash@mit.edu"},
+    {name = "Prateek Ranjan", email = "prateekr@mit.edu"},
+    {name = "Aditeya Shukla", email = "aditeya@mit.edu"},
+    {name = "Raymond Speth", email = "speth@mit.edu"},
+]
+
+readme = "README.md"
+
+license = "MIT"
+
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "pyproj",
+    "xarray"
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "sphinx",
+    "sphinx_rtd_theme",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
