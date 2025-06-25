@@ -22,7 +22,8 @@ release = '1.0.0a1'
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary', 
               'sphinx.ext.coverage', 
-              'sphinx.ext.napoleon']
+              'sphinx.ext.napoleon',
+              'myst_parser']
 autosummary_generate = True
 
 templates_path = ['_templates']

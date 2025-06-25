@@ -2,12 +2,66 @@ import numpy as np
 from AEIC.performance_model import PerformanceModel
 from utils.helpers import nautmiles_to_meters
 from pyproj import Geod
-class Trajectory:
-    '''Model for determining flight trajectories.
-    '''
+class Trajectory:    
+    """Parent class for all trajectory implementations in AEIC. Contains overall ``fly_flight`` logic.
     
+    Args:
+        ac_performance (PerformanceModel): Performance model used for trajectory simulation.
+        mission (_type_): Data dictating the mission to be flown (departure/arrival info, etc.).
+        optimize_traj (bool): (Currently unimplemented) Flag controlling whether the nominal trajectory undergoes
+            horizontal, vertical, and speed optimization during simulation.
+        iterate_mass (bool): Flag controlling whether starting mass is iterated on such that the remaining fuel (non-reserve)
+            is close to 0 at the arrival airport. 
+        startMass (float, optional): Starting mass of the aircraft; leave as default to calculate starting mass
+            during simulation. Defaults to -1.
+        max_mass_iters (int, optional): Maximum number of mass iterations (if used). Defaults to 5.
+        mass_iter_reltol (float, optional): Desired relative tolerance for mass iteration. Defaults to 1e-2.
+    
+    Attributes:
+        name (str): Identifier for the flight; format is ``departureAirport_arrivalAirport_ACCode``.
+        ac_performance (PerformanceModel): Performance model used for trajectory simulation.
+        dep_lon_lat_alt (list[float]): Longitude, latitude, and altitude of the departure airport.
+        arr_lon_lat_alt (list[float]): Longitude, latitude, and altitude of the arrival airport.
+        start_time (str): Departure date and time.
+        end_time (str): Nominal arrival date and time.
+        gc_distance (float): (TODO: Change from naut. miles to meters) Great circle distance between departure and arrival airports.
+        load_factor (float): Load factor of the flight relative to maximum payload.
+        optimize_traj (bool): (Currently unimplemented) Flag controlling whether the nominal trajectory undergoes
+            horizontal, vertical, and speed optimization during simulation.
+        iter_mass (bool): Flag controlling whether starting mass is iterated on such that the remaining fuel (non-reserve)
+            is close to 0 at the arrival airport.
+        max_mass_iters (int): Maximum number of mass iterations (if used). Defaults to 5.
+        mass_iter_reltol (float): Desired relative tolerance for mass iteration. Defaults to 1e-2.
+        mass_converged (bool): ``True`` if mass iteration was converged, ``False`` if not. ``None`` if not iterating mass.
+        starting_mass (float): Starting mass of the aircraft.
+        fuel_mass (float): Total fuel mass loaded onto the aircraft.
+        NClm (int): Number of points simulated in climb.
+        NCrz (int): Number of points simulated in cruise.
+        NDes (int): Number of points simulated in descent.
+        Ntot (int): Number of points simulated across total mission.
+        clm_start_altitude (float): Climb starting altitude.
+        crz_start_altitude (float): Cruise starting altitude.
+        des_start_altitude (float): Descent starting altitude.
+        des_end_altitude (float): End-of-descent altitude.
+        traj_data (NDArray[np.float64]): Numpy structured array containing all trajectory data. Only defined
+            when ``fly_flight`` is called. Columns are:\n
+            ``fuelFlow``: fuel flow rate.\n
+            ``acMass``: aircraft mass.\n
+            ``fuelMass``: fuel mass.\n
+            ``groundDist``: total ground distance covered.\n
+            ``altitude``: current pressure altitude.\n
+            ``FLs``: flight level equivalent of the pressure altitude.\n
+            ``rocs``: rate of climb/descent.\n
+            ``flightTime``: elapsed flight time.\n
+            ``latitude``: current latitude.\n
+            ``longitude``: current longitude.\n
+            ``heading``: current heading.\n
+            ``tas``: true airspeed.\n
+            ``groundSpeed``: ground speed.\n
+            ``FL_weight``: weighting used in linear interpolation over flight levels.
+    """
     def __init__(self, ac_performance:PerformanceModel, mission, optimize_traj:bool, iterate_mass:bool, startMass:float=-1, 
-                 max_mass_iters=5, mass_iter_reltol=1e-2):
+                 max_mass_iters:int=5, mass_iter_reltol:float=1e-2) -> None:
         # Save A/C performance model and the mission to be flown
         # NOTE: Currently assume that `mission` comes in as a dictionary with the format of a single flight
         # in `src/missions/sample_missions_10.json`. We also assume that Load Factor for the flight will be
@@ -57,7 +111,14 @@ class Trajectory:
         self.des_end_altitude   = None
         
         
-    def fly_flight(self, **kwargs):
+    def fly_flight(self, **kwargs) -> None:
+        """Top-level function that initiates and runs flights.
+        
+        Args:
+            kwargs: Additional parameters needed by the specific type of trajectory 
+                being used.
+        
+        """
         # Initialize data array as numpy structured array
         traj_dtype = [
             ('fuelFlow',   np.float64, self.Ntot),
@@ -108,13 +169,17 @@ class Trajectory:
         
         
     def fly_flight_iteration(self, **kwargs):
-        ''' Function for running a single flight iteration. In non-weight-iterating mode,
+        """ Function for running a single flight iteration. In non-weight-iterating mode,
         only runs once. `kwargs` used to pass in relevent optimization variables in 
         applicable cases.  
         
+        Args:
+            kwargs: Additional parameters needed by the specific type of trajectory 
+                being used.
+        
         Returns:
-            - `mass_residual`: Difference in fuel burned and calculated required fuel mass
-        '''
+            (float) Difference in fuel burned and calculated required fuel mass.
+        """
         self.current_mass = self.starting_mass
         
         for field in self.traj_data.dtype.names:
@@ -165,3 +230,4 @@ class Trajectory:
     
     def calc_starting_mass(self):
         pass
+    
