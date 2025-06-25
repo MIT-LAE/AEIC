@@ -31,7 +31,7 @@ updated trajectory dynamics, parallelization, and more.
    :caption: AEIC Modules
 
    src/AEIC/performance_model
-   src/AEIC/trajectories/trajectories
+   src/AEIC/trajectories/trajectories.md
    src/BADA/bada
    src/gridding/gridding
    data/IO/io_formats
