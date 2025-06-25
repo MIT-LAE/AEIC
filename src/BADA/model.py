@@ -1,18 +1,19 @@
-import numpy as np
-
 # from scipy.integrate import cumulative_trapezoid
 from abc import ABC, abstractmethod
 
-from utils.helpers import mps_to_knots, meters_to_feet
-from .fuel_burn_base import BaseFuelBurnModel
-from utils.custom_types import FloatOrNDArray
-from .aircraft_parameters import Bada3AircraftParameters
+import numpy as np
+
 from utils.consts import g0
+from utils.custom_types import FloatOrNDArray
+from utils.helpers import meters_to_feet, mps_to_knots
 from utils.standard_atmosphere import (
-    temperature_at_altitude_isa_bada4,
     calculate_air_density,
     pressure_at_altitude_isa_bada4,
+    temperature_at_altitude_isa_bada4,
 )
+
+from .aircraft_parameters import Bada3AircraftParameters
+from .fuel_burn_base import BaseFuelBurnModel
 
 
 class Bada3EngineModel(ABC):
@@ -70,7 +71,8 @@ class Bada3EngineModel(ABC):
         return self.calculate_max_climb_thrust_isa(altitude, v_tas) * (
             1
             - np.clip(
-                delta_temperature_eff * np.maximum(0, self.aircraft_parameters['c_tc5']),
+                delta_temperature_eff
+                * np.maximum(0, self.aircraft_parameters['c_tc5']),
                 0,
                 0.4,
             )
@@ -126,9 +128,9 @@ class Bada3EngineModel(ABC):
         Union[float, NDArray]
             Descent thrust [N].
         """
-        return self.aircraft_parameters['c_tdes_high'] * self.calculate_max_climb_thrust(
-            altitude, v_tas, temperature
-        )
+        return self.aircraft_parameters[
+            'c_tdes_high'
+        ] * self.calculate_max_climb_thrust(altitude, v_tas, temperature)
 
     def calculate_descent_thrust_low(
         self,
@@ -210,7 +212,6 @@ class Bada3EngineModel(ABC):
 
 
 class Bada3JetEngineModel(Bada3EngineModel):
-
     def calculate_specific_fuel_consumption(
         self, v_tas: FloatOrNDArray
     ) -> FloatOrNDArray:
@@ -301,7 +302,6 @@ class Bada3JetEngineModel(Bada3EngineModel):
 
 
 class Bada3TurbopropEngineModel(Bada3EngineModel):
-
     def calculate_specific_fuel_consumption(
         self, v_tas: FloatOrNDArray
     ) -> FloatOrNDArray:
@@ -392,7 +392,6 @@ class Bada3TurbopropEngineModel(Bada3EngineModel):
 
 
 class Bada3PistonEngineModel(Bada3EngineModel):
-
     def calculate_specific_fuel_consumption(self) -> None:
         """
         Returns
@@ -585,7 +584,8 @@ class Bada3FuelBurnModel(BaseFuelBurnModel):
         in_cruise: FloatOrNDArray,
     ) -> FloatOrNDArray:
         """
-        Calculate thrust from total energy but correct extremes using max and descent thrusts
+        Calculate thrust from total energy but correct extremes
+        using max and descent thrusts
 
         Parameters
         ----------
@@ -901,7 +901,8 @@ class Bada3FuelBurnModel(BaseFuelBurnModel):
         n_iter: int = 10,
     ) -> FloatOrNDArray:
         """
-        Iterate flight simulation for fuel burn dependent initial mass where reserve fuel is defined by fraction of fuel burn
+        Iterate flight simulation for fuel burn dependent initial mass
+        where reserve fuel is defined by fraction of fuel burn
 
         Parameters
         ----------
@@ -1018,7 +1019,8 @@ class Bada3FuelBurnModel(BaseFuelBurnModel):
         n_iter: int = 10,
     ) -> FloatOrNDArray:
         """
-        Iterate flight simulation for fuel burn dependent initial mass where reserve fuel is defined by value
+        Iterate flight simulation for fuel burn dependent initial mass
+        where reserve fuel is defined by value
 
         Parameters
         ----------
@@ -1110,7 +1112,6 @@ class Bada3FuelBurnModel(BaseFuelBurnModel):
             ) * 100
 
             if final_mass_pct_change < 0.01:
-
                 return mass
 
             old_final_mass = mass[-1].copy()

@@ -1,11 +1,11 @@
-from .custom_types import FloatOrNDArray
-from .consts import R_E
 import numpy as np
-from typing import Tuple
-from numpy.typing import NDArray
 import pandas as pd
+from numpy.typing import NDArray
 from pandas._libs.tslibs import Timestamp
 from pandas.core.indexes.datetimes import DatetimeIndex
+
+from .consts import R_E
+from .custom_types import FloatOrNDArray
 
 
 def great_circle_distance(
@@ -80,9 +80,7 @@ def feet_to_meters(ft: FloatOrNDArray) -> FloatOrNDArray:
     return ft * 0.3048
 
 
-def unix_to_datetime_utc(
-    unix_time: FloatOrNDArray
-) -> Timestamp | DatetimeIndex:
+def unix_to_datetime_utc(unix_time: FloatOrNDArray) -> Timestamp | DatetimeIndex:
     """Convert unix time to UTC
 
     Args:
@@ -95,7 +93,7 @@ def unix_to_datetime_utc(
     return pd.to_datetime(unix_time, unit="s")
 
 
-def calculate_line_parameters(x: NDArray, y: NDArray) -> Tuple[NDArray, NDArray]:
+def calculate_line_parameters(x: NDArray, y: NDArray) -> tuple[NDArray, NDArray]:
     """
     Calculates the slope and intercept of the lines defined by the points (x, y).
 
@@ -108,7 +106,7 @@ def calculate_line_parameters(x: NDArray, y: NDArray) -> Tuple[NDArray, NDArray]
 
     Returns
     -------
-    Tuple[NDArray, NDArray]
+    tuple[NDArray, NDArray]
         The slopes and intercepts of the lines defined by the points (x, y).
     """
 
@@ -139,7 +137,7 @@ def nautmiles_to_meters(nautmiles: FloatOrNDArray) -> FloatOrNDArray:
 
 
 def filter_order_duplicates(seq):
-    ''' Filters duplicate list entries while perserving order '''
+    '''Filters duplicate list entries while perserving order'''
     seen = set()
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]

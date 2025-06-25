@@ -33,3 +33,22 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.ruff]
+# Use Black-compatible defaults
+line-length = 88
+
+# Optionally, choose which rule sets to enable; this is a typical starting point.
+# Remove or extend as you like.
+lint.select = ["E", "F", "W", "I", "UP"]  # pycodestyle, pyflakes, warnings, isort, pyupgrade
+lint.ignore = []                           # specify ignores here
+
+# If you want Ruff to auto-format with Black style when you run
+#   ruff format .
+# you don't need any extra options—the default formatter already follows Black’s 88-char width.
+
+[tool.black]
+line-length = 88
+
+[tool.ruff.format]
+quote-style = "preserve"  # keep whatever the file already uses, dont change single quotes to double
