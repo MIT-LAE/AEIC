@@ -5,7 +5,6 @@ from pyproj import Geod
 
 
 def plot_flight_arc(mission):
-
     # Set up map
 
     plt.figure(figsize=(10, 7))

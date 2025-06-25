@@ -14,24 +14,26 @@ from utils import file_location
 
 class PerformanceModel:
     '''Performance model for an aircraft. Contains
-        fuel flow, airspeed, ROC/ROD, LTO emissions,
-        and OAG schedule'''
+    fuel flow, airspeed, ROC/ROD, LTO emissions,
+    and OAG schedule'''
 
     def __init__(self, config_file="IO/default_config.toml"):
-        ''' Initializes the performance model by reading the configuration,
+        '''Initializes the performance model by reading the configuration,
         loading mission data, and setting up performance and engine models.'''
         config_file_loc = file_location(config_file)
         self.config = {}
         with open(config_file_loc, 'rb') as f:
             config_data = tomllib.load(f)
-            self.config = \
-                {k: v for subdict in config_data.values() for k, v in subdict.items()}
+            self.config = {
+                k: v for subdict in config_data.values() for k, v in subdict.items()
+            }
 
         # Get mission data
         # self.filter_OAG_schedule = filter_OAG_schedule
         mission_file = file_location(
             os.path.join(
-                self.config['missions_folder'], self.config['missions_in_file'])
+                self.config['missions_folder'], self.config['missions_in_file']
+            )
         )
         with open(mission_file, 'rb') as f:
             all_missions = tomllib.load(f)
@@ -78,8 +80,9 @@ class PerformanceModel:
         Separates model metadata and prepares the data for table generation.'''
 
         # Read and load TOML data
-        with open(file_location(self.config["performance_model_input_file"]), "rb") \
-            as f:
+        with open(
+            file_location(self.config["performance_model_input_file"]), "rb"
+        ) as f:
             data = tomllib.load(f)
 
         self.LTO_data = data['LTO_performance']
@@ -113,10 +116,14 @@ class PerformanceModel:
         input_col_names = [c for i, c in enumerate(cols) if i != output_col_idx]
 
         # Extract and sort unique values for each input dimension
-        input_values = {col: sorted(set(row[cols.index(col)] for row in data)) \
-                        for col in input_col_names}
-        input_indices = {col: {val: idx for idx, val in enumerate(input_values[col])} \
-                         for col in input_col_names}
+        input_values = {
+            col: sorted(set(row[cols.index(col)] for row in data))
+            for col in input_col_names
+        }
+        input_indices = {
+            col: {val: idx for idx, val in enumerate(input_values[col])}
+            for col in input_col_names
+        }
 
         # Prepare multidimensional shape and index arrays
         shape = tuple(len(input_values[col]) for col in input_col_names)
@@ -139,5 +146,3 @@ class PerformanceModel:
         self.performance_table = fuel_flow_array
         self.performance_table_cols = [input_values[col] for col in input_col_names]
         self.performance_table_colnames = input_col_names  # Save for external reference
-
-

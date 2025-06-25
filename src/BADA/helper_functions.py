@@ -38,6 +38,7 @@ def read_synonym_file_to_dict(folder_path) -> dict[str, str]:
         synonym_dict[line[2]] = line[-3].strip("_")
     return synonym_dict
 
+
 def get_directly_available_aircraft_types(folder_path):
     """
     Returns a list of all directly available aircraft types in the BADA3 database.
