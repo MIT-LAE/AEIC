@@ -46,7 +46,6 @@ class LegacyTrajectory(Trajectory):
         zero_roc_mask (NDArray[bool]): mask on the rate-of-climb data; True only where
             ROC = 0.
     """
-
     def __init__(
         self,
         ac_performance: PerformanceModel,
@@ -124,6 +123,7 @@ class LegacyTrajectory(Trajectory):
         # Get the indices for 0-ROC performance
         self.__get_zero_roc_index()
 
+
     def climb(self):
         """ Function called by ``fly_flight_iteration()`` to simulate climb """
         dAlt = (self.crz_start_altitude - self.clm_start_altitude) / (self.NClm - 1)
@@ -137,6 +137,7 @@ class LegacyTrajectory(Trajectory):
         self.traj_data['altitude'][0 : self.NClm] = alts
 
         self.__legacy_climb()
+
 
     def cruise(self):
         """ Function called by ``fly_flight_iteration()`` to simulate cruise """
@@ -176,6 +177,7 @@ class LegacyTrajectory(Trajectory):
 
         self.__legacy_cruise(dGD)
 
+
     def descent(self):
         """ Function called by ``fly_flight_iteration()`` to simulate descent """
         # Start descent at end-of-cruise position and mass (fuel flow, TAS will be
@@ -197,6 +199,7 @@ class LegacyTrajectory(Trajectory):
         self.traj_data['altitude'][startN:endN] = alts
 
         self.__legacy_descent()
+
 
     def calc_starting_mass(self):
         """Calculates the starting mass using AEIC v2 methods.
