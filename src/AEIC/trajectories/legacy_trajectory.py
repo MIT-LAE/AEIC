@@ -9,7 +9,8 @@ from numpy.typing import NDArray
 
 class LegacyTrajectory(Trajectory):
     """Model for determining flight trajectories using the legacy method
-    from AEIC v2.
+    from AEIC v2. Contains all attributes listed in Trajectory plus the 
+    ones listed here.
     
     Args:
         ac_performance (PerformanceModel): Performance model used for trajectory simulation.
@@ -25,8 +26,7 @@ class LegacyTrajectory(Trajectory):
         pctStepDes (float, optional): Descent step size as percentage of total descent altitude change. Defaults to 0.01.
         fuel_LHV (float, optional): Lower heating value of the fuel used. Defaults to 43.8e6.
         
-    Attriubtes:
-        super(): :py:class:`Trajectory` attributes.
+    Attributes:
         crz_FLs (list[float]): Flight levels in the performance data bounding the constant altitude cruise FL.
         crz_FL_inds (list[int]): Indices of the flight levels bounding the const. altitude cruise FL.
         zero_roc_mask (NDArray[bool]): mask on the rate-of-climb data; True only where ROC = 0.
