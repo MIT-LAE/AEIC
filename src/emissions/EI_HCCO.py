@@ -1,4 +1,5 @@
-import numpy as np 
+import numpy as np
+
 
 def EI_HCCO(
     fuelflow_evaluate: np.ndarray,
@@ -6,7 +7,7 @@ def EI_HCCO(
     fuelflow_calibrate: np.ndarray,
     cruiseCalc: bool = True,
     Tamb: float = 288.15,
-    Pamb: float = 101325.0
+    Pamb: float = 101325.0,
 ) -> np.ndarray:
     """
     BFFM2 bilinear HC/CO fit to SLS data
@@ -70,7 +71,8 @@ def EI_HCCO(
 
     # ----------------------------------------------------------------------------
     # 3. Compute intersection (in log10 fuel) between slanted and horizontal segments:
-    #    x_intercept = [ 2*log10(ff_cal[0])*slope + log10(xEI[2]) + log10(xEI[3]) - 2*log10(xEI[0]) ]
+    #    x_intercept =
+    #      [ 2*log10(ff_cal[0])*slope + log10(xEI[2]) + log10(xEI[3]) - 2*log10(xEI[0])]
     #                  / (2 * slope) , if slope != 0
     #    If slope == 0, force intercept := log10(ff_cal[1]) to use horizontal segment
     # ----------------------------------------------------------------------------
@@ -89,7 +91,7 @@ def EI_HCCO(
     # 4. Enforce SAGE v1.5 rules row‐wise (here only one "row" since 1D):
     #    (a) If x_intercept > log10(ff_cal[2]), clamp it to log10(ff_cal[2]).
     #    (b) Else if x_intercept < log10(ff_cal[1]) and slope < 0:
-    #            set x_horzline := log10(xEI[1]) and clamp x_intercept := log10(ff_cal[1]).
+    #        set x_horzline := log10(xEI[1]) and clamp x_intercept := log10(ff_cal[1]).
     #    (c) Else if slope >= 0: force slope=0, base_log_fuel=0, base_log_EI=x_horzline,
     #            and clamp x_intercept := log10(ff_cal[1]).
     # ----------------------------------------------------------------------------
@@ -128,13 +130,12 @@ def EI_HCCO(
     # Slanted‐line formula for "lower" points
     if np.any(lower_mask):
         xEI_out[lower_mask] = 10.0 ** (
-            slope * (log_ff[lower_mask] - base_log_fuel)
-            + base_log_EI
+            slope * (log_ff[lower_mask] - base_log_fuel) + base_log_EI
         )
 
     # Horizontal‐line (constant) for "upper" points
     if np.any(upper_mask):
-        xEI_out[upper_mask] = 10.0 ** x_horzline
+        xEI_out[upper_mask] = 10.0**x_horzline
 
     # Replace any NaNs (e.g., from log10(0) → -inf) with zero
     xEI_out[np.isnan(xEI_out)] = 0.0

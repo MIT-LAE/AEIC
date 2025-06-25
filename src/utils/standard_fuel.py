@@ -1,32 +1,34 @@
 import numpy as np
+
 from utils.consts import kappa
 
-def get_thrust_cat(ff_eval: np.ndarray,
-                   ff_cal:  np.ndarray,
-                   cruiseCalc: bool) -> np.ndarray:
+
+def get_thrust_cat(
+    ff_eval: np.ndarray, ff_cal: np.ndarray, cruiseCalc: bool
+) -> np.ndarray:
     """
     Classify each fuel-flow value into a discrete thrust-setting category.
 
     Parameters
     ----------
     ff_eval : numpy.ndarray
-        Fuel-flow values to be evaluated  
+        Fuel-flow values to be evaluated
         Shape ``(n_times,)``.
     ff_cal : numpy.ndarray
-        Calibration fuel-flow points  
+        Calibration fuel-flow points
         *If* ``cruiseCalc`` is ``True``: at least the first three cruise
-        calibration points are required  
-        (typically Idle, Approach, Climb/Take-off).  
+        calibration points are required
+        (typically Idle, Approach, Climb/Take-off).
         *If* ``cruiseCalc`` is ``False``: exactly four LTO-mode points
         are expected.
     cruiseCalc : bool
-        • ``True``  →  Cruise calculation.  
+        • ``True``  →  Cruise calculation.
         • ``False`` →  Only LTO calculation.
 
     Returns
     -------
     thrustCat : numpy.ndarray, dtype=int
-        Integer category codes, same length as ``ff_eval``:  
+        Integer category codes, same length as ``ff_eval``:
 
         | Code | Meaning (ICAO convention) |
         |------|---------------------------|
@@ -43,13 +45,13 @@ def get_thrust_cat(ff_eval: np.ndarray,
     -----
     **Cruise mode (`cruiseCalc=True`)**
 
-    Two mid-points define the category boundaries  
-    ``lowLimit  = (ff_cal[0] + ff_cal[1]) / 2``  
-    ``approachLimit = (ff_cal[1] + ff_cal[2]) / 2``  
+    Two mid-points define the category boundaries
+    ``lowLimit  = (ff_cal[0] + ff_cal[1]) / 2``
+    ``approachLimit = (ff_cal[1] + ff_cal[2]) / 2``
 
-    * Idle          : ``ff_eval ≤ lowLimit``       →  code 2  
-    * Take-off/Climb: ``ff_eval >  approachLimit`` →  code 1  
-    * Approach      : remainder                    →  code 3  
+    * Idle          : ``ff_eval ≤ lowLimit``       →  code 2
+    * Take-off/Climb: ``ff_eval >  approachLimit`` →  code 1
+    * Approach      : remainder                    →  code 3
 
     **LTO mode (`cruiseCalc=False`)**
 
@@ -61,7 +63,9 @@ def get_thrust_cat(ff_eval: np.ndarray,
 
     if cruiseCalc:
         if ff_eval.size < 3:
-            raise ValueError("fuelflow_KGperS must have at least 3 entries when cruiseCalc=True.")
+            raise ValueError(
+                "fuelflow_KGperS must have at least 3 entries when cruiseCalc=True."
+            )
         # Define thresholds from the first three calibration points
         lowLimit = (ff_cal[0] + ff_cal[1]) / 2.0
         approachLimit = (ff_cal[1] + ff_cal[2]) / 2.0
@@ -76,22 +80,27 @@ def get_thrust_cat(ff_eval: np.ndarray,
         # LTO case: assume exactly 4 calibration points (LTO modes)
         # Categories fixed: [2, 2, 3, 1]
         if ff_eval.size != 4:
-            raise ValueError("When cruiseCalc=False, fuelflow_KGperS must have length 11.")
+            raise ValueError(
+                "When cruiseCalc=False, fuelflow_KGperS must have length 11."
+            )
         base = np.array([2, 2, 3, 1], dtype=int)
         # We linearly interpolate each fuelfactor against the 11-point calibration?
-        # But MATLAB simply tiles these 11 categories across each column. Since here we have
-        # 1D fuelfactor, we assume it also has length 11 in the pure LTO scenario.
+        # But MATLAB simply tiles these 11 categories across each column.
+        # Since here we have 1D fuelfactor, we assume it also has
+        # length 11 in the pure LTO scenario.
         if n_times != 4:
             raise ValueError("When cruiseCalc=False, fuelfactor must have length 4.")
         thrustCat = base.copy()
     return thrustCat
 
 
-def get_SLS_equivalent_fuel_flow(fuel_flow:   np.ndarray,
-                                 Pamb:        np.ndarray,
-                                 mach_number: np.ndarray,
-                                 z:     float = 3.8,
-                                 P_SL:  float = 101_325.0):
+def get_SLS_equivalent_fuel_flow(
+    fuel_flow: np.ndarray,
+    Pamb: np.ndarray,
+    mach_number: np.ndarray,
+    z: float = 3.8,
+    P_SL: float = 101_325.0,
+):
     """
     Convert in-flight fuel flow to its sea-level-static (SLS) equivalent
     using the **Fuel-Flow Method 2** correction (Eq. 40 in
@@ -130,5 +139,5 @@ def get_SLS_equivalent_fuel_flow(fuel_flow:   np.ndarray,
     # temperature ratio (isentropic estimate)
     theta_amb = delta_amb ** ((kappa - 1.0) / kappa)
     # apply Fuel-Flow-Method 2 correction
-    Wf_SL = fuel_flow * (theta_amb ** z) / delta_amb * np.exp(0.2 * mach_number ** 2)
+    Wf_SL = fuel_flow * (theta_amb**z) / delta_amb * np.exp(0.2 * mach_number**2)
     return Wf_SL

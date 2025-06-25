@@ -1,5 +1,3 @@
-import numpy as np
-
 def EI_SOx(fuel: dict):
     """
     Calculate universal SOx emissions indices (SO2EI and SO4EI).

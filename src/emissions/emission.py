@@ -1,21 +1,26 @@
 # Emissions class
 import numpy as np
 import tomllib
+
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories.trajectory import Trajectory
+from emissions.APU_emissions import get_APU_emissions
 from emissions.EI_CO2 import EI_CO2
 from emissions.EI_H2O import EI_H2O
-from emissions.EI_SOx import EI_SOx
-from emissions.EI_NOx import BFFM2_EINOx,NOx_speciation
 from emissions.EI_HCCO import EI_HCCO
-from emissions.EI_PMvol import EI_PMvol_NEW
+from emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
 from emissions.EI_PMnvol import PMnvol_MEEM
-from emissions.APU_emissions import get_APU_emissions
-from utils.standard_atmosphere import temperature_at_altitude_isa_bada4,pressure_at_altitude_isa_bada4
-from utils.helpers import meters_to_feet
-from utils.standard_fuel import get_thrust_cat, get_SLS_equivalent_fuel_flow
-from utils.consts import kappa, R_air
+from emissions.EI_PMvol import EI_PMvol_NEW
+from emissions.EI_SOx import EI_SOx
 from utils import file_location
+from utils.consts import R_air, kappa
+from utils.helpers import meters_to_feet
+from utils.standard_atmosphere import (
+    pressure_at_altitude_isa_bada4,
+    temperature_at_altitude_isa_bada4,
+)
+from utils.standard_fuel import get_SLS_equivalent_fuel_flow, get_thrust_cat
+
 
 class Emission:
     """
@@ -23,24 +28,28 @@ class Emission:
     including cruise trajectory, LTO (Landing and Take-Off), APU, and GSE emissions,
     as well as lifecycle CO2 adjustments.
     """
-    
-    def __init__(self, ac_performance:PerformanceModel, trajectory:Trajectory,
-                 EDB_data:bool):
+
+    def __init__(
+        self, ac_performance: PerformanceModel, trajectory: Trajectory, EDB_data: bool
+    ):
         """
         Initialize emissions model:
 
         Parameters
         ----------
         ac_performance : PerformanceModel
-            Aircraft performance object containing climb/cruise/descent performance and LTO data.
+            Aircraft performance object containing climb/cruise/descent
+            performance and LTO data.
         trajectory : Trajectory
-            Flight trajectory for mission object with altitude, speed, and fuel mass time series.
+            Flight trajectory for mission object with altitude, speed,
+            and fuel mass time series.
         EDB_data : bool
-            Flag indicating whether to use EDB tabulated data (True) or user specified LTO data (False).
+            Flag indicating whether to use EDB tabulated data (True)
+            or user specified LTO data (False).
         fuel_file : str
-            Path to TOML file containing fuel properties 
+            Path to TOML file containing fuel properties
         """
-        
+
         # Load fuel properties from TOML
         fuel_file_loc = file_location(ac_performance.config['fuel_file'])
         with open(fuel_file_loc, 'rb') as f:
@@ -51,7 +60,7 @@ class Emission:
         self.NClm = trajectory.NClm
         self.NCrz = trajectory.NCrz
         self.NDes = trajectory.NDes
-        
+
         # Flag to use performance model for all segments or just cruise
         self.traj_emissions_all = ac_performance.config['climb_descent_usage']
         # Mode for PMnvol emissions in LTO
@@ -60,7 +69,8 @@ class Emission:
         # Pre-allocate structured arrays for emission indices per point
         self.emission_indices = np.empty((), dtype=self.__emission_dtype(self.Ntot))
 
-        # Pre-allocate LTO emissions arrays: shape depends on whether takeoff/climb computed
+        # Pre-allocate LTO emissions arrays: shape depends on
+        # whether takeoff/climb computed
         if self.traj_emissions_all:
             # Only taxi mode if cruise/climb via performance model
             self.LTO_emission_indices = np.empty((), dtype=self.__emission_dtype(1))
@@ -76,9 +86,11 @@ class Emission:
         self.GSE_emissions_g = np.empty((), dtype=self.__emission_dtype(1))
 
         # Storage for pointwise (segment) emissions and summed totals
-        self.pointwise_emissions_g = np.empty((), dtype=self.__emission_dtype(self.Ntot))
+        self.pointwise_emissions_g = np.empty(
+            (), dtype=self.__emission_dtype(self.Ntot)
+        )
         self.summed_emission_g = np.empty((), dtype=self.__emission_dtype(1))
-        
+
         # Compute fuel burn per segment from fuelMass time series
         fuel_mass = trajectory.traj_data['fuelMass']
         fuel_burn = np.zeros_like(fuel_mass)
@@ -93,10 +105,7 @@ class Emission:
         self.get_LTO_emissions(ac_performance, pmnvol_switch_lc=self.pmnvol_mode)
 
         # Compute APU emissions based on LTO results and EDB parameters
-        (
-            self.APU_emission_indices,
-            self.APU_emissions_g
-        ) = get_APU_emissions(
+        (self.APU_emission_indices, self.APU_emissions_g) = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
@@ -107,14 +116,16 @@ class Emission:
         )
 
         # Compute Ground Service Equipment (GSE) emissions based on WNSF type
-        self.get_GSE_emissions(ac_performance.model_info['General_Information']['aircraft_class'])
+        self.get_GSE_emissions(
+            ac_performance.model_info['General_Information']['aircraft_class']
+        )
 
         # Sum all emission contributions: trajectory + LTO + APU + GSE
         self.sum_total_emissions()
 
         # Add lifecycle CO2 emissions to total
         self.get_lifecycle_emissions(self.fuel, trajectory)
-        
+
     def sum_total_emissions(self):
         """
         Aggregate emissions (g) across all sources into summed_emission_g.
@@ -125,7 +136,8 @@ class Emission:
                 np.sum(self.pointwise_emissions_g[field])
                 + np.sum(self.LTO_emissions_g[field])
                 + self.APU_emissions_g[field]
-                + self.GSE_emissions_g[field])
+                + self.GSE_emissions_g[field]
+            )
 
     def get_trajectory_emissions(self, trajectory, ac_performance, EDB_data=True):
         """
@@ -174,18 +186,21 @@ class Emission:
         flight_alts = trajectory.traj_data['altitude'][i_start:i_end]
         flight_temps = temperature_at_altitude_isa_bada4(flight_alts)
         flight_pressures = pressure_at_altitude_isa_bada4(flight_alts)
-        mach_number = (
-            trajectory.traj_data['tas'][i_start:i_end]
-            / np.sqrt(kappa * R_air * flight_temps)
+        mach_number = trajectory.traj_data['tas'][i_start:i_end] / np.sqrt(
+            kappa * R_air * flight_temps
         )
-        sls_equiv_fuel_flow = get_SLS_equivalent_fuel_flow(trajectory.traj_data['fuelFlow'][i_start:i_end], flight_pressures, mach_number)
+        sls_equiv_fuel_flow = get_SLS_equivalent_fuel_flow(
+            trajectory.traj_data['fuelFlow'][i_start:i_end],
+            flight_pressures,
+            mach_number,
+        )
 
         (
             self.emission_indices['NOx'][i_start:i_end],
             self.emission_indices['NO'][i_start:i_end],
             self.emission_indices['NO2'][i_start:i_end],
             self.emission_indices['HONO'][i_start:i_end],
-            *_
+            *_,
         ) = BFFM2_EINOx(
             sls_equiv_fuel_flow=sls_equiv_fuel_flow,
             NOX_EI_matrix=lto_nox_ei_array,
@@ -215,9 +230,7 @@ class Emission:
         (
             self.emission_indices['PMvol'][i_start:i_end],
             self.emission_indices['OCic'][i_start:i_end],
-        ) = EI_PMvol_NEW(
-            trajectory.traj_data['fuelFlow'][i_start:i_end], thrustCat
-        )
+        ) = EI_PMvol_NEW(trajectory.traj_data['fuelFlow'][i_start:i_end], thrustCat)
 
         # --- Compute black carbon indices via MEEM ---
         (
@@ -239,7 +252,9 @@ class Emission:
                 self.emission_indices[field] * self.fuel_burn_per_segment
             )
 
-    def get_LTO_emissions(self, ac_performance, EDB_LTO=True, pmnvol_switch_lc="SCOPE11"): 
+    def get_LTO_emissions(
+        self, ac_performance, EDB_LTO=True, pmnvol_switch_lc="SCOPE11"
+    ):
         """
         Compute Landing-and-Takeoff cycle emission indices and quantities.
 
@@ -258,8 +273,8 @@ class Emission:
         else:
             i_start, i_end = 0, 4
 
-        # Standard TIM durations 
-        # https://www.icao.int/environmental-protection/Documents/EnvironmentalReports/2016/ENVReport2016_pg73-74.pdf 
+        # Standard TIM durations
+        # https://www.icao.int/environmental-protection/Documents/EnvironmentalReports/2016/ENVReport2016_pg73-74.pdf
         TIM_TakeOff = 0.7 * 60
         TIM_Climb = 2.2 * 60
         TIM_Approach = 4.0 * 60
@@ -275,10 +290,12 @@ class Emission:
         if EDB_LTO:
             fuel_flows_LTO = np.array(ac_performance.EDB_data['fuelflow_KGperS'])
         else:
-            fuel_flows_LTO = np.array([
-                mode['FUEL_KGs']
-                for mode in ac_performance.LTO_data['thrust_settings'].values()
-            ])
+            fuel_flows_LTO = np.array(
+                [
+                    mode['FUEL_KGs']
+                    for mode in ac_performance.LTO_data['thrust_settings'].values()
+                ]
+            )
 
         # Compute CO2, H2O, SOx indices using same methods as cruise
         self.LTO_emission_indices['CO2'], _ = EI_CO2(self.fuel)
@@ -301,15 +318,15 @@ class Emission:
             )
         else:
             settings = ac_performance.LTO_data['thrust_settings'].values()
-            self.LTO_emission_indices['NOx'] = np.array([
-                mode['EI_NOx'] for mode in settings
-            ][i_start:i_end])
-            self.LTO_emission_indices['HC'] = np.array([
-                mode['EI_HC'] for mode in settings
-            ][i_start:i_end])
-            self.LTO_emission_indices['CO'] = np.array([
-                mode['EI_CO'] for mode in settings
-            ][i_start:i_end])
+            self.LTO_emission_indices['NOx'] = np.array(
+                [mode['EI_NOx'] for mode in settings][i_start:i_end]
+            )
+            self.LTO_emission_indices['HC'] = np.array(
+                [mode['EI_HC'] for mode in settings][i_start:i_end]
+            )
+            self.LTO_emission_indices['CO'] = np.array(
+                [mode['EI_CO'] for mode in settings][i_start:i_end]
+            )
 
         # Determine NOx speciation fractions based on thrust category
         thrustCat = get_thrust_cat(fuel_flows_LTO, None, cruiseCalc=False)
@@ -333,10 +350,18 @@ class Emission:
             # SCOPE11 provides best, lower, and upper bounds
             PMnvolEI_ICAOthrust = ac_performance.EDB_data['PMnvolEI_best_ICAOthrust']
             PMnvolEIN_ICAOthrust = ac_performance.EDB_data['PMnvolEIN_best_ICAOthrust']
-            PMnvolEI_lo_ICAOthrust = ac_performance.EDB_data['PMnvolEI_lower_ICAOthrust']
-            PMnvolEIN_lo_ICAOthrust = ac_performance.EDB_data['PMnvolEIN_lower_ICAOthrust']
-            PMnvolEI_hi_ICAOthrust = ac_performance.EDB_data['PMnvolEI_upper_ICAOthrust']
-            PMnvolEIN_hi_ICAOthrust = ac_performance.EDB_data['PMnvolEIN_upper_ICAOthrust']
+            PMnvolEI_lo_ICAOthrust = ac_performance.EDB_data[
+                'PMnvolEI_lower_ICAOthrust'
+            ]
+            PMnvolEIN_lo_ICAOthrust = ac_performance.EDB_data[
+                'PMnvolEIN_lower_ICAOthrust'
+            ]
+            PMnvolEI_hi_ICAOthrust = ac_performance.EDB_data[
+                'PMnvolEI_upper_ICAOthrust'
+            ]
+            PMnvolEIN_hi_ICAOthrust = ac_performance.EDB_data[
+                'PMnvolEIN_upper_ICAOthrust'
+            ]
         else:
             raise ValueError(
                 f"Re-define PMnvol estimation method: pmnvolSwitch = {pmnvol_switch_lc}"
@@ -345,20 +370,34 @@ class Emission:
         # Assign BC indices arrays for selected modes
         self.LTO_emission_indices['PMnvol'] = PMnvolEI_ICAOthrust[1:][i_start:i_end]
         if pmnvol_switch_lc == 'SCOPE11':
-            self.LTO_emission_indices['PMnvol_lo'] = PMnvolEI_lo_ICAOthrust[1:][i_start:i_end]
-            self.LTO_emission_indices['PMnvol_hi'] = PMnvolEI_hi_ICAOthrust[1:][i_start:i_end]
-            self.LTO_emission_indices['PMnvolN'] = PMnvolEIN_ICAOthrust[1:][i_start:i_end]
-            self.LTO_emission_indices['PMnvolN_lo'] = PMnvolEIN_lo_ICAOthrust[1:][i_start:i_end]
-            self.LTO_emission_indices['PMnvolN_hi'] = PMnvolEIN_hi_ICAOthrust[1:][i_start:i_end]
+            self.LTO_emission_indices['PMnvol_lo'] = PMnvolEI_lo_ICAOthrust[1:][
+                i_start:i_end
+            ]
+            self.LTO_emission_indices['PMnvol_hi'] = PMnvolEI_hi_ICAOthrust[1:][
+                i_start:i_end
+            ]
+            self.LTO_emission_indices['PMnvolN'] = PMnvolEIN_ICAOthrust[1:][
+                i_start:i_end
+            ]
+            self.LTO_emission_indices['PMnvolN_lo'] = PMnvolEIN_lo_ICAOthrust[1:][
+                i_start:i_end
+            ]
+            self.LTO_emission_indices['PMnvolN_hi'] = PMnvolEIN_hi_ICAOthrust[1:][
+                i_start:i_end
+            ]
 
-        # --- Compute LTO emissions in grams per mode by multiplying EI by durations*flows ---
+        # --- Compute LTO emissions in grams per mode
+        # by multiplying EI by durations*flows ---
         LTO_fuel_burn = (TIM_LTO * fuel_flows_LTO)[i_start:i_end]
         for field in self.LTO_emission_indices.dtype.names:
-            self.LTO_emissions_g[field] = self.LTO_emission_indices[field] * LTO_fuel_burn
+            self.LTO_emissions_g[field] = (
+                self.LTO_emission_indices[field] * LTO_fuel_burn
+            )
 
     def get_GSE_emissions(self, wnsf):
         """
-        Calculate Ground Service Equipment emissions based on aircraft size/freight type (WNSF).
+        Calculate Ground Service Equipment emissions based
+        on aircraft size/freight type (WNSF).
 
         Parameters
         ----------
@@ -369,47 +408,53 @@ class Emission:
         mapping = {'wide': 0, 'narrow': 1, 'small': 2, 'freight': 3}
         idx = mapping.get(wnsf.lower())
         if idx is None:
-            raise ValueError("Invalid WNSF code; must be one of 'wide','narrow','small','freight'")
+            raise ValueError(
+                "Invalid WNSF code; must be one of 'wide','narrow','small','freight'"
+            )
 
         # Nominal emissions per engine start cycle [g/cycle]
-        CO2_nom = [58e3, 18e3, 10e3, 58e3]        # g/cycle
-        NOx_nom = [0.9e3,  0.4e3, 0.3e3, 0.9e3]   # g/cycle
-        HC_nom  = [0.07e3, 0.04e3,0.03e3,0.07e3]  # g/cycle (NMVOC)
-        CO_nom  = [0.3e3,  0.15e3,0.1e3, 0.3e3]   # g/cycle
-        PM10_nom= [0.055e3,0.025e3,0.020e3,0.055e3]# g/cycle (≈PM2.5)
+        CO2_nom = [58e3, 18e3, 10e3, 58e3]  # g/cycle
+        NOx_nom = [0.9e3, 0.4e3, 0.3e3, 0.9e3]  # g/cycle
+        HC_nom = [0.07e3, 0.04e3, 0.03e3, 0.07e3]  # g/cycle (NMVOC)
+        CO_nom = [0.3e3, 0.15e3, 0.1e3, 0.3e3]  # g/cycle
+        PM10_nom = [0.055e3, 0.025e3, 0.020e3, 0.055e3]  # g/cycle (≈PM2.5)
 
         # Pick out the scalar values
         self.GSE_emissions_g['CO2'] = CO2_nom[idx]
         self.GSE_emissions_g['NOx'] = NOx_nom[idx]
-        self.GSE_emissions_g['HC']  = HC_nom[idx]
-        self.GSE_emissions_g['CO']  = CO_nom[idx]
+        self.GSE_emissions_g['HC'] = HC_nom[idx]
+        self.GSE_emissions_g['CO'] = CO_nom[idx]
         pm_core = PM10_nom[idx]
 
         # Fuel (kg/cycle) from CO2:
         #   EI_CO2 = fuel * 3.16 * 1000  ⇒  fuel = EI_CO2/(3.16*1000)
-        gse_fuel = self.GSE_emissions_g['CO2'] / (3.16 * 1000.0)
+        # gse_fuel = self.GSE_emissions_g['CO2'] / (3.16 * 1000.0)
 
         # NOx split
-        self.GSE_emissions_g['NO']   = self.GSE_emissions_g['NOx'] * 0.90
-        self.GSE_emissions_g['NO2']  = self.GSE_emissions_g['NOx'] * 0.09
+        self.GSE_emissions_g['NO'] = self.GSE_emissions_g['NOx'] * 0.90
+        self.GSE_emissions_g['NO2'] = self.GSE_emissions_g['NOx'] * 0.09
         self.GSE_emissions_g['HONO'] = self.GSE_emissions_g['NOx'] * 0.01
 
         # Sulfate / SO2 fraction (independent of WNSF)
-        GSE_FSC = 5.0    # fuel‐sulfur concentration (ppm)
-        GSE_EPS = 0.02   # fraction → sulfate
+        GSE_FSC = 5.0  # fuel‐sulfur concentration (ppm)
+        GSE_EPS = 0.02  # fraction → sulfate
         # g SO4 per kg fuel:
-        self.GSE_emissions_g['SO4'] = (GSE_FSC / 1e6) * 1000.0 * GSE_EPS * (96.0/32.0)
+        self.GSE_emissions_g['SO4'] = (GSE_FSC / 1e6) * 1000.0 * GSE_EPS * (96.0 / 32.0)
         # g SO2 per kg fuel:
-        self.GSE_emissions_g['SO2'] = (GSE_FSC / 1e6) * 1000.0 * (1.0 - GSE_EPS) * (64.0/32.0)
+        self.GSE_emissions_g['SO2'] = (
+            (GSE_FSC / 1e6) * 1000.0 * (1.0 - GSE_EPS) * (64.0 / 32.0)
+        )
 
         # Subtract sulfate from the core PM₁₀ then split 50:50
         pm_minus_so4 = pm_core - self.GSE_emissions_g['SO4']
-        self.GSE_emissions_g['PMvol']   = pm_minus_so4 * 0.5
-        self.GSE_emissions_g['PMnvol']   = pm_minus_so4 * 0.5
+        self.GSE_emissions_g['PMvol'] = pm_minus_so4 * 0.5
+        self.GSE_emissions_g['PMnvol'] = pm_minus_so4 * 0.5
 
     def get_lifecycle_emissions(self, fuel, traj):
         # add lifecycle CO2 emissions for climate model run
-        lc_CO2 = (fuel['LC_CO2'] * (traj.fuel_mass * fuel['Energy_MJ_per_kg'])) - self.summed_emission_g['CO2']
+        lc_CO2 = (
+            fuel['LC_CO2'] * (traj.fuel_mass * fuel['Energy_MJ_per_kg'])
+        ) - self.summed_emission_g['CO2']
         self.summed_emission_g['CO2'] += lc_CO2
 
     ###################
@@ -417,39 +462,43 @@ class Emission:
     ###################
     def __emission_dtype(self, shape):
         n = (shape,)
-        return [
-            ('CO2',   np.float64, n),
-            ('H2O',     np.float64, n),
-            ('HC',   np.float64, n),
-            ('CO',   np.float64, n),
-            ('NOx', np.float64, n),
-            ('NO', np.float64, n),
-            ('NO2', np.float64, n),
-            ('HONO', np.float64, n),
-            ('PMnvol',   np.float64, n),
-            ('PMnvol_lo',   np.float64, n),
-            ('PMnvol_hi',   np.float64, n),
-            ('PMnvolN',   np.float64, n),
-            ('PMnvolN_lo',   np.float64, n),
-            ('PMnvolN_hi',   np.float64, n),
-            ('PMnvolGMD',   np.float64, n),
-            ('PMvol',   np.float64, n),
-            ('OCic',   np.float64, n),
-            ('SO2',  np.float64, n),
-            ('SO4',  np.float64, n)
-        ] if self.pmnvol_mode else [
-            ('CO2',   np.float64, n),
-            ('H2O',     np.float64, n),
-            ('HC',   np.float64, n),
-            ('CO',   np.float64, n),
-            ('NOx', np.float64, n),
-            ('NO', np.float64, n),
-            ('NO2', np.float64, n),
-            ('HONO', np.float64, n),
-            ('PMnvol',   np.float64, n),
-            ('PMnvolGMD',   np.float64, n),
-            ('PMvol',   np.float64, n),
-            ('OCic',   np.float64, n),
-            ('SO2',  np.float64, n),
-            ('SO4',  np.float64, n)
-        ]
+        return (
+            [
+                ('CO2', np.float64, n),
+                ('H2O', np.float64, n),
+                ('HC', np.float64, n),
+                ('CO', np.float64, n),
+                ('NOx', np.float64, n),
+                ('NO', np.float64, n),
+                ('NO2', np.float64, n),
+                ('HONO', np.float64, n),
+                ('PMnvol', np.float64, n),
+                ('PMnvol_lo', np.float64, n),
+                ('PMnvol_hi', np.float64, n),
+                ('PMnvolN', np.float64, n),
+                ('PMnvolN_lo', np.float64, n),
+                ('PMnvolN_hi', np.float64, n),
+                ('PMnvolGMD', np.float64, n),
+                ('PMvol', np.float64, n),
+                ('OCic', np.float64, n),
+                ('SO2', np.float64, n),
+                ('SO4', np.float64, n),
+            ]
+            if self.pmnvol_mode
+            else [
+                ('CO2', np.float64, n),
+                ('H2O', np.float64, n),
+                ('HC', np.float64, n),
+                ('CO', np.float64, n),
+                ('NOx', np.float64, n),
+                ('NO', np.float64, n),
+                ('NO2', np.float64, n),
+                ('HONO', np.float64, n),
+                ('PMnvol', np.float64, n),
+                ('PMnvolGMD', np.float64, n),
+                ('PMvol', np.float64, n),
+                ('OCic', np.float64, n),
+                ('SO2', np.float64, n),
+                ('SO4', np.float64, n),
+            ]
+        )

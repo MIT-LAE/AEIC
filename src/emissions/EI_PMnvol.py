@@ -1,4 +1,5 @@
 import numpy as np
+
 from utils.consts import kappa
 
 # def EI_PMnvol(
@@ -33,7 +34,8 @@ from utils.consts import kappa
 #     PMnvolEI = np.zeros_like(fuel_flow_flight)
 
 #     # Perform interpolation row-by-row
-#     PMnvolEI = np.interp(fuel_flow_flight, fuel_flow_performance_model, PMnvolEI_ICAOthrust)
+#     PMnvolEI = np.interp(fuel_flow_flight, fuel_flow_performance_model,
+# PMnvolEI_ICAOthrust)
 
 #     return PMnvolEI
 
@@ -62,9 +64,16 @@ from utils.consts import kappa
 #     return PMnvolEI_N
 
 
-def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,pmnvolSwitch_cruise = 'SCOPE11'):
+def PMnvol_MEEM(
+    EDB_data,
+    altitudes,
+    Tamb_cruise,
+    Pamb_cruise,
+    sls_equiv_fuel_flow,
+    pmnvolSwitch_cruise='SCOPE11',
+):
     """
-    Estimate non-volatile particulate matter (nvPM) emissions at cruise using the 
+    Estimate non-volatile particulate matter (nvPM) emissions at cruise using the
     Mission Emissions Estimation Methodology (MEEM) based on Ahrens et al. (2022),
     SCOPE11, and the methodology of Peck et al. (2013).
 
@@ -103,15 +112,14 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
     Notes
     -----
     - If `nvPM_mass_matrix` or `nvPM_num_matrix` is undefined or negative in the
-      `EDB_data`, this function reconstructs the values using the SN matrix and 
+      `EDB_data`, this function reconstructs the values using the SN matrix and
       correlations from the literature.
     - Adjustments for altitude and in-flight thermodynamic conditions are made using
-      combustor inlet temperature and pressure estimates derived from ambient 
+      combustor inlet temperature and pressure estimates derived from ambient
       conditions and engine pressure ratio.
     - Interpolated values account for max thrust EI values where provided.
     - Results with invalid SN or negative EI are set to zero with a warning.
     """
-    
 
     # [idle, approach, climb-out, take-off]
     # geometric mean diameter (nm)
@@ -120,7 +128,7 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
     # Step 0: find EI from SN if necessary
     # Check if EI measurements for this aircraft exist
     SN_mat_tmp = EDB_data['SN_matrix']
-    ismeasure = False
+    # ismeasure = False
 
     if np.min(EDB_data['nvPM_mass_matrix']) < 0:
         # ground level SN to use
@@ -135,7 +143,8 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
         CI_mass = np.zeros(4)
         for idx in range(4):
             CI_mass[idx] = (
-                0.6484 * np.exp(0.0766 * SN_ref[idx])
+                0.6484
+                * np.exp(0.0766 * SN_ref[idx])
                 / (1 + np.exp(-1.098 * (SN_ref[idx] - 3.064)))
             )  # mg/m^3
 
@@ -168,12 +177,11 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
         # replace the calculated values into the measurements matrix
         # nvPM_mass_mode in mg/kg
         nvPM_mass_mode = CI_mass * Q_mode * kslm  # mg/kg
-        ismeasure = True
+        # ismeasure = True
 
     else:
         # EI from measurements (mg/kg)
         nvPM_mass_mode = np.array(EDB_data['nvPM_mass_matrix']).astype(float)
-
 
     # if not defined, do the number calculation
     if np.min(EDB_data['nvPM_num_matrix']) < 0:
@@ -190,8 +198,7 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
             )
         )
     else:
-        nvPM_num_mode =np.array(EDB_data['nvPM_num_matrix']).astype(float)
-
+        nvPM_num_mode = np.array(EDB_data['nvPM_num_matrix']).astype(float)
 
     # Step 1: Determine In-flight thermodynamic conditions
     max_pressure_ratio = np.array(EDB_data['PR'])[0]
@@ -213,14 +220,11 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
     pressure_coef[alt_change == 0] = 0.95
     pressure_coef[alt_change < 0] = 0.12
 
-    # These variables define the temperature and pressure at altitude
-    # Tamb_cruise and Pamb_cruise are arrays defined elsewhere (BADA standard atmosphere)
-    Ttamb_total = Tamb_cruise #* (1 + ((gamma - 1) / 2) * machFlight ** 2)
-    Ptamb_total = Pamb_cruise #* (1 + ((gamma - 1) / 2) * machFlight ** 2) ** (gamma / (gamma - 1))
-
     # find conditions at the combustor inlet
-    P3 = Ptamb_total * (1 + pressure_coef * (max_pressure_ratio - 1.0))
-    T3 = Ttamb_total * (1 + (1.0 / eta_comp) * ((P3 / Ptamb_total) ** ((gamma - 1) / gamma) - 1))
+    P3 = Pamb_cruise * (1 + pressure_coef * (max_pressure_ratio - 1.0))
+    T3 = Tamb_cruise * (
+        1 + (1.0 / eta_comp) * ((P3 / Pamb_cruise) ** ((gamma - 1) / gamma) - 1)
+    )
 
     # Step 2: Find conditions at the ground/reference state
     P_ground = 101325.0  # Pa
@@ -228,11 +232,12 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
 
     # reference values
     T3_ref = T3.copy()  # assume same as T3
-    P3_ref = P_ground * (1 + eta_comp * (T3_ref / T_ground - 1)) ** (gamma / (gamma - 1))
+    P3_ref = P_ground * (1 + eta_comp * (T3_ref / T_ground - 1)) ** (
+        gamma / (gamma - 1)
+    )
 
     # find F_Foo_ref
     FG_over_Foo = (P3_ref / P_ground - 1) / (max_pressure_ratio - 1)
-
 
     # Step 3: Interpolation
     # Mass:
@@ -267,7 +272,7 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
             thrust_EImass_interp = np.array([-10, 0.07, 0.3, 0.85, 0.925, 1, 100])
         else:
             raise ValueError(" EImass_max_thrust not recognized")
-        
+
     # Num:
     if (np.isnan(EDB_data['EInum_max_thrust'])) or (EDB_data['EInum_max_thrust'] < 0):
         # Use four-point interpolation
@@ -299,14 +304,16 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
             )
             thrust_EInum_interp = np.array([-10, 0.07, 0.3, 0.85, 0.925, 1, 100])
         else:
-            raise ValueError("cruiseEmissions_byFlight: EInum_max_thrust not recognized")
-        
+            raise ValueError(
+                "cruiseEmissions_byFlight: EInum_max_thrust not recognized"
+            )
+
     # prepare GMD for interpolation
     thrust_GMD_interp = np.array([-10, 0.07, 0.3, 0.85, 1, 100])
     GMD_interp = np.concatenate(([GMD_mode[0]], GMD_mode, [GMD_mode[-1]]))
 
     # now interpolate (mg/kg or #/kg)
-    fg_over = FG_over_Foo  
+    fg_over = FG_over_Foo
     EI_ref_mass = np.interp(fg_over, thrust_EImass_interp, EI_nvPM_mass_interp)
     EI_ref_num = np.interp(fg_over, thrust_EInum_interp, EI_nvPM_num_interp)
     GMD_ref = np.interp(fg_over, thrust_GMD_interp, GMD_interp)
@@ -315,9 +322,7 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
 
     # Step 4: Now apply DoppelHeuer-Lecht to altitude (g/kg & #/kg)
     # also convert mg/kg to g/kg
-    EI_PMnvol = (
-        1e-3 * EI_ref_mass * (P3 / P3_ref) ** 1.35 * (1.1 ** 2.5)
-    )
+    EI_PMnvol = 1e-3 * EI_ref_mass * (P3 / P3_ref) ** 1.35 * (1.1**2.5)
     EI_PMnvolN = EI_ref_num * EI_PMnvol / (1e-3 * EI_ref_mass)
 
     # correct the shape to fit with previous definition (transpose)
@@ -328,13 +333,13 @@ def PMnvol_MEEM(EDB_data,altitudes,Tamb_cruise,Pamb_cruise,sls_equiv_fuel_flow,p
     # do final checks and replace if necessary
     if np.max(SN_mat_tmp) < 0:
         print(f"SN definition for AC not sufficient {SN_mat_tmp}")
-        EI_PMnvol = np.zeros_like(fuelFactor)
+        EI_PMnvol = np.zeros_like(sls_equiv_fuel_flow)
         if pmnvolSwitch_cruise == 'SCOPE11':
-            EI_PMnvol_GMD = np.zeros_like(fuelFactor.T)
-            EI_PMnvol_GMD = np.zeros_like(fuelFactor.T)
+            EI_PMnvol_GMD = np.zeros_like(sls_equiv_fuel_flow.T)
+            EI_PMnvol_GMD = np.zeros_like(sls_equiv_fuel_flow.T)
 
     if np.sum(EI_PMnvol < 0) > 1:
         print("Warning! Negative EI(BC) at cruise")
         EI_PMnvol[EI_PMnvol < 0] = 0.0
 
-    return EI_PMnvol_GMD,EI_PMnvol,EI_PMnvolN
+    return EI_PMnvol_GMD, EI_PMnvol, EI_PMnvolN

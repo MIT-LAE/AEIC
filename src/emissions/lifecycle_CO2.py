@@ -11,4 +11,4 @@ def lifecycle_CO2(fuel, fuel_burn):
     -------
     lifecycle_CO2 : float
     """
-    return fuel_burn * (fuel['LC_CO2']- fuel['EI_CO2'])
+    return fuel_burn * (fuel['LC_CO2'] - fuel['EI_CO2'])

@@ -1,3 +1,4 @@
+import gc
 import os
 
 import numpy as np
@@ -87,9 +88,9 @@ class PerformanceModel:
 
         self.LTO_data = data['LTO_performance']
         if self.config["LTO_input_mode"] == "EDB":
-            # Read UID 
+            # Read UID
             UID = data['LTO_performance']['ICAO_UID']
-            # Read EDB file and get engine 
+            # Read EDB file and get engine
             engine_info = self.get_engine_by_uid(UID, self.config["edb_engine_file"])
             if engine_info is not None:
                 self.EDB_data = engine_info
@@ -220,5 +221,3 @@ class PerformanceModel:
         gc.collect()
 
         return match
-
-

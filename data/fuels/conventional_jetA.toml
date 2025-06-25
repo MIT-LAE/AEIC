@@ -9,5 +9,5 @@ LC_CO2            = 89 # gCO2e/MJfuel
                         # https://www.icao.int/environmental-protection/CORSIA/Documents/CORSIA%20Supporting%20Document_CORSIA%20Eligible%20Fuels_LCA%20Methodology.pdf
 
 # Sulfur content and sulfate yield
-FSCnom            = 600.0    # gS/kgfuel
+FSCnom            = 600.0    # mg S / kg fuel or ppm
 Epsnom            = 0.02     # fraction converted to sulfate
