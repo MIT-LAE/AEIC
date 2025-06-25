@@ -1,0 +1,60 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Pytest and Lint
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint:
+    name: Ruff (Lint & Style)
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install Ruff
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install ruff
+
+    # “ruff check .” performs linting;  
+    # “ruff format --check .” verifies Black-style formatting.
+    - name: Run Ruff
+      run: |
+        ruff check .
+        ruff format --check .
+
+  tests:
+    name: Pytest
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install project & dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install --editable .
+        python -m pip install pytest
+
+    - name: Set AEIC_DATA_DIR
+      run: echo "AEIC_DATA_DIR=$(pwd)/data" >> "$GITHUB_ENV"
+
+    - name: Run Pytest
+      run: python -m pytest
+
