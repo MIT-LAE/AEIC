@@ -1,11 +1,18 @@
-from dataclasses import dataclass
-from numpy.typing import NDArray, ArrayLike
-from typing import Optional, Dict, Any, Tuple
-import numpy as np
-from utils.helpers import great_circle_distance, meters_to_feet, feet_to_meters, unix_to_datetime_utc,calculate_line_parameters,crosses_dateline
-from shapely.geometry import Polygon
-import itertools
 import warnings
+from dataclasses import dataclass
+from typing import Optional, tuple
+
+import numpy as np
+from numpy.typing import NDArray
+from shapely.geometry import Polygon
+
+from utils.helpers import (
+    calculate_line_parameters,
+    crosses_dateline,
+    great_circle_distance,
+    meters_to_feet,
+    unix_to_datetime_utc,
+)
 
 
 @dataclass
@@ -45,7 +52,7 @@ class GeospatialGrid:
         return n_cells
 
     @property
-    def shape(self) -> Tuple[Optional[int], ...]:
+    def shape(self) -> tuple[Optional[int], ...]:
         return (self.n_latitudes, self.n_longitudes, self.n_altitudes, self.n_times)
 
     @property
@@ -159,13 +166,14 @@ class Gridder(GeospatialGrid):
         lons: NDArray,
         altitudes: Optional[NDArray] = None,
         times: Optional[NDArray] = None,
-        state_variables: Tuple[NDArray, ...] = (),
-        integrated_variables: Tuple[NDArray, ...] = (),
-    ) -> Tuple[
-        NDArray, NDArray, NDArray, NDArray, Tuple[NDArray, ...], Tuple[NDArray, ...]
+        state_variables: tuple[NDArray, ...] = (),
+        integrated_variables: tuple[NDArray, ...] = (),
+    ) -> tuple[
+        NDArray, NDArray, NDArray, NDArray, tuple[NDArray, ...], tuple[NDArray, ...]
     ]:
         """
-        this is a refactored version of the cells_touched_by_trajectory_with_state_and_integrated_variables method
+        this is a refactored version of the
+        cells_touched_by_trajectory_with_state_and_integrated_variables method
         """
 
         dateline_crossing = crosses_dateline(lons[:-1], lons[1:])
@@ -192,10 +200,10 @@ class Gridder(GeospatialGrid):
         lons: NDArray,
         altitudes: Optional[NDArray],
         times: Optional[NDArray],
-        state_variables: Tuple[NDArray, ...],
-        integrated_variables: Tuple[NDArray, ...],
-    ) -> Tuple[
-        NDArray, NDArray, NDArray, NDArray, Tuple[NDArray, ...], Tuple[NDArray, ...]
+        state_variables: tuple[NDArray, ...],
+        integrated_variables: tuple[NDArray, ...],
+    ) -> tuple[
+        NDArray, NDArray, NDArray, NDArray, tuple[NDArray, ...], tuple[NDArray, ...]
     ]:
         (
             touched_cells_lat_indices,
@@ -204,7 +212,7 @@ class Gridder(GeospatialGrid):
             touched_cells_time_indices,
             state_variable_values,
             integrated_variable_values,
-        ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_variables(
+        ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_vars(
             lats, lons, altitudes, times, state_variables, integrated_variables
         )
 
@@ -235,14 +243,15 @@ class Gridder(GeospatialGrid):
         lons: NDArray,
         altitudes: Optional[NDArray] = None,
         times: Optional[NDArray] = None,
-        state_variables: Tuple[NDArray, ...] = (),
-        integrated_variables: Tuple[NDArray, ...] = (),
-    ) -> Tuple[
-        NDArray, NDArray, NDArray, NDArray, Tuple[NDArray, ...], Tuple[NDArray, ...]
+        state_variables: tuple[NDArray, ...] = (),
+        integrated_variables: tuple[NDArray, ...] = (),
+    ) -> tuple[
+        NDArray, NDArray, NDArray, NDArray, tuple[NDArray, ...], tuple[NDArray, ...]
     ]:
         if np.count_nonzero(dateline_crossing) > 1:
             warnings.warn(
-                "Trajectory crosses the dateline more than once, this isn't implemented, returning None for all outputs"
+                "Trajectory crosses the dateline more than once, " \
+                "this isn't implemented, returning None for all outputs"
             )
             return (
                 np.array([]),
@@ -524,7 +533,7 @@ class Gridder(GeospatialGrid):
             touched_cells_time_indices_first_part,
             subsegment_state_variable_values_first_part,
             subsegment_integrated_variable_values_first_part,
-        ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_variables(
+        ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_vars(
             lats_first_part,
             lons_first_part,
             altitudes_first_part,
@@ -557,7 +566,7 @@ class Gridder(GeospatialGrid):
             touched_cells_time_indices_second_part,
             subsegment_state_variable_values_second_part,
             subsegment_integrated_variable_values_second_part,
-        ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_variables(
+        ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_vars(
             lats_second_part,
             lons_second_part,
             altitudes_second_part,
@@ -628,9 +637,11 @@ class Gridder(GeospatialGrid):
 
     def _trajectory_intersection_points_and_cells_horizontal(
         self, lats: NDArray, lons: NDArray
-    ) -> Tuple[Tuple[NDArray, NDArray], Tuple[NDArray, NDArray]]:
+    ) -> tuple[tuple[NDArray, NDArray], tuple[NDArray, NDArray]]:
         """
-        For each consecutive pair of points in the trajectory (a segment) returns the points where the segment intersects the grid and the indexes of the grid cells in which resulting subsegments fall
+        For each consecutive pair of points in the trajectory (a segment)
+        returns the points where the segment intersects the grid and the
+        indexes of the grid cells in which resulting subsegments fall
 
         Parameters
         ----------
@@ -643,16 +654,30 @@ class Gridder(GeospatialGrid):
 
         Returns
         -------
-        Tuple[Tuple[NDArray, NDArray], Tuple[NDArray,NDArray]]
-            The latitudes and longitudes of the intersection points and the lat and lon indices of the grid cells in which the resulting subsegments fall.
-            - The shape of the latitudes and longitudes point arrays - the first output - is (#of trajectory points - 1, maximum segment index change  + 2),
-            the first column are trajectory points and the last column are the following trajectory points (i.e. shifted by one).
-            The middle columns describe the points where the trajectory segments intersect the grid. if there are fewer intersections than the maximum index change (i.e. the maximum number of gridlines intersected by a single segment in the trajectory) then some columns will be nan.
-            The reason for the +2 in the number of columns is that the first and following trajectory points are also included in the output.
-            - The shape of the lat and lon indices arrays - the second output - is (#of trajectory points - 1, maximum segment index change + 1),
-            it contains the lat and lon indices of the grid cells that each segment of the trajectory intersects, including the ones that the segment starts and ends in. If the segment is fully inside a single gridcell, only the first column is not nan
-            if the segment crosses 1 gridline (index change = 1), it touches two cells. If it crosses 2 gridlines (index change = 2), it touches 3 cells, etc. Hence why the +1 in the number of columns.
-            if the segment has a smaller index change than the maximum index change, some columns will be nan.
+        tuple[tuple[NDArray, NDArray], tuple[NDArray,NDArray]]
+            The latitudes and longitudes of the intersection points and the lat and lon
+            indices of the grid cells in which the resulting subsegments fall.
+            - The shape of the latitudes and longitudes point arrays - the first output-
+            is (#of trajectory points - 1, maximum segment index change  + 2),
+            the first column are trajectory points and the last column are the
+            following trajectory points (i.e. shifted by one).
+            The middle columns describe the points where the trajectory segments
+            intersect the grid. if there are fewer intersections than the maximum
+            index change (i.e. the maximum number of gridlines intersected by a single
+            segment in the trajectory) then some columns will be nan.
+            The reason for the +2 in the number of columns is that the first and
+            following trajectory points are also included in the output.
+            - The shape of the lat and lon indices arrays - the second output - is
+            (#of trajectory points - 1, maximum segment index change + 1),
+            it contains the lat and lon indices of the grid cells that each segment of
+            the trajectory intersects, including the ones that the segment starts and
+            ends in. If the segment is fully inside a single gridcell, only the first
+            column is not nan
+            if the segment crosses 1 gridline (index change = 1), it touches two cells.
+            If it crosses 2 gridlines (index change = 2), it touches 3 cells, etc.
+            Hence why the +1 in the number of columns.
+            if the segment has a smaller index change than the maximum index change,
+            some columns will be nan.
         """
 
         # Number of segments is one less than the number of points
@@ -690,7 +715,10 @@ class Gridder(GeospatialGrid):
         unique_lat_index_changes = np.unique(lat_index_changes)
         unique_lon_index_changes = np.unique(lon_index_changes)
 
-        # initialize empty arrays for lat and lon lines intersected by the trajectory segments, the lat array should have shape (n_segments, max_lat_index_change) and the lon array should have shape (n_segments, max_lon_index_change)
+        # initialize empty arrays for lat and lon lines intersected by the
+        # trajectory segments, the lat array should have shape (n_segments,
+        # max_lat_index_change) and the lon array should have
+        # shape (n_segments, max_lon_index_change)
         lat_lines_intersected = np.empty(
             (n_segments, max_lat_index_change), dtype=float
         )
@@ -710,10 +738,13 @@ class Gridder(GeospatialGrid):
         lats_for_lon_intersections[:] = np.nan
 
         # find the lat and lon lines intersected by the segment from the index ranges
-        # each row of lat index range contains the lat index of the cell in which the start and end point of the segment are located
-        # e.g. if the lat index range is [0,2] then the segment intersects the lat lines at index 1 and 2
+        # each row of lat index range contains the lat index of the cell in which
+        # the start and end point of the segment are located
+        # e.g. if the lat index range is [0,2] then the segment intersects
+        # the lat lines at index 1 and 2
         # the same applies to lon index range
-        # store the lat and lon lines intersected by the segment in the lat and lon lines intersected arrays
+        # store the lat and lon lines intersected by the segment in the
+        # lat and lon lines intersected arrays
         # do this in a vectorized way
 
         for _lat_index_change in unique_lat_index_changes:
@@ -730,7 +761,10 @@ class Gridder(GeospatialGrid):
             else:
                 _change_range += 1
 
-            # now create _lat_indexes_intersected which has shape (sum(_mask, _lat_index_change) and contains the lat indexes of the lat lines intersected by the segment, keep in mind that _start_lat_index has shape (sum(_mask),)
+            # now create _lat_indexes_intersected which has shape
+            # (sum(_mask, _lat_index_change) and contains the lat
+            # indexes of the lat lines intersected by the segment,
+            # keep in mind that _start_lat_index has shape (sum(_mask),)
             _lat_indexes_intersected = (
                 _start_lat_index[:, np.newaxis] + _change_range[np.newaxis, :]
             )
@@ -741,7 +775,8 @@ class Gridder(GeospatialGrid):
                 np.expand_dims(_slopes, axis=1), _lat_lines_intersected
             ) + np.expand_dims(_intercepts, axis=1)
 
-            # now store the lat lines intersected by the segment in the lat_lines_intersected array
+            # now store the lat lines intersected by the segment in the
+            # lat_lines_intersected array
             lat_lines_intersected[_mask, :_abs_lat_index_change] = (
                 _lat_lines_intersected
             )
@@ -766,7 +801,10 @@ class Gridder(GeospatialGrid):
             else:
                 _change_range += 1
 
-            # now create _lon_indexes_intersected which has shape (sum(_mask, _lon_index_change) and contains the lon indexes of the lon lines intersected by the segment, keep in mind that _start_lon_index has shape (sum(_mask),)
+            # now create _lon_indexes_intersected which has shape\
+            # (sum(_mask, _lon_index_change) and contains the lon
+            # indexes of the lon lines intersected by the segment,
+            # keep in mind that _start_lon_index has shape (sum(_mask),)
             _lon_indexes_intersected = (
                 _start_lon_index[:, np.newaxis] + _change_range[np.newaxis, :]
             )
@@ -788,7 +826,8 @@ class Gridder(GeospatialGrid):
                 _lats[_inf_mask], axis=1
             )
 
-            # now store the lon lines intersected by the segment in the lon_lines_intersected array
+            # now store the lon lines intersected by the segment in the
+            # lon_lines_intersected array
             lon_lines_intersected[_mask, :_abs_lon_index_change] = (
                 _lon_lines_intersected
             )
@@ -796,7 +835,8 @@ class Gridder(GeospatialGrid):
                 _lats_for_lon_intersections
             )
 
-        # now we have the lat and lon lines intersected by the trajectory segments, we combine with lats and lons for lon and lat intersections and sort
+        # now we have the lat and lon lines intersected by the trajectory segments,
+        # we combine with lats and lons for lon and lat intersections and sort
         intersection_point_lats = np.column_stack(
             (lat_lines_intersected, lats_for_lon_intersections)
         )
@@ -887,21 +927,21 @@ class Gridder(GeospatialGrid):
             raise ValueError("No altitude grid")
         return (np.searchsorted(self.grid_altitudes, altitudes) - 1)[:-1]
 
-    def _cell_idxs_touched_by_trajectory_with_state_and_integrated_variables(
+    def _cell_idxs_touched_by_trajectory_with_state_and_integrated_vars(
         self,
         lats: NDArray,
         lons: NDArray,
         altitudes: Optional[NDArray] = None,
         times: Optional[NDArray] = None,
-        state_variables: Tuple[NDArray, ...] = (),
-        integrated_variables: Tuple[NDArray, ...] = (),
-    ) -> Tuple[
+        state_variables: tuple[NDArray, ...] = (),
+        integrated_variables: tuple[NDArray, ...] = (),
+    ) -> tuple[
         NDArray,
         NDArray,
         NDArray,
         NDArray,
-        Tuple[NDArray, ...],
-        Tuple[NDArray, ...],
+        tuple[NDArray, ...],
+        tuple[NDArray, ...],
     ]:
         (all_subsegment_point_lats, all_subsegment_point_lons), (
             all_subsegment_lat_indices,
@@ -1042,24 +1082,26 @@ class Gridder(GeospatialGrid):
         lons: NDArray,
         altitudes: Optional[NDArray] = None,
         times: Optional[NDArray] = None,
-        state_variables: Tuple[NDArray, ...] = (),
-        integrated_variables: Tuple[NDArray, ...] = (),
-    ) -> Tuple[
+        state_variables: tuple[NDArray, ...] = (),
+        integrated_variables: tuple[NDArray, ...] = (),
+    ) -> tuple[
         Optional[NDArray],
         Optional[NDArray],
         Optional[NDArray],
         Optional[NDArray],
-        Tuple[Optional[NDArray], ...],
-        Tuple[Optional[NDArray], ...],
+        tuple[Optional[NDArray], ...],
+        tuple[Optional[NDArray], ...],
     ]:
-        # does the same as cells_touched_by_trajectory but for both state and integrated variables
+        # does the same as cells_touched_by_trajectory but for
+        # both state and integrated variables
 
         dateline_crossing = crosses_dateline(lons[:-1], lons[1:])
         if np.any(dateline_crossing != 0):
 
             if np.count_nonzero(dateline_crossing) > 1:
                 warnings.warn(
-                    "Trajectory crosses the dateline more than once, this isn't implemented, returning None for all outputs"
+                    "Trajectory crosses the dateline more than once, " \
+                    "this isn't implemented, returning None for all outputs"
                 )
                 return None, None, None, None, None, None
 
@@ -1210,7 +1252,7 @@ class Gridder(GeospatialGrid):
                 touched_cells_time_indices_first_part,
                 subsegment_state_variable_values_first_part,
                 subsegment_integrated_variable_values_first_part,
-            ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_variables(
+            ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_vars(
                 lats_first_part,
                 lons_first_part,
                 altitudes_first_part,
@@ -1243,7 +1285,7 @@ class Gridder(GeospatialGrid):
                 touched_cells_time_indices_second_part,
                 subsegment_state_variable_values_second_part,
                 subsegment_integrated_variable_values_second_part,
-            ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_variables(
+            ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_vars(
                 lats_second_part,
                 lons_second_part,
                 altitudes_second_part,
@@ -1321,7 +1363,7 @@ class Gridder(GeospatialGrid):
                 touched_cells_time_indices,
                 state_variable_values,
                 integrated_variable_values,
-            ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_variables(
+            ) = self._cell_idxs_touched_by_trajectory_with_state_and_integrated_vars(
                 lats, lons, altitudes, times, state_variables, integrated_variables
             )
 
