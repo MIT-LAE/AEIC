@@ -77,14 +77,16 @@ class Trajectory:
             ``groundSpeed``: ground speed.\n
             ``FL_weight``: weighting used in linear interpolation over flight levels.
     """
-    def __init__(self,
-                 ac_performance:PerformanceModel,
-                 mission,
-                 optimize_traj:bool,
-                 iterate_mass:bool,
-                 startMass:float=-1,
-                 max_mass_iters:int=5,
-                 mass_iter_reltol:float=1e-2
+
+    def __init__(
+        self,
+        ac_performance: PerformanceModel,
+        mission,
+        optimize_traj: bool,
+        iterate_mass: bool,
+        startMass: float = -1,
+        max_mass_iters: int = 5,
+        mass_iter_reltol: float = 1e-2,
     ) -> None:
         # Save A/C performance model and the mission to be flown
         # NOTE: Currently assume that `mission` comes in as a dictionary with
@@ -199,7 +201,7 @@ class Trajectory:
             self.fly_flight_iteration(**kwargs)
 
     def fly_flight_iteration(self, **kwargs):
-        """ Function for running a single flight iteration. In non-weight-iterating
+        """Function for running a single flight iteration. In non-weight-iterating
         mode, only runs once. `kwargs` used to pass in relevent optimization variables
         in applicable cases.
 
