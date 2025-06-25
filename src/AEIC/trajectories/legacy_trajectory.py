@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import NDArray
 
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories.trajectory import Trajectory
@@ -9,33 +10,41 @@ from utils.helpers import (
     nautmiles_to_meters,
 )
 from utils.weather_utils import compute_ground_speed
-import pandas as pd
-from typing import Tuple, List
-from numpy.typing import NDArray
+
 
 class LegacyTrajectory(Trajectory):
     """Model for determining flight trajectories using the legacy method
-    from AEIC v2. Contains all attributes listed in Trajectory plus the 
+    from AEIC v2. Contains all attributes listed in Trajectory plus the
     ones listed here.
-    
+
     Args:
-        ac_performance (PerformanceModel): Performance model used for trajectory simulation.
-        mission (_type_): Data dictating the mission to be flown (departure/arrival info, etc.).
-        optimize_traj (bool): (Currently unimplemented) Flag controlling whether the nominal trajectory undergoes
-            horizontal, vertical, and speed optimization during simulation.
-        iterate_mass (bool): Flag controlling whether starting mass is iterated on such that the remaining fuel (non-reserve)
-            is close to 0 at the arrival airport. 
-        startMass (float, optional): Starting mass of the aircraft; leave as default to calculate starting mass
-            during simulation. Defaults to -1.
-        pctStepClm (float, optional): Climb step size as percentage of total climb altitude change. Defaults to 0.01.
-        pctStepCrz (float, optional): Cruise step size as percentage of total cruise ground distance. Defaults to 0.01.
-        pctStepDes (float, optional): Descent step size as percentage of total descent altitude change. Defaults to 0.01.
-        fuel_LHV (float, optional): Lower heating value of the fuel used. Defaults to 43.8e6.
-        
+        ac_performance (PerformanceModel): Performance model used for trajectory
+            simulation.
+        mission (_type_): Data dictating the mission to be flown (departure/arrival
+            info, etc.).
+        optimize_traj (bool): (Currently unimplemented) Flag controlling whether the
+            nominal trajectory undergoes horizontal, vertical, and speed optimization
+            during simulation.
+        iterate_mass (bool): Flag controlling whether starting mass is iterated on such
+            that the remaining fuel (non-reserve) is close to 0 at the arrival airport.
+        startMass (float, optional): Starting mass of the aircraft; leave as default to
+            calculate starting mass during simulation. Defaults to -1.
+        pctStepClm (float, optional): Climb step size as percentage of total climb
+            altitude change. Defaults to 0.01.
+        pctStepCrz (float, optional): Cruise step size as percentage of total cruise
+            ground distance. Defaults to 0.01.
+        pctStepDes (float, optional): Descent step size as percentage of total descent
+            altitude change. Defaults to 0.01.
+        fuel_LHV (float, optional): Lower heating value of the fuel used. Defaults to
+            43.8e6.
+
     Attributes:
-        crz_FLs (list[float]): Flight levels in the performance data bounding the constant altitude cruise FL.
-        crz_FL_inds (list[int]): Indices of the flight levels bounding the const. altitude cruise FL.
-        zero_roc_mask (NDArray[bool]): mask on the rate-of-climb data; True only where ROC = 0.
+        crz_FLs (list[float]): Flight levels in the performance data bounding the
+            constant altitude cruise FL.
+        crz_FL_inds (list[int]): Indices of the flight levels bounding the constant
+            altitude cruise FL.
+        zero_roc_mask (NDArray[bool]): mask on the rate-of-climb data; True only where
+            ROC = 0.
     """
 
     def __init__(
@@ -47,8 +56,7 @@ class LegacyTrajectory(Trajectory):
         startMass: float = -1,
         pctStepClm:float=0.01,
         pctStepCrz:float=0.01,
-        pctStepDes:float=0.01, 
-                
+        pctStepDes:float=0.01,
         fuel_LHV:float=43.8e6,
     ):
         super().__init__(
@@ -132,7 +140,8 @@ class LegacyTrajectory(Trajectory):
 
     def cruise(self):
         """ Function called by ``fly_flight_iteration()`` to simulate cruise """
-        # Start cruise at end-of-climb position and mass (fuel flow, TAS will be replaced)
+        # Start cruise at end-of-climb position and mass (fuel flow, TAS will be
+        # replaced)
         for field in self.traj_data.dtype.names:
             self.traj_data[field][self.NClm] = self.traj_data[field][self.NClm - 1]
 
@@ -169,7 +178,8 @@ class LegacyTrajectory(Trajectory):
 
     def descent(self):
         """ Function called by ``fly_flight_iteration()`` to simulate descent """
-        # Start descent at end-of-cruise position and mass (fuel flow, TAS will be replaced)
+        # Start descent at end-of-cruise position and mass (fuel flow, TAS will be
+        # replaced)
         for field in self.traj_data.dtype.names:
             self.traj_data[field][self.NClm + self.NCrz] = self.traj_data[field][
                 self.NClm + self.NCrz - 1
@@ -189,11 +199,10 @@ class LegacyTrajectory(Trajectory):
         self.__legacy_descent()
 
     def calc_starting_mass(self):
-        '''Calculates the starting mass using AEIC v2 methods.
-        Sets both starting mass and non-reserve/hold/divert fuel mass'''
+        """Calculates the starting mass using AEIC v2 methods.
+        Sets both starting mass and non-reserve/hold/divert fuel mass"""
         # Use the highest value of mass per AEIC v2 method
         mass_ind = [len(self.ac_performance.performance_table_cols[-1]) - 1]
-        # crz_mass = np.array(self.ac_performance.performance_table_cols[-1])[mass_ind]
 
         subset_performance = self.ac_performance.performance_table[
             np.ix_(
@@ -291,18 +300,21 @@ class LegacyTrajectory(Trajectory):
         """ Get the bounding cruise flight levels (for which data exists) """
         # Get the two flight levels in data closest to the cruise FL
         self.crz_FL_inds = self.__search_flight_levels_ind(self.crz_FL)
-        self.crz_FLs = np.array(self.ac_performance.performance_table_cols[0])[self.crz_FL_inds]
-        
-        
-    def __search_flight_levels_ind(self, FL:float) -> List[float]:
-        """ Searches the valid flight levels in the performance model for the indices bounding a
-        known FL value.
-        
+        self.crz_FLs = np.array(
+            self.ac_performance.performance_table_cols[0]
+        )[self.crz_FL_inds]
+
+
+    def __search_flight_levels_ind(self, FL:float) -> list[float]:
+        """ Searches the valid flight levels in the performance model for the indices
+        bounding a known FL value.
+
         Args:
             FL (float): Flight level of interest.
-            
+
         Returns:
-            (list[int]) List containing the indices of the FLs in the performance data that bound the given FL.
+            (list[int]) List containing the indices of the FLs in the performance data
+                that bound the given FL.
         """
         FL_ind_high = np.searchsorted(self.ac_performance.performance_table_cols[0], FL)
 
@@ -318,20 +330,24 @@ class LegacyTrajectory(Trajectory):
         FL_ind_low = FL_ind_high - 1
         FLs = [FL_ind_low, FL_ind_high]
         return FLs
-    
-    
-    def __search_TAS_ind(self, tas:float) -> List[float]:
+
+
+    def __search_TAS_ind(self, tas:float) -> list[float]:
         """ Searches the valid tas in the performance model for the indices bounding a
         known tas value.
-        
+
         Args:
             tas (float): TAS value of interest.
-            
+
         Returns:
-            (list[int]) List containing the indices of the TAS values in performance data that bound the given TAS.
+            (list[int]) List containing the indices of the TAS values in performance
+                data that bound the given TAS.
         """
-        tas_ind_high = np.searchsorted(self.ac_performance.performance_table_cols[1], tas)
-        
+        tas_ind_high = np.searchsorted(
+            self.ac_performance.performance_table_cols[1],
+            tas
+        )
+
         if tas_ind_high == 0:
             raise ValueError(
                 f"Aircraft is trying to fly below minimum cruise altitude(FL {tas:.2f})"
@@ -344,20 +360,24 @@ class LegacyTrajectory(Trajectory):
         tas_ind_low = tas_ind_high - 1
         tass = [tas_ind_low, tas_ind_high]
         return tass
-    
-    
-    def __search_mass_ind(self, mass:float) -> List[float]:
-        """ Searches the valid mass values in the performance model for the indices bounding a
-        known mass value.
-        
+
+
+    def __search_mass_ind(self, mass:float) -> list[float]:
+        """ Searches the valid mass values in the performance model for the indices
+        bounding a known mass value.
+
         Args:
             mass (float): Mass value of interest.
-            
+
         Returns:
-            (list[int]) List containing the indices of the TAS values in performance data that bound the given TAS.
+            (list[int]) List containing the indices of the TAS values in performance
+                data that bound the given TAS.
         """
-        mass_ind_high = np.searchsorted(self.ac_performance.performance_table_cols[-1], mass)
-        
+        mass_ind_high = np.searchsorted(
+            self.ac_performance.performance_table_cols[-1],
+            mass
+        )
+
         if mass_ind_high == 0:
             raise ValueError('Aircraft is trying to fly below minimum mass')
         if mass_ind_high == len(self.ac_performance.performance_table_cols[0]):
@@ -366,18 +386,26 @@ class LegacyTrajectory(Trajectory):
         mass_ind_low = mass_ind_high - 1
         masses = [mass_ind_low, mass_ind_high]
         return masses
-        
-        
+
+
     def __get_zero_roc_index(self, roc_zero_tol:float=1e-6) -> None:
-        """Get the index along the ROC axis of performance where ROC == 0 
+        """Get the index along the ROC axis of performance where ROC == 0
 
         Args:
-            roc_zero_tol (float, optional): Tolerance at which ROC is considered to be 0. Defaults to 1e-6.
+            roc_zero_tol (float, optional): Tolerance at which ROC is considered to be
+                0. Defaults to 1e-6.
         """
-        self.zero_roc_mask = np.abs(np.array(self.ac_performance.performance_table_cols[2])) < roc_zero_tol
-        
-        
-    def __calc_FL_interp_vals(self, i:int, alt:float, roc_perf:NDArray[np.float64]) -> Tuple[float, ...]:
+        self.zero_roc_mask = np.abs(
+            np.array(self.ac_performance.performance_table_cols[2])
+        ) < roc_zero_tol
+
+
+    def __calc_FL_interp_vals(
+        self,
+        i:int,
+        alt:float,
+        roc_perf:NDArray[np.float64]
+    ) -> tuple[float, ...]:
         """Computes the state values that depend only on flight level. These include
         true airspeed (TAS) and fuel flow (ff). Rate of climb (roc) is also only
         dependent on FL in descent.
@@ -385,11 +413,12 @@ class LegacyTrajectory(Trajectory):
         Args:
             i (int): Index of the current point in the ``traj_data`` array.
             alt (float): Altitude at which to calculate interpolated values.
-            roc_perf (NDArray[np.float64]): Performance data restricted to the relevant rates
-                of climb.
+            roc_perf (NDArray[np.float64]): Performance data restricted to the relevant
+                rates of climb.
 
         Returns:
-            Tuple[float]: TAS, fuel flow rate, and rate of climb at the specified altitude
+            Tuple[float]: TAS, fuel flow rate, and rate of climb at the specified
+                altitude
         """
         FL = meters_to_feet(alt) / 100
         self.traj_data['FLs'][i] = FL
@@ -450,15 +479,21 @@ class LegacyTrajectory(Trajectory):
             roc_interp = roc_vals[0] + fl_weighting * (roc_vals[1] - roc_vals[0])
 
         return tas_interp, ff_interp, roc_interp
-    
-    
-    def __calc_tas_crz(self, i:int, alt:float, roc_perf:NDArray[np.float64]) -> Tuple[float, ...]:
+
+
+    def __calc_tas_crz(
+        self,
+        i:int,
+        alt:float,
+        roc_perf:NDArray[np.float64]
+    ) -> tuple[float, ...]:
         """Computes the TAS that depend only on flight level for cruise
 
         Args:
             i (int): Index of current point in ``traj_data``.
             alt (float): Current altitude.
-            roc_perf (NDArray[np.float64]): Performance data restricted to 0 rate of climb.
+            roc_perf (NDArray[np.float64]): Performance data restricted to 0 rate of
+                climb.
 
         Returns:
             Tuple[float]: Interpolated TAS and weighting used in linear interpolation.
@@ -489,20 +524,25 @@ class LegacyTrajectory(Trajectory):
             tas_interp = tas_vals[0] + fl_weighting * (tas_vals[1] - tas_vals[0])
 
         return tas_interp, fl_weighting
-        
-        
-    def __calc_roc_climb(self, i:int, FL:float, seg_start_mass:float, roc_perf:NDArray[np.float64], 
-                         rocs:NDArray[np.float64]) -> float:
-        """Calculates rate of climb (roc) given flight level and mass given a 
-        subset of overall performance data (limited to roc > 0 or roc < 0 in 
+
+
+    def __calc_roc_climb(self,
+                         i:int,
+                         FL:float,
+                         seg_start_mass:float,
+                         roc_perf:NDArray[np.float64],
+                         rocs:NDArray[np.float64]
+    ) -> float:
+        """Calculates rate of climb (roc) given flight level and mass given a
+        subset of overall performance data (limited to roc > 0 or roc < 0 in
         ``roc_perf``).
 
         Args:
             i (int): Index of current point in ``traj_data``.
             FL (float): Current flight level.
             seg_start_mass (float): Starting mass of the climb segment.
-            roc_perf (NDArray[np.float64]): Performance data (fuel flow rate) restricted to 
-                either positive or negative rate of climb.
+            roc_perf (NDArray[np.float64]): Performance data (fuel flow rate) restricted
+                to either positive or negative rate of climb.
             rocs (NDArray[np.float64]): Unfiltered list of rate of climb values.
 
         Returns:
@@ -541,10 +581,10 @@ class LegacyTrajectory(Trajectory):
             ii = np.where(bounding_fls == fls[kk])[0][0]
             jj = np.where(bounding_mass == masses[kk])[0][0]
             roc_mat[ii, jj] = rocs[kk]
-        
+
         # Get the precomputed flight-level interpolation weighting
         fl_weight = self.traj_data['FL_weight'][i]
-        
+
         # Calculate the mass-based interpolation weighting
         mass_weight = (seg_start_mass - bounding_mass[0]) / (
             bounding_mass[1] - bounding_mass[0]
@@ -555,14 +595,18 @@ class LegacyTrajectory(Trajectory):
         roc_2 = roc_mat[0, 1] + (roc_mat[1, 1] - roc_mat[0, 1]) * fl_weight
 
         roc = roc_1 + (roc_2 - roc_1) * mass_weight
-        
+
         return roc
-    
-    
-    def __calc_ff_cruise(self, i:int, seg_start_mass:float, crz_perf:NDArray[np.float64]) -> float:
-        """Calculates fuel flow rate in cruise using given flight level and 
+
+
+    def __calc_ff_cruise(self,
+                         i:int,
+                         seg_start_mass:float,
+                         crz_perf:NDArray[np.float64]
+    ) -> float:
+        """Calculates fuel flow rate in cruise using given flight level and
         mass given a subset of overall performance data (limited to roc = 0).
-        
+
         Args:
             i (int): Index of current point in ``traj_data``.
             seg_start_mass (float): Starting mass of the climb segment.
@@ -570,7 +614,7 @@ class LegacyTrajectory(Trajectory):
 
         Returns:
             float: Cruise fuel flow rate at the point of interest.
-        """       
+        """
         # Get bounding mass values
         mass_inds = self.__search_mass_ind(seg_start_mass)
 
@@ -601,7 +645,7 @@ class LegacyTrajectory(Trajectory):
             ii = np.where(self.crz_FLs == fls[kk])[0][0]
             jj = np.where(bounding_mass == masses[kk])[0][0]
             ff_mat[ii, jj] = ffs[kk]
-            
+
         # Get flight level and mass weights for interpolation
         fl_weight = self.traj_data['FL_weight'][i]
         mass_weight = (seg_start_mass - bounding_mass[0]) / (
@@ -614,11 +658,11 @@ class LegacyTrajectory(Trajectory):
 
         ff = ff_1 + (ff_2 - ff_1) * mass_weight
         return ff
-        
-        
+
+
     def __legacy_climb(self) -> None:
-        """ Computes state over the climb segment using AEIC v2 methods 
-        based on BADA-3 formulas. 
+        """ Computes state over the climb segment using AEIC v2 methods
+        based on BADA-3 formulas.
         """
         # Create a mask for ROC limiting to only positive values (climb)
         pos_roc_mask = np.array(self.ac_performance.performance_table_cols[2]) > 0
@@ -706,6 +750,7 @@ class LegacyTrajectory(Trajectory):
                 self.traj_data['flightTime'][i] + segment_time
             )
 
+
     def __legacy_cruise(self, dGD:float) -> None:
         """Computes state over cruise segment using AEIC v2 methods
         based on BADA-3 formulas"""
@@ -764,6 +809,7 @@ class LegacyTrajectory(Trajectory):
             self.traj_data['flightTime'][i + 1] = (
                 self.traj_data['flightTime'][i] + segment_time
             )
+
 
     def __legacy_descent(self) -> None:
         """Computes state over the descent segment using AEIC v2
