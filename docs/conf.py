@@ -29,7 +29,12 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.coverage',
     'sphinx.ext.napoleon',
+    'myst_parser',
 ]
+myst_enable_extensions = [
+    "dollarmath",
+]
+
 autosummary_generate = True
 
 templates_path = ['_templates']
