@@ -2,10 +2,10 @@
 
 # Standard library imports
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple, Union
 from dataclasses import dataclass
-from scipy.integrate import cumulative_trapezoid
+
 import numpy as np
+from scipy.integrate import cumulative_trapezoid
 
 
 @dataclass
@@ -48,7 +48,8 @@ class BaseFuelBurnModel(ABC):
         specific_ground_range_corrected = np.where(
             specific_ground_range < 1, np.inf, specific_ground_range
         )
-        # backwards means last element stays and the rest get adjusted by addition instead of subtraction
+        # backwards means last element stays and the rest get adjusted by
+        # addition instead of subtraction
         cumulative_integral = cumulative_trapezoid(
             1 / specific_ground_range_corrected[::-1], dx=segment_distance
         )[::-1]

@@ -4,11 +4,10 @@ Module with the BADA3 aircraft parameters class
 - uses the BaseAircraftParameter class from fuel_burn_base.py
 """
 
-from .fuel_burn_base import BaseAircraftParameters
-
 from dataclasses import dataclass
-
 from typing import Optional
+
+from .fuel_burn_base import BaseAircraftParameters
 
 
 @dataclass
@@ -52,7 +51,7 @@ class Bada3AircraftParameters(BaseAircraftParameters):
     cas_cruise_lo: Optional[float] = None
     cas_cruise_hi: Optional[float] = None
     cas_cruise_mach: Optional[float] = None
-     
+
     def assign_parameters_fromdict(self, parameters: dict):
         """
         Assigns the parameters from a dictionary.
