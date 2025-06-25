@@ -1,11 +1,15 @@
 import os
+from typing import dict
+
 from .aircraft_parameters import Bada3AircraftParameters
 from .model import Bada3FuelBurnModel
-from typing import Dict
 
-def read_synonym_file_to_dict(folder_path) -> Dict[str, str]:
+
+def read_synonym_file_to_dict(folder_path) -> dict[str, str]:
     """
-    Returns a dictionary of synonyms, where the key is the aircraft type and the value is the corresponding aircraft type that has a direct OPF file available.
+    Returns a dictionary of synonyms, where the key is the aircraft type
+    and the value is the corresponding aircraft type that has a direct
+    OPF file available.
 
     Parameters:
     -----------
@@ -15,12 +19,14 @@ def read_synonym_file_to_dict(folder_path) -> Dict[str, str]:
     Returns:
     --------
     dict
-        Dictionary of synonyms, where the key is the aircraft type and the value is the corresponding aircraft type that has a direct OPF file available.
+        Dictionary of synonyms, where the key is the aircraft type and
+        the value is the corresponding aircraft type that has a direct
+        OPF file available.
     """
 
     file_path = f"{folder_path}/SYNONYM.NEW"
 
-    with open(file_path, "r", encoding="ISO-8859-1") as f:
+    with open(file_path, encoding="ISO-8859-1") as f:
         lines = f.readlines()
 
     # lines 17 to -2 define synonyms
@@ -70,7 +76,8 @@ def get_all_available_aircraft_types(folder_path):
         List of all available aircraft types in the BADA3 database.
     """
 
-    # can either be directly available (the .opf file has the aircraft type in it) or available via synonym, synonyms are defined in SYNONYM.NEW
+    # can either be directly available (the .opf file has the aircraft type in it)
+    # or available via synonym, synonyms are defined in SYNONYM.NEW
 
     directly_available = get_directly_available_aircraft_types(folder_path)
 
@@ -82,7 +89,7 @@ def get_all_available_aircraft_types(folder_path):
 
 def get_aircraft_params_for_all_aircraft_types(
     folder_path,
-) -> Dict[str, Bada3AircraftParameters]:
+) -> dict[str, Bada3AircraftParameters]:
     """
     Returns a dictionary containing the Bada3AircraftParameters for all aircraft types.
 
@@ -125,7 +132,7 @@ def get_aircraft_params_for_all_aircraft_types(
 
 def get_models_for_all_implemented_aircraft_types(
     folder_path,
-) -> Dict[str, Bada3FuelBurnModel]:
+) -> dict[str, Bada3FuelBurnModel]:
     """
     Returns a dictionary containing the Bada3FuelBurnModel for all aircraft types.
 

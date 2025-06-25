@@ -1,14 +1,15 @@
-from pyproj import Geod
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
 import xarray as xr
+from pyproj import Geod
+from scipy.interpolate import RegularGridInterpolator
+
 
 def altitude_to_pressure_hpa(alt_ft):
     """Convert altitude in feet to pressure in hPa using ISA approximation."""
     alt_m = np.array(alt_ft) * 0.3048
     pressure = 1013.25 * (1 - (0.0065 * alt_m) / 288.15) ** 5.2561
     return pressure
-    
+
 
 def get_wind_at_points(mission_data, era5_path):
     """
@@ -30,15 +31,15 @@ def get_wind_at_points(mission_data, era5_path):
     wind_speed : np.ndarray
         Wind speed magnitude [m/s]
     """
-    
+
     # Load ERA4 GRIB file (single time slice)
     ds = xr.open_dataset(era5_path, engine="cfgrib")
-    
+
     # Ensure proper dimension order
     lats_era = ds.latitude.values
     lons_era = ds.longitude.values
     levels_era = ds.isobaricInhPa.values
-    
+
     # Sort lattitude in ascending order
     if lats_era[0] > lats_era[-1]:
         lats_era = lats_era[::-1]
@@ -52,37 +53,38 @@ def get_wind_at_points(mission_data, era5_path):
         bounds_error=False,
         fill_value=np.nan
     )
-    
+
     v_interp = RegularGridInterpolator(
         (levels_era, lats_era, lons_era),
         ds['v'].values,
         bounds_error=False,
         fill_value=np.nan
     )
-    
+
     # Convert altitude (ft) to pressure (hPa)
     pressures = altitude_to_pressure_hpa(mission_data['H'])
-    
+
     # Convert lon to [0, 360] for ERA5 grid compatibility
     lons_360 = [(lon + 360) if lon < 0 else lon for lon in mission_data['lons']]
-    
+
     # Form (pressure, lat, lon) points for interpolation
     points = np.array([
         (p, lat, lon) for p, lat, lon in zip(pressures, mission_data['lats'], lons_360)
     ])
-    
+
     # Interpolate
     u_vals = u_interp(points)
     v_vals = v_interp(points)
-    
+
     wind_speed = np.sqrt(u_vals**2 + v_vals**2)
-    
+
     return u_vals, v_vals, wind_speed
 
 def get_tas(mission_data, era5_path):
     """
-    Computes the true airspeed (TAS), heading, and drift angle along a flight path using geodesic 
-    track angles and interpolated wind components from ERA5 reanalysis data.
+    Computes the true airspeed (TAS), heading, and drift angle along a flight path
+    using geodesic track angles and interpolated wind components from
+    ERA5 reanalysis data.
 
     Parameters
     ----------
@@ -98,13 +100,15 @@ def get_tas(mission_data, era5_path):
     Returns
     -------
     track_angles : np.ndarray
-        Array of geodesic track angles (course) between consecutive lat-lon points [degrees].
+        Array of geodesic track angles (course) between consecutive lat-lon points
+        [degrees].
 
     headings : np.ndarray
         Array of aircraft headings (direction of motion through the air) [degrees].
 
     drifts : np.ndarray
-        Array of drift angles (heading - track), indicating crosswind correction required [degrees].
+        Array of drift angles (heading - track), indicating crosswind correction
+        required [degrees].
 
     tas_vals : np.ndarray
         Array of computed true airspeeds (TAS) along the path [knots].
@@ -120,25 +124,26 @@ def get_tas(mission_data, era5_path):
 
     Notes
     -----
-    - TAS is computed using the wind triangle from the vector difference between ground speed vector and wind vector.
+    - TAS is computed using the wind triangle from the vector difference between
+        ground speed vector and wind vector.
     - Drift angle is signed and bounded to the range [-180, 180] degrees.
     - Requires `pyproj.Geod` and NumPy.
     """
 
     # Get wind components based on path
     u_vals, v_vals, wind_speed = get_wind_at_points(mission_data, era5_path)
-    
+
     # Compute geodesic track angles between consecutive flight segments
     geod = Geod(ellps="WGS84")
     lons = mission_data["lons"]
     lats = mission_data["lats"]
     gs = mission_data["GS"]
-    
+
     track_angles = []
     headings = []
     drifts = []
     tas_vals = []
-    
+
     # Loop over all points along the arc
     for i in range(len(lons) - 1):
         # Compute track angle for the two lat-lon pairs
@@ -147,32 +152,32 @@ def get_tas(mission_data, era5_path):
         az_fwd, _, _ = geod.inv(lon1, lat1, lon2, lat2)
         track = az_fwd % 360
         track_angles.append(track)
-        
+
     # Use wind triangle to compute heading and drift
         track_rad = np.deg2rad(track)
         vgx = gs[i] * np.cos(track_rad)  # ground speed-x along track
         vgy = gs[i] * np.sin(track_rad)  # ground speed-y along track
-        
-        
+
+
         # Substract wind vector (souce ERA-5 dummy weather)
         vax = vgx - u_vals[i]   # TAS x-component
         vay = vgy - v_vals[i]   # TAS y-component
-        
+
         tas_mps = np.sqrt(vax**2 + vay**2)
         tas_knots = tas_mps / 0.514444  # m/s -> knots
-        
+
         tas_vals.append(tas_knots)
-        
+
         heading_rad = np.arctan2(vay, vax)
         heading_deg = np.rad2deg(heading_rad) % 360
-        
+
         # Compute path drift
         drift = (heading_deg - track + 360) % 360
         if drift > 180:
             drift -= 360  # Convert to signed drift
         headings.append(heading_deg)
         drifts.append(drift)
-        
+
     return (
         np.array(track_angles),
         np.array(headings),
@@ -182,7 +187,7 @@ def get_tas(mission_data, era5_path):
         v_vals,
         wind_speed
     )
-    
+
 
 def apply_drift_to_mission_points(mission_data, drift_angles):
     """
@@ -265,13 +270,16 @@ def build_era5_interpolators(era5_path):
     v_data = ds["v"].values
 
     # Interpolator over (level, lat, lon) (Filling with NaNs for safety)
-    u_interp = RegularGridInterpolator((levels, lats, lons), u_data, bounds_error=False, fill_value=4.0)
-    v_interp = RegularGridInterpolator((levels, lats, lons), v_data, bounds_error=False, fill_value=4.0)
+    u_interp = RegularGridInterpolator((levels, lats, lons), u_data,
+                                       bounds_error=False, fill_value=4.0)
+    v_interp = RegularGridInterpolator((levels, lats, lons), v_data,
+                                       bounds_error=False, fill_value=4.0)
 
     return u_interp, v_interp, {"levels": levels, "lats": lats, "lons": lons}
 
-def compute_ground_speed(lon, lat, lon_next, lat_next, alt_ft, tas_kts, weather_data = None):
-    
+def compute_ground_speed(lon, lat,lon_next, lat_next,
+                         alt_ft, tas_kts, weather_data = None):
+
     """
     Computes ground speed for a single point using TAS, heading, and interpolated winds.
 
@@ -300,7 +308,7 @@ def compute_ground_speed(lon, lat, lon_next, lat_next, alt_ft, tas_kts, weather_
 
     # Convert altitude and TAS to S.I units
     pressure_level = float(altitude_to_pressure_hpa(alt_ft))  # hPa
-    tas_ms = tas_kts * 0.514444  
+    tas_ms = tas_kts * 0.514444
     # Compute heading in radians from current to next point
     geod = Geod(ellps="WGS84")
     azimuth_deg, _, _ = geod.inv(lon, lat, lon_next, lat_next)
@@ -310,7 +318,7 @@ def compute_ground_speed(lon, lat, lon_next, lat_next, alt_ft, tas_kts, weather_
     u_air = tas_ms * np.cos(heading_rad)
     v_air = tas_ms * np.sin(heading_rad)
 
-    if weather_data == None:
+    if weather_data is None:
         u = 0
         v = 0
     else:
@@ -319,13 +327,12 @@ def compute_ground_speed(lon, lat, lon_next, lat_next, alt_ft, tas_kts, weather_
         # Interpolate wind at this location
         u = u_interp([[pressure_level, lat, lon]])[0]
         v = v_interp([[pressure_level, lat, lon]])[0]
-    
+
     # Ground speed = air vector + wind vector
     u_ground = u_air + u
     v_ground = v_air + v
-    
+
     gs_ms = np.sqrt(u_ground**2 + v_ground**2)
     gs_kts = gs_ms / 0.514444
-    
+
     return gs_kts, heading_rad, u, v
-                 

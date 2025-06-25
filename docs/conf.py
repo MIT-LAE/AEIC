@@ -9,19 +9,23 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+    )
 
 project = 'AEIC'
-copyright = '2025, Wyatt Giroux, Prashanth Prakash, Prateek Ranjan, Aditeya Shukla, Raymond Speth'
-author = 'Wyatt Giroux, Prashanth Prakash, Prateek Ranjan, Aditeya Shukla, Raymond Speth'
+copyright = '2025, Wyatt Giroux, Prashanth Prakash, Prateek Ranjan, ' \
+            'Aditeya Shukla, Raymond Speth'
+author = 'Wyatt Giroux, Prashanth Prakash, Prateek Ranjan, ' \
+            'Aditeya Shukla,Raymond Speth'
 release = '1.0.0a1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ['sphinx.ext.autodoc',
-              'sphinx.ext.autosummary', 
-              'sphinx.ext.coverage', 
+              'sphinx.ext.autosummary',
+              'sphinx.ext.coverage',
               'sphinx.ext.napoleon']
 autosummary_generate = True
 

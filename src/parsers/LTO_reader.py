@@ -1,12 +1,12 @@
 import re
 
+
 def parseLTO(file_path):
     """
     Reads an aircraft LTO characteristics file and returns a dictionary with:
       - "Foo": the numeric value from the line "Foo = <value> [kN]"
       - "eng_data": a list of dictionaries corresponding to the comma-separated
          engine data after the marker line containing "AEIC ENG_EI output".
-         
     Each engine data dictionary has the following keys:
       "ENG_NAME", "MODE", "CO_EI", "HC_EI", "NOX_EI",
       "SOX_EI", "SMOKE_NUM", "FUEL_KG/S", "ICAO_UID", "MODE_SN"
@@ -15,12 +15,12 @@ def parseLTO(file_path):
     eng_data = {}
     capture_eng = False
 
-    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+    with open(file_path, encoding='utf-8', errors='ignore') as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
-            
+
             # Look for the Foo value (only once)
             if foo is None:
                 m = re.search(r"Foo\s*=\s*([\d\.]+)", line)
@@ -33,7 +33,8 @@ def parseLTO(file_path):
                 capture_eng = True
                 continue
 
-            # Once we have encountered the marker, process subsequent lines as engine data
+            # Once we have encountered the marker, process subsequent lines
+            # as engine data
             if capture_eng:
                 # Split the line by commas and strip extra whitespace
                 parts = [p.strip() for p in line.split(",")]

@@ -1,8 +1,10 @@
-import numpy as np
 from typing import Union
+
+import numpy as np
+from numpy.typing import NDArray
+
+from .consts import T0, R_air, beta_tropo, g0, h_p_tropo, p0
 from .custom_types import FloatOrNDArray
-from numpy.typing import NDArray, ArrayLike
-from .consts import *#h_p_tropo, beta_tropo, p0, T0, rho0, a0, R_air, g0, kappa
 
 
 def temperature_at_altitude_isa_bada4(altitude: FloatOrNDArray) -> NDArray:

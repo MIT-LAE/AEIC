@@ -1,11 +1,11 @@
-from .custom_types import FloatOrNDArray
-from .consts import R_E
 import numpy as np
-from typing import Tuple
-from numpy.typing import NDArray
 import pandas as pd
+from numpy.typing import NDArray
 from pandas._libs.tslibs import Timestamp
 from pandas.core.indexes.datetimes import DatetimeIndex
+
+from .consts import R_E
+from .custom_types import FloatOrNDArray
 
 
 def great_circle_distance(
@@ -95,7 +95,7 @@ def unix_to_datetime_utc(
     return pd.to_datetime(unix_time, unit="s")
 
 
-def calculate_line_parameters(x: NDArray, y: NDArray) -> Tuple[NDArray, NDArray]:
+def calculate_line_parameters(x: NDArray, y: NDArray) -> tuple[NDArray, NDArray]:
     """
     Calculates the slope and intercept of the lines defined by the points (x, y).
 
@@ -108,7 +108,7 @@ def calculate_line_parameters(x: NDArray, y: NDArray) -> Tuple[NDArray, NDArray]
 
     Returns
     -------
-    Tuple[NDArray, NDArray]
+    tuple[NDArray, NDArray]
         The slopes and intercepts of the lines defined by the points (x, y).
     """
 

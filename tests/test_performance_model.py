@@ -1,10 +1,7 @@
-import pytest
-import tempfile
-import tomllib
 import numpy as np
-import os
 
 from AEIC.performance_model import PerformanceModel
+
 
 def test_performance_model_initialization():
     """Test initialization and basic structure of the PerformanceModel."""
@@ -32,8 +29,10 @@ def test_performance_model_initialization():
 
     # Check performance table exists
     assert isinstance(model.performance_table, np.ndarray)
-    assert model.performance_table.shape == (26, 51, 105, 3) or model.performance_table.ndim == 4
+    assert model.performance_table.shape == (26, 51, 105, 3) \
+        or model.performance_table.ndim == 4
 
     # Check input column names and values
     assert "FL" in model.performance_table_colnames
-    assert len(model.performance_table_cols) == len(model.performance_table_colnames)
+    assert len(model.performance_table_cols) \
+        == len(model.performance_table_colnames)
