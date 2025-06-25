@@ -111,8 +111,8 @@ def parse_PTF(file_path):
                     tokens = stripped.split()
                     if len(tokens) >= 4:
                         try:
-                            cas = tokens[2]       # Expecting a format like "250/300"
-                            mach = tokens[3]      # e.g., "0.80"
+                            cas = tokens[2]  # Expecting a format like "250/300"
+                            mach = tokens[3]  # e.g., "0.80"
                             cas_lo, cas_hi = cas.split("/")
                             climb_data["cas_lo"] = int(cas_lo)
                             climb_data["cas_hi"] = int(cas_hi)
@@ -186,7 +186,7 @@ def parse_PTF(file_path):
                     cl_tas = float(cl_vals[0])
                     # ROCD
                     cl_rocd_lo = float(cl_vals[1])
-                    cl_rocd_hi = float(cl_vals[3])    # ignoring nominal
+                    cl_rocd_hi = float(cl_vals[3])  # ignoring nominal
                     # Fuel: replicate nominal in lo & hi
                     cl_fuel_nom = float(cl_vals[4])
                 else:
@@ -237,16 +237,12 @@ def parse_PTF(file_path):
 
     # Build final data structure
     data = {
-        "phases": {
-            "climb": climb_data,
-            "cruise": cruise_data,
-            "descent": descent_data
-        },
+        "phases": {"climb": climb_data, "cruise": cruise_data, "descent": descent_data},
         # Top-level info
         "max_alt_ft": max_alt,
         "max_payload_kg": max_payload,
         "low_mass_kg": low_mass,
         "nominal_mass_kg": nominal_mass,
-        "high_mass_kg": high_mass
+        "high_mass_kg": high_mass,
     }
     return data

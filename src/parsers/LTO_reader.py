@@ -48,7 +48,7 @@ def parseLTO(file_path):
                         "SMOKE_NUM": parts[6],
                         "FUEL_KG/S": parts[7],
                         "ICAO_UID": parts[8],
-                        "MODE_SN": parts[9]
+                        "MODE_SN": parts[9],
                     }
                     eng_data[parts[1]] = entry
     return {"Foo": foo, "eng_LTO": eng_data}

@@ -49,3 +49,6 @@ lint.ignore = []                           # specify ignores here
 
 [tool.black]
 line-length = 88
+
+[tool.ruff.format]
+quote-style = "preserve"  # keep whatever the file already uses, dont change single quotes to double

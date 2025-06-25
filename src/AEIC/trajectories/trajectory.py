@@ -5,20 +5,27 @@ from AEIC.performance_model import PerformanceModel
 
 
 class Trajectory:
-    '''Model for determining flight trajectories.
-    '''
+    '''Model for determining flight trajectories.'''
 
-    def __init__(self, ac_performance:PerformanceModel, mission, optimize_traj:bool,
-                 iterate_mass:bool, startMass:float=-1, max_mass_iters=5,
-                 mass_iter_reltol=1e-2):
+    def __init__(
+        self,
+        ac_performance: PerformanceModel,
+        mission,
+        optimize_traj: bool,
+        iterate_mass: bool,
+        startMass: float = -1,
+        max_mass_iters=5,
+        mass_iter_reltol=1e-2,
+    ):
         # Save A/C performance model and the mission to be flown
         # NOTE: Currently assume that `mission` comes in as a dictionary with
         # the format of a single flight
         # in `src/missions/sample_missions_10.json`. We also assume that
         # Load Factor for the flight will be
         # included in the mission object.
-        self.name =\
+        self.name = (
             f'{mission["dep_airport"]}_{mission["arr_airport"]}_{mission["ac_code"]}'
+        )
         self.ac_performance = ac_performance
 
         # Save airport locations and dep/arr times; lat/long in degrees
@@ -63,26 +70,25 @@ class Trajectory:
         self.clm_start_altitude = None
         self.crz_start_altitude = None
         self.des_start_altitude = None
-        self.des_end_altitude   = None
-
+        self.des_end_altitude = None
 
     def fly_flight(self, **kwargs):
         # Initialize data array as numpy structured array
         traj_dtype = [
-            ('fuelFlow',   np.float64, self.Ntot),
-            ('acMass',     np.float64, self.Ntot),
-            ('fuelMass',   np.float64, self.Ntot),
+            ('fuelFlow', np.float64, self.Ntot),
+            ('acMass', np.float64, self.Ntot),
+            ('fuelMass', np.float64, self.Ntot),
             ('groundDist', np.float64, self.Ntot),
-            ('altitude',   np.float64, self.Ntot),
-            ('FLs',        np.float64, self.Ntot),
-            ('rocs',        np.float64, self.Ntot),
+            ('altitude', np.float64, self.Ntot),
+            ('FLs', np.float64, self.Ntot),
+            ('rocs', np.float64, self.Ntot),
             ('flightTime', np.float64, self.Ntot),
-            ('latitude',   np.float64, self.Ntot),
-            ('longitude',  np.float64, self.Ntot),
-            ('heading',  np.float64, self.Ntot),
-            ('tas',        np.float64, self.Ntot),
+            ('latitude', np.float64, self.Ntot),
+            ('longitude', np.float64, self.Ntot),
+            ('heading', np.float64, self.Ntot),
+            ('tas', np.float64, self.Ntot),
             ('groundSpeed', np.float64, self.Ntot),
-            ('FL_weight',  np.float64, self.Ntot),
+            ('FL_weight', np.float64, self.Ntot),
         ]
         self.traj_data = np.empty((), dtype=traj_dtype)
 
@@ -109,16 +115,16 @@ class Trajectory:
                 self.starting_mass = self.starting_mass - (mass_res * self.fuel_mass)
 
             if not self.mass_converged:
-                print("Mass iteration failed to converge; final residual"\
-                      f"{mass_res * 100}% > {self.mass_iter_reltol * 100}%")
+                print(
+                    "Mass iteration failed to converge; final residual"
+                    f"{mass_res * 100}% > {self.mass_iter_reltol * 100}%"
+                )
 
         else:
             self.fly_flight_iteration(**kwargs)
 
-
-
     def fly_flight_iteration(self, **kwargs):
-        ''' Function for running a single flight iteration. In non-weight-iterating mode
+        '''Function for running a single flight iteration. In non-weight-iterating mode
         only runs once. `kwargs` used to pass in relevent optimization variables in
         applicable cases.
         Returns:
@@ -143,8 +149,8 @@ class Trajectory:
         lon_dep, lat_dep, _ = self.dep_lon_lat_alt
         lon_arr, lat_arr, _ = self.arr_lon_lat_alt
         lat_lon_trajectory = geod.npts(lon_dep, lat_dep, lon_arr, lat_arr, self.Ntot)
-        self.traj_data['latitude'] = np.array(lat_lon_trajectory)[:,1]
-        self.traj_data['longitude'] = np.array(lat_lon_trajectory)[:,0]
+        self.traj_data['latitude'] = np.array(lat_lon_trajectory)[:, 1]
+        self.traj_data['longitude'] = np.array(lat_lon_trajectory)[:, 0]
 
         # Fly the climb, cruise, descent segments in order
         self.climb(**kwargs)
@@ -157,21 +163,17 @@ class Trajectory:
 
         return mass_residual
 
-
     ############################################################
     # UNIVERSAL TRAJECTORY FUNCTIONS - TO BE DEFINED PER MODEL #
     ############################################################
     def climb(self):
         pass
 
-
     def cruise(self):
         pass
 
-
     def descent(self):
         pass
-
 
     def calc_starting_mass(self):
         pass

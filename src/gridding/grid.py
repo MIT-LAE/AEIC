@@ -127,14 +127,12 @@ class Gridder(GeospatialGrid):
     """Main methods"""
 
     def grid_polygon(self, polygon_lats, polygon_lons):
-
         polygon_lons_extended = np.concatenate((polygon_lons, [polygon_lons[0]]))
         dateline_crossing = crosses_dateline(
             polygon_lons_extended[:-1], polygon_lons_extended[1:]
         )
 
         if np.any(np.abs(dateline_crossing) > 0):
-
             print("crosses dateline")
             print(50 * "-")
 
@@ -157,7 +155,6 @@ class Gridder(GeospatialGrid):
             return touched_cells_left | touched_cells_right
 
         else:
-
             return self._polygon_touched_cells(polygon_lats, polygon_lons)
 
     def grid_trajectory(
@@ -250,7 +247,7 @@ class Gridder(GeospatialGrid):
     ]:
         if np.count_nonzero(dateline_crossing) > 1:
             warnings.warn(
-                "Trajectory crosses the dateline more than once, " \
+                "Trajectory crosses the dateline more than once, "
                 "this isn't implemented, returning None for all outputs"
             )
             return (
@@ -943,9 +940,12 @@ class Gridder(GeospatialGrid):
         tuple[NDArray, ...],
         tuple[NDArray, ...],
     ]:
-        (all_subsegment_point_lats, all_subsegment_point_lons), (
-            all_subsegment_lat_indices,
-            all_subsegment_lon_indices,
+        (
+            (all_subsegment_point_lats, all_subsegment_point_lons),
+            (
+                all_subsegment_lat_indices,
+                all_subsegment_lon_indices,
+            ),
         ) = self._trajectory_intersection_points_and_cells_horizontal(lats, lons)
 
         count_subsegments = np.count_nonzero(
@@ -1037,7 +1037,6 @@ class Gridder(GeospatialGrid):
         )
 
     def _polygon_touched_cells(self, polygon_lats, polygon_lons):
-
         polygon = Polygon(zip(polygon_lons, polygon_lats))
 
         min_lon, min_lat, max_lon, max_lat = polygon.bounds
@@ -1097,10 +1096,9 @@ class Gridder(GeospatialGrid):
 
         dateline_crossing = crosses_dateline(lons[:-1], lons[1:])
         if np.any(dateline_crossing != 0):
-
             if np.count_nonzero(dateline_crossing) > 1:
                 warnings.warn(
-                    "Trajectory crosses the dateline more than once, " \
+                    "Trajectory crosses the dateline more than once, "
                     "this isn't implemented, returning None for all outputs"
                 )
                 return None, None, None, None, None, None
@@ -1355,7 +1353,6 @@ class Gridder(GeospatialGrid):
             )
 
         else:
-
             (
                 touched_cells_lat_indices,
                 touched_cells_lon_indices,

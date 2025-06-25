@@ -38,7 +38,7 @@ def get_mission_points(mission):
     """
 
     # Instantiate WGS84 ellipsoid
-    geod = Geod(ellps ="WGS84")
+    geod = Geod(ellps="WGS84")
 
     # Extract OD lat-lon
     lon_dep, lat_dep, _ = mission["dep_location"]
@@ -58,12 +58,8 @@ def get_mission_points(mission):
     # Assign a dummy cruise altitude
     altitude_ft = [35000] * len(lons)
 
-    return {
-        "lons": lons,
-        "lats": lats,
-        "GS": ground_speeds,
-        "H": altitude_ft
-    }
+    return {"lons": lons, "lats": lats, "GS": ground_speeds, "H": altitude_ft}
+
 
 def create_dummy_traj(mission):
     """
@@ -107,7 +103,7 @@ def create_dummy_traj(mission):
 
     # Define end points for speed and altitude
     alt_start, alt_cruise = 1000, 35000  # feet
-    spd_start, spd_cruise = 140, 450 # knots
+    spd_start, spd_cruise = 140, 450  # knots
 
     # Define climb profile
     climb_alt = np.linspace(alt_start, alt_cruise, n_climb)
@@ -121,19 +117,11 @@ def create_dummy_traj(mission):
     descent_alt = np.linspace(alt_cruise, alt_start, n_descent)
     descent_spd = np.linspace(spd_cruise, spd_start, n_descent)
 
-
-
     # Collect height and TAS
     H = np.concatenate([climb_alt, cruise_alt, descent_alt])
     TAS = np.concatenate([climb_spd, cruise_spd, descent_spd])
 
-    H = H[:len(lons)]
-    TAS = TAS[:len(lons)]
+    H = H[: len(lons)]
+    TAS = TAS[: len(lons)]
 
-    return {
-        "lons": lons,
-        "lats": lats,
-        "TAS": TAS,
-        "H": H
-    }
-
+    return {"lons": lons, "lats": lats, "TAS": TAS, "H": H}

@@ -51,14 +51,14 @@ def get_wind_at_points(mission_data, era5_path):
         (levels_era, lats_era, lons_era),
         ds['u'].values,
         bounds_error=False,
-        fill_value=np.nan
+        fill_value=np.nan,
     )
 
     v_interp = RegularGridInterpolator(
         (levels_era, lats_era, lons_era),
         ds['v'].values,
         bounds_error=False,
-        fill_value=np.nan
+        fill_value=np.nan,
     )
 
     # Convert altitude (ft) to pressure (hPa)
@@ -68,9 +68,12 @@ def get_wind_at_points(mission_data, era5_path):
     lons_360 = [(lon + 360) if lon < 0 else lon for lon in mission_data['lons']]
 
     # Form (pressure, lat, lon) points for interpolation
-    points = np.array([
-        (p, lat, lon) for p, lat, lon in zip(pressures, mission_data['lats'], lons_360)
-    ])
+    points = np.array(
+        [
+            (p, lat, lon)
+            for p, lat, lon in zip(pressures, mission_data['lats'], lons_360)
+        ]
+    )
 
     # Interpolate
     u_vals = u_interp(points)
@@ -79,6 +82,7 @@ def get_wind_at_points(mission_data, era5_path):
     wind_speed = np.sqrt(u_vals**2 + v_vals**2)
 
     return u_vals, v_vals, wind_speed
+
 
 def get_tas(mission_data, era5_path):
     """
@@ -153,15 +157,14 @@ def get_tas(mission_data, era5_path):
         track = az_fwd % 360
         track_angles.append(track)
 
-    # Use wind triangle to compute heading and drift
+        # Use wind triangle to compute heading and drift
         track_rad = np.deg2rad(track)
         vgx = gs[i] * np.cos(track_rad)  # ground speed-x along track
         vgy = gs[i] * np.sin(track_rad)  # ground speed-y along track
 
-
         # Substract wind vector (souce ERA-5 dummy weather)
-        vax = vgx - u_vals[i]   # TAS x-component
-        vay = vgy - v_vals[i]   # TAS y-component
+        vax = vgx - u_vals[i]  # TAS x-component
+        vay = vgy - v_vals[i]  # TAS y-component
 
         tas_mps = np.sqrt(vax**2 + vay**2)
         tas_knots = tas_mps / 0.514444  # m/s -> knots
@@ -185,7 +188,7 @@ def get_tas(mission_data, era5_path):
         np.array(tas_vals),
         u_vals,
         v_vals,
-        wind_speed
+        wind_speed,
     )
 
 
@@ -270,16 +273,19 @@ def build_era5_interpolators(era5_path):
     v_data = ds["v"].values
 
     # Interpolator over (level, lat, lon) (Filling with NaNs for safety)
-    u_interp = RegularGridInterpolator((levels, lats, lons), u_data,
-                                       bounds_error=False, fill_value=4.0)
-    v_interp = RegularGridInterpolator((levels, lats, lons), v_data,
-                                       bounds_error=False, fill_value=4.0)
+    u_interp = RegularGridInterpolator(
+        (levels, lats, lons), u_data, bounds_error=False, fill_value=4.0
+    )
+    v_interp = RegularGridInterpolator(
+        (levels, lats, lons), v_data, bounds_error=False, fill_value=4.0
+    )
 
     return u_interp, v_interp, {"levels": levels, "lats": lats, "lons": lons}
 
-def compute_ground_speed(lon, lat,lon_next, lat_next,
-                         alt_ft, tas_kts, weather_data = None):
 
+def compute_ground_speed(
+    lon, lat, lon_next, lat_next, alt_ft, tas_kts, weather_data=None
+):
     """
     Computes ground speed for a single point using TAS, heading, and interpolated winds.
 
