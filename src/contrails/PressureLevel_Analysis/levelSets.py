@@ -228,23 +228,22 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     
     
    # Step 1: Compute midpoints between each pair
-    midpoints = (altitudes_ft[:-1] + altitudes_ft[1:]) / 2  # length 10
+    #midpoints = (altitudes_ft[:-1] + altitudes_ft[1:]) / 2  # length 10
     
     # First edge is below the lowest level
-    first_edge = altitudes_ft[0] - (midpoints[0] - altitudes_ft[0])
+    #first_edge = altitudes_ft[0] - (midpoints[0] - altitudes_ft[0])
     
     # Last edge is above the highest level
-    last_edge = altitudes_ft[-1] + (altitudes_ft[-1] - midpoints[-1])
+    #last_edge = altitudes_ft[-1] + (altitudes_ft[-1] - midpoints[-1])
     
     
-    print("First edge: ", first_edge)
-    print("Last edge: ", last_edge)
+    #print("First edge: ", first_edge)
+    #print("Last edge: ", last_edge)
     
-    print("Midpoints: ", midpoints)
+    #print("Midpoints: ", midpoints)
     
-    flight_edges_ft = np.concatenate([[first_edge], midpoints, [last_edge]])
-    
-    print(issr_matrix)
+    #flight_edges_ft = np.concatenate([[first_edge], midpoints, [last_edge]])
+    flight_edges_ft = np.concatenate([altitudes_ft - 100, [altitudes_ft[-1] + 100]])
     
     #thickness = 500
     #flight_edges = np.concatenate([[flight_levels[0] - thickness / 2], flight_levels + thickness / 2])
@@ -267,8 +266,8 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     #for x in arc_edges_nm:
     #    plt.axvline(x=x, color='lightgray', linewidth=0.1, zorder=1)
         
-    #for y in flight_edges:
-    #    plt.axhline(y=y, color='lightgray', linewidth=1.1, zorder=1)
+    for y in altitudes_ft:
+        plt.axhline(y=y, color='lightgray', linewidth=1.1, zorder=1)
     
     
     plt.xlabel("Distance Along Arc (NM)")
