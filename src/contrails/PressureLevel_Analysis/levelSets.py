@@ -185,8 +185,13 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     ds_t = ds_RHI.isel(valid_time=valid_time_index)
     pressure_levels = ds_RHI.pressure_level.values
     
+    # Build distance bins
+    dx = spacing_nm
+    arc_edges_nm = np.concatenate([[arc_distances_nm[0] - dx / 2], arc_distances_nm + dx / 2])
+    
     issr_matrix = []
     flight_levels = []
+    limit = 0
 
     for p in pressure_levels:
         row = []
@@ -198,22 +203,73 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
                 row.append(val)
             except:
                 row.append(np.nan)
-        issr_matrix.append(row)
+        #issr_matrix.append(row)
 
         alt_ft = pressure_to_altitude_km(p) * 3280.84
         fl = int(round(alt_ft, -2) / 100)  # Convert to FL
         flight_levels.append(fl)
+        
+        # Compute comulative ISSR length with length >=limit nm
+        
+        # Replace any non values with 0
+        issr_flags = np.nan_to_num(np.array(row), nan=0)
+        
+        # Accumulate the sum of all qualifying streaks >= limit
+        length_nm = 0.0
+        
+        # Accumulate continous segment length while scanning
+        current_streak = 0.0
+        
+        # Boolean to detect start and end of streak
+        started = False
+        
+        # Begin loop over each arc length segment
+        for j, flag in enumerate(issr_flags):
+            
+            # Compute the segment length based on distance bins
+            seg_length = arc_edges_nm[j+1] - arc_edges_nm[j]
+            
+            # If in ISSR region, stay here and keep adding to segment length
+            if flag == 1:
+                current_streak += seg_length
+                started = True
+            # No longer in ISSR interection, quit
+            elif started:
+                # First streak ends here
+                break
+                
+            # If not in ISSR region, check if the current streak us atleast limit nm. If so, 
+            # add to length_nm then reset current streak
+            #else:
+                if current_streak >= limit:
+                    length_nm += current_streak
+                    
+                # Reset current steak
+                current_streak = 0.0
+        
+        if current_streak >= limit:
+            length_nm += current_streak
+            print(f"FL{fl}: ISSR cumulative length of segments >=250 NM = {length_nm:.1f} NM")
+        
+        if length_nm < limit:
+            issr_flags[:] = 0
+        
+        # Set the corresponding rows to zero
+        issr_matrix.append(issr_flags)
+        
 
     issr_matrix = np.array(issr_matrix)
     flight_levels = np.array(flight_levels)
     
     
-    print("ISSR matrix shape: ", issr_matrix.shape)
 
     # Build edges for pcolormesh
     dx = spacing_nm
     
-    arc_edges_nm = np.concatenate([[arc_distances_nm[0] - dx / 2], arc_distances_nm + dx / 2])
+    
+   
+    
+    print("Arc edges: ", arc_edges_nm)
     
     # Option 1: Flight edges centered around ERA-5 flight levels using ERA-5 spacing
     #df = np.diff(flight_levels)
@@ -261,30 +317,17 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     plt.figure(figsize=(12, 5))
     plt.pcolormesh(arc_edges_nm, flight_edges_ft, issr_matrix, cmap=cmap, norm=norm, shading='flat')
     
-    #plt.imshow(
-    #issr_matrix,
-    #cmap=cmap,
-    #norm=norm,
-    #aspect='auto',
-    #extent=[arc_edges_nm[0], arc_edges_nm[-1], flight_edges_ft[0], flight_edges_ft[-1]],
-    #origin='lower',
-    #interpolation='none'
-    #)
-
-    
 
     # Vertical lines at 250 NM from origin and destination
     plt.axvline(x=250, color='red', linestyle='--', linewidth=1.2, label='250 NM from origin')
     plt.axvline(x=total_nm - 250, color='green', linestyle='--', linewidth=1.2, label='250 NM from destination')
+
     
-    
-    # Draw grid lines
-    #for x in arc_edges_nm:
-    #    plt.axvline(x=x, color='lightgray', linewidth=0.1, zorder=1)
-        
+    # Draw indicators for ERA5 altitudes
     for y in altitudes_ft:
         plt.axhline(y=y, color='black', linewidth=1.1, zorder=1)
-        
+    
+    # Draw indicators for flight edges used for bin
     for y in flight_edges_ft:
         plt.axhline(y=y, color='gray', linewidth=1.1, zorder=1)
     
