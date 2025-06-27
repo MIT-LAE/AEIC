@@ -191,7 +191,7 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     
     issr_matrix = []
     flight_levels = []
-    limit = 0
+    limit = 150
 
     for p in pressure_levels:
         row = []
@@ -241,17 +241,11 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
             # If not in ISSR region, check if the current streak us atleast limit nm. If so, 
             # add to length_nm then reset current streak
             #else:
-                if current_streak >= limit:
-                    length_nm += current_streak
-                    
-                # Reset current steak
-                current_streak = 0.0
-        
         if current_streak >= limit:
             length_nm += current_streak
-            print(f"FL{fl}: ISSR cumulative length of segments >=250 NM = {length_nm:.1f} NM")
+            print(f"FL{fl}: ISSR cumulative length of segments >={limit} NM = {length_nm:.1f} NM")
         
-        if length_nm < limit:
+        else:
             issr_flags[:] = 0
         
         # Set the corresponding rows to zero
@@ -265,11 +259,7 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
 
     # Build edges for pcolormesh
     dx = spacing_nm
-    
-    
-   
-    
-    print("Arc edges: ", arc_edges_nm)
+
     
     # Option 1: Flight edges centered around ERA-5 flight levels using ERA-5 spacing
     #df = np.diff(flight_levels)
@@ -311,8 +301,6 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     # Plot
     cmap = ListedColormap(['white', 'C0'])
     norm = BoundaryNorm([0, 0.5, 1], ncolors=2)
-    
-    print("Flight edges: ", flight_edges_ft)
 
     plt.figure(figsize=(12, 5))
     plt.pcolormesh(arc_edges_nm, flight_edges_ft, issr_matrix, cmap=cmap, norm=norm, shading='flat')
