@@ -5,6 +5,7 @@ from geopy.distance import geodesic
 from pyproj import Geod
 import xarray as xr
 import csv
+from matplotlib.colors import ListedColormap, BoundaryNorm
 
 # (Data source: Fig. 9) Rädel, G. and Shine, K.P., 2008. Radiative forcing by persistent contrails and its dependence on cruise altitudes. Journal of Geophysical Research: Atmospheres, 113(D7).
 def interpolate_rf_from_altitude(alt_km, rf_df):
@@ -155,20 +156,21 @@ def pressure_to_altitude_km(pressure_hPa):
     altitude_m = 44330.0 * (1.0 - (pressure_hPa / 1013.25)**(1.0 / 5.255))
     return altitude_m / 1000.0  # meters to kilometers
 
+
+
 def plot_issr_flag_altitude_vs_distance(ds_RHI, origin, destination, valid_time_index=0):
     """
-    Plot ISSR flag as a function of altitude and arc distance for an O-D pair.
-
-    Parameters:
-        ds_RHI (xarray.Dataset): ERA5 ISSR dataset
-        origin (tuple): (lat, lon)
-        destination (tuple): (lat, lon)
-        valid_time_index (int): Time index for ds_RHI
+    Plot ISSR flag as a function of distance (NM) and flight level (hundreds of ft) for an O-D pair.
     """
+
     geod = Geod(ellps='WGS84')
     total_distance_km = geodesic(origin, destination).km
-    npts = max(int(total_distance_km // 10) - 1, 1)
+    total_distance_nm = total_distance_km / 1.852
     
+    print("Total distance (nm):", total_distance_nm)
+    
+    npts = max(int(total_distance_km // 10) - 1, 1)
+
     arc_coords = geod.npts(origin[1], origin[0], destination[1], destination[0], npts)
     arc_coords.insert(0, (origin[1], origin[0]))
     arc_coords.append((destination[1], destination[0]))
@@ -176,13 +178,14 @@ def plot_issr_flag_altitude_vs_distance(ds_RHI, origin, destination, valid_time_
     arc_lats = [lat for lon, lat in arc_coords]
     arc_lons = [lon for lon, lat in arc_coords]
     arc_spacing_km = total_distance_km / len(arc_coords)
-    arc_distances = np.arange(len(arc_coords)) * arc_spacing_km
+    arc_spacing_nm = arc_spacing_km / 1.852
+    arc_distances_nm = np.arange(len(arc_coords)) * arc_spacing_nm
 
     ds_t = ds_RHI.isel(valid_time=valid_time_index)
     pressure_levels = ds_RHI.pressure_level.values
 
     issr_matrix = []
-    altitudes_km = []
+    flight_levels = []
 
     for p in pressure_levels:
         row = []
@@ -195,20 +198,47 @@ def plot_issr_flag_altitude_vs_distance(ds_RHI, origin, destination, valid_time_
             except:
                 row.append(np.nan)
         issr_matrix.append(row)
-        altitudes_km.append(pressure_to_altitude_km(p))
+
+        # Convert pressure to flight level
+        fl = int(round(pressure_to_altitude_km(p) * 3280.84, -2) / 100)
+        flight_levels.append(fl)
 
     issr_matrix = np.array(issr_matrix)
-    altitudes_km = np.array(altitudes_km)
+    flight_levels = np.array(flight_levels)
 
-    # Plot as heatmap
+    # Force discrete 0/1 colormap
+    cmap = ListedColormap(['white', 'C0'])
+    norm = BoundaryNorm([0, 0.5, 1], ncolors=2)
+
+    # Plot with imshow
     plt.figure(figsize=(12, 5))
-    plt.pcolormesh(arc_distances, altitudes_km, issr_matrix, cmap='Blues', shading='auto')
-    plt.colorbar(label="ISSR Flag (1 = In ISSR)")
-    plt.title(f"ISSR Flag Along Geodesic\n{origin} → {destination}")
-    plt.xlabel("Distance Along Arc (km)")
-    plt.ylabel("Altitude (km)")
+    plt.imshow(
+        issr_matrix,
+        cmap=cmap,
+        norm=norm,
+        aspect='auto',
+        extent=[arc_distances_nm[0], arc_distances_nm[-1], flight_levels[0], flight_levels[-1]],
+        origin='lower',
+        interpolation='none'
+    )
+    
+    
+    # Plot vertical lines at 250 NM from origin and 250 NM from destination
+    x1 = 250
+    x2 = total_distance_nm - 250
+    plt.axvline(x=x1, color='red', linestyle='--', linewidth=1.5, label='250 NM from origin')
+    plt.axvline(x=x2, color='green', linestyle='--', linewidth=1.5, label='250 NM from destination')
+
+
+    plt.xlabel("Distance Along Arc (NM)")
+    plt.ylabel("Flight Level (FL)")
+    plt.xticks(np.arange(0, arc_distances_nm[-1] + 1, 50))
+    plt.yticks(flight_levels)
+    plt.ylim(200, 440)  # FL200 to FL440
+
     plt.tight_layout()
     plt.savefig("ISSR_slice_along_geodesic.png", dpi=300)
+
 
 
 # === RUN SCRIPT ===
