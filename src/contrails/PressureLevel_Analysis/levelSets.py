@@ -157,29 +157,30 @@ def pressure_to_altitude_km(pressure_hPa):
     return altitude_m / 1000.0  # meters to kilometers
 
 
-
-def plot_issr_flag_altitude_vs_distance(ds_RHI, origin, destination, valid_time_index=0):
+def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filename="ISSR_slice.png"):
     """
-    Plot ISSR flag as a function of distance (NM) and flight level (hundreds of ft) for an O-D pair.
-    """
+    Plot a 2D ISSR flag slice along the geodesic arc for a given origin-destination pair.
 
+    Parameters:
+        ds_RHI (xarray.Dataset): Dataset containing 'ISSR_flag' at pressure levels
+        origin, destination (tuple): (lat, lon) of start and end points
+        valid_time_index (int): Index into the time dimension
+        filename (str): Output plot file path
+    """
     geod = Geod(ellps='WGS84')
-    total_distance_km = geodesic(origin, destination).km
-    total_distance_nm = total_distance_km / 1.852
-    
-    print("Total distance (nm):", total_distance_nm)
-    
-    npts = max(int(total_distance_km // 10) - 1, 1)
+    total_km = geodesic(origin, destination).km
+    total_nm = total_km / 1.852
+    npts = max(int(total_km // 10) - 1, 1)
 
+    # Compute points along geodesic
     arc_coords = geod.npts(origin[1], origin[0], destination[1], destination[0], npts)
     arc_coords.insert(0, (origin[1], origin[0]))
     arc_coords.append((destination[1], destination[0]))
 
     arc_lats = [lat for lon, lat in arc_coords]
     arc_lons = [lon for lon, lat in arc_coords]
-    arc_spacing_km = total_distance_km / len(arc_coords)
-    arc_spacing_nm = arc_spacing_km / 1.852
-    arc_distances_nm = np.arange(len(arc_coords)) * arc_spacing_nm
+    spacing_nm = total_nm / len(arc_coords)
+    arc_distances_nm = np.arange(len(arc_coords)) * spacing_nm
 
     ds_t = ds_RHI.isel(valid_time=valid_time_index)
     pressure_levels = ds_RHI.pressure_level.values
@@ -199,45 +200,58 @@ def plot_issr_flag_altitude_vs_distance(ds_RHI, origin, destination, valid_time_
                 row.append(np.nan)
         issr_matrix.append(row)
 
-        # Convert pressure to flight level
-        fl = int(round(pressure_to_altitude_km(p) * 3280.84, -2) / 100)
+        alt_ft = pressure_to_altitude_km(p) * 3280.84
+        fl = int(round(alt_ft, -2) / 100)  # Convert to FL
         flight_levels.append(fl)
 
     issr_matrix = np.array(issr_matrix)
     flight_levels = np.array(flight_levels)
+    
+    print("Flight levels from ERA-5: ", flight_levels)
 
-    # Force discrete 0/1 colormap
-    cmap = ListedColormap(['white', 'C0'])
+    # Build edges for pcolormesh
+    dx = spacing_nm
+    arc_edges_nm = np.concatenate([[arc_distances_nm[0] - dx / 2], arc_distances_nm + dx / 2])
+
+
+    df = np.diff(flight_levels)
+    
+    print("flight level spacing: ", df)
+    df = np.append(df, df[-1])  # Repeat last delta
+    flight_edges = np.concatenate([[flight_levels[0] - df[0] / 2], flight_levels + df / 2])
+
+    # Plot
+    cmap = ListedColormap(['C0', 'blue'])
     norm = BoundaryNorm([0, 0.5, 1], ncolors=2)
 
-    # Plot with imshow
     plt.figure(figsize=(12, 5))
-    plt.imshow(
-        issr_matrix,
-        cmap=cmap,
-        norm=norm,
-        aspect='auto',
-        extent=[arc_distances_nm[0], arc_distances_nm[-1], flight_levels[0], flight_levels[-1]],
-        origin='lower',
-        interpolation='none'
-    )
+    plt.pcolormesh(arc_edges_nm, flight_edges, issr_matrix, cmap=cmap, norm=norm, shading='flat')
+
+    # Vertical lines at 250 NM from origin and destination
+    plt.axvline(x=250, color='red', linestyle='--', linewidth=1.2, label='250 NM from origin')
+    plt.axvline(x=total_nm - 250, color='green', linestyle='--', linewidth=1.2, label='250 NM from destination')
+
     
     
-    # Plot vertical lines at 250 NM from origin and 250 NM from destination
-    x1 = 250
-    x2 = total_distance_nm - 250
-    plt.axvline(x=x1, color='red', linestyle='--', linewidth=1.5, label='250 NM from origin')
-    plt.axvline(x=x2, color='green', linestyle='--', linewidth=1.5, label='250 NM from destination')
-
-
+    
+    # Draw grid lines
+    #for x in arc_edges_nm:
+    #    plt.axvline(x=x, color='lightgray', linewidth=0.1, zorder=1)
+        
+    for y in flight_edges:
+        plt.axhline(y=y, color='lightgray', linewidth=0.1, zorder=1)
+    
+    
     plt.xlabel("Distance Along Arc (NM)")
     plt.ylabel("Flight Level (FL)")
-    plt.xticks(np.arange(0, arc_distances_nm[-1] + 1, 50))
+    plt.xticks(np.arange(0, total_nm + 1, 50))
     plt.yticks(flight_levels)
-    plt.ylim(200, 440)  # FL200 to FL440
-
+    plt.ylim(flight_levels[0], flight_levels[-1])
+    plt.legend(loc='upper right')
     plt.tight_layout()
-    plt.savefig("ISSR_slice_along_geodesic.png", dpi=300)
+    plt.savefig(filename, dpi=300)
+    plt.close()
+
 
 
 
@@ -261,8 +275,7 @@ destination = (32.8968, -97.0370)  # Dallas
 #destination = (25.7933, -80.2906)  # Miami
 
 
-plot_issr_flag_altitude_vs_distance(ds_RHI, origin=origin, destination=destination)
-
+plot_issr_flag_slice(ds_RHI, origin=origin, destination=destination)
 
 #plot_issr_along_geodesic(ds_RHI, rf_df, origin, destination, fileName2, valid_time_index=0)
 
