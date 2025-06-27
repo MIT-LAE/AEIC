@@ -113,6 +113,8 @@ def plot_issr_along_geodesic(ds, rf_df, origin, destination, fileName, valid_tim
     #plot_rf_extent_altitude_contour(total_issr_by_km, total_rf_by_km, save_path=f"Plots/Slices/{fileName}_contour.png")
 
 
+
+
 def plot_rf_extent_altitude_contour(total_issr_by_km, total_rf_by_km, save_path="rf_extent_altitude_contour.png"):
     """
     Plot 2D contour of RF (mW/m²) as a function of horizontal ISSR extent and altitude.
@@ -152,26 +154,88 @@ def pressure_to_altitude_km(pressure_hPa):
     """Convert pressure to altitude in kilometers using the barometric formula."""
     altitude_m = 44330.0 * (1.0 - (pressure_hPa / 1013.25)**(1.0 / 5.255))
     return altitude_m / 1000.0  # meters to kilometers
-                
+
+def plot_issr_flag_altitude_vs_distance(ds_RHI, origin, destination, valid_time_index=0):
+    """
+    Plot ISSR flag as a function of altitude and arc distance for an O-D pair.
+
+    Parameters:
+        ds_RHI (xarray.Dataset): ERA5 ISSR dataset
+        origin (tuple): (lat, lon)
+        destination (tuple): (lat, lon)
+        valid_time_index (int): Time index for ds_RHI
+    """
+    geod = Geod(ellps='WGS84')
+    total_distance_km = geodesic(origin, destination).km
+    npts = max(int(total_distance_km // 10) - 1, 1)
+    
+    arc_coords = geod.npts(origin[1], origin[0], destination[1], destination[0], npts)
+    arc_coords.insert(0, (origin[1], origin[0]))
+    arc_coords.append((destination[1], destination[0]))
+
+    arc_lats = [lat for lon, lat in arc_coords]
+    arc_lons = [lon for lon, lat in arc_coords]
+    arc_spacing_km = total_distance_km / len(arc_coords)
+    arc_distances = np.arange(len(arc_coords)) * arc_spacing_km
+
+    ds_t = ds_RHI.isel(valid_time=valid_time_index)
+    pressure_levels = ds_RHI.pressure_level.values
+
+    issr_matrix = []
+    altitudes_km = []
+
+    for p in pressure_levels:
+        row = []
+        for lat, lon in zip(arc_lats, arc_lons):
+            try:
+                val = ds_t['ISSR_flag'].sel(
+                    pressure_level=p, latitude=lat, longitude=lon, method='nearest'
+                ).values.item()
+                row.append(val)
+            except:
+                row.append(np.nan)
+        issr_matrix.append(row)
+        altitudes_km.append(pressure_to_altitude_km(p))
+
+    issr_matrix = np.array(issr_matrix)
+    altitudes_km = np.array(altitudes_km)
+
+    # Plot as heatmap
+    plt.figure(figsize=(12, 5))
+    plt.pcolormesh(arc_distances, altitudes_km, issr_matrix, cmap='Blues', shading='auto')
+    plt.colorbar(label="ISSR Flag (1 = In ISSR)")
+    plt.title(f"ISSR Flag Along Geodesic\n{origin} → {destination}")
+    plt.xlabel("Distance Along Arc (km)")
+    plt.ylabel("Altitude (km)")
+    plt.tight_layout()
+    plt.savefig("ISSR_slice_along_geodesic.png", dpi=300)
+
+
 # === RUN SCRIPT ===
-fileName = "20241201.nc"
-file_path = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/PROCESSED/12_2024/RHi_{fileName}"
+fileName = "20241229"
+file_path = f"/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/ERA5/multi_level/PROCESSED/12_2024/RHi_{fileName}.nc"
 rf_table_path = "/home/prateekr/Workbench/AEIC_DEV/AEIC/src/contrails/PressureLevel_Analysis/Radel_Shine.csv"
+
+# Get R.F per unit kilometer (incorrect for now, fix later)
 rf_df = pd.read_csv(rf_table_path)
+
+# Get RHI contours from post-processed ERA-5 data
 ds_RHI = xr.open_dataset(file_path)
 
-fileName = "Bos-MIA"
+# Fix to just one arc for now
+fileName2 = f"BOS-MIA_{fileName}_"
 origin = (42.3656, -71.0096)    # Boston
-#destination = (32.8968, -97.0370)  # Dallas
+destination = (32.8968, -97.0370)  # Dallas
 #destination = (34.0522, -118.2437)  # Los Angeles
 #destination = (47.4502, -122.3088)  # Seattle
-
-destination = (25.7933, -80.2906)  # Miami
-
+#destination = (25.7933, -80.2906)  # Miami
 
 
+plot_issr_flag_altitude_vs_distance(ds_RHI, origin=origin, destination=destination)
 
 
-plot_issr_along_geodesic(ds_RHI, rf_df, origin, destination, fileName, valid_time_index=0)
+#plot_issr_along_geodesic(ds_RHI, rf_df, origin, destination, fileName2, valid_time_index=0)
+
+
 
 
