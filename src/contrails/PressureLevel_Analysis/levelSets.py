@@ -191,7 +191,7 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     
     issr_matrix = []
     flight_levels = []
-    limit = 150
+    limit = 100
 
     for p in pressure_levels:
         row = []
@@ -220,38 +220,22 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
         # Accumulate continous segment length while scanning
         current_streak = 0.0
         
-        # Boolean to detect start and end of streak
-        started = False
+        j = 0
+        while j < len(issr_flags):
+            if issr_flags[j] == 1:
+                start = j
+                streak_length = 0.0
+                while j < len(issr_flags) and issr_flags[j] == 1:
+                    seg_length = arc_edges_nm[j+1] - arc_edges_nm[j]
+                    streak_length += seg_length
+                    j += 1
+                if streak_length < limit:
+                    issr_flags[start:j] = 0
+            else:
+                j = j +1
+         # Set the corresponding rows to zero
+        issr_matrix.append(issr_flags)     
         
-        # Begin loop over each arc length segment
-        for j, flag in enumerate(issr_flags):
-            
-            # Compute the segment length based on distance bins
-            seg_length = arc_edges_nm[j+1] - arc_edges_nm[j]
-            
-            # If in ISSR region, stay here and keep adding to segment length
-            if flag == 1:
-                current_streak += seg_length
-                started = True
-            # No longer in ISSR interection, quit
-            elif started:
-                # First streak ends here
-                break
-                
-            # If not in ISSR region, check if the current streak us atleast limit nm. If so, 
-            # add to length_nm then reset current streak
-            #else:
-        if current_streak >= limit:
-            length_nm += current_streak
-            print(f"FL{fl}: ISSR cumulative length of segments >={limit} NM = {length_nm:.1f} NM")
-        
-        else:
-            issr_flags[:] = 0
-        
-        # Set the corresponding rows to zero
-        issr_matrix.append(issr_flags)
-        
-
     issr_matrix = np.array(issr_matrix)
     flight_levels = np.array(flight_levels)
     
