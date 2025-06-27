@@ -170,7 +170,7 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     geod = Geod(ellps='WGS84')
     total_km = geodesic(origin, destination).km
     total_nm = total_km / 1.852
-    npts = max(int(total_km // 10) - 1, 1)
+    npts = max(int(total_km // 60) - 1, 1)
 
     # Compute points along geodesic
     arc_coords = geod.npts(origin[1], origin[0], destination[1], destination[0], npts)
@@ -207,46 +207,75 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     issr_matrix = np.array(issr_matrix)
     flight_levels = np.array(flight_levels)
     
-    print("Flight levels from ERA-5: ", flight_levels)
 
     # Build edges for pcolormesh
     dx = spacing_nm
-    arc_edges_nm = np.concatenate([[arc_distances_nm[0] - dx / 2], arc_distances_nm + dx / 2])
-
-
-    df = np.diff(flight_levels)
     
-    print("flight level spacing: ", df)
-    df = np.append(df, df[-1])  # Repeat last delta
-    flight_edges = np.concatenate([[flight_levels[0] - df[0] / 2], flight_levels + df / 2])
-
+    arc_edges_nm = np.concatenate([[arc_distances_nm[0] - dx / 2], arc_distances_nm + dx / 2])
+    
+    # Option 1: Flight edges centered around ERA-5 flight levels using ERA-5 spacing
+    #df = np.diff(flight_levels)
+    
+    #df = np.append(df, df[-1])  # Repeat last delta
+    #flight_edges = np.concatenate([[flight_levels[0] - df[0] / 2], flight_levels + df / 2])
+    
+    
+    # Option 2: flight edges centeted around ERA-5 flight levels using +- thickness ft spacing
+    
+    # Altitudes in ft from your dataset
+    altitudes_ft = np.array([20815, 23577, 26635, 30069, 34004, 36216,
+                         38636, 41316, 44326, 47774, 51834])
+    
+    
+   # Step 1: Compute midpoints between each pair
+    midpoints = (altitudes_ft[:-1] + altitudes_ft[1:]) / 2  # length 10
+    
+    # First edge is below the lowest level
+    first_edge = altitudes_ft[0] - (midpoints[0] - altitudes_ft[0])
+    
+    # Last edge is above the highest level
+    last_edge = altitudes_ft[-1] + (altitudes_ft[-1] - midpoints[-1])
+    
+    
+    print("First edge: ", first_edge)
+    print("Last edge: ", last_edge)
+    
+    print("Midpoints: ", midpoints)
+    
+    flight_edges_ft = np.concatenate([[first_edge], midpoints, [last_edge]])
+    
+    print(issr_matrix)
+    
+    #thickness = 500
+    #flight_edges = np.concatenate([[flight_levels[0] - thickness / 2], flight_levels + thickness / 2])
+    
+    #print("Flight edges: ", flight_edges)
+    
     # Plot
-    cmap = ListedColormap(['C0', 'blue'])
+    cmap = ListedColormap(['white', 'C0'])
     norm = BoundaryNorm([0, 0.5, 1], ncolors=2)
 
     plt.figure(figsize=(12, 5))
-    plt.pcolormesh(arc_edges_nm, flight_edges, issr_matrix, cmap=cmap, norm=norm, shading='flat')
+    plt.pcolormesh(arc_edges_nm, flight_edges_ft, issr_matrix, cmap=cmap, norm=norm, shading='flat')
 
     # Vertical lines at 250 NM from origin and destination
     plt.axvline(x=250, color='red', linestyle='--', linewidth=1.2, label='250 NM from origin')
     plt.axvline(x=total_nm - 250, color='green', linestyle='--', linewidth=1.2, label='250 NM from destination')
-
-    
     
     
     # Draw grid lines
     #for x in arc_edges_nm:
     #    plt.axvline(x=x, color='lightgray', linewidth=0.1, zorder=1)
         
-    for y in flight_edges:
-        plt.axhline(y=y, color='lightgray', linewidth=0.1, zorder=1)
+    #for y in flight_edges:
+    #    plt.axhline(y=y, color='lightgray', linewidth=1.1, zorder=1)
     
     
     plt.xlabel("Distance Along Arc (NM)")
     plt.ylabel("Flight Level (FL)")
     plt.xticks(np.arange(0, total_nm + 1, 50))
-    plt.yticks(flight_levels)
-    plt.ylim(flight_levels[0], flight_levels[-1])
+    plt.yticks(altitudes_ft)
+    #plt.ylim(flight_levels[0], flight_levels[-1])
     plt.legend(loc='upper right')
     plt.tight_layout()
     plt.savefig(filename, dpi=300)
