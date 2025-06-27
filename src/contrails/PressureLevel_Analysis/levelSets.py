@@ -184,7 +184,7 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
 
     ds_t = ds_RHI.isel(valid_time=valid_time_index)
     pressure_levels = ds_RHI.pressure_level.values
-
+    
     issr_matrix = []
     flight_levels = []
 
@@ -207,6 +207,8 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     issr_matrix = np.array(issr_matrix)
     flight_levels = np.array(flight_levels)
     
+    
+    print("ISSR matrix shape: ", issr_matrix.shape)
 
     # Build edges for pcolormesh
     dx = spacing_nm
@@ -243,7 +245,7 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     #print("Midpoints: ", midpoints)
     
     #flight_edges_ft = np.concatenate([[first_edge], midpoints, [last_edge]])
-    flight_edges_ft = np.concatenate([altitudes_ft - 100, [altitudes_ft[-1] + 100]])
+    flight_edges_ft = np.concatenate([altitudes_ft - 50, [altitudes_ft[-1] + 50]])
     
     #thickness = 500
     #flight_edges = np.concatenate([[flight_levels[0] - thickness / 2], flight_levels + thickness / 2])
@@ -253,9 +255,23 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     # Plot
     cmap = ListedColormap(['white', 'C0'])
     norm = BoundaryNorm([0, 0.5, 1], ncolors=2)
+    
+    print("Flight edges: ", flight_edges_ft)
 
     plt.figure(figsize=(12, 5))
     plt.pcolormesh(arc_edges_nm, flight_edges_ft, issr_matrix, cmap=cmap, norm=norm, shading='flat')
+    
+    #plt.imshow(
+    #issr_matrix,
+    #cmap=cmap,
+    #norm=norm,
+    #aspect='auto',
+    #extent=[arc_edges_nm[0], arc_edges_nm[-1], flight_edges_ft[0], flight_edges_ft[-1]],
+    #origin='lower',
+    #interpolation='none'
+    #)
+
+    
 
     # Vertical lines at 250 NM from origin and destination
     plt.axvline(x=250, color='red', linestyle='--', linewidth=1.2, label='250 NM from origin')
@@ -267,7 +283,10 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     #    plt.axvline(x=x, color='lightgray', linewidth=0.1, zorder=1)
         
     for y in altitudes_ft:
-        plt.axhline(y=y, color='lightgray', linewidth=1.1, zorder=1)
+        plt.axhline(y=y, color='black', linewidth=1.1, zorder=1)
+        
+    for y in flight_edges_ft:
+        plt.axhline(y=y, color='gray', linewidth=1.1, zorder=1)
     
     
     plt.xlabel("Distance Along Arc (NM)")
