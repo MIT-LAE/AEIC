@@ -157,7 +157,161 @@ def pressure_to_altitude_km(pressure_hPa):
     return altitude_m / 1000.0  # meters to kilometers
 
 
-def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filename="ISSR_slice.png"):
+def plot_issr_flag_slice_norm(ds_RHI, filename, origin, destination, valid_time_index=0):
+    """
+    Plot a 2D ISSR flag slice along the geodesic arc for a given origin-destination pair,
+    with ground track distance normalized to [0,1]
+
+    Parameters:
+        ds_RHI (xarray.Dataset): Dataset containing 'ISSR_flag' at pressure levels
+        origin, destination (tuple): (lat, lon) of start and end points
+        valid_time_index (int): Index into the time dimension
+        filename (str): Output plot file path
+    """
+    
+    # Build the geodesic NOTE: Assuming 60 KM separaton for now
+    geod = Geod(ellps='WGS84')
+    
+    # Compute geodesic length
+    total_km = geodesic(origin, destination).km
+    total_nm = total_km / 1.852
+    
+    # Compute discretization length based on x KM spacing
+    npts = max(int(total_km // 60) - 1, 1)
+
+    # Compute points along geodesic
+    arc_coords = geod.npts(origin[1], origin[0], destination[1], destination[0], npts)
+    
+    # Add O-D coordinates 
+    arc_coords.insert(0, (origin[1], origin[0]))
+    arc_coords.append((destination[1], destination[0]))
+
+    # Compute lat and lon values along arc
+    arc_lats = [lat for lon, lat in arc_coords]
+    arc_lons = [lon for lon, lat in arc_coords]
+    
+    # Arc spacing in nm
+    spacing_nm = total_nm / len(arc_coords)
+    arc_distances_nm = np.arange(len(arc_coords)) * spacing_nm
+
+    # Slice the ERA5 dataset along time dimension
+    ds_t = ds_RHI.isel(valid_time=valid_time_index)
+    
+    # Get pressure level
+    pressure_levels = ds_RHI.pressure_level.values
+    
+    # Build distance bins
+    dx = spacing_nm
+    arc_edges_nm = np.concatenate([[arc_distances_nm[0] - dx / 2], arc_distances_nm + dx / 2])
+    
+    # Normalize distance to [0,1] ==>
+    # Normaluze arc distances with total nautical miles
+    arc_distances_norm = arc_distances_nm / total_nm
+    
+    # Construct arc edges for pcolor mesh in non-dimensional space
+    dx_norm = arc_distances_norm[1] - arc_distances_norm[0]
+    arc_edges_norm = np.concatenate([[arc_distances_norm[0] - dx_norm / 2], arc_distances_norm + dx_norm / 2])
+    
+    # Clip the arc edges norm to 0
+    arc_edges_norm[0] = max(arc_edges_norm[0], 0.0)
+    
+
+    print(arc_edges_norm)
+    
+    issr_matrix = []
+    flight_levels = []
+    
+    # Consider ISSR extents that are only "limit" naitcal miles long
+    limit = 100
+
+    for p in pressure_levels:
+        row = []
+        for lat, lon in zip(arc_lats, arc_lons):
+            try:
+                val = ds_t['ISSR_flag'].sel(
+                    pressure_level=p, latitude=lat, longitude=lon, method='nearest'
+                ).values.item()
+                row.append(val)
+            except:
+                row.append(np.nan)
+        #issr_matrix.append(row)
+
+        alt_ft = pressure_to_altitude_km(p) * 3280.84
+        fl = int(round(alt_ft, -2) / 100)  # Convert to FL
+        flight_levels.append(fl)
+        
+        # Compute comulative ISSR length with length >=limit nm
+        
+        # Replace any non values with 0
+        issr_flags = np.nan_to_num(np.array(row), nan=0)
+        
+        # Accumulate the sum of all qualifying streaks >= limit
+        length_nm = 0.0
+        
+        # Accumulate continous segment length while scanning
+        current_streak = 0.0
+        
+        j = 0
+        while j < len(issr_flags):
+            if issr_flags[j] == 1:
+                start = j
+                streak_length = 0.0
+                while j < len(issr_flags) and issr_flags[j] == 1:
+                    seg_length = arc_edges_nm[j+1] - arc_edges_nm[j]
+                    streak_length += seg_length
+                    j += 1
+                if streak_length < limit:
+                    issr_flags[start:j] = 0
+            else:
+                j = j +1
+         # Set the corresponding rows to zero
+        issr_matrix.append(issr_flags)     
+        
+    issr_matrix = np.array(issr_matrix)
+    flight_levels = np.array(flight_levels)
+    
+    # Altitudes in ft from ERA5 dataset
+    altitudes_ft = np.array([20815, 23577, 26635, 30069, 34004, 36216,
+                         38636, 41316, 44326, 47774, 51834])
+    
+    
+    #flight_edges_ft = np.concatenate([[first_edge], midpoints, [last_edge]])
+    flight_edges_ft = np.concatenate([altitudes_ft - 00, [altitudes_ft[-1] + 00]])
+    
+    # Plot
+    cmap = ListedColormap(['white', 'C0'])
+    norm = BoundaryNorm([0, 0.5, 1], ncolors=2)
+
+    plt.figure(figsize=(12, 5))
+    plt.pcolormesh(arc_edges_norm, flight_edges_ft, issr_matrix, cmap=cmap, norm=norm, shading='flat')
+    
+
+    # Vertical lines at 250 NM from origin and destination
+    #plt.axvline(x=250, color='red', linestyle='--', linewidth=1.2, label='250 NM from origin')
+    #plt.axvline(x=total_nm - 250, color='green', linestyle='--', linewidth=1.2, label='250 NM from destination')
+
+    
+    # Draw indicators for ERA5 altitudes
+    #for y in altitudes_ft:
+    #    plt.axhline(y=y, color='black', linewidth=1.1, zorder=1)
+    
+    # Draw indicators for flight edges used for bin
+    for y in flight_edges_ft:
+        plt.axhline(y=y, color='gray', linewidth=1.1, zorder=1)
+    
+    
+    plt.xlabel("Distance Along Arc (NM)")
+    plt.ylabel("Altitude (ft)")
+    plt.xticks(np.linspace(0, 1, 11), labels=[f"{int(x*100)}%" for x in np.linspace(0,1,11)])
+    plt.yticks(altitudes_ft)
+    #plt.ylim(flight_levels[0], flight_levels[-1])
+    plt.legend(loc='upper right')
+    plt.tight_layout()
+    plt.savefig(f"Plots/Slices/norm_{filename}", dpi=300)
+    plt.close()
+
+
+def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index=0):
     """
     Plot a 2D ISSR flag slice along the geodesic arc for a given origin-destination pair.
 
@@ -275,7 +429,7 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     #print("Midpoints: ", midpoints)
     
     #flight_edges_ft = np.concatenate([[first_edge], midpoints, [last_edge]])
-    flight_edges_ft = np.concatenate([altitudes_ft - 50, [altitudes_ft[-1] + 50]])
+    flight_edges_ft = np.concatenate([altitudes_ft - 00, [altitudes_ft[-1] + 00]])
     
     #thickness = 500
     #flight_edges = np.concatenate([[flight_levels[0] - thickness / 2], flight_levels + thickness / 2])
@@ -296,8 +450,8 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
 
     
     # Draw indicators for ERA5 altitudes
-    for y in altitudes_ft:
-        plt.axhline(y=y, color='black', linewidth=1.1, zorder=1)
+    #for y in altitudes_ft:
+    #    plt.axhline(y=y, color='black', linewidth=1.1, zorder=1)
     
     # Draw indicators for flight edges used for bin
     for y in flight_edges_ft:
@@ -305,13 +459,13 @@ def plot_issr_flag_slice(ds_RHI, origin, destination, valid_time_index=0, filena
     
     
     plt.xlabel("Distance Along Arc (NM)")
-    plt.ylabel("Flight Level (FL)")
+    plt.ylabel("Altitude (ft)")
     plt.xticks(np.arange(0, total_nm + 1, 50))
     plt.yticks(altitudes_ft)
     #plt.ylim(flight_levels[0], flight_levels[-1])
     plt.legend(loc='upper right')
     plt.tight_layout()
-    plt.savefig(filename, dpi=300)
+    plt.savefig(f"Plots/Slices/{filename}", dpi=300)
     plt.close()
 
 
@@ -329,7 +483,7 @@ rf_df = pd.read_csv(rf_table_path)
 ds_RHI = xr.open_dataset(file_path)
 
 # Fix to just one arc for now
-fileName2 = f"BOS-MIA_{fileName}_"
+fileName = f"BOS-MIA_{fileName}.png"
 origin = (42.3656, -71.0096)    # Boston
 destination = (32.8968, -97.0370)  # Dallas
 #destination = (34.0522, -118.2437)  # Los Angeles
@@ -337,7 +491,7 @@ destination = (32.8968, -97.0370)  # Dallas
 #destination = (25.7933, -80.2906)  # Miami
 
 
-plot_issr_flag_slice(ds_RHI, origin=origin, destination=destination)
+plot_issr_flag_slice_norm(ds_RHI, fileName, origin=origin, destination=destination)
 
 #plot_issr_along_geodesic(ds_RHI, rf_df, origin, destination, fileName2, valid_time_index=0)
 
