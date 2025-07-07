@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+plt.style.use('seaborn-v0_8-deep')
 def plot_avg_bin(df, month):
     
     # Filter data for aircraft type 614, SEATS > 0, PASSENGERS > 0 for a specific month
@@ -17,7 +18,7 @@ def plot_avg_bin(df, month):
     bins = np.arange(0, aircraft_614_df["DISTANCE"].max() + distance_bin, distance_bin)
     
     # Center about distance bin midpoint
-    labels = bins[:-1] + distance_bin/2 # bin centers
+    labels = bins[:-1] + 125 # bin centers
 
     # Bin the data and compute average load factor
     aircraft_614_df["DISTANCE_BIN"] = pd.cut(aircraft_614_df["DISTANCE"], bins=bins)
@@ -42,6 +43,12 @@ def plot_avg_bin(df, month):
     poly = np.poly1d(coeffs)
     
     
+    # Print the three coefficients
+    #print(f"{degree}-degree polynomial coefficients (highest degree first):")
+    #for i, c in enumerate(coeffs):
+    #    print(f"a{i} = {c:.6f}")
+    
+    
     # Create smooth x values across your plotted range
     x_fit = np.linspace(min(labels), max(labels), 500)
     y_fit = poly(x_fit)
@@ -54,7 +61,7 @@ def plot_avg_bin(df, month):
     
     
     # Plot the polynomial fit
-    plt.plot(x_fit, y_fit, color='crimson', linewidth=2, linestyle='--', label=f'{degree}° polynomial fit')
+    plt.plot(x_fit, y_fit, color='crimson', linewidth=2.5, linestyle='--', label=f'{degree}° polynomial fit')
     
     
     plt.errorbar(
@@ -112,7 +119,23 @@ def plot_avg_bin(df, month):
     
     plt.xlim([0, 3000])
     plt.ylim([0.0, 1.0])
-
+    
+    # Create readable polynomial equation string
+    equation_str = f"LOAD FACTOR (MONTH: {month_index}) = "
+    terms = []
+    for i, c in enumerate(coeffs):
+        power = degree - i
+        coeff_str = f"{c:.3e}"
+        if power == 0:
+            terms.append(f"{coeff_str}")
+        elif power == 1:
+            terms.append(f"{coeff_str}·x")
+        else:
+            terms.append(f"{coeff_str}·x^{power}")
+    equation_str += " + ".join(terms)
+    
+    
+    plt.title(equation_str, fontsize=14, fontname="Times New Roman", fontweight='bold')
     plt.tight_layout()
     plt.show()
     plt.savefig(f"Plots/{month}_2024_avg_binned_load_factor_vs_distance.png")
@@ -174,7 +197,7 @@ def plot_loess(df):
 file_path = "data/T_T100D_SEGMENT_ALL_CARRIER.csv"
 df = pd.read_csv(file_path)
 
-month_index = 8
+month_index = 1
 
 plot_avg_bin(df, month_index)
 
