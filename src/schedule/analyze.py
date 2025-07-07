@@ -137,7 +137,7 @@ def plot_avg_bin(df, month):
     
     plt.title(equation_str, fontsize=14, fontname="Times New Roman", fontweight='bold')
     plt.tight_layout()
-    plt.show()
+    #plt.show()
     plt.savefig(f"Plots/{month}_2024_avg_binned_load_factor_vs_distance.png")
     
     
@@ -197,7 +197,7 @@ def plot_loess(df):
 file_path = "data/T_T100D_SEGMENT_ALL_CARRIER.csv"
 df = pd.read_csv(file_path)
 
-month_index = 1
+month_index = 12
 
 plot_avg_bin(df, month_index)
 
