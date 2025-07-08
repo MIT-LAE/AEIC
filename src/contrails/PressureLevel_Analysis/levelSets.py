@@ -435,10 +435,28 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
     cmap = ListedColormap(['white', 'C0'])
     norm = BoundaryNorm([0, 0.5, 1], ncolors=2)
     
-    print("Flight Level (FL) | Total ISSR Length (NM)")
-    for fl, L in zip(flight_levels, issr_lengths_nm):
-        print(f"FL{fl:03d}             | {L:.1f}")
+   # print("Flight Level (FL) | Total ISSR Length (NM)")
+   # for fl, L in zip(flight_levels, issr_lengths_nm):
+   #     print(f"FL{fl:03d}             | {L:.1f}")
 
+    
+    # Determine max number of segments across all levels
+    max_segs = max(len(segments) for segments in issr_segment_details)
+    
+    # Header row
+    header = f"{'FL':>6} | {'#Segs':>6} | {'Total(NM)':>10} | " + " | ".join([f"Seg{i+1}" for i in range(max_segs)])
+    print("\nPer-Level ISSR Segment Report (One Segment Per Column)")
+    print("-" * (len(header) + 5))
+    print(header)
+    print("-" * (len(header) + 5))
+    
+    # Data rows
+    for fl, seg_count, total_len, segments in zip(flight_levels, issr_segment_counts, issr_lengths_nm, issr_segment_details):
+        # Fill missing segments with blanks for alignment
+        padded_segments = [f"{s:.1f}" for s in segments] + [""] * (max_segs - len(segments))
+        segment_cols = " | ".join(f"{s:>6}" for s in padded_segments)
+        print(f"FL{fl:03d} | {seg_count:6d} | {total_len:10.1f} | {segment_cols}")
+    
     plt.figure(figsize=(12, 5))
     plt.pcolormesh(arc_edges_nm, flight_edges_ft, issr_matrix, cmap=cmap, norm=norm, shading='flat')
     
