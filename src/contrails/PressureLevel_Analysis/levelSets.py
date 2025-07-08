@@ -396,21 +396,20 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
             else:
                 j = j +1
          # Set the corresponding rows to zero
-        issr_matrix.append(issr_flags)     
+        issr_matrix.append(issr_flags)
+        
+        level_length = 0.0
+        for j in range(len(issr_flags)):
+            if issr_flags[j] == 1:
+                level_length += arc_edges_nm[j+1] - arc_edges_nm[j]
+        issr_lengths_nm.append(level_length) 
         
     issr_matrix = np.array(issr_matrix)
     flight_levels = np.array(flight_levels)
     
 
-    level_length = 0.0
-    for j in range(len(issr_flags)):
-        if issr_flags[j] == 1:
-            level_length += arc_edges_nm[j+1] - arc_edges_nm[j]
-    issr_lengths_nm.append(level_length)
-
     # Build edges for pcolormesh
     dx = spacing_nm
-
     
     # Altitudes in ft from your dataset
     altitudes_ft = np.array([20815, 23577, 26635, 30069, 34004, 36216,
