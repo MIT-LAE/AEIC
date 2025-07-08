@@ -1,40 +1,68 @@
 import pandas as pd
+import numpy as np
 
-def compare_with_deviated_flight_level(filtered_df, deviation_ft=4000):
+def evaluate_filtered_deviation_and_write_csv(df_filtered, deviation_ft=4000, output_file="deviation_report_filtered.csv"):
     """
-    For the first flight level in the filtered_df, adds deviation_ft to it and finds
-    the nearest available flight level in filtered_df. Prints ISSR segment lengths and
-    start positions at the deviated level.
-    
+    Evaluate ISSR segments at deviated flight levels and write results to CSV,
+    only including deviated segments that start after the first segment position
+    at the reference altitude.
+
     Parameters:
-        filtered_df (pd.DataFrame): Filtered DataFrame of ISSR segments
-        deviation_ft (float): Deviation altitude in feet
+        df_filtered (pd.DataFrame): Filtered DataFrame with ISSR segments
+        deviation_ft (float): Altitude deviation in feet
+        output_file (str): Path to output CSV file
     """
-    if filtered_df.empty:
-        print("Empty DataFrame.")
-        return
+    results = []
+    
+    for _, row in df_filtered.iterrows():
+        fl_ref = row['Flight_Level']
+        alt_ref = fl_ref * 100
+        target_alt = alt_ref + deviation_ft
+        
+        # Find nearest FL in df_filtered
+        fl_values = df_filtered['Flight_Level'].values * 100
+        nearest_idx = (np.abs(fl_values - target_alt)).argmin()
+        nearest_row = df_filtered.iloc[nearest_idx]
+        alt_nearest = nearest_row['Flight_Level'] * 100
+        
+        # Extract reference and new segment lengths and positions (up to 3)
+        ref_lengths = [row.get(f'Segment_{i:02d}_Length_NM', np.nan) for i in range(1, 4)]
+        ref_positions = [row.get(f'Segment_{i:02d}_Start_NM', np.nan) for i in range(1, 4)]
 
-    # Step 1: Get the first flight level
-    fl_ref = filtered_df.iloc[0]['Flight_Level']
-    target_alt = fl_ref * 100 + deviation_ft
+        # First segment start position from reference altitude
+        ref_threshold_pos = ref_positions[0] if not pd.isna(ref_positions[0]) else -np.inf
 
-    # Step 2: Find the nearest flight level
-    fl_values = filtered_df['Flight_Level'].values * 100  # Convert to feet
-    nearest_idx = (abs(fl_values - target_alt)).argmin()
-    nearest_row = filtered_df.iloc[nearest_idx]
-    fl_nearest = nearest_row['Flight_Level']
+        # Filter new lengths to only include segments starting after reference threshold
+        new_lengths_filtered = []
+        for i in range(1, 4):
+            pos = nearest_row.get(f'Segment_{i:02d}_Start_NM', np.nan)
+            if not pd.isna(pos) and pos > ref_threshold_pos:
+                new_len = nearest_row.get(f'Segment_{i:02d}_Length_NM', np.nan)
+            else:
+                new_len = np.nan
+            new_lengths_filtered.append(new_len)
 
-    print(f"Reference FL: {fl_ref} (Altitude: {fl_ref * 100} ft)")
-    print(f"Target Altitude: {target_alt:.0f} ft")
-    print(f"Nearest FL: {fl_nearest} (Altitude: {fl_nearest * 100} ft)\n")
+        results.append({
+            "Ref Alt (ft)": alt_ref,
+            "Deviation Alt (ft)": target_alt,
+            "Nearest Alt (ft)": alt_nearest,
+            "Ref Seg Len 1": ref_lengths[0],
+            "Ref Seg Len 2": ref_lengths[1],
+            "Ref Seg Len 3": ref_lengths[2],
+            "Ref Start Pos 1": ref_positions[0],
+            "Ref Start Pos 2": ref_positions[1],
+            "Ref Start Pos 3": ref_positions[2],
+            "New Seg Len 1": new_lengths_filtered[0],
+            "New Seg Len 2": new_lengths_filtered[1],
+            "New Seg Len 3": new_lengths_filtered[2],
+        })
+    
+    # Create DataFrame and write to CSV
+    df_result = pd.DataFrame(results)
+    df_result.to_csv(output_file, index=False)
+    return output_file
 
-    print(f"ISSR Segments at FL{int(fl_nearest):03d}:")
-    num_segments = int(nearest_row['Num_Segments'])
 
-    for i in range(1, num_segments + 1):
-        seg_len = nearest_row.get(f'Segment_{i:02d}_Length_NM')
-        seg_pos = nearest_row.get(f'Segment_{i:02d}_Start_NM')
-        print(f"  Segment {i}: Length = {seg_len:.1f} NM, Start = {seg_pos:.1f} NM")
 
 
 
@@ -45,8 +73,6 @@ df = pd.read_csv(input_csv)
 # Filter out rows where ISSR intersections are non-zero
 filtered_df = df[df['Num_Segments'] > 0].reset_index(drop=True)
 
-
-info = compare_with_deviated_flight_level(filtered_df)
-
-print(info)
-
+# Run this version of the function
+csv_out_path = "BOS-DAL-deviation_report.csv"
+evaluate_filtered_deviation_and_write_csv(filtered_df, output_file=csv_out_path)
