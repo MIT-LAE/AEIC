@@ -182,3 +182,7 @@ cython_debug/
 
 # Jupyter Notebooks
 *.ipynb
+
+# SQLite databases (ignore for now).
+*.sqlite
+*.sqlite-journal
