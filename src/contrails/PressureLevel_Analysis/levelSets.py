@@ -215,9 +215,6 @@ def plot_issr_flag_slice_norm(ds_RHI, filename, origin, destination, valid_time_
     # Clip the arc edges norm to 0
     arc_edges_norm[0] = max(arc_edges_norm[0], 0.0)
     
-
-    print(arc_edges_norm)
-    
     issr_matrix = []
     flight_levels = []
     
@@ -286,9 +283,9 @@ def plot_issr_flag_slice_norm(ds_RHI, filename, origin, destination, valid_time_
     plt.pcolormesh(arc_edges_norm, flight_edges_ft, issr_matrix, cmap=cmap, norm=norm, shading='flat')
     
 
-    # Vertical lines at 250 NM from origin and destination
-    #plt.axvline(x=250, color='red', linestyle='--', linewidth=1.2, label='250 NM from origin')
-    #plt.axvline(x=total_nm - 250, color='green', linestyle='--', linewidth=1.2, label='250 NM from destination')
+    # Vertical lines at 10 % from origin and destination
+    plt.axvline(x=0.1, color='green', linestyle=':', linewidth=2.5, label='TOC')
+    plt.axvline(x= 0.9, color='red', linestyle=':', linewidth=2.5, label='TOD')
 
     
     # Draw indicators for ERA5 altitudes
@@ -297,15 +294,25 @@ def plot_issr_flag_slice_norm(ds_RHI, filename, origin, destination, valid_time_
     
     # Draw indicators for flight edges used for bin
     for y in flight_edges_ft:
-        plt.axhline(y=y, color='gray', linewidth=1.1, zorder=1)
+        plt.axhline(y=y, color='whitesmoke', linewidth=0.5, zorder=1)
     
     
-    plt.xlabel("Distance Along Arc (NM)")
-    plt.ylabel("Altitude (ft)")
+    plt.xlabel("Arc fraction", fontsize = 22, fontname="Times New Roman")
+    plt.ylabel("Altitude (ft)", fontsize = 22, fontname="Times New Roman")
     plt.xticks(np.linspace(0, 1, 11), labels=[f"{int(x*100)}%" for x in np.linspace(0,1,11)])
     plt.yticks(altitudes_ft)
+    plt.xticks(fontname = "Times New Roman", fontsize  = 20)
+    plt.yticks(fontname = "Times New Roman", fontsize = 20)
+    
     #plt.ylim(flight_levels[0], flight_levels[-1])
-    plt.legend(loc='upper right')
+    plt.legend(frameon=False, loc='upper right', prop={'size': 22, 'family': 'Times New Roman'}, ncol=2)
+    
+    
+    F = plt.gcf()
+    Size = F.get_size_inches()
+    F.set_size_inches(Size[0]*1.5, Size[1]*1.5, forward=True) # Set forward to True to resize window along with plot in figure.
+    
+    
     plt.tight_layout()
     plt.savefig(f"Plots/Slices/norm_{filename}", dpi=300)
     plt.close()
@@ -346,6 +353,7 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
     issr_matrix = []
     flight_levels = []
     limit = 100
+    issr_lengths_nm = []  # NEW: Store cumulative ISSR length at each level
 
     for p in pressure_levels:
         row = []
@@ -393,52 +401,33 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
     issr_matrix = np.array(issr_matrix)
     flight_levels = np.array(flight_levels)
     
-    
+
+    level_length = 0.0
+    for j in range(len(issr_flags)):
+        if issr_flags[j] == 1:
+            level_length += arc_edges_nm[j+1] - arc_edges_nm[j]
+    issr_lengths_nm.append(level_length)
 
     # Build edges for pcolormesh
     dx = spacing_nm
 
-    
-    # Option 1: Flight edges centered around ERA-5 flight levels using ERA-5 spacing
-    #df = np.diff(flight_levels)
-    
-    #df = np.append(df, df[-1])  # Repeat last delta
-    #flight_edges = np.concatenate([[flight_levels[0] - df[0] / 2], flight_levels + df / 2])
-    
-    
-    # Option 2: flight edges centeted around ERA-5 flight levels using +- thickness ft spacing
     
     # Altitudes in ft from your dataset
     altitudes_ft = np.array([20815, 23577, 26635, 30069, 34004, 36216,
                          38636, 41316, 44326, 47774, 51834])
     
     
-   # Step 1: Compute midpoints between each pair
-    #midpoints = (altitudes_ft[:-1] + altitudes_ft[1:]) / 2  # length 10
-    
-    # First edge is below the lowest level
-    #first_edge = altitudes_ft[0] - (midpoints[0] - altitudes_ft[0])
-    
-    # Last edge is above the highest level
-    #last_edge = altitudes_ft[-1] + (altitudes_ft[-1] - midpoints[-1])
-    
-    
-    #print("First edge: ", first_edge)
-    #print("Last edge: ", last_edge)
-    
-    #print("Midpoints: ", midpoints)
-    
     #flight_edges_ft = np.concatenate([[first_edge], midpoints, [last_edge]])
     flight_edges_ft = np.concatenate([altitudes_ft - 00, [altitudes_ft[-1] + 00]])
     
-    #thickness = 500
-    #flight_edges = np.concatenate([[flight_levels[0] - thickness / 2], flight_levels + thickness / 2])
-    
-    #print("Flight edges: ", flight_edges)
     
     # Plot
     cmap = ListedColormap(['white', 'C0'])
     norm = BoundaryNorm([0, 0.5, 1], ncolors=2)
+    
+    print("Flight Level (FL) | Total ISSR Length (NM)")
+    for fl, L in zip(flight_levels, issr_lengths_nm):
+        print(f"FL{fl:03d}             | {L:.1f}")
 
     plt.figure(figsize=(12, 5))
     plt.pcolormesh(arc_edges_nm, flight_edges_ft, issr_matrix, cmap=cmap, norm=norm, shading='flat')
@@ -449,21 +438,25 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
     plt.axvline(x=total_nm - 250, color='green', linestyle='--', linewidth=1.2, label='250 NM from destination')
 
     
-    # Draw indicators for ERA5 altitudes
-    #for y in altitudes_ft:
-    #    plt.axhline(y=y, color='black', linewidth=1.1, zorder=1)
-    
     # Draw indicators for flight edges used for bin
     for y in flight_edges_ft:
         plt.axhline(y=y, color='gray', linewidth=1.1, zorder=1)
     
     
-    plt.xlabel("Distance Along Arc (NM)")
-    plt.ylabel("Altitude (ft)")
+    plt.xlabel("Distance Along Arc (NM)", fontsize = 22, fontname="Times New Roman")
+    plt.ylabel("Altitude (ft)", fontsize = 22, fontname="Times New Roman")
     plt.xticks(np.arange(0, total_nm + 1, 50))
     plt.yticks(altitudes_ft)
-    #plt.ylim(flight_levels[0], flight_levels[-1])
-    plt.legend(loc='upper right')
+    plt.xticks(fontname = "Times New Roman", fontsize  = 20)
+    plt.yticks(fontname = "Times New Roman", fontsize = 20)
+    
+    plt.legend(frameon=False, loc='upper right', prop={'size': 22, 'family': 'Times New Roman'}, ncol=2)
+    
+    
+    F = plt.gcf()
+    Size = F.get_size_inches()
+    F.set_size_inches(Size[0]*1.5, Size[1]*1.5, forward=True) # Set forward to True to resize window along with plot in figure.
+   
     plt.tight_layout()
     plt.savefig(f"Plots/Slices/{filename}", dpi=300)
     plt.close()
@@ -483,7 +476,7 @@ rf_df = pd.read_csv(rf_table_path)
 ds_RHI = xr.open_dataset(file_path)
 
 # Fix to just one arc for now
-fileName = f"BOS-MIA_{fileName}.png"
+fileName = f"BOS-DAL_{fileName}.png"
 origin = (42.3656, -71.0096)    # Boston
 destination = (32.8968, -97.0370)  # Dallas
 #destination = (34.0522, -118.2437)  # Los Angeles
@@ -491,7 +484,10 @@ destination = (32.8968, -97.0370)  # Dallas
 #destination = (25.7933, -80.2906)  # Miami
 
 
-plot_issr_flag_slice_norm(ds_RHI, fileName, origin=origin, destination=destination)
+#plot_issr_flag_slice_norm(ds_RHI, fileName, origin=origin, destination=destination)
+
+plot_issr_flag_slice(ds_RHI, fileName, origin=origin, destination=destination)
+
 
 #plot_issr_along_geodesic(ds_RHI, rf_df, origin, destination, fileName2, valid_time_index=0)
 
