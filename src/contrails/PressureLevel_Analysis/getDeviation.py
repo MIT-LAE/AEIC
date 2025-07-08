@@ -14,25 +14,30 @@ def evaluate_filtered_deviation_and_write_csv(df_filtered, deviation_ft=4000, ou
     """
     results = []
     
+    # Begin looping over FL rows
     for _, row in df_filtered.iterrows():
         fl_ref = row['Flight_Level']
         alt_ref = fl_ref * 100
+        
+        # Target deviation altitude
         target_alt = alt_ref + deviation_ft
         
         # Find nearest FL in df_filtered
         fl_values = df_filtered['Flight_Level'].values * 100
+        
+        # Get the index for the nearest FL in dataframe
         nearest_idx = (np.abs(fl_values - target_alt)).argmin()
         nearest_row = df_filtered.iloc[nearest_idx]
         alt_nearest = nearest_row['Flight_Level'] * 100
         
-        # Extract reference and new segment lengths and positions (up to 3)
+        # Extract reference and new segment lengths and positions (up to 3 for now)
         ref_lengths = [row.get(f'Segment_{i:02d}_Length_NM', np.nan) for i in range(1, 4)]
         ref_positions = [row.get(f'Segment_{i:02d}_Start_NM', np.nan) for i in range(1, 4)]
 
         # First segment start position from reference altitude
         ref_threshold_pos = ref_positions[0] if not pd.isna(ref_positions[0]) else -np.inf
 
-        # Filter new lengths to only include segments starting after reference threshold
+        # Filter lengths at deviated altitude to only include segments starting after reference threshold
         new_lengths_filtered = []
         for i in range(1, 4):
             pos = nearest_row.get(f'Segment_{i:02d}_Start_NM', np.nan)
