@@ -1,4 +1,8 @@
+from datetime import UTC, date
+from typing import cast
+
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
 
 from .consts import R_E
@@ -77,3 +81,7 @@ def filter_order_duplicates(seq):
     seen = set()
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]
+
+
+def date_to_timestamp(d: date) -> pd.Timestamp:
+    return cast(pd.Timestamp, pd.Timestamp(d, tzinfo=UTC))
