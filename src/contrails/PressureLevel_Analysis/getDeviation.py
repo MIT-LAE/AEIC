@@ -62,6 +62,7 @@ def evaluate_filtered_deviation_and_write_csv(df_filtered, deviation_ft=4000, ou
             "New Seg Len 3": new_lengths_filtered[2],
         })
     
+    # TODO: Return ISSR length differential. 
     # Create DataFrame and write to CSV
     df_result = pd.DataFrame(results)
     df_result.to_csv(output_file, index=False)
