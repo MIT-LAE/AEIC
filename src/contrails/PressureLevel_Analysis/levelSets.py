@@ -356,6 +356,9 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
     issr_lengths_nm = [] # Store cumulative ISSR length at each level
     issr_segment_counts = []    # Number of ISSR segments per level
     issr_segment_details = []   # List of segment lengths per level
+    issr_segment_LE = []  # NEW
+    
+    
     
 
     for p in pressure_levels:
@@ -385,7 +388,8 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
         # Accumulate continous segment length while scanning
         current_streak = 0.0
         
-        segment_lengths = []
+        segment_lengths = [] # Store the ISSR extents
+        segment_LE = [] # Store the LE of each ISSR segment
         j = 0
         while j < len(issr_flags):
             if issr_flags[j] == 1:
@@ -401,7 +405,10 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
                 if streak_length < limit:
                     issr_flags[start:j] = 0
                 else:
-                    segment_lengths.append(streak_length)    
+                    segment_lengths.append(streak_length)
+                    
+                    # Use arc distance at the starting point of the segment
+                    segment_LE.append(arc_distances_nm[start])
             else:
                 j = j + 1
                 
@@ -412,7 +419,8 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
         # Store per-level total and per-gement lengths
         issr_lengths_nm.append(np.sum(segment_lengths))
         issr_segment_counts.append(len(segment_lengths))
-        issr_segment_details.append(segment_lengths)    
+        issr_segment_details.append(segment_lengths)
+        issr_segment_LE.append(segment_LE)  
                 
     issr_matrix = np.array(issr_matrix)
     flight_levels = np.array(flight_levels)
@@ -440,22 +448,25 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
    #     print(f"FL{fl:03d}             | {L:.1f}")
 
     
-    # Determine max number of segments across all levels
-    max_segs = max(len(segments) for segments in issr_segment_details)
-    
-    # Header row
-    header = f"{'FL':>6} | {'#Segs':>6} | {'Total(NM)':>10} | " + " | ".join([f"Seg{i+1}" for i in range(max_segs)])
-    print("\nPer-Level ISSR Segment Report (One Segment Per Column)")
+    # Determine max number of segments
+    max_segs = max(len(s) for s in issr_segment_details)
+
+    # Header
+    header = f"{'FL':>6} | {'Segs':>6} | {'Total(NM)':>10} | " + \
+         " | ".join([f"LEN {i+1:02d}(NM) | POS {i+1:02d}(NM)" for i in range(max_segs)])
+
+    print("\nPer-Level ISSR Segment Report (Using Segment Start Distances)")
     print("-" * (len(header) + 5))
     print(header)
     print("-" * (len(header) + 5))
-    
-    # Data rows
-    for fl, seg_count, total_len, segments in zip(flight_levels, issr_segment_counts, issr_lengths_nm, issr_segment_details):
-        # Fill missing segments with blanks for alignment
-        padded_segments = [f"{s:.1f}" for s in segments] + [""] * (max_segs - len(segments))
-        segment_cols = " | ".join(f"{s:>6}" for s in padded_segments)
-        print(f"FL{fl:03d} | {seg_count:6d} | {total_len:10.1f} | {segment_cols}")
+
+    for fl, count, total, lengths, dists in zip(flight_levels, issr_segment_counts, issr_lengths_nm, issr_segment_details, issr_segment_LE):
+        # Pad segment data for formatting
+        padded_lengths = [f"{s:.1f}" for s in lengths] + [""] * (max_segs - len(lengths))
+        padded_dists   = [f"{d:.1f}" for d in dists]   + [""] * (max_segs - len(dists))
+        seg_cols = " | ".join(f"{l:>9} | {d:>10}" for l, d in zip(padded_lengths, padded_dists))
+        print(f"FL{fl:03d} | {count:6d} | {total:10.1f} | {seg_cols}")
+
     
     plt.figure(figsize=(12, 5))
     plt.pcolormesh(arc_edges_nm, flight_edges_ft, issr_matrix, cmap=cmap, norm=norm, shading='flat')
