@@ -353,7 +353,10 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
     issr_matrix = []
     flight_levels = []
     limit = 100
-    issr_lengths_nm = []  # NEW: Store cumulative ISSR length at each level
+    issr_lengths_nm = [] # Store cumulative ISSR length at each level
+    issr_segment_counts = []    # Number of ISSR segments per level
+    issr_segment_details = []   # List of segment lengths per level
+    
 
     for p in pressure_levels:
         row = []
@@ -382,31 +385,39 @@ def plot_issr_flag_slice(ds_RHI, filename, origin, destination, valid_time_index
         # Accumulate continous segment length while scanning
         current_streak = 0.0
         
+        segment_lengths = []
         j = 0
         while j < len(issr_flags):
             if issr_flags[j] == 1:
                 start = j
+                # Initialize this streak length to zero
                 streak_length = 0.0
+                
+                # Stay within the bounds of ISSR 
                 while j < len(issr_flags) and issr_flags[j] == 1:
                     seg_length = arc_edges_nm[j+1] - arc_edges_nm[j]
                     streak_length += seg_length
                     j += 1
                 if streak_length < limit:
                     issr_flags[start:j] = 0
+                else:
+                    segment_lengths.append(streak_length)    
             else:
-                j = j +1
+                j = j + 1
+                
+        
          # Set the corresponding rows to zero
         issr_matrix.append(issr_flags)
         
-        level_length = 0.0
-        for j in range(len(issr_flags)):
-            if issr_flags[j] == 1:
-                level_length += arc_edges_nm[j+1] - arc_edges_nm[j]
-        issr_lengths_nm.append(level_length) 
-        
+        # Store per-level total and per-gement lengths
+        issr_lengths_nm.append(np.sum(segment_lengths))
+        issr_segment_counts.append(len(segment_lengths))
+        issr_segment_details.append(segment_lengths)    
+                
     issr_matrix = np.array(issr_matrix)
     flight_levels = np.array(flight_levels)
     
+ 
 
     # Build edges for pcolormesh
     dx = spacing_nm
