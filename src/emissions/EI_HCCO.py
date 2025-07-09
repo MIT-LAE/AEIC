@@ -5,9 +5,9 @@ def EI_HCCO(
     fuelflow_evaluate: np.ndarray,
     x_EI_matrix: np.ndarray,
     fuelflow_calibrate: np.ndarray,
-    cruiseCalc: bool = True,
-    Tamb: float = 288.15,
-    Pamb: float = 101325.0,
+    Tamb: np.ndarray,
+    Pamb: np.ndarray,
+    cruiseCalc: bool = True
 ) -> np.ndarray:
     """
     BFFM2 bilinear HC/CO fit to SLS data
@@ -22,9 +22,9 @@ def EI_HCCO(
         Calibration fuel flows [kg/s] corresponding to x_EI_matrix
     cruiseCalc : bool
         If True, apply cruise correction (ambient T and P) to the final xEI.
-    Tamb : float
+    Tamb : ndarray, shape (n_points,)
         Ambient temperature [K] for cruise correction (if cruiseCalc is True).
-    Pamb : float
+    Pamb : ndarray, shape (n_points,)
         Ambient pressure [Pa] for cruise correction (if cruiseCalc is True).
 
     Returns
@@ -161,7 +161,7 @@ def EI_HCCO(
     if cruiseCalc:
         theta_amb = Tamb / 288.15
         delta_amb = Pamb / 101325.0
-        factor = (theta_amb**3.3) / (delta_amb**1.02)
+        factor = ((theta_amb**3.3) / (delta_amb**1.02))
         xEI_out *= factor
 
     return xEI_out
