@@ -32,9 +32,11 @@ def get_APU_emissions(
     Returns
     -------
     APU_emission_indices : ndarray
-        self.APU_emission_indices from Emissions class
+        Emissions indicies for APU
     APU_emissions_g: ndarray
-        self.APU_emissions_g from Emissions class
+        Emissions in g for APU
+    apu_fuel_burn: float
+        kg of fuel burnt by APU
     """
 
     mask = APU_data['fuel_kg_per_s'] != 0.0
@@ -79,4 +81,4 @@ def get_APU_emissions(
     for field in APU_emission_indices.dtype.names:
         APU_emissions_g[field] = APU_emission_indices[field] * apu_fuel_burn
 
-    return APU_emission_indices, APU_emissions_g
+    return APU_emission_indices, APU_emissions_g, apu_fuel_burn
