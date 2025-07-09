@@ -58,20 +58,20 @@ def BFFM2_EINOx(
     # ---------------------------------------------------------------------
     # 1) Piece-wise log–log interpolation (Idle→App→Climb→TO)
     # ---------------------------------------------------------------------
-    ff_cal   = np.asarray(fuelflow_performance, dtype=float).copy()
-    ei_cal   = np.asarray(NOX_EI_matrix,        dtype=float).copy()
-    ff_eval  = np.asarray(sls_equiv_fuel_flow,  dtype=float).copy()
+    ff_cal = np.asarray(fuelflow_performance, dtype=float).copy()
+    ei_cal = np.asarray(NOX_EI_matrix, dtype=float).copy()
+    ff_eval = np.asarray(sls_equiv_fuel_flow, dtype=float).copy()
 
-    ff_cal[ff_cal <= 0]   = 1e-2
+    ff_cal[ff_cal <= 0] = 1e-2
     ff_eval[ff_eval <= 0] = 1e-2
 
     # log-space abscissa / ordinate
-    x_cal  = np.log10(ff_cal)          # length-4, guaranteed order (Idle→TO)
-    y_cal  = np.log10(ei_cal)
+    x_cal = np.log10(ff_cal)  # length-4, guaranteed order (Idle→TO)
+    y_cal = np.log10(ei_cal)
     x_eval = np.log10(ff_eval)
 
     # 1a. In-range piece-wise linear interpolation
-    y_interp = np.interp(x_eval, x_cal, y_cal)   # left/right handled next
+    y_interp = np.interp(x_eval, x_cal, y_cal)  # left/right handled next
 
     # 1b. Linear log-log extrapolation below Idle and above Take-off
     below = x_eval < x_cal[0]
@@ -84,7 +84,7 @@ def BFFM2_EINOx(
         slope_high = (y_cal[-1] - y_cal[-2]) / (x_cal[-1] - x_cal[-2])
         y_interp[above] = y_cal[-1] + slope_high * (x_eval[above] - x_cal[-1])
 
-    NOxEI_sl = 10.0 ** y_interp   # back to linear space  g/kg fuel
+    NOxEI_sl = 10.0**y_interp  # back to linear space  g/kg fuel
 
     # 2) If cruiseCalc=True, apply the humidity/θ/δ correction (Eqs. 44–45)
     if cruiseCalc:
@@ -168,7 +168,6 @@ def NOx_speciation(thrustCat):
     noProp[thrustCat == 2] = noLnom / 100.0
     noProp[thrustCat == 3] = noAnom / 100.0
     return noProp, no2Prop, honoProp
-
 
 
 # TODO: add P3T3 method support

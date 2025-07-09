@@ -231,11 +231,13 @@ class Trajectory:
 
         lon_dep, lat_dep, _ = self.dep_lon_lat_alt
         lon_arr, lat_arr, _ = self.arr_lon_lat_alt
-        # lat_lon_trajectory = self.geod.npts(lon_dep, lat_dep, lon_arr, lat_arr, self.Ntot)
+        # lat_lon_trajectory = self.geod.npts(
+        #                   lon_dep, lat_dep, lon_arr, lat_arr, self.Ntot)
         self.traj_data['latitude'][0] = lat_dep
         self.traj_data['longitude'][0] = lon_dep
-        self.traj_data['azimuth'][0],_,_ =\
-            self.geod.inv(lon_dep, lat_dep, lon_arr, lat_arr)
+        self.traj_data['azimuth'][0], _, _ = self.geod.inv(
+            lon_dep, lat_dep, lon_arr, lat_arr
+        )
 
         # Fly the climb, cruise, descent segments in order
         self.climb(**kwargs)

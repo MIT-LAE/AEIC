@@ -5,9 +5,9 @@ def EI_HCCO(
     fuelflow_evaluate: np.ndarray,
     x_EI_matrix: np.ndarray,
     fuelflow_calibrate: np.ndarray,
-    Tamb: np.ndarray,
-    Pamb: np.ndarray,
-    cruiseCalc: bool = True
+    Tamb: np.ndarray = np.empty(()),
+    Pamb: np.ndarray = np.empty(()),
+    cruiseCalc: bool = False,
 ) -> np.ndarray:
     """
     BFFM2 bilinear HC/CO fit to SLS data
@@ -161,7 +161,7 @@ def EI_HCCO(
     if cruiseCalc:
         theta_amb = Tamb / 288.15
         delta_amb = Pamb / 101325.0
-        factor = ((theta_amb**3.3) / (delta_amb**1.02))
+        factor = (theta_amb**3.3) / (delta_amb**1.02)
         xEI_out *= factor
 
     return xEI_out

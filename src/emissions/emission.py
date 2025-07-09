@@ -98,15 +98,16 @@ class Emission:
         self.get_LTO_emissions(ac_performance, pmnvol_switch_lc=self.pmnvol_mode)
 
         # Compute APU emissions based on LTO results and EDB parameters
-        (self.APU_emission_indices, self.APU_emissions_g, apu_fuel_burn) \
-            = get_APU_emissions(
-            self.APU_emission_indices,
-            self.APU_emissions_g,
-            self.LTO_emission_indices,
-            ac_performance.APU_data,
-            self.LTO_noProp,
-            self.LTO_no2Prop,
-            self.LTO_honoProp,
+        (self.APU_emission_indices, self.APU_emissions_g, apu_fuel_burn) = (
+            get_APU_emissions(
+                self.APU_emission_indices,
+                self.APU_emissions_g,
+                self.LTO_emission_indices,
+                ac_performance.APU_data,
+                self.LTO_noProp,
+                self.LTO_no2Prop,
+                self.LTO_honoProp,
+            )
         )
         self.total_fuel_burn += apu_fuel_burn
 
@@ -119,7 +120,7 @@ class Emission:
         self.sum_total_emissions()
 
         # Add lifecycle CO2 emissions to total
-        # self.get_lifecycle_emissions(self.fuel, trajectory)
+        self.get_lifecycle_emissions(self.fuel, trajectory)
 
     def sum_total_emissions(self):
         """
@@ -212,7 +213,7 @@ class Emission:
             lto_ff_array,
             Tamb=flight_temps,
             Pamb=flight_pressures,
-            cruiseCalc=True
+            cruiseCalc=True,
         )
         self.emission_indices['CO'][i_start:i_end] = EI_HCCO(
             sls_equiv_fuel_flow,
@@ -220,7 +221,7 @@ class Emission:
             lto_ff_array,
             Tamb=flight_temps,
             Pamb=flight_pressures,
-            cruiseCalc=True
+            cruiseCalc=True,
         )
 
         # --- Compute volatile organic PM and organic carbon ---
@@ -244,14 +245,15 @@ class Emission:
             flight_alts,
             flight_temps,
             flight_pressures,
-            mach_number
+            mach_number,
         )
 
         self.total_fuel_burn = np.sum(self.fuel_burn_per_segment[i_start:i_end])
         # Multiply each index by fuel burn per segment to get g emissions/time-step
         for field in self.pointwise_emissions_g.dtype.names:
             self.pointwise_emissions_g[field][i_start:i_end] = (
-                self.emission_indices[field][i_start:i_end] * self.fuel_burn_per_segment[i_start:i_end]
+                self.emission_indices[field][i_start:i_end]
+                * self.fuel_burn_per_segment[i_start:i_end]
             )
 
     def get_LTO_emissions(
@@ -347,12 +349,13 @@ class Emission:
             PMnvolEI_ICAOthrust = ac_performance.EDB_data['PMnvolEI_new_ICAOthrust']
         elif pmnvol_switch_lc == 'SCOPE11':
             # SCOPE11 provides best, lower, and upper bounds
-            edb=ac_performance.EDB_data
+            edb = ac_performance.EDB_data
             PMnvolEI_ICAOthrust = calculate_PMnvolEI_scope11(
                 np.array(edb['SN_matrix']),
                 np.array(edb['PR']),
                 np.array(edb['ENGINE_TYPE']),
-                np.array(edb['BP_Ratio']))
+                np.array(edb['BP_Ratio']),
+            )
             PMnvolEIN_ICAOthrust = ac_performance.EDB_data['PMnvolEIN_best_ICAOthrust']
             PMnvolEI_lo_ICAOthrust = ac_performance.EDB_data[
                 'PMnvolEI_lower_ICAOthrust'
@@ -382,7 +385,7 @@ class Emission:
 
         # --- Compute LTO emissions in grams per mode
         # by multiplying EI by durations*flows ---
-        LTO_fuel_burn = (TIM_LTO * fuel_flows_LTO)
+        LTO_fuel_burn = TIM_LTO * fuel_flows_LTO
         self.total_fuel_burn += np.sum(LTO_fuel_burn)
         for field in self.LTO_emission_indices.dtype.names:
             # If using performance model for climb and approach then set EIs to 0
@@ -426,7 +429,7 @@ class Emission:
 
         # Fuel (kg/cycle) from CO2:
         #   EI_CO2 = fuel * 3.16 * 1000  ⇒  fuel = EI_CO2/(3.16*1000)
-        CO2_EI,_ = EI_CO2(self.fuel)
+        CO2_EI, _ = EI_CO2(self.fuel)
         gse_fuel = self.GSE_emissions_g['CO2'] / CO2_EI
         self.total_fuel_burn += gse_fuel
 

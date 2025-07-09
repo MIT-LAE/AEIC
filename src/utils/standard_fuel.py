@@ -1,7 +1,5 @@
 import numpy as np
 
-from utils.consts import kappa
-
 
 def get_thrust_cat(
     ff_eval: np.ndarray, ff_cal: np.ndarray, cruiseCalc: bool
@@ -142,5 +140,7 @@ def get_SLS_equivalent_fuel_flow(
     # temperature ratio (isentropic estimate)
     theta_amb = Tamb / T_SL
     # apply Fuel-Flow-Method 2 correction
-    Wf_SL = (fuel_flow/2) * (theta_amb**z) / delta_amb * np.exp(0.2 * (mach_number**2))
+    Wf_SL = (
+        (fuel_flow / 2) * (theta_amb**z) / delta_amb * np.exp(0.2 * (mach_number**2))
+    )
     return Wf_SL

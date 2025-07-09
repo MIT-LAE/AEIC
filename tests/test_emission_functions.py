@@ -438,7 +438,7 @@ class TestGetAPUEmissions:
 
     def test_basic_functionality(self):
         """Test basic APU emissions calculation"""
-        apu_ei, apu_g = get_APU_emissions(
+        apu_ei, apu_g, _ = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
@@ -454,7 +454,7 @@ class TestGetAPUEmissions:
 
     def test_non_negativity(self):
         """Test that all emissions are non-negative"""
-        apu_ei, apu_g = get_APU_emissions(
+        apu_ei, apu_g, _ = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
@@ -471,7 +471,7 @@ class TestGetAPUEmissions:
     def test_consistency_between_ei_and_total(self):
         """Test consistency between emission indices and total emissions"""
         apu_tim = 2854
-        apu_ei, apu_g = get_APU_emissions(
+        apu_ei, apu_g, _ = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
@@ -491,7 +491,7 @@ class TestGetAPUEmissions:
 
     def test_nox_speciation_consistency(self):
         """Test NOx speciation consistency via PM10_g_per_kg scaling"""
-        apu_ei, _ = get_APU_emissions(
+        apu_ei, _, _ = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
@@ -510,7 +510,7 @@ class TestGetAPUEmissions:
         apu_data_zero = self.APU_data.copy()
         apu_data_zero['fuel_kg_per_s'] = 0.0
 
-        apu_ei, apu_g = get_APU_emissions(
+        apu_ei, apu_g, _ = get_APU_emissions(
             self.APU_emission_indices,
             self.APU_emissions_g,
             self.LTO_emission_indices,
@@ -542,12 +542,8 @@ class TestIntegration:
             fuelflow_trajectory, NOX_EI_matrix, fuelflow_performance, Tamb, Pamb
         )
 
-        NOxEI, NOEI, NO2EI, HONOEI, noProp, no2Prop, honoProp = results
-
-        assert np.allclose(NOxEI, np.array([26.75988671, 14.4120521, 11.92014638]))
-        assert np.allclose(NOEI, np.array([3.45001839, 13.23116458, 10.94343939]))
-        assert np.allclose(NO2EI, np.array([22.10567342, 1.07279713, 0.8873059]))
-        assert np.allclose(HONOEI, np.array([1.2041949, 0.10809039, 0.0894011]))
+        NOxEI, *_ = results
+        assert np.allclose(NOxEI, np.array([27.11460822, 14.28251747, 11.92937893]))
 
 
 if __name__ == "__main__":

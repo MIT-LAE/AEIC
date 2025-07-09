@@ -5,6 +5,7 @@ from scipy.interpolate import RegularGridInterpolator
 
 geod = Geod(ellps="WGS84")
 
+
 def altitude_to_pressure_hpa(alt_ft):
     """Convert altitude in feet to pressure in hPa using ISA approximation."""
     alt_m = np.array(alt_ft) * 0.3048
@@ -284,9 +285,7 @@ def build_era5_interpolators(era5_path):
     return u_interp, v_interp, {"levels": levels, "lats": lats, "lons": lons}
 
 
-def compute_ground_speed(
-    lon, lat, az, alt_ft, tas_ms, weather_data=None
-):
+def compute_ground_speed(lon, lat, az, alt_ft, tas_ms, weather_data=None):
     """
     Computes ground speed for a single point using TAS, heading, and interpolated winds.
 
