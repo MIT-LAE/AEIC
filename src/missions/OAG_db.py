@@ -1,7 +1,37 @@
 import sqlite3
+from collections.abc import Generator
+from dataclasses import dataclass, fields
+from enum import Enum
 
 from parsers.OAG_reader import OAGEntry
 
+
+class Comparison(str, Enum):
+    EQUAL = '=='
+    NOT_EQUAL = '!='
+    GREATER_THAN = '>'
+    LESS_THAN = '<'
+    GREATER_OR_EQUAL = '>='
+    LESS_OR_EQUAL = '<='
+
+    @property
+    def sql(self):
+        if self == Comparison.EQUAL:
+            return '='
+        elif self == Comparison.NOT_EQUAL:
+            return '<>'
+        else:
+            return self.value
+
+
+@dataclass
+class Condition:
+    field: str
+    value: str
+    comp: Comparison
+
+    def __str__(self):
+        return f'{self.field}{self.comp.value}{self.value}'
 
 
 class OAGDatabase:
@@ -41,6 +71,24 @@ class OAGDatabase:
         ))
         if commit:
             self.conn.commit()
+
+    def __call__(self, *conds: Condition) -> Generator[OAGEntry, None, None]:
+        conditions = []
+        parameters = []
+        valid_fields = set(f.name for f in fields(OAGEntry))
+        for c in conds:
+            if c.field not in valid_fields:
+                raise ValueError(f'Invalid field: {c.field}')
+            conditions.append(f'{c.field} {c.comp.sql} ?')
+            parameters.append(c.value)
+
+        sql = 'SELECT * FROM entries'
+        if len(conditions) > 0:
+            sql += ' WHERE ' + ' AND '.join(conditions)
+
+        cur = self.conn.cursor()
+        for row in cur.execute(sql, parameters):
+            yield OAGEntry.from_db_row(row)
 
     def _ensure_schema(self):
         cur = self.conn.cursor()
