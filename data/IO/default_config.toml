@@ -35,7 +35,7 @@ sample_number = 1000            # If sample_schedule: how many flights for the s
 
 ["Emissions"]
 fuel_file = "fuels/conventional_jetA.toml"
-pmnvol_switch_lc = "SCOPE11" # PMnvol estimation method for LTO (SCOPE11, fox, foa3, dop, sst, newsnci)
+nvpm_method = "SCOPE11" # PMnvol estimation method for LTO (SCOPE11, fox, foa3, dop, sst, newsnci)
 
 ["OUTPUT"]
 output_folder = "Emission_Files"
