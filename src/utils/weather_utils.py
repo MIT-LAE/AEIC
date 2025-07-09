@@ -3,6 +3,7 @@ import xarray as xr
 from pyproj import Geod
 from scipy.interpolate import RegularGridInterpolator
 
+geod = Geod(ellps="WGS84")
 
 def altitude_to_pressure_hpa(alt_ft):
     """Convert altitude in feet to pressure in hPa using ISA approximation."""
@@ -284,7 +285,7 @@ def build_era5_interpolators(era5_path):
 
 
 def compute_ground_speed(
-    lon, lat, lon_next, lat_next, alt_ft, tas_kts, weather_data=None
+    lon, lat, az, alt_ft, tas_ms, weather_data=None
 ):
     """
     Computes ground speed for a single point using TAS, heading, and interpolated winds.
@@ -297,8 +298,8 @@ def compute_ground_speed(
         Next point [deg] to compute heading
     alt_ft : float
         Altitude in feet
-    tas_kts : float
-        True airspeed in knots
+    tas_ms : float
+        True airspeed in m/s
     heading_rad : float
         Aircraft heading (radians from true north)
     u_interp, v_interp : interpolator functions
@@ -306,18 +307,15 @@ def compute_ground_speed(
 
     Returns
     -------
-    gs_kts : float
-        Ground speed at this point [knots]
+    gs_ms : float
+        Ground speed at this point [m/s]
     u, v : float
         Interpolated wind components [m/s]
     """
 
     # Convert altitude and TAS to S.I units
     pressure_level = float(altitude_to_pressure_hpa(alt_ft))  # hPa
-    tas_ms = tas_kts * 0.514444
-    # Compute heading in radians from current to next point
-    geod = Geod(ellps="WGS84")
-    azimuth_deg, _, _ = geod.inv(lon, lat, lon_next, lat_next)
+    azimuth_deg = az
     heading_rad = np.deg2rad(azimuth_deg)
 
     # Airspeed vector in Earth frame
@@ -339,6 +337,4 @@ def compute_ground_speed(
     v_ground = v_air + v
 
     gs_ms = np.sqrt(u_ground**2 + v_ground**2)
-    gs_kts = gs_ms / 0.514444
-
-    return gs_kts, heading_rad, u, v
+    return gs_ms, heading_rad, u, v
