@@ -55,17 +55,38 @@ def BFFM2_EINOx(
         Fraction of HONO within total NOy (unitless).
     """
 
-    # 1) Fit log10(NOX_EI_matrix) vs. log10(fuelflow_KGperS)
-    fuelflow_performance[fuelflow_performance <= 0.0] = 1e-2
-    x_log = np.log10(fuelflow_performance)
-    y_log = np.log10(NOX_EI_matrix)
-    slope, intercept = np.polyfit(x_log, y_log, 1)
+    # ---------------------------------------------------------------------
+    # 1) Piece-wise log–log interpolation (Idle→App→Climb→TO)
+    # ---------------------------------------------------------------------
+    ff_cal   = np.asarray(fuelflow_performance, dtype=float).copy()
+    ei_cal   = np.asarray(NOX_EI_matrix,        dtype=float).copy()
+    ff_eval  = np.asarray(sls_equiv_fuel_flow,  dtype=float).copy()
 
-    # 2) Interpolate NOxEI at log10(fuelfactor)
-    sls_equiv_fuel_flow[sls_equiv_fuel_flow <= 0.0] = 1e-2
-    NOxEI_sl = 10.0 ** (slope * np.log10(sls_equiv_fuel_flow) + intercept)
+    ff_cal[ff_cal <= 0]   = 1e-2
+    ff_eval[ff_eval <= 0] = 1e-2
 
-    # 3) If cruiseCalc=True, apply the humidity/θ/δ correction (Eqs. 44–45)
+    # log-space abscissa / ordinate
+    x_cal  = np.log10(ff_cal)          # length-4, guaranteed order (Idle→TO)
+    y_cal  = np.log10(ei_cal)
+    x_eval = np.log10(ff_eval)
+
+    # 1a. In-range piece-wise linear interpolation
+    y_interp = np.interp(x_eval, x_cal, y_cal)   # left/right handled next
+
+    # 1b. Linear log-log extrapolation below Idle and above Take-off
+    below = x_eval < x_cal[0]
+    if below.any():
+        slope_low = (y_cal[1] - y_cal[0]) / (x_cal[1] - x_cal[0])
+        y_interp[below] = y_cal[0] + slope_low * (x_eval[below] - x_cal[0])
+
+    above = x_eval > x_cal[-1]
+    if above.any():
+        slope_high = (y_cal[-1] - y_cal[-2]) / (x_cal[-1] - x_cal[-2])
+        y_interp[above] = y_cal[-1] + slope_high * (x_eval[above] - x_cal[-1])
+
+    NOxEI_sl = 10.0 ** y_interp   # back to linear space  g/kg fuel
+
+    # 2) If cruiseCalc=True, apply the humidity/θ/δ correction (Eqs. 44–45)
     if cruiseCalc:
         theta_amb = Tamb / 288.15
         delta_amb = Pamb / 101325.0
@@ -90,19 +111,19 @@ def BFFM2_EINOx(
     else:
         NOxEI = NOxEI_sl
 
-    # ----------------------------------------------------------------------------
-    # 4. Determine thrust category for each fuelfactor point
-    #    Categories: 1=High (H), 2=Low (L), 3=Approach (A)
-    # ----------------------------------------------------------------------------
+    # ---------------------------------------------------------------------
+    # 3) Map each evaluation point to thrust category
+    #    Low  : ≤ Idle fuel-flow  (HC/CO “L”)
+    #    Appr.: (Idle, Approach]  (NOx “A”)
+    #    High : > Approach        (NOx “H”, includes Climb & TO)
+    # ---------------------------------------------------------------------
     thrustCat = get_thrust_cat(sls_equiv_fuel_flow, fuelflow_performance, cruiseCalc)
 
-    # ----------------------------------------------------------------------------
-    # 5. Speciation
-    # ----------------------------------------------------------------------------
+    # 4) Speciation fractions (unchanged)
     noProp, no2Prop, honoProp = NOx_speciation(thrustCat)
 
     # ----------------------------------------------------------------------------
-    # 6. Compute component EIs
+    # 5. Compute component EIs
     # ----------------------------------------------------------------------------
     if np.isnan(NOxEI).any():
         warnings.warn("NaN encountered in NOxEI calculation.", RuntimeWarning)
@@ -147,6 +168,7 @@ def NOx_speciation(thrustCat):
     noProp[thrustCat == 2] = noLnom / 100.0
     noProp[thrustCat == 3] = noAnom / 100.0
     return noProp, no2Prop, honoProp
+
 
 
 # TODO: add P3T3 method support
