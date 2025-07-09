@@ -702,7 +702,7 @@ class LegacyTrajectory(Trajectory):
                     lat=self.traj_data['latitude'][i],
                     az = self.traj_data['azimuth'][i],
                     alt_ft=FL * 100,
-                    tas_kts=fwd_tas,
+                    tas_ms=fwd_tas,
                     weather_data=None
                 )
             )
@@ -774,7 +774,7 @@ class LegacyTrajectory(Trajectory):
                     lat=self.traj_data['latitude'][i],
                     az=self.traj_data['azimuth'][i],
                     alt_ft=self.crz_FL * 100,
-                    tas_kts=self.traj_data['tas'][i],
+                    tas_ms=self.traj_data['tas'][i],
                     weather_data=None
                 )
             )
@@ -874,7 +874,7 @@ class LegacyTrajectory(Trajectory):
                     lat=self.traj_data['latitude'][i],
                     az = self.traj_data['azimuth'][i],
                     alt_ft=meters_to_feet(self.traj_data['altitude'][i]),
-                    tas_kts=fwd_tas,
+                    tas_ms=fwd_tas,
                     weather_data=None
                 )
             )
