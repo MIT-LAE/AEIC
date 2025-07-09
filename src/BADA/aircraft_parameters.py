@@ -5,7 +5,6 @@ Module with the BADA3 aircraft parameters class
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 from .fuel_burn_base import BaseAircraftParameters
 
@@ -19,38 +18,38 @@ class Bada3AircraftParameters(BaseAircraftParameters):
 
     """
 
-    ac_type: Optional[str] = None
-    wake_cat: Optional[str] = None
-    c_fcr: Optional[float] = None
-    c_f1: Optional[float] = None
-    c_f2: Optional[float] = None
-    c_f3: Optional[float] = None
-    c_f4: Optional[float] = None
-    c_d0cr: Optional[float] = None
-    c_d2cr: Optional[float] = None
-    S_ref: Optional[float] = None
-    ref_mass: Optional[float] = None
-    min_mass: Optional[float] = None
-    max_mass: Optional[float] = None
-    max_payload: Optional[float] = None
-    V_MO: Optional[float] = None
-    M_MO: Optional[float] = None
-    H_MO: Optional[float] = None
-    c_tc1: Optional[float] = None
-    c_tc2: Optional[float] = None
-    c_tc3: Optional[float] = None
-    c_tc4: Optional[float] = None
-    c_tc5: Optional[float] = None
-    c_tcr: Optional[float] = 0.95
-    c_tdes_low: Optional[float] = None
-    c_tdes_high: Optional[float] = None
-    h_p_des: Optional[float] = None
-    c_tdes_app: Optional[float] = None
-    c_tdes_ld: Optional[float] = None
-    engine_type: Optional[str] = None
-    cas_cruise_lo: Optional[float] = None
-    cas_cruise_hi: Optional[float] = None
-    cas_cruise_mach: Optional[float] = None
+    ac_type: str | None = None
+    wake_cat: str | None = None
+    c_fcr: float | None = None
+    c_f1: float | None = None
+    c_f2: float | None = None
+    c_f3: float | None = None
+    c_f4: float | None = None
+    c_d0cr: float | None = None
+    c_d2cr: float | None = None
+    S_ref: float | None = None
+    ref_mass: float | None = None
+    min_mass: float | None = None
+    max_mass: float | None = None
+    max_payload: float | None = None
+    V_MO: float | None = None
+    M_MO: float | None = None
+    H_MO: float | None = None
+    c_tc1: float | None = None
+    c_tc2: float | None = None
+    c_tc3: float | None = None
+    c_tc4: float | None = None
+    c_tc5: float | None = None
+    c_tcr: float | None = 0.95
+    c_tdes_low: float | None = None
+    c_tdes_high: float | None = None
+    h_p_des: float | None = None
+    c_tdes_app: float | None = None
+    c_tdes_ld: float | None = None
+    engine_type: str | None = None
+    cas_cruise_lo: float | None = None
+    cas_cruise_hi: float | None = None
+    cas_cruise_mach: float | None = None
 
     def assign_parameters_fromdict(self, parameters: dict):
         """
