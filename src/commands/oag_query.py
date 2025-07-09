@@ -10,8 +10,9 @@ CONDITION_RE = re.compile(r'^([a-zA-Z0-9_]+)([=<>!]+)(.*)$')
 
 @click.command()
 @click.argument('db-file')
-@click.option('--limit', '-l', default=10, type=int,
-              help='Limit the number of results to display')
+@click.option(
+    '--limit', '-l', default=10, type=int, help='Limit the number of results to display'
+)
 @click.argument('conditions', nargs=-1)
 def run(db_file, limit, conditions: tuple[str, ...]):
     if not os.path.exists(db_file):
@@ -32,11 +33,7 @@ def run(db_file, limit, conditions: tuple[str, ...]):
                 raise ValueError(f'Invalid condition: {condition}')
             field, cond, value = result.groups()
             query_conditions.append(
-                Condition(
-                    field=field,
-                    value=value.strip(),
-                    comp=Comparison(cond)
-                )
+                Condition(field=field, value=value.strip(), comp=Comparison(cond))
             )
 
         for index, entry in enumerate(db(*query_conditions)):
