@@ -111,6 +111,7 @@ class PerformanceModel:
                     "CO_g_per_kg": apu["CO_g_per_kg"],
                     "HC_g_per_kg": apu["HC_g_per_kg"],
                 }
+                break
             else:
                 self.APU_data = {
                     "fuel_kg_per_s": 0.0,
