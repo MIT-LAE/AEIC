@@ -256,9 +256,7 @@ class Emission:
                 * self.fuel_burn_per_segment[i_start:i_end]
             )
 
-    def get_LTO_emissions(
-        self, ac_performance, EDB_LTO=True, nvpm_method="SCOPE11"
-    ):
+    def get_LTO_emissions(self, ac_performance, EDB_LTO=True, nvpm_method="SCOPE11"):
         """
         Compute Landing-and-Takeoff cycle emission indices and quantities.
 
