@@ -8,8 +8,8 @@ from parsers.OAG_reader import read_oag_file
 
 
 @click.command()
-@click.argument('in-file', help='OAG data CSV file')
-@click.argument('db-file', help='Output database file')
+@click.argument('in-file')
+@click.argument('db-file')
 def run(in_file, db_file):
     if os.path.exists(db_file):
         raise RuntimeError(f'Database file {db_file} already exists.')
