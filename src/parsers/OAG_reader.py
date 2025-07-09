@@ -1,9 +1,11 @@
 import csv
+from collections.abc import Generator
 from dataclasses import dataclass
+from datetime import UTC, date, time, timedelta
 from enum import Enum
-# TODO: USE PENDULUM?
-from datetime import date, time, timedelta, timezone
-from typing import Generator
+from typing import Any
+
+# TODO: USE PENDULUM FOR DATES AND TIMES?
 
 
 class DayOfWeek(Enum):
@@ -20,55 +22,65 @@ class DomesticInternational(str, Enum):
     DOMESTIC = 'D'
     INTERNATIONAL = 'I'
 
+DomInt = tuple[DomesticInternational, DomesticInternational]
+
 
 class ServiceType(str, Enum):
+    # TODO: FILL IN MISSING CASES HERE?
     NORMAL_PASSENGER = 'J'
     PASSENGER_CARGO_IN_CABIN = 'Q'
     PASSENGER_SHUTTLE_MODE = 'S'
 
 
-# Some information here: https://knowledge.oag.com/docs/schedules-direct-data-fields-explained
+# Some information here:
+#  https://knowledge.oag.com/docs/schedules-direct-data-fields-explained
 
 @dataclass
 class OAGEntry:
-    carrier: str # 1
-    fltno: int   # 2
-    depapt: str  # 3
-    depcity: str  # 4
-    depctry: str | None # 5
-    arrapt: str  # 6
-    arrcity: str # 7
-    arrctry: str | None # 8
-    deptim: time  # 9
-    arrtim: time  # 10
-    arrday: int # = 0    # -1, 0, +1, +2  TODO: CHECK MEANING # 11
-    elptim: timedelta  # 12
-    days: set[DayOfWeek]  # Set of days of the week (Mon=1, Sun=7) the flight operates # 13
-    # stops       # ALL ZERO  # 14
-    # intapt      # ALL EMPTY # 15
-    # acftchange  # ALL EMPTY # 16
-    govt_app: bool # Whether government approval is required (X OR EMPTY)  # 17
-    comm10_50: int | None # TODO: WHAT'S THIS? EITHER 10 OR EMPTY # 18
-    genacft: str  # TODO: 81 VALUES ⇒ SEPARATE TABLE?  # 19
-    inpacft: str  # TODO: 181 VALUES ⇒ SEPARATE TABLE?  # 20
-    service: ServiceType # 21
-    seats: int # 22
-    tons: float # 23
-    restrict: str | None # TODO: WHAT IS THIS? # 24
-    domint: tuple[DomesticInternational, DomesticInternational] # 25
-    efffrom: date # 26
-    effto: date # 27
-    routing: str # 28
-    longest: bool # "L" or EMPTY # 29
-    distance: int # 30
-    sad: str | None # TODO: WHAT IS THIS? # 31
-    # mcd   # ALL EMPTY # 32
-    # flt_dupe  # ALL EMPTY # 33
-    acft_owner: str | None # 34
-    operating: bool # "O" OR EMPTY  # 35
-    # ghost    # ALL EMPTY # 36
-    duplicate: str | None  # TODO: WHAT IS THIS?  "D", "P" OR EMPTY # 37
-    NFlts: int # 38
+    """A single entry in the OAG flight schedule data.
+
+    Note: This class is derived from the pre-processed OAG data provided by
+    Prateek.
+    """
+
+    carrier: str            # [ 1] = COLUMN NUMBER IN INPUT CSV FILE
+    fltno: int              # [ 2]
+    depapt: str             # [ 3]
+    depcity: str            # [ 4]
+    depctry: str | None     # [ 5]
+    arrapt: str             # [ 6]
+    arrcity: str            # [ 7]
+    arrctry: str | None     # [ 8]
+    deptim: time            # [ 9]
+    arrtim: time            # [10]
+    arrday: int             # [11] -1, 0, +1, +2  TODO: CHECK MEANING
+    elptim: timedelta       # [12]
+    days: set[DayOfWeek]    # [13] Set of days of week (M=1, S=7)
+    # stops                 # [14] ALL ZERO
+    # intapt                # [15] ALL EMPTY
+    # acftchange            # [16] ALL EMPTY
+    govt_app: bool          # [17] Government approval required (X OR EMPTY)
+    comm10_50: int | None   # [18] TODO: WHAT'S THIS? EITHER 10 OR EMPTY
+    genacft: str            # [19] TODO: 81 VALUES ⇒ SEPARATE TABLE?
+    inpacft: str            # [20] TODO: 181 VALUES ⇒ SEPARATE TABLE?
+    service: ServiceType    # [21]
+    seats: int              # [22]
+    tons: float             # [23]
+    restrict: str | None    # [24] TODO: WHAT IS THIS?
+    domint: DomInt          # [25]
+    efffrom: date           # [26]
+    effto: date             # [27]
+    routing: str            # [28]
+    longest: bool           # [29] "L" or EMPTY
+    distance: int           # [30]
+    sad: str | None         # [31] TODO: WHAT IS THIS?
+    # mcd                   # [32] ALL EMPTY
+    # flt_dupe              # [33] ALL EMPTY
+    acft_owner: str | None  # [34]
+    operating: bool         # [35] "O" OR EMPTY
+    # ghost                 # [36] ALL EMPTY
+    duplicate: str | None   # [37] TODO: WHAT IS THIS?  "D", "P" OR EMPTY
+    NFlts: int              # [38]
 
     @classmethod
     def from_csv_row(cls, row: list[str]) -> 'OAGEntry':
@@ -94,7 +106,7 @@ class OAGEntry:
 
         def make_time(t: str) -> time:
             tint = make_int(t)
-            return time(tint // 100, tint % 100, tzinfo=timezone.utc)
+            return time(tint // 100, tint % 100, tzinfo=UTC)
 
         def make_timedelta(t: str) -> timedelta:
             tint = make_int(t)
@@ -122,15 +134,17 @@ class OAGEntry:
             elptim=make_timedelta(row[11]),
             days=days,
             govt_app=(row[16].strip().upper() == 'X'),
+            # TODO: FIGURE OUT WHAT TO DO WITH THIS ONE
             comm10_50=make_int(row[17]) if row[17] else None,
             genacft=row[18],
             inpacft=row[19],
             service=ServiceType(row[20]),
             seats=make_int(row[21]),
             tons=float(row[22]),
-            # TODO: ENUM HERE
+            # TODO: USE ENUMERATION HERE?
             restrict=row[23] if row[23] else None,
-            domint=(DomesticInternational(row[24][0]), DomesticInternational(row[24][1])),
+            domint=(DomesticInternational(row[24][0]),
+                    DomesticInternational(row[24][1])),
             efffrom=make_date(row[25]),
             effto=make_date(row[26]),
             routing=row[27],
@@ -143,10 +157,41 @@ class OAGEntry:
             NFlts=make_int(row[37])
         )
 
+    @classmethod
+    def from_db_row(cls, row: list[Any]) -> 'OAGEntry':
+        """
+        Create an OAGEntry instance from a database row.
+        """
+
+        if len(row) != 33:
+            raise ValueError(f'Expected 39 columns, got {len(row)}')
+
+        row = row[1:]  # Skip the ID column
+
+        return cls(
+            carrier=row[0], fltno=row[1],
+            depapt=row[2], depcity=row[3], depctry=row[4],
+            arrapt=row[5], arrcity=row[6], arrctry=row[7],
+            deptim=time.fromisoformat(row[8]), arrtim=time.fromisoformat(row[9]),
+            arrday=row[10], elptim=timedelta(minutes=row[11]),
+            days=set(DayOfWeek(int(d)) for d in row[12]),
+            govt_app=row[13], comm10_50=row[14],
+            genacft=row[15], inpacft=row[16],
+            service=ServiceType(row[17]), seats=row[18], tons=row[19],
+            restrict=row[20],
+            domint=(DomesticInternational(row[21][0]),
+                    DomesticInternational(row[21][1])),
+            efffrom=date.fromisoformat(row[22]),
+            effto=date.fromisoformat(row[23]),
+            routing=row[24], longest=row[25], distance=row[26],
+            sad=row[27], acft_owner=row[28],
+            operating=row[29], duplicate=row[30], NFlts=row[31]
+        )
+
 
 def read_oag_file(file_path: str) -> Generator[OAGEntry, None, None]:
     """
-    Reads an OAG CSV file and yields OAGEntry instances for each row.
+    Read an OAG CSV file and yield OAGEntry instances for each row.
     """
     with open(file_path, newline='') as csvfile:
         first = True

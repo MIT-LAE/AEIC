@@ -39,6 +39,7 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 convert-oag-data = "commands.convert_oag_data:run"
+oag-query = "commands.oag_query:run"
 
 [tool.ruff]
 # Use Black-compatible defaults
