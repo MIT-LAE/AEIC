@@ -82,12 +82,12 @@ def get_thrust_cat(
                 "When cruiseCalc=False, fuelflow_KGperS must have length 11."
             )
         base = np.array([2, 2, 3, 1], dtype=int)
-        # We linearly interpolate each fuelfactor against the 11-point calibration?
+        # We linearly interpolate each ff_eval against the 11-point calibration?
         # But MATLAB simply tiles these 11 categories across each column.
-        # Since here we have 1D fuelfactor, we assume it also has
+        # Since here we have 1D ff_eval, we assume it also has
         # length 11 in the pure LTO scenario.
         if n_times != 4:
-            raise ValueError("When cruiseCalc=False, fuelfactor must have length 4.")
+            raise ValueError("When cruiseCalc=False, ff_eval must have length 4.")
         thrustCat = base.copy()
     return thrustCat
 

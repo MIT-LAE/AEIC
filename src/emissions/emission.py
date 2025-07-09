@@ -64,7 +64,7 @@ class Emission:
         # Flag to use performance model for all segments or just cruise
         self.traj_emissions_all = ac_performance.config['climb_descent_usage']
         # Mode for PMnvol emissions in LTO
-        self.pmnvol_mode = ac_performance.config['pmnvol_switch_lc']
+        self.pmnvol_mode = ac_performance.config['nvpm_method']
 
         # Pre-allocate structured arrays for emission indices per point
         self.emission_indices = np.empty((), dtype=self.__emission_dtype(self.Ntot))
@@ -95,7 +95,7 @@ class Emission:
         self.get_trajectory_emissions(trajectory, ac_performance, EDB_data=EDB_data)
 
         # Calculate LTO emissions for ground and approach/climb modes
-        self.get_LTO_emissions(ac_performance, pmnvol_switch_lc=self.pmnvol_mode)
+        self.get_LTO_emissions(ac_performance, nvpm_method=self.pmnvol_mode)
 
         # Compute APU emissions based on LTO results and EDB parameters
         (self.APU_emission_indices, self.APU_emissions_g, apu_fuel_burn) = (
@@ -257,7 +257,7 @@ class Emission:
             )
 
     def get_LTO_emissions(
-        self, ac_performance, EDB_LTO=True, pmnvol_switch_lc="SCOPE11"
+        self, ac_performance, EDB_LTO=True, nvpm_method="SCOPE11"
     ):
         """
         Compute Landing-and-Takeoff cycle emission indices and quantities.
@@ -268,7 +268,7 @@ class Emission:
             Provides EDB or LTO tabular data for EI values.
         EDB_LTO : bool, optional
             Use EDB data for LTO (True) or thrust_settings (False).
-        pmnvol_switch_lc : str, optional
+        nvpm_method : str, optional
             Method for number-based PM emissions ('SCOPE11', 'foa3', etc.).
         """
 
@@ -342,12 +342,12 @@ class Emission:
         self.LTO_emission_indices['PMvol'] = LTO_PMvol
         self.LTO_emission_indices['OCic'] = LTO_OCic
 
-        # Select black carbon emission indices based on pmnvol_switch_lc
-        if pmnvol_switch_lc in ('foa3', 'newsnci'):
+        # Select black carbon emission indices based on nvpm_method
+        if nvpm_method in ('foa3', 'newsnci'):
             PMnvolEI_ICAOthrust = ac_performance.EDB_data['PMnvolEI_best_ICAOthrust']
-        elif pmnvol_switch_lc in ('fox', 'dop', 'sst'):
+        elif nvpm_method in ('fox', 'dop', 'sst'):
             PMnvolEI_ICAOthrust = ac_performance.EDB_data['PMnvolEI_new_ICAOthrust']
-        elif pmnvol_switch_lc == 'SCOPE11':
+        elif nvpm_method == 'SCOPE11':
             # SCOPE11 provides best, lower, and upper bounds
             edb = ac_performance.EDB_data
             PMnvolEI_ICAOthrust = calculate_PMnvolEI_scope11(
@@ -371,12 +371,12 @@ class Emission:
             ]
         else:
             raise ValueError(
-                f"Re-define PMnvol estimation method: pmnvolSwitch = {pmnvol_switch_lc}"
+                f"Re-define PMnvol estimation method: pmnvolSwitch = {nvpm_method}"
             )
 
         # Assign BC indices arrays for selected modes
         self.LTO_emission_indices['PMnvol'] = PMnvolEI_ICAOthrust
-        if pmnvol_switch_lc == 'SCOPE11':
+        if nvpm_method == 'SCOPE11':
             self.LTO_emission_indices['PMnvol_lo'] = PMnvolEI_lo_ICAOthrust
             self.LTO_emission_indices['PMnvol_hi'] = PMnvolEI_hi_ICAOthrust
             self.LTO_emission_indices['PMnvolN'] = PMnvolEIN_ICAOthrust
@@ -487,7 +487,7 @@ class Emission:
                 ('SO2', np.float64, n),
                 ('SO4', np.float64, n),
             ]
-            if self.pmnvol_mode
+            if self.pmnvol_mode == 'SCOPE11'
             else [
                 ('CO2', np.float64, n),
                 ('H2O', np.float64, n),

@@ -19,7 +19,7 @@ def BFFM2_EINOx(
     Calculate NOx, NO, NO2, and HONO emission indices
     All inputs are 1-dimensional arrays of equal length for calibration
     (fuelflow_KGperS vs. NOX_EI_matrix)
-    and 1-dimensional for fuelfactor (multiple evaluation points).
+    and 1-dimensional for SLS_equivalent_fuel_flow (multiple evaluation points).
 
     Parameters
     ----------
@@ -40,7 +40,8 @@ def BFFM2_EINOx(
     Returns
     -------
     NOxEI   : ndarray, shape (n_times,)
-        Interpolated NOx emission index [g NOx / kg fuel] for each fuelfactor.
+        Interpolated NOx emission index [g NOx / kg fuel]
+        for each SLS_equivalent_fuel_flow.
     NOEI    : ndarray, shape (n_times,)
         NO emission index [g NO / kg fuel].
     NO2EI   : ndarray, shape (n_times,)
