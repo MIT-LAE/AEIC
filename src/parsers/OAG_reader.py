@@ -22,6 +22,7 @@ class DomesticInternational(str, Enum):
     DOMESTIC = 'D'
     INTERNATIONAL = 'I'
 
+
 DomInt = tuple[DomesticInternational, DomesticInternational]
 
 
@@ -35,6 +36,7 @@ class ServiceType(str, Enum):
 # Some information here:
 #  https://knowledge.oag.com/docs/schedules-direct-data-fields-explained
 
+
 @dataclass
 class OAGEntry:
     """A single entry in the OAG flight schedule data.
@@ -43,44 +45,44 @@ class OAGEntry:
     Prateek.
     """
 
-    carrier: str            # [ 1] = COLUMN NUMBER IN INPUT CSV FILE
-    fltno: int              # [ 2]
-    depapt: str             # [ 3]
-    depcity: str            # [ 4]
-    depctry: str | None     # [ 5]
-    arrapt: str             # [ 6]
-    arrcity: str            # [ 7]
-    arrctry: str | None     # [ 8]
-    deptim: time            # [ 9]
-    arrtim: time            # [10]
-    arrday: int             # [11] -1, 0, +1, +2  TODO: CHECK MEANING
-    elptim: timedelta       # [12]
-    days: set[DayOfWeek]    # [13] Set of days of week (M=1, S=7)
+    carrier: str  # [ 1] = COLUMN NUMBER IN INPUT CSV FILE
+    fltno: int  # [ 2]
+    depapt: str  # [ 3]
+    depcity: str  # [ 4]
+    depctry: str | None  # [ 5]
+    arrapt: str  # [ 6]
+    arrcity: str  # [ 7]
+    arrctry: str | None  # [ 8]
+    deptim: time  # [ 9]
+    arrtim: time  # [10]
+    arrday: int  # [11] -1, 0, +1, +2  TODO: CHECK MEANING
+    elptim: timedelta  # [12]
+    days: set[DayOfWeek]  # [13] Set of days of week (M=1, S=7)
     # stops                 # [14] ALL ZERO
     # intapt                # [15] ALL EMPTY
     # acftchange            # [16] ALL EMPTY
-    govt_app: bool          # [17] Government approval required (X OR EMPTY)
-    comm10_50: int | None   # [18] TODO: WHAT'S THIS? EITHER 10 OR EMPTY
-    genacft: str            # [19] TODO: 81 VALUES ⇒ SEPARATE TABLE?
-    inpacft: str            # [20] TODO: 181 VALUES ⇒ SEPARATE TABLE?
-    service: ServiceType    # [21]
-    seats: int              # [22]
-    tons: float             # [23]
-    restrict: str | None    # [24] TODO: WHAT IS THIS?
-    domint: DomInt          # [25]
-    efffrom: date           # [26]
-    effto: date             # [27]
-    routing: str            # [28]
-    longest: bool           # [29] "L" or EMPTY
-    distance: int           # [30]
-    sad: str | None         # [31] TODO: WHAT IS THIS?
+    govt_app: bool  # [17] Government approval required (X OR EMPTY)
+    comm10_50: int | None  # [18] TODO: WHAT'S THIS? EITHER 10 OR EMPTY
+    genacft: str  # [19] TODO: 81 VALUES ⇒ SEPARATE TABLE?
+    inpacft: str  # [20] TODO: 181 VALUES ⇒ SEPARATE TABLE?
+    service: ServiceType  # [21]
+    seats: int  # [22]
+    tons: float  # [23]
+    restrict: str | None  # [24] TODO: WHAT IS THIS?
+    domint: DomInt  # [25]
+    efffrom: date  # [26]
+    effto: date  # [27]
+    routing: str  # [28]
+    longest: bool  # [29] "L" or EMPTY
+    distance: int  # [30]
+    sad: str | None  # [31] TODO: WHAT IS THIS?
     # mcd                   # [32] ALL EMPTY
     # flt_dupe              # [33] ALL EMPTY
     acft_owner: str | None  # [34]
-    operating: bool         # [35] "O" OR EMPTY
+    operating: bool  # [35] "O" OR EMPTY
     # ghost                 # [36] ALL EMPTY
-    duplicate: str | None   # [37] TODO: WHAT IS THIS?  "D", "P" OR EMPTY
-    NFlts: int              # [38]
+    duplicate: str | None  # [37] TODO: WHAT IS THIS?  "D", "P" OR EMPTY
+    NFlts: int  # [38]
 
     @classmethod
     def from_csv_row(cls, row: list[str]) -> 'OAGEntry':
@@ -143,8 +145,10 @@ class OAGEntry:
             tons=float(row[22]),
             # TODO: USE ENUMERATION HERE?
             restrict=row[23] if row[23] else None,
-            domint=(DomesticInternational(row[24][0]),
-                    DomesticInternational(row[24][1])),
+            domint=(
+                DomesticInternational(row[24][0]),
+                DomesticInternational(row[24][1]),
+            ),
             efffrom=make_date(row[25]),
             effto=make_date(row[26]),
             routing=row[27],
@@ -154,7 +158,7 @@ class OAGEntry:
             acft_owner=row[33] if row[33] else None,
             operating=(row[34].strip().upper() == 'O'),
             duplicate=row[36] if row[36] else None,
-            NFlts=make_int(row[37])
+            NFlts=make_int(row[37]),
         )
 
     @classmethod
@@ -169,23 +173,41 @@ class OAGEntry:
         row = row[1:]  # Skip the ID column
 
         return cls(
-            carrier=row[0], fltno=row[1],
-            depapt=row[2], depcity=row[3], depctry=row[4],
-            arrapt=row[5], arrcity=row[6], arrctry=row[7],
-            deptim=time.fromisoformat(row[8]), arrtim=time.fromisoformat(row[9]),
-            arrday=row[10], elptim=timedelta(minutes=row[11]),
+            carrier=row[0],
+            fltno=row[1],
+            depapt=row[2],
+            depcity=row[3],
+            depctry=row[4],
+            arrapt=row[5],
+            arrcity=row[6],
+            arrctry=row[7],
+            deptim=time.fromisoformat(row[8]),
+            arrtim=time.fromisoformat(row[9]),
+            arrday=row[10],
+            elptim=timedelta(minutes=row[11]),
             days=set(DayOfWeek(int(d)) for d in row[12]),
-            govt_app=row[13], comm10_50=row[14],
-            genacft=row[15], inpacft=row[16],
-            service=ServiceType(row[17]), seats=row[18], tons=row[19],
+            govt_app=row[13],
+            comm10_50=row[14],
+            genacft=row[15],
+            inpacft=row[16],
+            service=ServiceType(row[17]),
+            seats=row[18],
+            tons=row[19],
             restrict=row[20],
-            domint=(DomesticInternational(row[21][0]),
-                    DomesticInternational(row[21][1])),
+            domint=(
+                DomesticInternational(row[21][0]),
+                DomesticInternational(row[21][1]),
+            ),
             efffrom=date.fromisoformat(row[22]),
             effto=date.fromisoformat(row[23]),
-            routing=row[24], longest=row[25], distance=row[26],
-            sad=row[27], acft_owner=row[28],
-            operating=row[29], duplicate=row[30], NFlts=row[31]
+            routing=row[24],
+            longest=row[25],
+            distance=row[26],
+            sad=row[27],
+            acft_owner=row[28],
+            operating=row[29],
+            duplicate=row[30],
+            NFlts=row[31],
         )
 
 

@@ -47,7 +47,8 @@ class OAGDatabase:
             raise RuntimeError("Database is not in write mode")
         cur = self.conn.cursor()
         placeholders = '?, ' * 31 + '?'
-        cur.execute(f"""
+        cur.execute(
+            f"""
             INSERT INTO entries (
                 carrier, fltno, depapt, depcity, depctry, arrapt, arrcity,
                 arrctry, deptim, arrtim, arrday, elptim, days, govt_app,
@@ -55,20 +56,42 @@ class OAGDatabase:
                 restrict, domint, efffrom, effto, routing,
                 longest, distance, sad, acft_owner,
                 operating, duplicate, NFlts
-            ) VALUES ({placeholders})""", (
-            e.carrier, e.fltno,
-            e.depapt, e.depcity, e.depctry,
-            e.arrapt, e.arrcity, e.arrctry,
-            e.deptim.isoformat()[:5], e.arrtim.isoformat()[:5], e.arrday,
-            e.elptim.total_seconds() // 60,
-            ''.join(sorted([str(day.value) for day in e.days])),
-            e.govt_app, e.comm10_50, e.genacft, e.inpacft,
-            e.service.value, e.seats, e.tons,
-            e.restrict, e.domint[0].value + e.domint[1].value,
-            e.efffrom, e.effto, e.routing,
-            e.longest, e.distance, e.sad, e.acft_owner,
-            e.operating, e.duplicate, e.NFlts
-        ))
+            ) VALUES ({placeholders})""",
+            (
+                e.carrier,
+                e.fltno,
+                e.depapt,
+                e.depcity,
+                e.depctry,
+                e.arrapt,
+                e.arrcity,
+                e.arrctry,
+                e.deptim.isoformat()[:5],
+                e.arrtim.isoformat()[:5],
+                e.arrday,
+                e.elptim.total_seconds() // 60,
+                ''.join(sorted([str(day.value) for day in e.days])),
+                e.govt_app,
+                e.comm10_50,
+                e.genacft,
+                e.inpacft,
+                e.service.value,
+                e.seats,
+                e.tons,
+                e.restrict,
+                e.domint[0].value + e.domint[1].value,
+                e.efffrom,
+                e.effto,
+                e.routing,
+                e.longest,
+                e.distance,
+                e.sad,
+                e.acft_owner,
+                e.operating,
+                e.duplicate,
+                e.NFlts,
+            ),
+        )
         if commit:
             self.conn.commit()
 
