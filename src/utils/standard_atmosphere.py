@@ -1,5 +1,3 @@
-from typing import Union
-
 import numpy as np
 from numpy.typing import NDArray
 
@@ -68,7 +66,7 @@ def pressure_at_altitude_isa_bada4(altitude: FloatOrNDArray) -> FloatOrNDArray:
     return pressure
 
 
-def altitude_from_pressure_isa_bada4(pressure: Union[float, NDArray]) -> NDArray:
+def altitude_from_pressure_isa_bada4(pressure: float | NDArray) -> NDArray:
     """Return the altitude at the provided pressure(s).
     Units are SI (PA, m)
 
@@ -102,7 +100,7 @@ def altitude_from_pressure_isa_bada4(pressure: Union[float, NDArray]) -> NDArray
     return altitude
 
 
-def calculate_speed_of_sound(temperature: Union[float, NDArray]) -> NDArray:
+def calculate_speed_of_sound(temperature: float | NDArray) -> NDArray:
     """Calculate the speed of sound depending on the provided temperature(s).
     Units are SI (K, m/s)
 
@@ -125,7 +123,7 @@ def calculate_speed_of_sound(temperature: Union[float, NDArray]) -> NDArray:
     return np.sqrt(1.4 * 287.05 * temperature)
 
 
-def speed_of_sound_at_altitude(altitude: Union[float, NDArray]) -> NDArray:
+def speed_of_sound_at_altitude(altitude: float | NDArray) -> NDArray:
     """Calculate the speed of sound depending on the provided altitude(s).
     Units are SI (m, m/s)
 
@@ -150,7 +148,7 @@ def speed_of_sound_at_altitude(altitude: Union[float, NDArray]) -> NDArray:
 
 
 def calculate_air_density(
-    pressure: Union[float, NDArray], temperature: Union[float, NDArray]
+    pressure: float | NDArray, temperature: float | NDArray
 ) -> NDArray:
     """Calculate the air density depending on the provided pressure and temperature.
     Units are SI (Pa, K)

@@ -1,8 +1,8 @@
 import gc
 import os
+import tomllib
 
 import numpy as np
-import tomllib
 
 from BADA.aircraft_parameters import Bada3AircraftParameters
 from BADA.model import Bada3JetEngineModel

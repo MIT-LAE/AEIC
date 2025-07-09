@@ -36,8 +36,8 @@ class TestEI_CO2:
 
         assert co2_ei == 3160.0
         assert nvol_carb == 0.95
-        assert isinstance(co2_ei, (int, float))
-        assert isinstance(nvol_carb, (int, float))
+        assert isinstance(co2_ei, int | float)
+        assert isinstance(nvol_carb, int | float)
 
     def test_non_negativity(self):
         """Test that outputs are non-negative"""
@@ -78,7 +78,7 @@ class TestEI_H2O:
         h2o_ei = EI_H2O(fuel)
 
         assert h2o_ei == 1230.0
-        assert isinstance(h2o_ei, (int, float))
+        assert isinstance(h2o_ei, int | float)
 
     def test_non_negativity(self):
         """Test reasonable values are non-negative"""
@@ -347,8 +347,8 @@ class TestEI_SOx:
 
         SO2EI, SO4EI = EI_SOx(fuel)
 
-        assert isinstance(SO2EI, (int, float))
-        assert isinstance(SO4EI, (int, float))
+        assert isinstance(SO2EI, int | float)
+        assert isinstance(SO4EI, int | float)
 
     def test_non_negativity(self):
         """Test that outputs are non-negative"""
