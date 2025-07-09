@@ -97,9 +97,12 @@ def get_thrust_cat(
 def get_SLS_equivalent_fuel_flow(
     fuel_flow: np.ndarray,
     Pamb: np.ndarray,
+    Tamb: np.ndarray,
     mach_number: np.ndarray,
     z: float = 3.8,
-    P_SL: float = 101_325.0,
+    P_SL: float = 101325.0,
+    T_SL: float = 288.15,
+    # n_eng
 ):
     """
     Convert in-flight fuel flow to its sea-level-static (SLS) equivalent
@@ -137,7 +140,7 @@ def get_SLS_equivalent_fuel_flow(
     # δ_amb
     delta_amb = Pamb / P_SL
     # temperature ratio (isentropic estimate)
-    theta_amb = delta_amb ** ((kappa - 1.0) / kappa)
+    theta_amb = Tamb / T_SL
     # apply Fuel-Flow-Method 2 correction
-    Wf_SL = fuel_flow * (theta_amb**z) / delta_amb * np.exp(0.2 * mach_number**2)
+    Wf_SL = (fuel_flow/2) * (theta_amb**z) / delta_amb * np.exp(0.2 * (mach_number**2))
     return Wf_SL
