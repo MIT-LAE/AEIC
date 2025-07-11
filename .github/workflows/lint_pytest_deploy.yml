@@ -27,7 +27,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install ruff
 
-    # “ruff check .” performs linting;  
+    # “ruff check .” performs linting;
     # “ruff format --check .” verifies Black-style formatting.
     - name: Run Ruff
       run: |
