@@ -14,7 +14,7 @@ performance_model_input = "PerformanceModel"
                                 # "OPF" : Input as BADA type OPF file (FUNCTIONAL INPUT)
                                 # "PerformanceModel" : JSON file with state variables - fuel_flow = f(h, V, gamma, m_fuel) (TABULAR INPUT)
 
-performance_model_input_file = "IO/sample_performance_model.toml" 
+performance_model_input_file = "IO/sample_performance_model.toml"
 climb_descent_usage = true # If true, then full trajectory is used for emissions calculate (including takeoff, landing)
                            # If false, then only cruise used, LTO data used for takeoff, climb, approach
 
