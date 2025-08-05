@@ -63,4 +63,7 @@ jobs:
       with:
         tokenless: true
         files: coverage.xml
+      env:
+        CI: true
+        CODECOV_SLUG: ${{ github.repository }}
 
