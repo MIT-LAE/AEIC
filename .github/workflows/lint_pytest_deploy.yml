@@ -63,6 +63,5 @@ jobs:
       with:
         files: coverage.xml
       env:
-        CI: true
-        CODECOV_SLUG: ${{ github.repository }}
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
