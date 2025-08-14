@@ -1,0 +1,10 @@
+# Fuel and emissions properties
+Name = "SAF"
+Energy_MJ_per_kg = 44.1
+EI_H2O            = 1356.72515 # gH2O/kgfuel
+EI_CO2            = 3155.6 # gCO2/kgfuel
+nvolCarbCont      = 0.95
+
+# Sulfur content and sulfate yield
+FSCnom            = 0.0    # gS/kgfuel
+Epsnom            = 0.0    # fraction converted to sulfate

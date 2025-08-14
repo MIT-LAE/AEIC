@@ -674,7 +674,6 @@ class LegacyTrajectory(Trajectory):
         for i in range(0, self.NClm):
             alt = self.traj_data['altitude'][i]
             tas_interp, ff_interp, _ = self.__calc_FL_interp_vals(i, alt, pos_roc_perf)
-
             self.traj_data['fuelFlow'][i] = ff_interp
             self.traj_data['tas'][i] = tas_interp
 
@@ -697,21 +696,36 @@ class LegacyTrajectory(Trajectory):
                 self.traj_data['altitude'][i + 1] - self.traj_data['altitude'][i]
             ) / roc
             segment_fuel = ff * segment_time
-
             self.traj_data['groundSpeed'][i], self.traj_data['heading'][i], u, v = (
                 compute_ground_speed(
                     lon=self.traj_data['latitude'][i],
                     lat=self.traj_data['latitude'][i],
-                    lon_next=self.traj_data['latitude'][i + 1],
-                    lat_next=self.traj_data['latitude'][i + 1],
+                    az=self.traj_data['azimuth'][i],
                     alt_ft=FL * 100,
-                    tas_kts=fwd_tas,
+                    tas_ms=fwd_tas,
+                    weather_data=None,
                 )
             )
 
             # Calculate distance along route travelled
             dist = self.traj_data['groundSpeed'][i] * segment_time
 
+            self.traj_data['longitude'][i + 1], self.traj_data['latitude'][i + 1], _ = (
+                self.geod.fwd(
+                    self.traj_data['longitude'][i],
+                    self.traj_data['latitude'][i],
+                    self.traj_data['azimuth'][i],
+                    dist,
+                )
+            )
+
+            lon_arr, lat_arr, _ = self.arr_lon_lat_alt
+            self.traj_data['azimuth'][i + 1], _, _ = self.geod.inv(
+                self.traj_data['longitude'][i],
+                self.traj_data['latitude'][i],
+                lon_arr,
+                lat_arr,
+            )
             # Account for acceleration/deceleration over
             # the segment using end-of-segment tas
             tas_end = self.traj_data['tas'][i + 1]
@@ -763,15 +777,31 @@ class LegacyTrajectory(Trajectory):
                 compute_ground_speed(
                     lon=self.traj_data['latitude'][i],
                     lat=self.traj_data['latitude'][i],
-                    lon_next=self.traj_data['latitude'][i + 1],
-                    lat_next=self.traj_data['latitude'][i + 1],
+                    az=self.traj_data['azimuth'][i],
                     alt_ft=self.crz_FL * 100,
-                    tas_kts=self.traj_data['tas'][i],
+                    tas_ms=self.traj_data['tas'][i],
+                    weather_data=None,
                 )
             )
 
             # Calculate time required to fly the segment
             segment_time = dGD / self.traj_data['groundSpeed'][i]
+
+            self.traj_data['longitude'][i + 1], self.traj_data['latitude'][i + 1], _ = (
+                self.geod.fwd(
+                    self.traj_data['longitude'][i],
+                    self.traj_data['latitude'][i],
+                    self.traj_data['azimuth'][i],
+                    dGD,
+                )
+            )
+            lon_arr, lat_arr, _ = self.arr_lon_lat_alt
+            self.traj_data['azimuth'][i + 1], _, _ = self.geod.inv(
+                self.traj_data['longitude'][i],
+                self.traj_data['latitude'][i],
+                lon_arr,
+                lat_arr,
+            )
 
             # Get fuel flow rate based on FL and mass interpolation
             ff = self.__calc_ff_cruise(
@@ -827,7 +857,6 @@ class LegacyTrajectory(Trajectory):
             tas_interp, ff_interp, roc_interp = self.__calc_FL_interp_vals(
                 i, alt, neg_roc_perf
             )
-
             self.traj_data['fuelFlow'][i] = ff_interp
             self.traj_data['tas'][i] = tas_interp
             self.traj_data['rocs'][i] = roc_interp
@@ -852,15 +881,31 @@ class LegacyTrajectory(Trajectory):
                 compute_ground_speed(
                     lon=self.traj_data['latitude'][i],
                     lat=self.traj_data['latitude'][i],
-                    lon_next=self.traj_data['latitude'][i + 1],
-                    lat_next=self.traj_data['latitude'][i + 1],
+                    az=self.traj_data['azimuth'][i],
                     alt_ft=meters_to_feet(self.traj_data['altitude'][i]),
-                    tas_kts=fwd_tas,
+                    tas_ms=fwd_tas,
+                    weather_data=None,
                 )
             )
 
             # Calculate distance along route travelled
             dist = self.traj_data['groundSpeed'][i] * segment_time
+
+            self.traj_data['longitude'][i + 1], self.traj_data['latitude'][i + 1], _ = (
+                self.geod.fwd(
+                    self.traj_data['longitude'][i],
+                    self.traj_data['latitude'][i],
+                    self.traj_data['azimuth'][i],
+                    dist,
+                )
+            )
+            lon_arr, lat_arr, _ = self.arr_lon_lat_alt
+            self.traj_data['azimuth'][i + 1], _, _ = self.geod.inv(
+                self.traj_data['longitude'][i],
+                self.traj_data['latitude'][i],
+                lon_arr,
+                lat_arr,
+            )
 
             # Account for acceleration/deceleration over the segment
             # using end-of-segment tas

@@ -109,6 +109,7 @@ class Trajectory:
         # Convert gc distance to meters
         self.gc_distance = mission["distance_nm"]
         # FIXME: check to make sure this is changed to meters
+        self.geod = Geod(ellps="WGS84")
 
         # Get load factor from mission object
         self.load_factor = mission["load_factor"]
@@ -162,6 +163,7 @@ class Trajectory:
             ('flightTime', np.float64, self.Ntot),
             ('latitude', np.float64, self.Ntot),
             ('longitude', np.float64, self.Ntot),
+            ('azimuth', np.float64, self.Ntot),
             ('heading', np.float64, self.Ntot),
             ('tas', np.float64, self.Ntot),
             ('groundSpeed', np.float64, self.Ntot),
@@ -226,12 +228,16 @@ class Trajectory:
 
         # Calculate lat, lon, heading of initial point
         # Get great circle trajectory in lat,lon points
-        geod = Geod(ellps="WGS84")
+
         lon_dep, lat_dep, _ = self.dep_lon_lat_alt
         lon_arr, lat_arr, _ = self.arr_lon_lat_alt
-        lat_lon_trajectory = geod.npts(lon_dep, lat_dep, lon_arr, lat_arr, self.Ntot)
-        self.traj_data['latitude'] = np.array(lat_lon_trajectory)[:, 1]
-        self.traj_data['longitude'] = np.array(lat_lon_trajectory)[:, 0]
+        # lat_lon_trajectory = self.geod.npts(
+        #                   lon_dep, lat_dep, lon_arr, lat_arr, self.Ntot)
+        self.traj_data['latitude'][0] = lat_dep
+        self.traj_data['longitude'][0] = lon_dep
+        self.traj_data['azimuth'][0], _, _ = self.geod.inv(
+            lon_dep, lat_dep, lon_arr, lat_arr
+        )
 
         # Fly the climb, cruise, descent segments in order
         self.climb(**kwargs)
