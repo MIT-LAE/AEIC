@@ -67,8 +67,8 @@ class Trajectory:
             ``fuelMass``: fuel mass.\n
             ``groundDist``: total ground distance covered.\n
             ``altitude``: current pressure altitude.\n
-            ``FLs``: flight level equivalent of the pressure altitude.\n
-            ``rocs``: rate of climb/descent.\n
+            ``flightLevel``: flight level equivalent of the pressure altitude.\n
+            ``climbRate``: rate of climb/descent.\n
             ``flightTime``: elapsed flight time.\n
             ``latitude``: current latitude.\n
             ``longitude``: current longitude.\n
@@ -158,8 +158,8 @@ class Trajectory:
             ('fuelMass', np.float64, self.Ntot),
             ('groundDist', np.float64, self.Ntot),
             ('altitude', np.float64, self.Ntot),
-            ('FLs', np.float64, self.Ntot),
-            ('rocs', np.float64, self.Ntot),
+            ('flightLevel', np.float64, self.Ntot),
+            ('climbRate', np.float64, self.Ntot),
             ('flightTime', np.float64, self.Ntot),
             ('latitude', np.float64, self.Ntot),
             ('longitude', np.float64, self.Ntot),
