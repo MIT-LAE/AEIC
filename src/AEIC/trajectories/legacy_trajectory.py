@@ -3,12 +3,8 @@ from numpy.typing import NDArray
 
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories.trajectory import Trajectory
-from utils.helpers import (
-    feet_to_meters,
-    filter_order_duplicates,
-    meters_to_feet,
-    nautmiles_to_meters,
-)
+from utils.helpers import filter_order_duplicates
+from utils.units import FEET_TO_METERS, METERS_TO_FEET, NAUTICAL_MILES_TO_METERS
 from utils.weather_utils import compute_ground_speed
 
 
@@ -77,11 +73,12 @@ class LegacyTrajectory(Trajectory):
         self.fuel_LHV = fuel_LHV
 
         # Climb defined as starting 3000' above airport
-        self.clm_start_altitude = self.dep_lon_lat_alt[-1] + feet_to_meters(3000.0)
+        self.clm_start_altitude = self.dep_lon_lat_alt[-1] + 3000.0 * FEET_TO_METERS
 
         # Max alt should be changed to meters
-        max_alt = feet_to_meters(
+        max_alt = (
             ac_performance.model_info['General_Information']['max_alt_ft']
+            * FEET_TO_METERS
         )
 
         # Check if starting altitude is above operating ceiling;
@@ -91,7 +88,7 @@ class LegacyTrajectory(Trajectory):
             self.clm_start_altitude = self.dep_lon_lat_alt[-1]
 
         # Cruise altitude is the operating ceiling - 7000 feet
-        self.crz_start_altitude = max_alt - feet_to_meters(7000.0)
+        self.crz_start_altitude = max_alt - 7000.0 * FEET_TO_METERS
 
         # Ensure cruise altitude is above the starting altitude
         if self.crz_start_altitude < self.clm_start_altitude:
@@ -108,15 +105,15 @@ class LegacyTrajectory(Trajectory):
         # Set descent altitude based on 3000' above arrival airport altitude;
         # clamp to A/C operating
         # ceiling if needed
-        self.des_end_altitude = self.arr_lon_lat_alt[-1] + feet_to_meters(3000.0)
+        self.des_end_altitude = self.arr_lon_lat_alt[-1] + 3000.0 * FEET_TO_METERS
         if self.des_end_altitude >= max_alt:
             self.des_end_altitude = max_alt
 
         # Save relevant flight levels
-        self.crz_FL = meters_to_feet(self.crz_start_altitude) / 100
-        self.clm_FL = meters_to_feet(self.clm_start_altitude) / 100
-        self.des_FL = meters_to_feet(self.des_start_altitude) / 100
-        self.end_FL = meters_to_feet(self.des_end_altitude) / 100
+        self.crz_FL = self.crz_start_altitude * METERS_TO_FEET / 100
+        self.clm_FL = self.clm_start_altitude * METERS_TO_FEET / 100
+        self.des_FL = self.des_start_altitude * METERS_TO_FEET / 100
+        self.end_FL = self.des_end_altitude * METERS_TO_FEET / 100
 
         # Get the relevant bounding flight levels for cruise based on performance data
         self.__calc_crz_FLs()
@@ -157,7 +154,7 @@ class LegacyTrajectory(Trajectory):
 
         cruise_start_distance = self.traj_data['groundDist'][self.NClm - 1]
         cruise_dist_approx = (
-            nautmiles_to_meters(self.gc_distance)
+            self.gc_distance * NAUTICAL_MILES_TO_METERS
             - cruise_start_distance
             - descent_dist_approx
         )
@@ -268,7 +265,7 @@ class LegacyTrajectory(Trajectory):
         )
 
         # Fuel Needed (distance / velocity * fuel flow rate)
-        approxTime = nautmiles_to_meters(self.gc_distance) / tas
+        approxTime = self.gc_distance * NAUTICAL_MILES_TO_METERS / tas
         fuelMass = approxTime * fuelflow
 
         # Reserve fuel (assumed 5%)
@@ -276,10 +273,10 @@ class LegacyTrajectory(Trajectory):
 
         # Diversion fuel per AEIC v2
         if approxTime / 60 > 180:  # > 180 minutes
-            divertMass = nautmiles_to_meters(200.0) / tas * fuelflow
+            divertMass = 200.0 * NAUTICAL_MILES_TO_METERS / tas * fuelflow
             holdMass = 30 * 60 * tas  # 30 min; using cruise ff here
         else:
-            divertMass = nautmiles_to_meters(100.0) / tas * fuelflow
+            divertMass = 100.0 * NAUTICAL_MILES_TO_METERS / tas * fuelflow
             holdMass = 45 * 60 * tas  # 30 min; using cruise ff here
 
         self.starting_mass = (
@@ -411,7 +408,7 @@ class LegacyTrajectory(Trajectory):
             Tuple[float]: TAS, fuel flow rate, and rate of climb at the specified
                 altitude
         """
-        FL = meters_to_feet(alt) / 100
+        FL = alt * METERS_TO_FEET / 100
         self.traj_data['FLs'][i] = FL
         FL_inds = self.__search_flight_levels_ind(FL)
         bounding_fls = np.array(self.ac_performance.performance_table_cols[0])[FL_inds]
@@ -485,7 +482,7 @@ class LegacyTrajectory(Trajectory):
         Returns:
             Tuple[float]: Interpolated TAS and weighting used in linear interpolation.
         """
-        FL = meters_to_feet(alt) / 100
+        FL = alt * METERS_TO_FEET / 100
         self.traj_data['FLs'][i] = FL
 
         # Construct interpolation weightings
@@ -882,7 +879,7 @@ class LegacyTrajectory(Trajectory):
                     lon=self.traj_data['latitude'][i],
                     lat=self.traj_data['latitude'][i],
                     az=self.traj_data['azimuth'][i],
-                    alt_ft=meters_to_feet(self.traj_data['altitude'][i]),
+                    alt_ft=self.traj_data['altitude'][i] * METERS_TO_FEET,
                     tas_ms=fwd_tas,
                     weather_data=None,
                 )

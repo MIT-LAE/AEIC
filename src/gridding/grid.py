@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Optional, tuple
 
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
 from shapely.geometry import Polygon
 
@@ -10,9 +11,8 @@ from utils.helpers import (
     calculate_line_parameters,
     crosses_dateline,
     great_circle_distance,
-    meters_to_feet,
-    unix_to_datetime_utc,
 )
+from utils.units import METERS_TO_FEET
 
 
 @dataclass
@@ -73,13 +73,13 @@ class GeospatialGrid:
     def grid_altitudes_feet(self) -> Optional[NDArray]:
         if self.grid_altitudes is None:
             return None
-        return meters_to_feet(self.grid_altitudes)
+        return self.grid_altitudes * METERS_TO_FEET
 
     @property
     def grid_times_datetime(self) -> Optional[NDArray]:
         if self.grid_times is None:
             return None
-        unix_to_datetime_utc(self.grid_times)
+        return pd.to_datetime(self.grid_times, unit="s")
 
     @property
     def max_grid_latitude(self) -> float:

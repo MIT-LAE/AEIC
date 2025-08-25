@@ -1,8 +1,5 @@
 import numpy as np
-import pandas as pd
 from numpy.typing import NDArray
-from pandas._libs.tslibs import Timestamp
-from pandas.core.indexes.datetimes import DatetimeIndex
 
 from .consts import R_E
 from .custom_types import FloatOrNDArray
@@ -40,59 +37,6 @@ def great_circle_distance(
     return R_E * (np.arccos(alpha))
 
 
-def knots_to_mps(knots: FloatOrNDArray) -> FloatOrNDArray:
-    """Convert knots to meters per second
-
-    Args:
-        knots (float or numpy array): Speed in knots
-
-    Returns:
-        float or numpy array: Speed in meters per second
-    """
-    return knots * 0.514444
-
-
-def mps_to_knots(mps: FloatOrNDArray) -> FloatOrNDArray:
-    """Convert meters per second to knots
-
-    Args:
-        mps (float or numpy array): Speed in meters per second
-
-    Returns:
-        float or numpy array: Speed in knots
-    """
-    return mps / 0.514444
-
-
-def meters_to_feet(meters: FloatOrNDArray) -> FloatOrNDArray:
-    """Convert meters to feet
-
-    Args:
-        meters (float or numpy array): Length in meters
-
-    Returns:
-        float or numpy array: Length in feet
-    """
-    return meters * 3.28084
-
-
-def feet_to_meters(ft: FloatOrNDArray) -> FloatOrNDArray:
-    return ft * 0.3048
-
-
-def unix_to_datetime_utc(unix_time: FloatOrNDArray) -> Timestamp | DatetimeIndex:
-    """Convert unix time to UTC
-
-    Args:
-        unix_time (float or numpy array): Unix time
-
-    Returns:
-        UTC timestamp(s)
-
-    """
-    return pd.to_datetime(unix_time, unit="s")
-
-
 def calculate_line_parameters(x: NDArray, y: NDArray) -> tuple[NDArray, NDArray]:
     """
     Calculates the slope and intercept of the lines defined by the points (x, y).
@@ -126,14 +70,6 @@ def crosses_dateline(lon1, lon2):
     diff = lon2 - lon1
     cross = (np.abs(diff) > np.pi).astype(int)
     return np.sign(diff) * cross
-
-
-def degrees_to_radians(degrees: FloatOrNDArray) -> FloatOrNDArray:
-    return np.pi * degrees / 180
-
-
-def nautmiles_to_meters(nautmiles: FloatOrNDArray) -> FloatOrNDArray:
-    return nautmiles * 1852
 
 
 def filter_order_duplicates(seq):

@@ -5,12 +5,12 @@ import numpy as np
 
 from utils.consts import g0
 from utils.custom_types import FloatOrNDArray
-from utils.helpers import meters_to_feet, mps_to_knots
 from utils.standard_atmosphere import (
     calculate_air_density,
     pressure_at_altitude_isa_bada4,
     temperature_at_altitude_isa_bada4,
 )
+from utils.units import METERS_TO_FEET, MPS_TO_KNOTS
 
 from .aircraft_parameters import Bada3AircraftParameters
 from .fuel_burn_base import BaseFuelBurnModel
@@ -229,7 +229,7 @@ class Bada3JetEngineModel(Bada3EngineModel):
         """
         return (
             self.aircraft_parameters['c_f1']
-            * (1 + mps_to_knots(v_tas) / self.aircraft_parameters['c_f2'])
+            * (1 + v_tas * MPS_TO_KNOTS / self.aircraft_parameters['c_f2'])
             / (60 * 1000)
         )
 
@@ -293,7 +293,7 @@ class Bada3JetEngineModel(Bada3EngineModel):
         Union[float, NDArray]
             Maximum climb thrust [N].
         """
-        altitude_ft = meters_to_feet(altitude)
+        altitude_ft = altitude * METERS_TO_FEET
         return self.aircraft_parameters['c_tc1'] * (
             1
             - altitude_ft / self.aircraft_parameters['c_tc2']
@@ -319,8 +319,8 @@ class Bada3TurbopropEngineModel(Bada3EngineModel):
         """
         return (
             self.aircraft_parameters.c_f1
-            * (1 - mps_to_knots(v_tas) / self.aircraft_parameters.c_f2)
-            * (mps_to_knots(v_tas) / 1000)
+            * (1 - v_tas * MPS_TO_KNOTS / self.aircraft_parameters.c_f2)
+            * (v_tas * MPS_TO_KNOTS / 1000)
             / (60 * 1000)
         )
 
@@ -383,8 +383,8 @@ class Bada3TurbopropEngineModel(Bada3EngineModel):
         Union[float, NDArray]
             Maximum climb thrust [N].
         """
-        altitude_ft = meters_to_feet(altitude)
-        v_tas_kts = mps_to_knots(v_tas)
+        altitude_ft = altitude * METERS_TO_FEET
+        v_tas_kts = v_tas * MPS_TO_KNOTS
 
         return (self.aircraft_parameters.c_tc1 / v_tas_kts) * (
             1 - altitude_ft / self.aircraft_parameters.c_tc2
@@ -451,8 +451,8 @@ class Bada3PistonEngineModel(Bada3EngineModel):
         Union[float, NDArray]
             Maximum climb thrust [N].
         """
-        altitude_ft = meters_to_feet(altitude)
-        v_tas_kts = mps_to_knots(v_tas)
+        altitude_ft = altitude * METERS_TO_FEET
+        v_tas_kts = v_tas * MPS_TO_KNOTS
 
         return (
             self.aircraft_parameters.c_tc1
@@ -635,7 +635,7 @@ class Bada3FuelBurnModel(BaseFuelBurnModel):
             altitude, v_tas, temperature
         )
         descent_thrust = np.where(
-            meters_to_feet(altitude) > self.aircraft_parameters.h_p_des,
+            altitude * METERS_TO_FEET > self.aircraft_parameters.h_p_des,
             descent_thrust_high,
             descent_thrust_low,
         )
