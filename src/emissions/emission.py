@@ -67,22 +67,22 @@ class Emission:
         self.pmnvol_mode = ac_performance.config['nvpm_method']
 
         # Pre-allocate structured arrays for emission indices per point
-        self.emission_indices = np.empty((), dtype=self.__emission_dtype(self.Ntot))
+        self.emission_indices = np.zeros((), dtype=self.__emission_dtype(self.Ntot))
 
         # Pre-allocate LTO emissions arrays
-        self.LTO_emission_indices = np.empty((), dtype=self.__emission_dtype(4))
-        self.LTO_emissions_g = np.empty((), dtype=self.__emission_dtype(4))
+        self.LTO_emission_indices = np.zeros((), dtype=self.__emission_dtype(4))
+        self.LTO_emissions_g = np.zeros((), dtype=self.__emission_dtype(4))
 
         # Pre-allocate APU and GSE emissions arrays (single-mode shapes)
-        self.APU_emission_indices = np.empty((), dtype=self.__emission_dtype(1))
-        self.APU_emissions_g = np.empty((), dtype=self.__emission_dtype(1))
-        self.GSE_emissions_g = np.empty((), dtype=self.__emission_dtype(1))
+        self.APU_emission_indices = np.zeros((), dtype=self.__emission_dtype(1))
+        self.APU_emissions_g = np.zeros((), dtype=self.__emission_dtype(1))
+        self.GSE_emissions_g = np.zeros((), dtype=self.__emission_dtype(1))
 
         # Storage for pointwise (segment) emissions and summed totals
-        self.pointwise_emissions_g = np.empty(
+        self.pointwise_emissions_g = np.zeros(
             (), dtype=self.__emission_dtype(self.Ntot)
         )
-        self.summed_emission_g = np.empty((), dtype=self.__emission_dtype(1))
+        self.summed_emission_g = np.zeros((), dtype=self.__emission_dtype(1))
 
         # Compute fuel burn per segment from fuelMass time series
         fuel_mass = trajectory.traj_data['fuelMass']
