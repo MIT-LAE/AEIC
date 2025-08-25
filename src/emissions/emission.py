@@ -1,6 +1,7 @@
 # Emissions class
-import numpy as np
 import tomllib
+
+import numpy as np
 
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories.trajectory import Trajectory

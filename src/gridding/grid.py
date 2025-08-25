@@ -1,6 +1,6 @@
 import warnings
 from dataclasses import dataclass
-from typing import Optional, tuple
+from typing import tuple
 
 import numpy as np
 import pandas as pd
@@ -19,8 +19,8 @@ from utils.units import METERS_TO_FEET
 class GeospatialGrid:
     grid_latitudes: NDArray  # in radians
     grid_longitudes: NDArray  # in radians
-    grid_altitudes: Optional[NDArray] = None  # in meters
-    grid_times: Optional[NDArray] = None  # in seconds-
+    grid_altitudes: NDArray | None = None  # in meters
+    grid_times: NDArray | None = None  # in seconds-
 
     @property
     def n_latitudes(self) -> int:
@@ -31,13 +31,13 @@ class GeospatialGrid:
         return len(self.grid_longitudes)
 
     @property
-    def n_altitudes(self) -> Optional[int]:
+    def n_altitudes(self) -> int | None:
         if self.grid_altitudes is None:
             raise ValueError("No altitude grid")
         return len(self.grid_altitudes)
 
     @property
-    def n_times(self) -> Optional[int]:
+    def n_times(self) -> int | None:
         if self.grid_times is None:
             return None
         return len(self.grid_times)
@@ -52,7 +52,7 @@ class GeospatialGrid:
         return n_cells
 
     @property
-    def shape(self) -> tuple[Optional[int], ...]:
+    def shape(self) -> tuple[int | None, ...]:
         return (self.n_latitudes, self.n_longitudes, self.n_altitudes, self.n_times)
 
     @property
@@ -64,19 +64,19 @@ class GeospatialGrid:
         return np.rad2deg(self.grid_longitudes)
 
     @property
-    def grid_altitudes_km(self) -> Optional[NDArray]:
+    def grid_altitudes_km(self) -> NDArray | None:
         if self.grid_altitudes is None:
             return None
         return self.grid_altitudes / 1000
 
     @property
-    def grid_altitudes_feet(self) -> Optional[NDArray]:
+    def grid_altitudes_feet(self) -> NDArray | None:
         if self.grid_altitudes is None:
             return None
         return self.grid_altitudes * METERS_TO_FEET
 
     @property
-    def grid_times_datetime(self) -> Optional[NDArray]:
+    def grid_times_datetime(self) -> NDArray | None:
         if self.grid_times is None:
             return None
         return pd.to_datetime(self.grid_times, unit="s")
@@ -161,8 +161,8 @@ class Gridder(GeospatialGrid):
         self,
         lats: NDArray,
         lons: NDArray,
-        altitudes: Optional[NDArray] = None,
-        times: Optional[NDArray] = None,
+        altitudes: NDArray | None = None,
+        times: NDArray | None = None,
         state_variables: tuple[NDArray, ...] = (),
         integrated_variables: tuple[NDArray, ...] = (),
     ) -> tuple[
@@ -195,8 +195,8 @@ class Gridder(GeospatialGrid):
         self,
         lats: NDArray,
         lons: NDArray,
-        altitudes: Optional[NDArray],
-        times: Optional[NDArray],
+        altitudes: NDArray | None,
+        times: NDArray | None,
         state_variables: tuple[NDArray, ...],
         integrated_variables: tuple[NDArray, ...],
     ) -> tuple[
@@ -238,8 +238,8 @@ class Gridder(GeospatialGrid):
         dateline_crossing: NDArray,
         lats: NDArray,
         lons: NDArray,
-        altitudes: Optional[NDArray] = None,
-        times: Optional[NDArray] = None,
+        altitudes: NDArray | None = None,
+        times: NDArray | None = None,
         state_variables: tuple[NDArray, ...] = (),
         integrated_variables: tuple[NDArray, ...] = (),
     ) -> tuple[
@@ -928,8 +928,8 @@ class Gridder(GeospatialGrid):
         self,
         lats: NDArray,
         lons: NDArray,
-        altitudes: Optional[NDArray] = None,
-        times: Optional[NDArray] = None,
+        altitudes: NDArray | None = None,
+        times: NDArray | None = None,
         state_variables: tuple[NDArray, ...] = (),
         integrated_variables: tuple[NDArray, ...] = (),
     ) -> tuple[
@@ -1079,17 +1079,17 @@ class Gridder(GeospatialGrid):
         self,
         lats: NDArray,
         lons: NDArray,
-        altitudes: Optional[NDArray] = None,
-        times: Optional[NDArray] = None,
+        altitudes: NDArray | None = None,
+        times: NDArray | None = None,
         state_variables: tuple[NDArray, ...] = (),
         integrated_variables: tuple[NDArray, ...] = (),
     ) -> tuple[
-        Optional[NDArray],
-        Optional[NDArray],
-        Optional[NDArray],
-        Optional[NDArray],
-        tuple[Optional[NDArray], ...],
-        tuple[Optional[NDArray], ...],
+        NDArray | None,
+        NDArray | None,
+        NDArray | None,
+        NDArray | None,
+        tuple[NDArray | None, ...],
+        tuple[NDArray | None, ...],
     ]:
         # does the same as cells_touched_by_trajectory but for
         # both state and integrated variables
