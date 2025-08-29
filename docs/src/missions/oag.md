@@ -58,6 +58,8 @@ The main classes of interest in the API are:
   origin/destination pairs appearing in **flight instances**;
 - `oag.FrequentFlightQueryResult`: a single result from an
   `oag.FrequentFlightQuery` query;
+- `oag.CountQuery`: a query that counts **flight instances** matching given
+  conditions;
 - `oag.Filter`: a filter on **flight** characteristics usable with all query
   types.
 
@@ -133,7 +135,7 @@ sub-sampling (using the `sample` and `every_nth` parameters).
 
 These queries return results as a generator of `oag.query.QueryResult` values,
 each of which basically contains all of the known information about the
-**flight instancers**.
+**flight instances**.
 
 The following examples illustrate some uses of `oag.Query`.
 
@@ -188,7 +190,7 @@ an `oag.Filter` instance. Results are returned as a generator of
 `oag.query.FrequentFlightQueryResult` values, which contain the airport codes
 and a count of the number of **flight instances**.
 
-For example, if we want to find the ten most common routes flown by 777s, we
+For example, if we want to find the ten most common routes flown by 787s, we
 can do:
 
 ```python
