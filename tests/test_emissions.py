@@ -160,7 +160,7 @@ def test_gse_wnsf_mapping():
         temp_em.pmnvol_mode = 'SCOPE11'
         temp_em.fuel = {"EI_CO2": 3155.6, "nvolCarbCont": 0.95}
         temp_em.total_fuel_burn = 0.0
-        temp_em.GSE_emissions_g = np.empty(
+        temp_em.GSE_emissions_g = np.zeros(
             (), dtype=temp_em._Emission__emission_dtype(1)
         )
 
@@ -180,7 +180,7 @@ def test_gse_invalid_wnsf():
     """Test that invalid WNSF code raises ValueError"""
     temp_em = Emission.__new__(Emission)
     temp_em.pmnvol_mode = 'SCOPE11'
-    temp_em.GSE_emissions_g = np.empty((), dtype=temp_em._Emission__emission_dtype(1))
+    temp_em.GSE_emissions_g = np.zeros((), dtype=temp_em._Emission__emission_dtype(1))
 
     with pytest.raises(ValueError):
         temp_em.get_GSE_emissions('x')  # Invalid WNSF code
