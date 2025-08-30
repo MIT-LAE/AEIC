@@ -5,6 +5,9 @@ resolution-markers = [
     "python_full_version >= '3.12'",
     "python_full_version < '3.12'",
 ]
+required-markers = [
+    "platform_machine == 'arm64' and sys_platform == 'darwin'",
+]
 
 [[package]]
 name = "aeic"

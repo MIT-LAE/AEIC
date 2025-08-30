@@ -38,6 +38,12 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+# Require that the package is available for macOS ARM.
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'arm64'"
+]
+
 [tool.ruff]
 # Use Black-compatible defaults
 line-length = 88
