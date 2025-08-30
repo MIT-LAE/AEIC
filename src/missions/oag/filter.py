@@ -212,7 +212,8 @@ class Filter:
             assert isinstance(self.destination_continent, list)
             conds.append(
                 (
-                    f'{table}destination IN {sub_select_for(self.destination_continent)}',
+                    f'{table}destination IN '
+                    + sub_select_for(self.destination_continent),
                     self.destination_continent,
                 )
             )
