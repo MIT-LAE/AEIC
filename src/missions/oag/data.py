@@ -1,9 +1,12 @@
 import csv
+import logging
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import UTC, date, time
 
 from missions.custom_types import DayOfWeek
+
+logger = logging.getLogger(__name__)
 
 # Some information here:
 #  https://knowledge.oag.com/docs/schedules-direct-data-fields-explained
@@ -49,67 +52,57 @@ class CSVEntry:
     seats: int
     efffrom: date
     effto: date
-    NFlts: int
 
     @classmethod
-    def from_csv_row(cls, row: list[str]) -> 'CSVEntry':
+    def from_csv_row(cls, row: dict) -> 'CSVEntry | None':
         """
         Create an CSVEntry instance from a CSV row.
         """
 
-        (
-            carrier_in,
-            fltno_in,
-            depapt_in,
-            depctry_in,
-            arrapt_in,
-            arrctry_in,
-            deptim_in,
-            arrtim_in,
-            days_in,
-            distance_in,
-            inpacft_in,
-            seats_in,
-            efffrom_in,
-            effto_in,
-            NFlts_in,
-        ) = row[:15]
+        try:
+            days = set()
+            if row.get('days'):
+                for day in range(1, 8):
+                    if str(day) in row['days']:
+                        days.add(DayOfWeek(day))
 
-        days = set()
-        if row[12]:
-            for day in range(1, 8):
-                if str(day) in days_in:
-                    days.add(DayOfWeek(day))
+            def make_date(t: str) -> date | None:
+                if t == '00000000' or t == '99999999':
+                    return None
+                tint = int(t)
+                # YYYYMMDD
+                return date(tint // 10000, tint % 10000 // 100, tint % 100)
 
-        def make_date(t: str) -> date:
-            tint = int(t)
-            # YYYYMMDD
-            return date(tint // 10000, tint % 10000 // 100, tint % 100)
+            def make_time(t: str) -> time:
+                tint = int(t)
+                return time(tint // 100, tint % 100, tzinfo=UTC)
 
-        def make_time(t: str) -> time:
-            tint = int(t)
-            return time(tint // 100, tint % 100, tzinfo=UTC)
+            def optional(t: str) -> str | None:
+                return t if t else None
 
-        def optional(t: str) -> str | None:
-            return t if t else None
+            fltno = row.get('fltno')
+            if fltno is not None and fltno != '':
+                fltno = int(fltno)
 
-        return cls(
-            carrier=carrier_in,
-            fltno=int(fltno_in),
-            depapt=depapt_in,
-            depctry=optional(depctry_in),
-            arrapt=arrapt_in,
-            arrctry=optional(arrctry_in),
-            deptim=make_time(deptim_in),
-            arrtim=make_time(arrtim_in),
-            days=days,
-            distance=int(distance_in),
-            inpacft=inpacft_in,
-            seats=int(seats_in),
-            efffrom=make_date(efffrom_in),
-            effto=make_date(effto_in),
-            NFlts=int(NFlts_in),
-        )
+            return cls(
+                carrier=row['carrier'],
+                fltno=fltno,
+                depapt=row['depapt'],
+                depctry=optional(row.get('depctry')),
+                arrapt=row['arrapt'],
+                arrctry=optional(row.get('arrctry')),
+                deptim=make_time(row['deptim']),
+                arrtim=make_time(row['arrtim']),
+                days=days,
+                distance=int(row['distance']),
+                inpacft=row['inpacft'],
+                seats=int(row['seats']),
+                efffrom=make_date(row['efffrom']),
+                effto=make_date(row['effto']),
+            )
+        except Exception:
+            logger.error(f'Failed to convert row: {row}')
+            return None
 
     @classmethod
     def read(cls, file_path: str) -> Generator['CSVEntry', None, None]:
@@ -118,7 +111,7 @@ class CSVEntry:
         """
         with open(file_path, newline='') as csvfile:
             first = True
-            for row in csv.reader(csvfile):
+            for row in csv.DictReader(csvfile):
                 if first:
                     first = False
                     continue

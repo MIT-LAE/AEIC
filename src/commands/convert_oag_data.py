@@ -28,7 +28,8 @@ def run(in_file, db_file):
 
     n = 0
     for entry in tqdm(CSVEntry.read(in_file), total=nlines):
-        db.add(entry, commit=False)
+        if entry is not None:
+            db.add(entry, commit=False)
         n += 1
         if n % 10000 == 0:
             db.commit()
