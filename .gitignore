@@ -182,3 +182,12 @@ cython_debug/
 
 # Jupyter Notebooks
 *.ipynb
+
+# SQLite databases (ignore for now).
+*.sqlite
+!tests/oag-2019-test-subset.sqlite
+*.sqlite-journal
+
+# Lazily downloaded data files
+data/airports/*.csv
+!data/airports/airports-patch.csv
