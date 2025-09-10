@@ -1,2 +1,0 @@
-Mission Formatting and Methods
-==============================

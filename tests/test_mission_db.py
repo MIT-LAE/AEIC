@@ -2,49 +2,27 @@ import os
 from collections.abc import Generator
 from datetime import date
 
-import missions.oag as oag
-from missions.custom_types import DayOfWeek
+from missions import BoundingBox, Database, Filter, FrequentFlightQuery, Query
 from utils.helpers import date_to_timestamp
 
 
-def test_dow_mask():
-    assert (
-        oag.Database._make_dow_mask(
-            {
-                DayOfWeek.MONDAY,
-                DayOfWeek.TUESDAY,
-                DayOfWeek.WEDNESDAY,
-                DayOfWeek.THURSDAY,
-                DayOfWeek.FRIDAY,
-                DayOfWeek.SATURDAY,
-                DayOfWeek.SUNDAY,
-            }
-        )
-        == 0b01111111
-    )
-    assert (
-        oag.Database._make_dow_mask(
-            {DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY}
-        )
-        == 0b00010101
-    )
-    assert (
-        oag.Database._make_dow_mask({DayOfWeek.TUESDAY, DayOfWeek.THURSDAY})
-        == 0b00001010
-    )
-    assert oag.Database._make_dow_mask({DayOfWeek.SUNDAY}) == 0b01000000
-    assert oag.Database._make_dow_mask(set()) == 0b0000000
-
-
-def test_oag_filter():
+def test_filter():
     # Simple range filter.
-    cond, params = oag.Filter(min_distance=1000, max_distance=5000).to_sql()
+    cond, params = Filter(min_distance=1000, max_distance=5000).to_sql()
     assert cond == 'distance >= ? AND distance <= ?'
     assert params == [1000, 5000]
 
+    # Combined airport filter: is either origin or destination a given airport?
+    cond, params = Filter(airport='LHR').to_sql()
+    assert cond == (
+        '(origin IN (SELECT id FROM airports WHERE iata_code IN (?)) OR '
+        'destination IN (SELECT id FROM airports WHERE iata_code IN (?)))'
+    )
+    assert params == ['LHR', 'LHR']
+
     # Combined country filter: is either origin or destination (or both) in the
     # given countries?
-    cond, params = oag.Filter(country='US').to_sql()
+    cond, params = Filter(country='US').to_sql()
     assert cond == (
         '(origin IN (SELECT id FROM airports WHERE country IN (?)) OR '
         'destination IN (SELECT id FROM airports WHERE country IN (?)))'
@@ -53,7 +31,7 @@ def test_oag_filter():
 
     # Combined continent filter: is either origin or destination (or both) in
     # the given continents?
-    cond, params = oag.Filter(continent='SA').to_sql()
+    cond, params = Filter(continent='SA').to_sql()
     assert cond == (
         '(origin IN (SELECT id FROM airports WHERE country IN '
         '(SELECT code FROM countries WHERE continent IN (?))) OR '
@@ -62,19 +40,24 @@ def test_oag_filter():
     )
     assert params == ['SA', 'SA']
 
+    # Origin airport only.
+    cond, params = Filter(origin_airport='LAX').to_sql()
+    assert cond == ('origin IN (SELECT id FROM airports WHERE iata_code IN (?))')
+    assert params == ['LAX']
+
     # Origin country only.
-    cond, params = oag.Filter(origin_country='US').to_sql()
+    cond, params = Filter(origin_country='US').to_sql()
     assert cond == ('origin IN (SELECT id FROM airports WHERE country IN (?))')
     assert params == ['US']
 
     # Bounding box for Austria: either origin or destination or both.
-    bbox = oag.BoundingBox(
+    bbox = BoundingBox(
         min_longitude=11.343,
         max_longitude=16.570,
         min_latitude=46.642,
         max_latitude=48.234,
     )
-    cond, params = oag.Filter(bounding_box=bbox).to_sql()
+    cond, params = Filter(bounding_box=bbox).to_sql()
     assert cond == (
         '(origin IN (SELECT id FROM airport_location_idx '
         'WHERE min_latitude >= ? AND max_latitude <= ? AND '
@@ -85,13 +68,31 @@ def test_oag_filter():
     )
     assert params == [46.642, 48.234, 11.343, 16.57, 46.642, 48.234, 11.343, 16.57]
 
+    # Complex spatial filter #1: origin in Austria, destination in Germany.
+    cond, params = Filter(origin_country='AT', destination_country='DE').to_sql()
+    assert cond == (
+        'origin IN (SELECT id FROM airports WHERE country IN (?)) AND '
+        'destination IN (SELECT id FROM airports WHERE country IN (?))'
+    )
+    assert params == ['AT', 'DE']
+
+    # Complex spatial filter #2: origin in France, destination in South
+    # America.
+    cond, params = Filter(origin_country='FR', destination_continent='SA').to_sql()
+    assert cond == (
+        'origin IN (SELECT id FROM airports WHERE country IN (?)) AND '
+        'destination IN (SELECT id FROM airports WHERE country IN '
+        '(SELECT code FROM countries WHERE continent IN (?)))'
+    )
+    assert params == ['FR', 'SA']
+
     # Simple aircraft type filter.
-    cond, params = oag.Filter(aircraft_type=['B737', '777']).to_sql()
+    cond, params = Filter(aircraft_type=['B737', '777']).to_sql()
     assert cond == 'aircraft_type IN (?, ?)'
     assert params == ['B737', '777']
 
     # Combined filter.
-    cond, params = oag.Filter(
+    cond, params = Filter(
         min_distance=2000, min_seat_capacity=200, country=['US', 'CA']
     ).to_sql(table='f')
     assert cond == (
@@ -102,8 +103,8 @@ def test_oag_filter():
     assert params == [2000, 200, 'US', 'CA', 'US', 'CA']
 
 
-def test_oag_query():
-    sql, params = oag.Query().to_sql()
+def test_query():
+    sql, params = Query().to_sql()
     assert sql == (
         'SELECT s.departure_timestamp, s.arrival_timestamp, '
         'f.id as flight_id, f.carrier, f.flight_number, '
@@ -119,14 +120,12 @@ def test_oag_query():
     assert 'WHERE' not in sql
     assert len(params) == 0
 
-    sql, params = oag.Query(
-        filter=oag.Filter(min_distance=1000, max_distance=5000)
-    ).to_sql()
+    sql, params = Query(filter=Filter(min_distance=1000, max_distance=5000)).to_sql()
     assert 'WHERE f.distance >= ? AND f.distance <= ?' in sql
     assert params == [1000, 5000]
 
-    sql, params = oag.Query(
-        filter=oag.Filter(country='US'),
+    sql, params = Query(
+        filter=Filter(country='US'),
         start_date=date(2024, 3, 1),
         end_date=date(2024, 8, 31),
     ).to_sql()
@@ -137,41 +136,41 @@ def test_oag_query():
         int(date_to_timestamp(date(2024, 9, 1)).timestamp()),
     ]
 
-    sql, params = oag.Query(
-        filter=oag.Filter(country='US', min_seat_capacity=250), sample=0.05
+    sql, params = Query(
+        filter=Filter(country='US', min_seat_capacity=250), sample=0.05
     ).to_sql()
     assert params == [250, 'US', 'US', 0.05]
     assert 'random()' in sql
 
-    sql, params = oag.Query(
-        filter=oag.Filter(country='US', min_distance=1000, max_distance=5000),
+    sql, params = Query(
+        filter=Filter(country='US', min_distance=1000, max_distance=5000),
         every_nth=8,
     ).to_sql()
     assert params == [1000, 5000, 'US', 'US', 8]
     assert 'SELECT MIN(day) FROM schedules' in sql
 
-    sql, params = oag.FrequentFlightQuery(
-        filter=oag.Filter(origin_country='US'), limit=10
+    sql, params = FrequentFlightQuery(
+        filter=Filter(origin_country='US'), limit=10
     ).to_sql()
     assert params == ['US']
     assert 'GROUP BY od_pair' in sql
 
 
-def test_oag_query_result():
+def test_query_result():
     # These queries were all tested manually in the SQLite shell to determine
     # the correct results using this exact test database.
     test_db = os.path.join(os.path.dirname(__file__), 'oag-2019-test-subset.sqlite')
-    db = oag.Database(test_db)
+    db = Database(test_db)
 
     # All scheduled flights in the test database.
-    result = db(oag.Query())
+    result = db(Query())
     assert isinstance(result, Generator)
     nflights = len(list(result))
     assert nflights == 1561
 
     # Simple distance filter.
     nflights = 0
-    result = db(oag.Query(oag.Filter(min_distance=9100)))
+    result = db(Query(Filter(min_distance=9100)))
     assert isinstance(result, Generator)
     for flight in result:
         assert flight.distance >= 9100
@@ -180,7 +179,7 @@ def test_oag_query_result():
 
     # Country filter: either origin or destination in the given country.
     nflights = 0
-    result = db(oag.Query(oag.Filter(country='MV')))
+    result = db(Query(Filter(country='MV')))
     assert isinstance(result, Generator)
     for flight in result:
         assert flight.origin_country == 'MV' or flight.destination_country == 'MV'
@@ -189,7 +188,7 @@ def test_oag_query_result():
 
     # Combined filter.
     nflights = 0
-    q = oag.Query(oag.Filter(max_distance=6900, country=['US', 'CA']))
+    q = Query(Filter(max_distance=6900, country=['US', 'CA']))
     result = db(q)
     assert isinstance(result, Generator)
     for flight in result:
@@ -240,7 +239,7 @@ def test_oag_query_result():
     assert nflights < 523
 
     # Frequent flight query.
-    result = db(oag.FrequentFlightQuery())
+    result = db(FrequentFlightQuery())
     assert isinstance(result, Generator)
     results = list(result)
     assert results[0].airport1 == 'JFK' or results[0].airport2 == 'JFK'

@@ -15,7 +15,7 @@ T = TypeVar('T')
 
 @dataclass
 class QueryBase(ABC, Generic[T]):
-    """Abstract base class for queries against the OAG database."""
+    """Abstract base class for queries against the mission database."""
 
     filter: Filter | None = None
     """Flight filter to apply, or None for no filtering."""

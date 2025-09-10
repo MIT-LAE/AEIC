@@ -26,6 +26,7 @@ dependencies = [
     "tqdm",
     "xarray",
     "httpx>=0.28.1",
+    "timezonefinder>=8.0.0",
 ]
 
 [dependency-groups]
@@ -49,7 +50,6 @@ required-environments = [
 
 [project.scripts]
 convert-oag-data = "commands.convert_oag_data:run"
-extract-oag-airports = "commands.extract_oag_airports:run"
 
 [tool.ruff]
 # Use Black-compatible defaults

@@ -15,7 +15,7 @@ class BoundingBox:
 
 @dataclass
 class Filter:
-    """A filter for narrowing down OAG flight schedule entries.
+    """A filter for narrowing down mission flight schedule entries.
 
     This supports filtering by various criteria such as distance, seat
     capacity, aircraft type, and by geographic location using country,
@@ -23,10 +23,33 @@ class Filter:
 
     All conditions are combined with **AND** logic.
 
-    Only one type of spatial filter (country, continent, or bounding box) may
-    be specified at a time. Spatial filters may be applied to the origin, the
-    destination or either end of a flight. For example, for country filtering,
-    the following interpretations apply:
+    Spatial filters come in two flavors, "combined" and "origin/destination",
+    and four region types, "airport", "country", "continent", and "bounding
+    box".
+
+    Combined spatial filters apply to both the origin and destination of
+    flights and express conditions like "flight departs or arrives from an
+    airport in Malaysia". Origin/destination spatial filters apply only to
+    either the origin or destination of flights. Applying both an origin and a
+    destination filter makes it possible to represent conditions like "flight
+    departs from an airport in France AND arrives at an airport in South
+    America".
+
+    A combined spatial filter cannot be used together with either an origin or
+    destination spatial filter. It is valid to specify either:
+
+    - a single combined spatial filter, or
+
+    - one (optional) spatial filter for the origin and/or one (optional) one
+      for the destination.
+
+    This means that, for example, you can specify either: `country` **or**
+    `origin_country` and/or `destination_country` for country-based filtering,
+    but you may not specify both `country` and either of `origin_country` or
+    `destination_country`. And similarly for airport, continent and bounding
+    box filtering.
+
+    Here are some examples:
 
     - `country='US'` means flights originating **or** terminating in the US.
 
@@ -37,12 +60,9 @@ class Filter:
     - `origin_country=['US', 'CA'], destination_country='MX'` means flights
       originating in the US or Canada **and** terminating in Mexico.
 
-    Similar logic applies to continent and bounding box filters.
-
-    This means that, for example, you can specify either: `country` **or**
-    `origin_country` and/or `destination_country` for country-based filtering,
-    but you may not specify both `country` and either of `origin_country` or
-    `destination_country`.
+    - `origin_country=['DE', 'CH', 'AT']`, `destination_continent='SA'` means
+      flights originating in either Germany, Switzerland, or Austria **and**
+      terminating at any airport in South America.
 
     """
 
@@ -55,6 +75,13 @@ class Filter:
     """Minimum seat capacity."""
     max_seat_capacity: int | None = None
     """Maximum seat capacity."""
+
+    airport: str | list[str] | None = None
+    """Originating or terminating airport code(s)."""
+    origin_airport: str | list[str] | None = None
+    """Originating airport code(s)."""
+    destination_airport: str | list[str] | None = None
+    """Terminating airport code(s)."""
 
     country: str | list[str] | None = None
     """Originating or terminating country code(s)."""
@@ -117,6 +144,7 @@ class Filter:
             )
 
         # Complex filters involving sub-selects.
+        conditions += self._airport_condition(table)
         conditions += self._country_condition(table)
         conditions += self._continent_condition(table)
         conditions += self._bounding_box_condition(table)
@@ -126,6 +154,50 @@ class Filter:
             ' AND '.join(conds),
             [p for ps in params for p in (ps if isinstance(ps, list) else [ps])],
         )
+
+    def _airport_condition(self, table: str) -> list[tuple[str, list[str]]]:
+        """Generate SQL conditions and parameters for airport-based filtering.
+
+        Handles both combined and origin/destination-specific airport filters.
+        """
+
+        def sub_select_for(airports: list[str]) -> str:
+            return (
+                '(SELECT id FROM airports '
+                f'WHERE iata_code IN ({", ".join("?" * len(airports))}))'
+            )
+
+        # Combined origin/destination airport filter.
+        if self.airport is not None:
+            assert isinstance(self.airport, list)
+            sub_select = sub_select_for(self.airport)
+            return [
+                (
+                    f'({table}origin IN {sub_select} OR '
+                    f'{table}destination IN {sub_select})',
+                    self.airport + self.airport,
+                )
+            ]
+
+        # Origin/destination-specific airport filters.
+        conds = []
+        if self.origin_airport is not None:
+            assert isinstance(self.origin_airport, list)
+            conds.append(
+                (
+                    f'{table}origin IN {sub_select_for(self.origin_airport)}',
+                    self.origin_airport,
+                )
+            )
+        if self.destination_airport is not None:
+            assert isinstance(self.destination_airport, list)
+            conds.append(
+                (
+                    f'{table}destination IN {sub_select_for(self.destination_airport)}',
+                    self.destination_airport,
+                )
+            )
+        return conds
 
     def _country_condition(self, table: str) -> list[tuple[str, list[str]]]:
         """Generate SQL conditions and parameters for country-based filtering.
@@ -285,6 +357,9 @@ class Filter:
 
         # Convert single string attributes to lists of strings.
         for attr in [
+            'airport',
+            'origin_airport',
+            'destination_airport',
             'country',
             'origin_country',
             'destination_country',
@@ -297,36 +372,42 @@ class Filter:
                 setattr(self, attr, [getattr(self, attr)])
 
         # Check compatibility of spatial filters.
-        spatial = (
-            self._check_spatial('country', lists=True)
-            + self._check_spatial('continent', lists=True)
-            + self._check_spatial('bounding_box', lists=False)
-        )
-        if spatial > 1:
-            raise ValueError(
-                'Only one of country, continent, or '
-                'bounding_box can be set in OAG filter'
+        combined, origin, destination = tuple(
+            map(
+                sum,
+                zip(
+                    self._spatial('airport', lists=True),
+                    self._spatial('country', lists=True),
+                    self._spatial('continent', lists=True),
+                    self._spatial('bounding_box', lists=False),
+                ),
             )
+        )
+        ok = (combined == 1 and origin == 0 and destination == 0) or (
+            combined == 0 and origin <= 1 and destination <= 1
+        )
+        if not ok:
+            raise ValueError('An invalid combination of spatial filters was provided. ')
 
-    def _check_spatial(self, attr: str, lists: bool = False) -> int:
-        """Check that both combined and origin/destination location filters of
-        the given type are not set."""
+    def _spatial(self, attr: str, lists: bool = False) -> tuple[int, int, int]:
+        """Determine which spatial filters of the given type are set."""
 
         both = getattr(self, attr)
         origin = getattr(self, 'origin_' + attr)
         destination = getattr(self, 'destination_' + attr)
-        if both is not None and (origin is not None or destination is not None):
-            raise ValueError(
-                f'Cannot set both {attr} and origin_{attr} or '
-                f'destination_{attr} in OAG filter'
-            )
-        if both is not None or origin is not None or destination is not None:
-            if not lists:
-                return 1
+
+        if not lists:
             return (
-                1
-                if (len(both or []) + len(origin or []) + len(destination or [])) > 0
-                else 0
+                1 if both is not None else 0,
+                1 if origin is not None else 0,
+                1 if destination is not None else 0,
             )
         else:
-            return 0
+            assert both is None or isinstance(both, list)
+            assert origin is None or isinstance(origin, list)
+            assert destination is None or isinstance(destination, list)
+            return (
+                1 if (both is not None and len(both) > 0) else 0,
+                1 if (origin is not None and len(origin) > 0) else 0,
+                1 if (destination is not None and len(destination) > 0) else 0,
+            )
