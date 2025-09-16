@@ -409,8 +409,11 @@ class TestGetAPUEmissions:
         dtype = [
             ('SO2', 'f8'),
             ('SO4', 'f8'),
+            ('H2O', 'f8'),
             ('PMnvol', 'f8'),
             ('PMvol', 'f8'),
+            ('PMnvolGMD', 'f8'),
+            ('OCic', 'f8'),
             ('NO', 'f8'),
             ('NO2', 'f8'),
             ('HONO', 'f8'),
@@ -446,6 +449,7 @@ class TestGetAPUEmissions:
             self.LTO_noProp,
             self.LTO_no2Prop,
             self.LTO_honoProp,
+            EI_H2O=1233.3865,
         )
 
         assert apu_ei['SO2'] > 0
@@ -462,6 +466,7 @@ class TestGetAPUEmissions:
             self.LTO_noProp,
             self.LTO_no2Prop,
             self.LTO_honoProp,
+            EI_H2O=1233.3865,
         )
 
         for field in apu_ei.dtype.names:
@@ -479,6 +484,7 @@ class TestGetAPUEmissions:
             self.LTO_noProp,
             self.LTO_no2Prop,
             self.LTO_honoProp,
+            EI_H2O=1233.3865,
             apu_tim=apu_tim,
         )
 
@@ -499,6 +505,7 @@ class TestGetAPUEmissions:
             self.LTO_noProp,
             self.LTO_no2Prop,
             self.LTO_honoProp,
+            EI_H2O=1233.3865,
         )
 
         assert apu_ei['NO'] == self.APU_data['PM10_g_per_kg'] * self.LTO_noProp[0]
@@ -518,6 +525,7 @@ class TestGetAPUEmissions:
             self.LTO_noProp,
             self.LTO_no2Prop,
             self.LTO_honoProp,
+            EI_H2O=1233.3865,
         )
 
         assert apu_ei['SO2'] == 0.0

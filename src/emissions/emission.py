@@ -68,22 +68,22 @@ class Emission:
         self.pmnvol_mode = ac_performance.config['nvpm_method']
 
         # Pre-allocate structured arrays for emission indices per point
-        self.emission_indices = np.empty((), dtype=self.__emission_dtype(self.Ntot))
+        self.emission_indices = np.full((), -1, dtype=self.__emission_dtype(self.Ntot))
 
         # Pre-allocate LTO emissions arrays
-        self.LTO_emission_indices = np.empty((), dtype=self.__emission_dtype(4))
-        self.LTO_emissions_g = np.empty((), dtype=self.__emission_dtype(4))
+        self.LTO_emission_indices = np.full((), -1, dtype=self.__emission_dtype(4))
+        self.LTO_emissions_g = np.full((), -1, dtype=self.__emission_dtype(4))
 
         # Pre-allocate APU and GSE emissions arrays (single-mode shapes)
-        self.APU_emission_indices = np.empty((), dtype=self.__emission_dtype(1))
-        self.APU_emissions_g = np.empty((), dtype=self.__emission_dtype(1))
-        self.GSE_emissions_g = np.empty((), dtype=self.__emission_dtype(1))
+        self.APU_emission_indices = np.full((), -1, dtype=self.__emission_dtype(1))
+        self.APU_emissions_g = np.full((), -1, dtype=self.__emission_dtype(1))
+        self.GSE_emissions_g = np.full((), -1, dtype=self.__emission_dtype(1))
 
         # Storage for pointwise (segment) emissions and summed totals
-        self.pointwise_emissions_g = np.empty(
-            (), dtype=self.__emission_dtype(self.Ntot)
+        self.pointwise_emissions_g = np.full(
+            (), -1, dtype=self.__emission_dtype(self.Ntot)
         )
-        self.summed_emission_g = np.empty((), dtype=self.__emission_dtype(1))
+        self.summed_emission_g = np.full((), -1, dtype=self.__emission_dtype(1))
 
         # Compute fuel burn per segment from fuelMass time series
         fuel_mass = trajectory.traj_data['fuelMass']
@@ -98,6 +98,7 @@ class Emission:
         # Calculate LTO emissions for ground and approach/climb modes
         self.get_LTO_emissions(ac_performance, nvpm_method=self.pmnvol_mode)
 
+        H2O_ei = EI_H2O(self.fuel)
         # Compute APU emissions based on LTO results and EDB parameters
         (self.APU_emission_indices, self.APU_emissions_g, apu_fuel_burn) = (
             get_APU_emissions(
@@ -108,6 +109,8 @@ class Emission:
                 self.LTO_noProp,
                 self.LTO_no2Prop,
                 self.LTO_honoProp,
+                EI_H2O=H2O_ei,
+                nvpm_method=self.pmnvol_mode,
             )
         )
         self.total_fuel_burn += apu_fuel_burn
@@ -337,6 +340,17 @@ class Emission:
             self.LTO_honoProp,
         ) = NOx_speciation(thrustCat)
 
+        # Get NOx species EIs
+        self.LTO_emission_indices['NO'] = (
+            self.LTO_emission_indices['NOx'] * self.LTO_noProp
+        )  # g NO / kg fuel
+        self.LTO_emission_indices['NO2'] = (
+            self.LTO_emission_indices['NOx'] * self.LTO_no2Prop
+        )  # g NO2 / kg fuel
+        self.LTO_emission_indices['HONO'] = (
+            self.LTO_emission_indices['NOx'] * self.LTO_honoProp
+        )  # g HONO / kg fuel
+
         # Compute organic PM for LTO modes
         LTO_PMvol, LTO_OCic = EI_PMvol_NEW(fuel_flows_LTO, thrustCat)
         self.LTO_emission_indices['PMvol'] = LTO_PMvol
@@ -357,18 +371,7 @@ class Emission:
                 np.array(edb['BP_Ratio']),
             )
             PMnvolEIN_ICAOthrust = ac_performance.EDB_data['PMnvolEIN_best_ICAOthrust']
-            PMnvolEI_lo_ICAOthrust = ac_performance.EDB_data[
-                'PMnvolEI_lower_ICAOthrust'
-            ]
-            PMnvolEIN_lo_ICAOthrust = ac_performance.EDB_data[
-                'PMnvolEIN_lower_ICAOthrust'
-            ]
-            PMnvolEI_hi_ICAOthrust = ac_performance.EDB_data[
-                'PMnvolEI_upper_ICAOthrust'
-            ]
-            PMnvolEIN_hi_ICAOthrust = ac_performance.EDB_data[
-                'PMnvolEIN_upper_ICAOthrust'
-            ]
+
         else:
             raise ValueError(
                 f"Re-define PMnvol estimation method: pmnvolSwitch = {nvpm_method}"
@@ -377,12 +380,9 @@ class Emission:
         # Assign BC indices arrays for selected modes
         self.LTO_emission_indices['PMnvol'] = PMnvolEI_ICAOthrust
         if nvpm_method == 'SCOPE11':
-            self.LTO_emission_indices['PMnvol_lo'] = PMnvolEI_lo_ICAOthrust
-            self.LTO_emission_indices['PMnvol_hi'] = PMnvolEI_hi_ICAOthrust
             self.LTO_emission_indices['PMnvolN'] = PMnvolEIN_ICAOthrust
-            self.LTO_emission_indices['PMnvolN_lo'] = PMnvolEIN_lo_ICAOthrust
-            self.LTO_emission_indices['PMnvolN_hi'] = PMnvolEIN_hi_ICAOthrust
 
+        self.LTO_emission_indices['PMnvolGMD'] = np.zeros_like(TIM_LTO)
         # --- Compute LTO emissions in grams per mode
         # by multiplying EI by durations*flows ---
         LTO_fuel_burn = TIM_LTO * fuel_flows_LTO
@@ -433,6 +433,9 @@ class Emission:
         gse_fuel = self.GSE_emissions_g['CO2'] / CO2_EI
         self.total_fuel_burn += gse_fuel
 
+        # Get H2O from CO2
+        self.GSE_emissions_g['H2O'] = EI_H2O(self.fuel) * gse_fuel
+
         # NOx split
         self.GSE_emissions_g['NO'] = self.GSE_emissions_g['NOx'] * 0.90
         self.GSE_emissions_g['NO2'] = self.GSE_emissions_g['NOx'] * 0.09
@@ -452,6 +455,10 @@ class Emission:
         pm_minus_so4 = pm_core - self.GSE_emissions_g['SO4']
         self.GSE_emissions_g['PMvol'] = pm_minus_so4 * 0.5
         self.GSE_emissions_g['PMnvol'] = pm_minus_so4 * 0.5
+        # No PMnvolN or PMnvolGMD or OCic
+        self.GSE_emissions_g['PMnvolN'] = 0.0
+        self.GSE_emissions_g['PMnvolGMD'] = 0.0
+        self.GSE_emissions_g['OCic'] = 0.0
 
     def get_lifecycle_emissions(self, fuel, traj):
         # add lifecycle CO2 emissions for climate model run
@@ -476,11 +483,7 @@ class Emission:
                 ('NO2', np.float64, n),
                 ('HONO', np.float64, n),
                 ('PMnvol', np.float64, n),
-                ('PMnvol_lo', np.float64, n),
-                ('PMnvol_hi', np.float64, n),
                 ('PMnvolN', np.float64, n),
-                ('PMnvolN_lo', np.float64, n),
-                ('PMnvolN_hi', np.float64, n),
                 ('PMnvolGMD', np.float64, n),
                 ('PMvol', np.float64, n),
                 ('OCic', np.float64, n),

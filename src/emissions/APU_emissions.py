@@ -9,6 +9,8 @@ def get_APU_emissions(
     LTO_noProp,
     LTO_no2Prop,
     LTO_honoProp,
+    EI_H2O,
+    nvpm_method=None,
     apu_tim=900,
 ):
     """
@@ -55,6 +57,11 @@ def get_APU_emissions(
         APU_PM10 - APU_emission_indices['PMnvol']
     ).item()
 
+    if nvpm_method == "SCOPE11":
+        APU_emission_indices['PMnvolN'] = np.zeros_like(APU_emission_indices['PMvol'])
+    APU_emission_indices['PMnvolGMD'] = np.zeros_like(APU_emission_indices['PMvol'])
+    APU_emission_indices['OCic'] = np.zeros_like(APU_emission_indices['PMvol'])
+
     # NO/NO2/HONO speciation
     APU_emission_indices['NO'] = APU_data['PM10_g_per_kg'] * LTO_noProp[0]
     APU_emission_indices['NO2'] = APU_data['PM10_g_per_kg'] * LTO_no2Prop[0]
@@ -63,6 +70,9 @@ def get_APU_emissions(
     APU_emission_indices['NOx'] = APU_data['NOx_g_per_kg']
     APU_emission_indices['HC'] = APU_data['HC_g_per_kg']
     APU_emission_indices['CO'] = APU_data['CO_g_per_kg']
+
+    # H2O
+    APU_emission_indices['H2O'] = EI_H2O
 
     # CO2 via mass balance
     if mask:
