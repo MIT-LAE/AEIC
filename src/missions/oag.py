@@ -83,6 +83,9 @@ class CSVEntry:
     inpacft: str
     """Aircraft type (IATA code), e.g. "738"."""
 
+    service: str
+    """Service type (IATA single-letter code), e.g. "J"."""
+
     seats: int
     """Seat capacity."""
 
@@ -108,27 +111,25 @@ class CSVEntry:
         records from the OAG data.
         """
 
-        # - Non-scheduled/non-passenger service types: J is normal
-        #   passenger service, Q is passenger/cargo in cabin (mixed
-        #   configuration), S is passenger shuttle service.
-        if row['service'] not in ('J', 'Q', 'S'):
+        # - End of file marker in some OAG data files.
+        if row['carrier'] == '\x1a':
+            return False
+
+        # - Services operated using surface vehicles.
+        if row['service'] in ('V', 'U'):
             return False
 
         # - Entries with stops. (We only want direct flights.)
         if int(row['stops']) != 0:
             return False
 
-        # - Only include entries for operating carrier: this should
+        # - Do not include entries for non-operating carrier: this should
         #   eliminate all duplicate flights.
-        if row['operating'] != 'O':
+        if row['operating'] == 'N':
             return False
 
         # - Non-aircraft equipment codes.
         if row['genacft'] in EXCLUDE_EQUIPMENT:
-            return False
-
-        # - End of file marker in some OAG data files.
-        if row['carrier'] == '\x1a':
             return False
 
         return True
@@ -190,6 +191,7 @@ class CSVEntry:
                 arrday=convert_arrday(row['arrday']),
                 days=days,
                 distance=int(row['distance']),
+                service=row['service'],
                 inpacft=row['inpacft'],
                 seats=int(row['seats']),
                 efffrom=make_date(row['efffrom']),
@@ -278,6 +280,7 @@ class OAGDatabase(WritableDatabase):
             e.deptim,
             e.arrtim,
             e.arrday,
+            e.service,
             e.inpacft,
             e.seats,
             e.distance * STATUTE_MILES_TO_KM,

@@ -106,6 +106,10 @@ class QueryResult:
     destination_country: str
     """Destination country (ISO 3166-1 alpha-2 code)."""
 
+    service_type: str
+    """Service type (IATA single-letter code, documented `here
+    <https://knowledge.oag.com/v1/docs/iata-service-type-codes>`__)."""
+
     aircraft_type: str
     """Aircraft type (ICAO code)."""
 
@@ -134,10 +138,11 @@ class QueryResult:
             origin_country=row[6],
             destination=row[7],
             destination_country=row[8],
-            aircraft_type=row[9],
-            engine_type=row[10],
-            distance=row[11],
-            seat_capacity=row[12],
+            service_type=row[9],
+            aircraft_type=row[10],
+            engine_type=row[11],
+            distance=row[12],
+            seat_capacity=row[13],
             flight_id=row[2],
         )
 
@@ -194,7 +199,8 @@ class Query(QueryBase[QueryResult]):
             'f.id as flight_id, f.carrier, f.flight_number, '
             'ao.iata_code AS origin, ao.country AS origin_country, '
             'ad.iata_code AS destination, ad.country AS destination_country, '
-            'f.aircraft_type, f.engine_type, f.distance, f.seat_capacity '
+            'f.service_type, f.aircraft_type, f.engine_type, '
+            'f.distance, f.seat_capacity '
             'FROM schedules s '
             'JOIN flights f ON f.id = s.flight_id '
             'JOIN airports ao ON f.origin = ao.id '

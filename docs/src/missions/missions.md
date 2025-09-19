@@ -202,24 +202,26 @@ For example, if we want to find the ten most common routes flown by 787s, we
 can do:
 
 ```python
-q = missions.FrequentFlightQuery(filter=missions.Filter(aircraft_type='787'), limit=10)
-for f in db(q):
-    print(f.airport1, f.airport2, f.number_of_flights)
+>>> import missions
+>>> db = missions.Database('oag-2019.sqlite')
+>>> q = missions.FrequentFlightQuery(filter=missions.Filter(aircraft_type='787'), limit=10)
+>>> for f in db(q):
+>>>     print(f.airport1, f.airport2, f.number_of_flights)
 ```
 
 with output
 
 ```
-JFK LHR 2156
-HNL SFO 2109
-IAH LHR 1840
-BOS LHR 1753
-EWR SFO 1664
-FRA IAD 1439
-LAD LIS 1408
-FRA ORD 1342
-BKK MNL 1338
-BKK HKT 1283
+HAN SGN 3167
+HND MYJ 2663
+FUK HND 2200
+HND ITM 1857
+BKK SIN 1726
+HIJ HND 1649
+ITM OKA 1382
+DPS SIN 1216
+KIX SIN 1164
+DPS MEL 1082
 ```
 
 ```{eval-rst}
@@ -249,7 +251,7 @@ in the database, we can do:
 >>> import missions
 >>> db = missions.Database('oag-2019.sqlite')
 >>> db(missions.CountQuery(filter=missions.Filter(aircraft_type='777')))
-108846
+108906
 ```
 
 ```{eval-rst}
@@ -269,4 +271,6 @@ in the database, we can do:
 ## Database schema
 
 The database schema for the mission database is described [on the GitHub
-wiki](https://github.com/MIT-LAE/AEIC/wiki/OAG-database) for AEIC.
+wiki](https://github.com/MIT-LAE/AEIC/wiki/OAG-database) for AEIC. (The wiki
+page is slightly outdated: the definitive documentation for the database
+schema is `_ensure_schema` method of the `missions.WritableDatabase` class.)

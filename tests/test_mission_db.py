@@ -86,6 +86,11 @@ def test_filter():
     )
     assert params == ['FR', 'SA']
 
+    # Simple service type filter.
+    cond, params = Filter(service_type=['J', 'S', 'Q']).to_sql()
+    assert cond == 'service_type IN (?, ?, ?)'
+    assert params == ['J', 'S', 'Q']
+
     # Simple aircraft type filter.
     cond, params = Filter(aircraft_type=['B737', '777']).to_sql()
     assert cond == 'aircraft_type IN (?, ?)'
@@ -110,7 +115,8 @@ def test_query():
         'f.id as flight_id, f.carrier, f.flight_number, '
         'ao.iata_code AS origin, ao.country AS origin_country, '
         'ad.iata_code AS destination, ad.country AS destination_country, '
-        'f.aircraft_type, f.engine_type, f.distance, f.seat_capacity '
+        'f.service_type, f.aircraft_type, f.engine_type, '
+        'f.distance, f.seat_capacity '
         'FROM schedules s '
         'JOIN flights f ON f.id = s.flight_id '
         'JOIN airports ao ON f.origin = ao.id '
@@ -166,39 +172,39 @@ def test_query_result():
     result = db(Query())
     assert isinstance(result, Generator)
     nflights = len(list(result))
-    assert nflights == 1561
+    assert nflights == 1589
 
     # Simple distance filter.
     nflights = 0
-    result = db(Query(Filter(min_distance=9100)))
+    result = db(Query(Filter(min_distance=3000)))
     assert isinstance(result, Generator)
     for flight in result:
-        assert flight.distance >= 9100
+        assert flight.distance >= 3000
         nflights += 1
-    assert nflights == 465
+    assert nflights == 165
 
     # Country filter: either origin or destination in the given country.
     nflights = 0
-    result = db(Query(Filter(country='MV')))
+    result = db(Query(Filter(country='IT')))
     assert isinstance(result, Generator)
     for flight in result:
-        assert flight.origin_country == 'MV' or flight.destination_country == 'MV'
+        assert flight.origin_country == 'IT' or flight.destination_country == 'IT'
         nflights += 1
-    assert nflights == 103
+    assert nflights == 64
 
     # Combined filter.
     nflights = 0
-    q = Query(Filter(max_distance=6900, country=['US', 'CA']))
+    q = Query(Filter(max_distance=3000, country=['US', 'CA']))
     result = db(q)
     assert isinstance(result, Generator)
     for flight in result:
-        assert flight.distance <= 6900
+        assert flight.distance <= 3000
         assert flight.origin_country in ('US', 'CA') or flight.destination_country in (
             'US',
             'CA',
         )
         nflights += 1
-    assert nflights == 523
+    assert nflights == 353
 
     # Sampling.
     q2 = q
@@ -207,7 +213,7 @@ def test_query_result():
     result = db(q2)
     assert isinstance(result, Generator)
     for flight in result:
-        assert flight.distance <= 6900
+        assert flight.distance <= 3000
         assert flight.origin_country in ('US', 'CA') or flight.destination_country in (
             'US',
             'CA',
@@ -216,7 +222,7 @@ def test_query_result():
     # With a 10% sample, we should get between 40 and 90 flights but for
     # testing it's too dodgy to assert that. All we can say with complete
     # certainty is that there should be less than the full 523 flights.
-    assert nflights < 523
+    assert nflights < 353
 
     # "Every nth day" filtering.
     q3 = q
@@ -226,7 +232,7 @@ def test_query_result():
     result = db(q3)
     assert isinstance(result, Generator)
     for flight in result:
-        assert flight.distance <= 6900
+        assert flight.distance <= 3000
         assert flight.origin_country in ('US', 'CA') or flight.destination_country in (
             'US',
             'CA',
@@ -236,11 +242,11 @@ def test_query_result():
             assert (day - last_day) % 5 == 0
         last_day = day
         nflights += 1
-    assert nflights < 523
+    assert nflights < 353
 
     # Frequent flight query.
-    result = db(FrequentFlightQuery())
+    result = db(FrequentFlightQuery(Filter(airport='DTW')))
     assert isinstance(result, Generator)
     results = list(result)
-    assert results[0].airport1 == 'JFK' or results[0].airport2 == 'JFK'
-    assert sum(r.number_of_flights for r in results) == 1561
+    assert results[0].airport1 == 'DTW' or results[0].airport2 == 'DTW'
+    assert sum(r.number_of_flights for r in results) == 41
