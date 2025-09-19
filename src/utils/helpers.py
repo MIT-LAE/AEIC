@@ -1,4 +1,8 @@
+from datetime import UTC, date
+from typing import cast
+
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
 
 from .consts import R_E
@@ -10,6 +14,7 @@ def great_circle_distance(
     lon1: FloatOrNDArray,
     lat2: FloatOrNDArray,
     lon2: FloatOrNDArray,
+    degrees: bool = False,
 ) -> FloatOrNDArray:
     """Calculates the great circle distance between two points
 
@@ -18,6 +23,7 @@ def great_circle_distance(
         lon1 (Union[NDArray,float]): longitude of the first point in radians
         lat2 (Union[NDArray,float]): latitude of the second point in radians
         lon2 (Union[NDArray,float]): longitude of the second point in radians
+        degrees (bool, optional): If True, the input coordinates are in degrees.
 
     Returns:
         Union[NDArray,float]: great circle distance between the two points in meters
@@ -26,6 +32,11 @@ def great_circle_distance(
     lon1 = np.asarray(lon1)
     lat2 = np.asarray(lat2)
     lon2 = np.asarray(lon2)
+    if degrees:
+        lat1 = np.radians(lat1)
+        lon1 = np.radians(lon1)
+        lat2 = np.radians(lat2)
+        lon2 = np.radians(lon2)
 
     alpha = np.asarray(
         np.sin(lat1) * np.sin(lat2) + np.cos(lat1) * np.cos(lat2) * np.cos(lon1 - lon2)
@@ -77,3 +88,7 @@ def filter_order_duplicates(seq):
     seen = set()
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]
+
+
+def date_to_timestamp(d: date) -> pd.Timestamp:
+    return cast(pd.Timestamp, pd.Timestamp(d, tzinfo=UTC))

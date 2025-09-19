@@ -36,7 +36,8 @@ updated trajectory dynamics, parallelization, and more.
    src/BADA/bada
    src/gridding/gridding
    data/IO/io_formats
-   src/missions/mission
+   src/missions/missions.md
+   src/missions/oag.md
    src/parsers/parsers
    src/utils/utils
    src/weather/weather
