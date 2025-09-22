@@ -1,0 +1,906 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mission database &mdash; AEIC 1.0.0a1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a480e030"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="OAG flight data" href="oag.html" />
+    <link rel="prev" title="I/O Formats and Methods" href="../../data/IO/io_formats.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            AEIC
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main_page.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../main_page.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../main_page.html#local-development">Local Development</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../main_page.html#units-and-non-dimensionals">Units and Non-Dimensionals</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">AEIC Modules</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../AEIC/performance_model.html">Performance Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../AEIC/performance_model.html#class-definition">Class Definition</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#AEIC.performance_model.PerformanceModel"><code class="docutils literal notranslate"><span class="pre">PerformanceModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/performance_model.html#AEIC.performance_model.PerformanceModel.create_performance_table"><code class="docutils literal notranslate"><span class="pre">PerformanceModel.create_performance_table()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/performance_model.html#AEIC.performance_model.PerformanceModel.get_engine_by_uid"><code class="docutils literal notranslate"><span class="pre">PerformanceModel.get_engine_by_uid()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/performance_model.html#AEIC.performance_model.PerformanceModel.initialize_performance"><code class="docutils literal notranslate"><span class="pre">PerformanceModel.initialize_performance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/performance_model.html#AEIC.performance_model.PerformanceModel.read_performance_data"><code class="docutils literal notranslate"><span class="pre">PerformanceModel.read_performance_data()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../AEIC/performance_model.html#attributes">Attributes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#config"><code class="docutils literal notranslate"><span class="pre">config</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#missions"><code class="docutils literal notranslate"><span class="pre">missions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#ac_params"><code class="docutils literal notranslate"><span class="pre">ac_params</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#engine_model"><code class="docutils literal notranslate"><span class="pre">engine_model</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#LTO_data"><code class="docutils literal notranslate"><span class="pre">LTO_data</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#model_info"><code class="docutils literal notranslate"><span class="pre">model_info</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#performance_table"><code class="docutils literal notranslate"><span class="pre">performance_table</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#performance_table_cols"><code class="docutils literal notranslate"><span class="pre">performance_table_cols</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#performance_table_colnames"><code class="docutils literal notranslate"><span class="pre">performance_table_colnames</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../AEIC/trajectories/trajectories.html">Trajectory Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#available-trajectory-models">Available Trajectory Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/trajectories/legacy_trajectory.html">Legacy <code class="docutils literal notranslate"><span class="pre">MATLAB</span></code> Trajectory</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/legacy_trajectory.html#legacy-trajectory-class">Legacy Trajectory Class</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#trajectory-parent-class">Trajectory Parent Class</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory"><code class="docutils literal notranslate"><span class="pre">Trajectory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.name"><code class="docutils literal notranslate"><span class="pre">Trajectory.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.ac_performance"><code class="docutils literal notranslate"><span class="pre">Trajectory.ac_performance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.dep_lon_lat_alt"><code class="docutils literal notranslate"><span class="pre">Trajectory.dep_lon_lat_alt</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.arr_lon_lat_alt"><code class="docutils literal notranslate"><span class="pre">Trajectory.arr_lon_lat_alt</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.start_time"><code class="docutils literal notranslate"><span class="pre">Trajectory.start_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.end_time"><code class="docutils literal notranslate"><span class="pre">Trajectory.end_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.gc_distance"><code class="docutils literal notranslate"><span class="pre">Trajectory.gc_distance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.load_factor"><code class="docutils literal notranslate"><span class="pre">Trajectory.load_factor</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.optimize_traj"><code class="docutils literal notranslate"><span class="pre">Trajectory.optimize_traj</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.iter_mass"><code class="docutils literal notranslate"><span class="pre">Trajectory.iter_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.max_mass_iters"><code class="docutils literal notranslate"><span class="pre">Trajectory.max_mass_iters</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.mass_iter_reltol"><code class="docutils literal notranslate"><span class="pre">Trajectory.mass_iter_reltol</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.mass_converged"><code class="docutils literal notranslate"><span class="pre">Trajectory.mass_converged</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.starting_mass"><code class="docutils literal notranslate"><span class="pre">Trajectory.starting_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.fuel_mass"><code class="docutils literal notranslate"><span class="pre">Trajectory.fuel_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.NClm"><code class="docutils literal notranslate"><span class="pre">Trajectory.NClm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.NCrz"><code class="docutils literal notranslate"><span class="pre">Trajectory.NCrz</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.NDes"><code class="docutils literal notranslate"><span class="pre">Trajectory.NDes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.Ntot"><code class="docutils literal notranslate"><span class="pre">Trajectory.Ntot</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.clm_start_altitude"><code class="docutils literal notranslate"><span class="pre">Trajectory.clm_start_altitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.crz_start_altitude"><code class="docutils literal notranslate"><span class="pre">Trajectory.crz_start_altitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.des_start_altitude"><code class="docutils literal notranslate"><span class="pre">Trajectory.des_start_altitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.des_end_altitude"><code class="docutils literal notranslate"><span class="pre">Trajectory.des_end_altitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.traj_data"><code class="docutils literal notranslate"><span class="pre">Trajectory.traj_data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.fly_flight"><code class="docutils literal notranslate"><span class="pre">Trajectory.fly_flight()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.fly_flight_iteration"><code class="docutils literal notranslate"><span class="pre">Trajectory.fly_flight_iteration()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../emissions/emission.html">Emissions Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#usage-example">Usage Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#constructor">Constructor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#attributes">Attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#methods">Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.emission.Emission"><code class="docutils literal notranslate"><span class="pre">Emission</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../emissions/emission.html#emissions.emission.Emission.get_GSE_emissions"><code class="docutils literal notranslate"><span class="pre">Emission.get_GSE_emissions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../emissions/emission.html#emissions.emission.Emission.get_LTO_emissions"><code class="docutils literal notranslate"><span class="pre">Emission.get_LTO_emissions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../emissions/emission.html#emissions.emission.Emission.get_trajectory_emissions"><code class="docutils literal notranslate"><span class="pre">Emission.get_trajectory_emissions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../emissions/emission.html#emissions.emission.Emission.sum_total_emissions"><code class="docutils literal notranslate"><span class="pre">Emission.sum_total_emissions()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.APU_emissions.get_APU_emissions"><code class="docutils literal notranslate"><span class="pre">get_APU_emissions()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_CO2.EI_CO2"><code class="docutils literal notranslate"><span class="pre">EI_CO2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_H2O.EI_H2O"><code class="docutils literal notranslate"><span class="pre">EI_H2O()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_SOx.EI_SOx"><code class="docutils literal notranslate"><span class="pre">EI_SOx()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_HCCO.EI_HCCO"><code class="docutils literal notranslate"><span class="pre">EI_HCCO()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_NOx.BFFM2_EINOx"><code class="docutils literal notranslate"><span class="pre">BFFM2_EINOx()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_NOx.NOx_speciation"><code class="docutils literal notranslate"><span class="pre">NOx_speciation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_PMnvol.PMnvol_MEEM"><code class="docutils literal notranslate"><span class="pre">PMnvol_MEEM()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_PMnvol.calculate_PMnvolEI_scope11"><code class="docutils literal notranslate"><span class="pre">calculate_PMnvolEI_scope11()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_PMvol.EI_PMvol_FOA3"><code class="docutils literal notranslate"><span class="pre">EI_PMvol_FOA3()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_PMvol.EI_PMvol_NEW"><code class="docutils literal notranslate"><span class="pre">EI_PMvol_NEW()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.lifecycle_CO2.lifecycle_CO2"><code class="docutils literal notranslate"><span class="pre">lifecycle_CO2()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#emission-dtype-fields">Emission dtype Fields</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#notes">Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../BADA/bada.html">BADA Methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../BADA/bada.html#engine-and-fuel-burn-models">Engine and Fuel Burn Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_descent_thrust_app"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_app()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_descent_thrust_high"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_high()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_descent_thrust_land"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_land()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_descent_thrust_low"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_low()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_max_climb_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_max_climb_thrust()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_max_cruise_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_max_cruise_thrust()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3JetEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3JetEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_cruise_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3JetEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_max_climb_thrust_isa()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3JetEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_nominal_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3JetEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_specific_fuel_consumption()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3TurbopropEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3TurbopropEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_cruise_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3TurbopropEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_max_climb_thrust_isa()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3TurbopropEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_nominal_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3TurbopropEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_specific_fuel_consumption()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3PistonEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3PistonEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_cruise_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3PistonEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_max_climb_thrust_isa()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3PistonEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_nominal_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3PistonEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_specific_fuel_consumption()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_cd"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_cd()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_cl"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_cl()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_drag"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_drag()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_specific_ground_range"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_specific_ground_range()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_thrust()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_thrust_by_total_energy"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_thrust_by_total_energy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_constant_final_mass"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_constant_final_mass()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_constant_initial_mass"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_constant_initial_mass()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_fraction"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_fraction()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_value"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_value()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../BADA/bada.html#aircraft-parameters">Aircraft Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.aircraft_parameters.Bada3AircraftParameters"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.aircraft_parameters.Bada3AircraftParameters.assign_parameters_fromdict"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters.assign_parameters_fromdict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.aircraft_parameters.Bada3AircraftParameters.get_params_asdict"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters.get_params_asdict()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../BADA/bada.html#fuel-burn-base-classes">Fuel Burn Base Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.fuel_burn_base.BaseAircraftParameters"><code class="docutils literal notranslate"><span class="pre">BaseAircraftParameters</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.fuel_burn_base.BaseFuelBurnModel"><code class="docutils literal notranslate"><span class="pre">BaseFuelBurnModel</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../BADA/bada.html#helper-functions">Helper Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../gridding/gridding.html">Gridding Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../data/IO/io_formats.html">I/O Formats and Methods</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Mission database</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#usage-example">Usage example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reference-documentation">Reference documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#database-class">Database class</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#missions.Database"><code class="docutils literal notranslate"><span class="pre">Database</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#queries">Queries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#base-query-class">Base query class</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#scheduled-flight-queries">Scheduled flight queries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#frequent-flights-queries">Frequent flights queries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#count-queries">Count queries</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#filters">Filters</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#missions.Filter"><code class="docutils literal notranslate"><span class="pre">Filter</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#database-schema">Database schema</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="oag.html">OAG flight data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="oag.html#database-creation">Database creation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="oag.html#input-record-filtering">Input record filtering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="oag.html#file-sizes">File sizes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../parsers/parsers.html">Available Parsers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../utils/utils.html">Utility Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../weather/weather.html">Weather Module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">AEIC</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Mission database</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/src/missions/missions.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="mission-database">
+<h1>Mission database<a class="headerlink" href="#mission-database" title="Link to this heading"></a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">Database</span></code>, <code class="docutils literal notranslate"><span class="pre">Query</span></code> and <code class="docutils literal notranslate"><span class="pre">Filter</span></code> classes in the <code class="docutils literal notranslate"><span class="pre">missions</span></code> package give
+access to flight schedule data for mission planning. Currently this is
+primarily intended for use with OAG data converted from CSV files. The
+database files use a schema optimized for the query patterns used in AEIC.
+This optimization is important because the flight schedule data tends to
+contain a large number of records, and we want to be able to filter them in
+several different ways.</p>
+<p>To understand the way the database is organized, it helps to distinguish
+between <strong>flights</strong> and <strong>flight instances</strong>. A <strong>flight instance</strong> is a
+single flight between an origin and a destination airport departing at a given
+time on a given date. A <strong>flight</strong> represents a sequence of <strong>flight
+instances</strong> by defining a schedule of days of the week and departure time
+between a pair of effective dates. A <strong>flight</strong> corresponds to a single row in
+an input OAG CSV file, and each <strong>flight</strong> may have multiple <strong>flight
+instances</strong>. The <strong>flight instances</strong> are reified in the SQLite database to
+make querying the schedule of flights more efficient.</p>
+<section id="usage-example">
+<h2>Usage example<a class="headerlink" href="#usage-example" title="Link to this heading"></a></h2>
+<p>Here’s a basic usage example to give an idea of how the API works:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">missions</span>
+
+<span class="c1"># Open the database.</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">Database</span><span class="p">(</span><span class="s1">&#39;oag-2019.sqlite&#39;</span><span class="p">)</span>
+
+<span class="c1"># Build a scheduled flight query.</span>
+<span class="n">query</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span>
+    <span class="c1"># Filter on flight characteristics.</span>
+    <span class="nb">filter</span><span class="o">=</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span>
+        <span class="c1"># Flight distance between 9500 and 10000 kilometers.</span>
+        <span class="n">min_distance</span><span class="o">=</span><span class="mi">9500</span><span class="p">,</span> <span class="n">max_distance</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+        <span class="c1"># Seat capacity &gt;= 500.</span>
+        <span class="n">min_seat_capacity</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+        <span class="c1"># Flight origin or destination in US or Canada.</span>
+        <span class="n">country</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;US&#39;</span><span class="p">,</span> <span class="s1">&#39;CA&#39;</span><span class="p">]</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Iterate over the flight results: there are only 46 from this query...</span>
+<span class="k">for</span> <span class="n">flight</span> <span class="ow">in</span> <span class="n">db</span><span class="p">(</span><span class="n">query</span><span class="p">):</span>
+    <span class="c1"># ... so it&#39;s practical just to print some data.</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">flight</span><span class="o">.</span><span class="n">departure</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span> <span class="n">flight</span><span class="o">.</span><span class="n">carrier</span> <span class="o">+</span> <span class="n">flight</span><span class="o">.</span><span class="n">flight_number</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="reference-documentation">
+<h2>Reference documentation<a class="headerlink" href="#reference-documentation" title="Link to this heading"></a></h2>
+<p>The main classes of interest in the API are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Database</span></code>: the main database class;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Query</span></code>: a query that returns a sequence of <strong>flight instances</strong>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">QueryResult</span></code>: a single result from an <code class="docutils literal notranslate"><span class="pre">Query</span></code> query;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FrequentFlightQuery</span></code>: a query that returns most frequent origin/destination
+pairs appearing in <strong>flight instances</strong>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FrequentFlightQueryResult</span></code>: a single result from an <code class="docutils literal notranslate"><span class="pre">FrequentFlightQuery</span></code>
+query;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CountQuery</span></code>: a query that counts <strong>flight instances</strong> matching given
+conditions;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Filter</span></code>: a filter on <strong>flight</strong> characteristics usable with all query
+types.</p></li>
+</ul>
+<section id="database-class">
+<h3>Database class<a class="headerlink" href="#database-class" title="Link to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">missions.Database</span></code> class is a wrapper around a connection to an SQLite
+database file (using the Python standard library’s
+<a class="reference external" href="https://docs.python.org/3/library/sqlite3.html"><code class="docutils literal notranslate"><span class="pre">sqlite3</span></code></a> package). The
+<code class="docutils literal notranslate"><span class="pre">Database</span></code> class hides the details of both the database structure and the
+underlying SQL interface to SQLite, instead exposing a simple
+application-specific query API.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Database</span></code> class is oriented towards read-only access to a mission
+database. There is a derived class called <code class="docutils literal notranslate"><span class="pre">WritableDatabase</span></code> for applications
+that construct flight databases.</p>
+<p>The normal workflow for querying the mission database is to create a
+<code class="docutils literal notranslate"><span class="pre">Database</span></code> instance, passing the path to the SQLite database file to the
+constructor:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">db</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">Database</span><span class="p">(</span><span class="s1">&#39;oag-2019.sqlite&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">Database</span></code> object is callable, and when you call it with query objects
+(see below), it returns a Python
+<a class="reference external" href="https://realpython.com/introduction-to-python-generators/">generator</a> that
+you can iterate over to get individual results:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">flight</span> <span class="ow">in</span> <span class="n">db</span><span class="p">(</span><span class="n">missions</span><span class="o">.</span><span class="n">Query</span><span class="p">()):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">flight</span><span class="o">.</span><span class="n">carrier</span> <span class="o">+</span> <span class="n">flight</span><span class="o">.</span><span class="n">flight_id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(Don’t try to run this code! It will iterate through <em>every</em> <strong>flight
+instance</strong> in the database in departure time order. An empty <code class="docutils literal notranslate"><span class="pre">Query</span></code> selects
+all <strong>flight instances</strong>.)</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="missions.Database">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">missions.</span></span><span class="sig-name descname"><span class="pre">Database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#missions.Database" title="Link to this definition"></a></dt>
+<dd><p>Flight schedule database.</p>
+<p>Represents a database of flight schedule entries, stored in an SQLite
+database file, using a schema optimized for common AEIC query use cases.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="missions.Database.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#missions.query.QueryBase" title="missions.query.QueryBase"><span class="pre">QueryBase</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">T</span></span></span><a class="headerlink" href="#missions.Database.__call__" title="Link to this definition"></a></dt>
+<dd><p>Execute a query against the database.</p>
+<p>Results are returned via a generator that yields instances of the
+result class for the corresponding query type.</p>
+<p>Supported query types are subclasses of <cite>QueryBase</cite>: <cite>Query</cite> is a
+“normal” scheduled flight query, <cite>FrequentFlightQuery</cite> determines the
+most frequently occurring airport origin/destination pairs, and
+<cite>CountQuery</cite> counts the number of scheduled flights matching filter
+conditions.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="missions.Database.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#missions.Database.__init__" title="Link to this definition"></a></dt>
+<dd><p>Open a flight database file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>db_path</strong> (<em>str</em>) – Path to the SQLite database file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="queries">
+<h3>Queries<a class="headerlink" href="#queries" title="Link to this heading"></a></h3>
+<p>Database queries come in three flavors. <strong>Flight instance</strong> queries,
+represented by the <code class="docutils literal notranslate"><span class="pre">missions.Query</span></code> class, return <strong>flight instances</strong> in
+departure time order, filtered by various criteria. Frequent flight queries,
+represented by the <code class="docutils literal notranslate"><span class="pre">missions.FrequentFlightQuery</span></code> class, return pairs of
+origin and destination airports that have the most flights between them, again
+filtered by various criteria. Count queries, represented by the
+<code class="docutils literal notranslate"><span class="pre">missions.CountQuery</span></code> class, count the number of <strong>flight instances</strong> that
+match given conditions.</p>
+<p>The filtering criteria for the different query types share some features in
+common, so the query classes are derived from a <code class="docutils literal notranslate"><span class="pre">QueryBase</span></code> base class. Each
+of the query classes has a <code class="docutils literal notranslate"><span class="pre">RESULT_TYPE</span></code> member that gives the type of the
+results returned when you run one of these queries.</p>
+<section id="base-query-class">
+<h4>Base query class<a class="headerlink" href="#base-query-class" title="Link to this heading"></a></h4>
+<p>The base query class includes filter parameters for the <strong>flight instance</strong>
+start and end dates to consider, as well as an <code class="docutils literal notranslate"><span class="pre">missions.Filter</span></code> value that
+filters on <strong>flight</strong> characteristics (like origin and destination, distance,
+etc.).</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="missions.query.QueryBase">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">missions.query.</span></span><span class="sig-name descname"><span class="pre">QueryBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">_args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">_kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#missions.query.QueryBase" title="Link to this definition"></a></dt>
+<dd><p>Abstract base class for queries against the mission database.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryBase.PROCESS_RESULT">
+<span class="sig-name descname"><span class="pre">PROCESS_RESULT</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.query.QueryBase.PROCESS_RESULT" title="Link to this definition"></a></dt>
+<dd><p>Special processing function for results, or None if not needed.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryBase.RESULT_TYPE">
+<span class="sig-name descname"><span class="pre">RESULT_TYPE</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">type</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#missions.query.QueryBase.RESULT_TYPE" title="Link to this definition"></a></dt>
+<dd><p>Result type returned by a given query class.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryBase.end_date">
+<span class="sig-name descname"><span class="pre">end_date</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.query.QueryBase.end_date" title="Link to this definition"></a></dt>
+<dd><p>Include only flights on or before this date.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryBase.filter">
+<span class="sig-name descname"><span class="pre">filter</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#missions.Filter" title="missions.filter.Filter"><span class="pre">Filter</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.query.QueryBase.filter" title="Link to this definition"></a></dt>
+<dd><p>Flight filter to apply, or None for no filtering.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryBase.start_date">
+<span class="sig-name descname"><span class="pre">start_date</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.query.QueryBase.start_date" title="Link to this definition"></a></dt>
+<dd><p>Include only flights on or after this date.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="scheduled-flight-queries">
+<h4>Scheduled flight queries<a class="headerlink" href="#scheduled-flight-queries" title="Link to this heading"></a></h4>
+<p>The <code class="docutils literal notranslate"><span class="pre">missions.Query</span></code> class returns individual <strong>flight instances</strong> in
+departure time order, corresponding to a given set of filter conditions. This
+query type supports <strong>flight</strong> characteristics filtering (using
+<code class="docutils literal notranslate"><span class="pre">missions.Filter</span></code>), start and end date filtering (from <code class="docutils literal notranslate"><span class="pre">missions.QueryBase</span></code>)
+and random and “every nth day” sub-sampling (using the <code class="docutils literal notranslate"><span class="pre">sample</span></code> and
+<code class="docutils literal notranslate"><span class="pre">every_nth</span></code> parameters).</p>
+<p>These queries return results as a generator of <code class="docutils literal notranslate"><span class="pre">missions.query.QueryResult</span></code>
+values, each of which basically contains all of the known information about
+the <strong>flight instances</strong>.</p>
+<p>The following examples illustrate some uses of <code class="docutils literal notranslate"><span class="pre">missions.Query</span></code>.</p>
+<p>Return all <strong>flight instances</strong> for all <strong>flights</strong> with a distance between
+1000 and 5000 kilometers:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">q</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="n">min_distance</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">max_distance</span><span class="o">=</span><span class="mi">5000</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Return a random 5% sample of <strong>flight instances</strong> for all flights between
+France and China:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">q</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="n">country</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FR&#39;</span><span class="p">,</span> <span class="s1">&#39;CN&#39;</span><span class="p">]),</span> <span class="n">sample</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Return all 787 <strong>flight instances</strong> from France to China departing every 8th
+day starting on March 1 2019:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">q</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span>
+    <span class="nb">filter</span><span class="o">=</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span>
+        <span class="n">origin_country</span><span class="o">=</span><span class="s1">&#39;FR&#39;</span><span class="p">,</span>
+        <span class="n">destination_country</span><span class="o">=</span><span class="s1">&#39;CN&#39;</span><span class="p">,</span>
+        <span class="n">aircraft_type</span><span class="o">=</span><span class="s1">&#39;787&#39;</span>
+    <span class="p">),</span>
+    <span class="n">start_date</span><span class="o">=</span><span class="n">date</span><span class="p">(</span><span class="mi">2019</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">every_nth</span><span class="o">=</span><span class="mi">8</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="missions.Query">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">missions.</span></span><span class="sig-name descname"><span class="pre">Query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#missions.Filter" title="missions.filter.Filter"><span class="pre">Filter</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">every_nth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#missions.Query" title="Link to this definition"></a></dt>
+<dd><p>Query for scheduled flights.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Query.RESULT_TYPE">
+<span class="sig-name descname"><span class="pre">RESULT_TYPE</span></span><a class="headerlink" href="#missions.Query.RESULT_TYPE" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference internal" href="#missions.query.QueryResult" title="missions.query.QueryResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryResult</span></code></a></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Query.every_nth">
+<span class="sig-name descname"><span class="pre">every_nth</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Query.every_nth" title="Link to this definition"></a></dt>
+<dd><p>Include flights only from every nth day.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Query.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Query.sample" title="Link to this definition"></a></dt>
+<dd><p>Randomly sample a fraction of the results (0.0 &lt; sample &lt;= 1.0).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="missions.query.QueryResult">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">missions.query.</span></span><span class="sig-name descname"><span class="pre">QueryResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">departure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrival</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Timestamp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carrier</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flight_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_country</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_country</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">service_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aircraft_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">engine_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seat_capacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flight_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#missions.query.QueryResult" title="Link to this definition"></a></dt>
+<dd><p>A single flight query result.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.aircraft_type">
+<span class="sig-name descname"><span class="pre">aircraft_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#missions.query.QueryResult.aircraft_type" title="Link to this definition"></a></dt>
+<dd><p>Aircraft type (ICAO code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.arrival">
+<span class="sig-name descname"><span class="pre">arrival</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Timestamp</span></em><a class="headerlink" href="#missions.query.QueryResult.arrival" title="Link to this definition"></a></dt>
+<dd><p>Flight arrival timestamp (UTC).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.carrier">
+<span class="sig-name descname"><span class="pre">carrier</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#missions.query.QueryResult.carrier" title="Link to this definition"></a></dt>
+<dd><p>Airline (IATA code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.departure">
+<span class="sig-name descname"><span class="pre">departure</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Timestamp</span></em><a class="headerlink" href="#missions.query.QueryResult.departure" title="Link to this definition"></a></dt>
+<dd><p>Flight departure timestamp (UTC).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.destination">
+<span class="sig-name descname"><span class="pre">destination</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#missions.query.QueryResult.destination" title="Link to this definition"></a></dt>
+<dd><p>Destination airport (IATA code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.destination_country">
+<span class="sig-name descname"><span class="pre">destination_country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#missions.query.QueryResult.destination_country" title="Link to this definition"></a></dt>
+<dd><p>Destination country (ISO 3166-1 alpha-2 code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.distance">
+<span class="sig-name descname"><span class="pre">distance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#missions.query.QueryResult.distance" title="Link to this definition"></a></dt>
+<dd><p>Flight distance in kilometers.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.engine_type">
+<span class="sig-name descname"><span class="pre">engine_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.query.QueryResult.engine_type" title="Link to this definition"></a></dt>
+<dd><p>Engine type, or None if not known.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.flight_id">
+<span class="sig-name descname"><span class="pre">flight_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#missions.query.QueryResult.flight_id" title="Link to this definition"></a></dt>
+<dd><p>Unique flight ID.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.flight_number">
+<span class="sig-name descname"><span class="pre">flight_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#missions.query.QueryResult.flight_number" title="Link to this definition"></a></dt>
+<dd><p>Flight number.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.origin">
+<span class="sig-name descname"><span class="pre">origin</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#missions.query.QueryResult.origin" title="Link to this definition"></a></dt>
+<dd><p>Origin airport (IATA code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.origin_country">
+<span class="sig-name descname"><span class="pre">origin_country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#missions.query.QueryResult.origin_country" title="Link to this definition"></a></dt>
+<dd><p>Origin country (ISO 3166-1 alpha-2 code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.seat_capacity">
+<span class="sig-name descname"><span class="pre">seat_capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#missions.query.QueryResult.seat_capacity" title="Link to this definition"></a></dt>
+<dd><p>Seat capacity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.QueryResult.service_type">
+<span class="sig-name descname"><span class="pre">service_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#missions.query.QueryResult.service_type" title="Link to this definition"></a></dt>
+<dd><p>Service type (IATA single-letter code, documented <a class="reference external" href="https://knowledge.oag.com/v1/docs/iata-service-type-codes">here</a>).</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="frequent-flights-queries">
+<h4>Frequent flights queries<a class="headerlink" href="#frequent-flights-queries" title="Link to this heading"></a></h4>
+<p>The <code class="docutils literal notranslate"><span class="pre">missions.FrequentFlightQuery</span></code> class returns airport pairs (discounting the
+direction, i.e., BOS → LHR is the same as LHR → BOS) and counts of flights
+between them matching a given filter condition. The filter conditions
+supported are the same as for <strong>flight instance</strong> queries, i.e. represented by
+an <code class="docutils literal notranslate"><span class="pre">missions.Filter</span></code> instance. Results are returned as a generator of
+<code class="docutils literal notranslate"><span class="pre">missions.query.FrequentFlightQueryResult</span></code> values, which contain the airport codes
+and a count of the number of <strong>flight instances</strong>.</p>
+<p>For example, if we want to find the ten most common routes flown by 787s, we
+can do:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">missions</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">Database</span><span class="p">(</span><span class="s1">&#39;oag-2019.sqlite&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">q</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">FrequentFlightQuery</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="n">aircraft_type</span><span class="o">=</span><span class="s1">&#39;787&#39;</span><span class="p">),</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">db</span><span class="p">(</span><span class="n">q</span><span class="p">):</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">airport1</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">airport2</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">number_of_flights</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>with output</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">HAN</span> <span class="n">SGN</span> <span class="mi">3167</span>
+<span class="n">HND</span> <span class="n">MYJ</span> <span class="mi">2663</span>
+<span class="n">FUK</span> <span class="n">HND</span> <span class="mi">2200</span>
+<span class="n">HND</span> <span class="n">ITM</span> <span class="mi">1857</span>
+<span class="n">BKK</span> <span class="n">SIN</span> <span class="mi">1726</span>
+<span class="n">HIJ</span> <span class="n">HND</span> <span class="mi">1649</span>
+<span class="n">ITM</span> <span class="n">OKA</span> <span class="mi">1382</span>
+<span class="n">DPS</span> <span class="n">SIN</span> <span class="mi">1216</span>
+<span class="n">KIX</span> <span class="n">SIN</span> <span class="mi">1164</span>
+<span class="n">DPS</span> <span class="n">MEL</span> <span class="mi">1082</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="missions.FrequentFlightQuery">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">missions.</span></span><span class="sig-name descname"><span class="pre">FrequentFlightQuery</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#missions.Filter" title="missions.filter.Filter"><span class="pre">Filter</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#missions.FrequentFlightQuery" title="Link to this definition"></a></dt>
+<dd><p>Query for the most frequent flight routes.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.FrequentFlightQuery.RESULT_TYPE">
+<span class="sig-name descname"><span class="pre">RESULT_TYPE</span></span><a class="headerlink" href="#missions.FrequentFlightQuery.RESULT_TYPE" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference internal" href="#missions.query.FrequentFlightQueryResult" title="missions.query.FrequentFlightQueryResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">FrequentFlightQueryResult</span></code></a></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.FrequentFlightQuery.limit">
+<span class="sig-name descname"><span class="pre">limit</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">20</span></em><a class="headerlink" href="#missions.FrequentFlightQuery.limit" title="Link to this definition"></a></dt>
+<dd><p>Maximum number of results to return (default 20).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="missions.query.FrequentFlightQueryResult">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">missions.query.</span></span><span class="sig-name descname"><span class="pre">FrequentFlightQueryResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">airport1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">airport2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_flights</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#missions.query.FrequentFlightQueryResult" title="Link to this definition"></a></dt>
+<dd><p>A single frequent flight query result.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.FrequentFlightQueryResult.airport1">
+<span class="sig-name descname"><span class="pre">airport1</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#missions.query.FrequentFlightQueryResult.airport1" title="Link to this definition"></a></dt>
+<dd><p>First airport (IATA code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.FrequentFlightQueryResult.airport2">
+<span class="sig-name descname"><span class="pre">airport2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#missions.query.FrequentFlightQueryResult.airport2" title="Link to this definition"></a></dt>
+<dd><p>Second airport (IATA code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.query.FrequentFlightQueryResult.number_of_flights">
+<span class="sig-name descname"><span class="pre">number_of_flights</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#missions.query.FrequentFlightQueryResult.number_of_flights" title="Link to this definition"></a></dt>
+<dd><p>Number of flights between the two airports.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="count-queries">
+<h4>Count queries<a class="headerlink" href="#count-queries" title="Link to this heading"></a></h4>
+<p>Sometimes we just want a count of the number of <strong>flight instances</strong> matching
+a filter. For example, before running some long computation on each <strong>flight
+instance</strong>, it’s useful to know if there are millions of them… Running an
+<code class="docutils literal notranslate"><span class="pre">missions.CountQuery</span></code> query returns a single integer count value, i.e., there is no
+generator involved.</p>
+<p>For example, if we want to count the total number of 777 <strong>flight instances</strong>
+in the database, we can do:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">missions</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">Database</span><span class="p">(</span><span class="s1">&#39;oag-2019.sqlite&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span><span class="p">(</span><span class="n">missions</span><span class="o">.</span><span class="n">CountQuery</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="n">aircraft_type</span><span class="o">=</span><span class="s1">&#39;777&#39;</span><span class="p">)))</span>
+<span class="go">108906</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="missions.CountQuery">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">missions.</span></span><span class="sig-name descname"><span class="pre">CountQuery</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#missions.Filter" title="missions.filter.Filter"><span class="pre">Filter</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#missions.CountQuery" title="Link to this definition"></a></dt>
+<dd><p>Count scheduled flights.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.CountQuery.RESULT_TYPE">
+<span class="sig-name descname"><span class="pre">RESULT_TYPE</span></span><a class="headerlink" href="#missions.CountQuery.RESULT_TYPE" title="Link to this definition"></a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="filters">
+<h3>Filters<a class="headerlink" href="#filters" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="missions.Filter">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">missions.</span></span><span class="sig-name descname"><span class="pre">Filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_distance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_distance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_seat_capacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_seat_capacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">airport</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_airport</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_airport</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_country</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_country</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">continent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_continent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_continent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounding_box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">BoundingBox</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_bounding_box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">BoundingBox</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_bounding_box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">BoundingBox</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">service_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aircraft_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#missions.Filter" title="Link to this definition"></a></dt>
+<dd><p>A filter for narrowing down mission flight schedule entries.</p>
+<p>This supports filtering by various criteria such as distance, seat
+capacity, aircraft type, and by geographic location using country,
+continent, or a bounding box.</p>
+<p>All conditions are combined with <strong>AND</strong> logic.</p>
+<p>Spatial filters come in two flavors, “combined” and “origin/destination”,
+and four region types, “airport”, “country”, “continent”, and “bounding
+box”.</p>
+<p>Combined spatial filters apply to both the origin and destination of
+flights and express conditions like “flight departs or arrives from an
+airport in Malaysia”. Origin/destination spatial filters apply only to
+either the origin or destination of flights. Applying both an origin and a
+destination filter makes it possible to represent conditions like “flight
+departs from an airport in France AND arrives at an airport in South
+America”.</p>
+<p>A combined spatial filter cannot be used together with either an origin or
+destination spatial filter. It is valid to specify either:</p>
+<ul class="simple">
+<li><p>a single combined spatial filter, or</p></li>
+<li><p>one (optional) spatial filter for the origin and/or one (optional) one
+for the destination.</p></li>
+</ul>
+<p>This means that, for example, you can specify either: <cite>country</cite> <strong>or</strong>
+<cite>origin_country</cite> and/or <cite>destination_country</cite> for country-based filtering,
+but you may not specify both <cite>country</cite> and either of <cite>origin_country</cite> or
+<cite>destination_country</cite>. And similarly for airport, continent and bounding
+box filtering.</p>
+<p>Here are some examples:</p>
+<ul class="simple">
+<li><p><cite>country=’US’</cite> means flights originating <strong>or</strong> terminating in the US.</p></li>
+<li><p><cite>origin_country=’FR’</cite> means flights originating in France.</p></li>
+<li><p><cite>destination_country=’AT’</cite> means flights terminating in Austria.</p></li>
+<li><p><cite>origin_country=[‘US’, ‘CA’], destination_country=’MX’</cite> means flights
+originating in the US or Canada <strong>and</strong> terminating in Mexico.</p></li>
+<li><p><cite>origin_country=[‘DE’, ‘CH’, ‘AT’]</cite>, <cite>destination_continent=’SA’</cite> means
+flights originating in either Germany, Switzerland, or Austria <strong>and</strong>
+terminating at any airport in South America.</p></li>
+</ul>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.aircraft_type">
+<span class="sig-name descname"><span class="pre">aircraft_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.aircraft_type" title="Link to this definition"></a></dt>
+<dd><p>Aircraft type(s) (e.g., ‘737’, ‘320’).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.airport">
+<span class="sig-name descname"><span class="pre">airport</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.airport" title="Link to this definition"></a></dt>
+<dd><p>Originating or terminating airport code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.bounding_box">
+<span class="sig-name descname"><span class="pre">bounding_box</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">BoundingBox</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.bounding_box" title="Link to this definition"></a></dt>
+<dd><p>Bounding box for originating or terminating airports.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.continent">
+<span class="sig-name descname"><span class="pre">continent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.continent" title="Link to this definition"></a></dt>
+<dd><p>Originating or terminating continent code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.country">
+<span class="sig-name descname"><span class="pre">country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.country" title="Link to this definition"></a></dt>
+<dd><p>Originating or terminating country code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.destination_airport">
+<span class="sig-name descname"><span class="pre">destination_airport</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.destination_airport" title="Link to this definition"></a></dt>
+<dd><p>Terminating airport code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.destination_bounding_box">
+<span class="sig-name descname"><span class="pre">destination_bounding_box</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">BoundingBox</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.destination_bounding_box" title="Link to this definition"></a></dt>
+<dd><p>Bounding box for terminating airports.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.destination_continent">
+<span class="sig-name descname"><span class="pre">destination_continent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.destination_continent" title="Link to this definition"></a></dt>
+<dd><p>Terminating continent code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.destination_country">
+<span class="sig-name descname"><span class="pre">destination_country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.destination_country" title="Link to this definition"></a></dt>
+<dd><p>Terminating country code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.max_distance">
+<span class="sig-name descname"><span class="pre">max_distance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.max_distance" title="Link to this definition"></a></dt>
+<dd><p>Maximum flight distance in kilometers.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.max_seat_capacity">
+<span class="sig-name descname"><span class="pre">max_seat_capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.max_seat_capacity" title="Link to this definition"></a></dt>
+<dd><p>Maximum seat capacity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.min_distance">
+<span class="sig-name descname"><span class="pre">min_distance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.min_distance" title="Link to this definition"></a></dt>
+<dd><p>Minimum flight distance in kilometers.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.min_seat_capacity">
+<span class="sig-name descname"><span class="pre">min_seat_capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.min_seat_capacity" title="Link to this definition"></a></dt>
+<dd><p>Minimum seat capacity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.origin_airport">
+<span class="sig-name descname"><span class="pre">origin_airport</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.origin_airport" title="Link to this definition"></a></dt>
+<dd><p>Originating airport code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.origin_bounding_box">
+<span class="sig-name descname"><span class="pre">origin_bounding_box</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">BoundingBox</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.origin_bounding_box" title="Link to this definition"></a></dt>
+<dd><p>Bounding box for originating airports.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.origin_continent">
+<span class="sig-name descname"><span class="pre">origin_continent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.origin_continent" title="Link to this definition"></a></dt>
+<dd><p>Originating continent code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.origin_country">
+<span class="sig-name descname"><span class="pre">origin_country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.origin_country" title="Link to this definition"></a></dt>
+<dd><p>Originating country code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="missions.Filter.service_type">
+<span class="sig-name descname"><span class="pre">service_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#missions.Filter.service_type" title="Link to this definition"></a></dt>
+<dd><p>Service type(s) (using IATA single-letter codes, documented <a class="reference external" href="https://knowledge.oag.com/v1/docs/iata-service-type-codes">here</a>).</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="database-schema">
+<h2>Database schema<a class="headerlink" href="#database-schema" title="Link to this heading"></a></h2>
+<p>The database schema for the mission database is described <a class="reference external" href="https://github.com/MIT-LAE/AEIC/wiki/OAG-database">on the GitHub
+wiki</a> for AEIC. (The wiki
+page is slightly outdated: the definitive documentation for the database
+schema is <code class="docutils literal notranslate"><span class="pre">_ensure_schema</span></code> method of the <code class="docutils literal notranslate"><span class="pre">missions.WritableDatabase</span></code> class.)</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../../data/IO/io_formats.html" class="btn btn-neutral float-left" title="I/O Formats and Methods" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="oag.html" class="btn btn-neutral float-right" title="OAG flight data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Wyatt Giroux, Prashanth Prakash, Prateek Ranjan, Aditeya Shukla, Raymond Speth.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

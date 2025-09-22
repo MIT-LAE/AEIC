@@ -1,0 +1,388 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OAG flight data &mdash; AEIC 1.0.0a1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a480e030"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Available Parsers" href="../parsers/parsers.html" />
+    <link rel="prev" title="Mission database" href="missions.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            AEIC
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main_page.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../main_page.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../main_page.html#local-development">Local Development</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../main_page.html#units-and-non-dimensionals">Units and Non-Dimensionals</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">AEIC Modules</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../AEIC/performance_model.html">Performance Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../AEIC/performance_model.html#class-definition">Class Definition</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#AEIC.performance_model.PerformanceModel"><code class="docutils literal notranslate"><span class="pre">PerformanceModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/performance_model.html#AEIC.performance_model.PerformanceModel.create_performance_table"><code class="docutils literal notranslate"><span class="pre">PerformanceModel.create_performance_table()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/performance_model.html#AEIC.performance_model.PerformanceModel.get_engine_by_uid"><code class="docutils literal notranslate"><span class="pre">PerformanceModel.get_engine_by_uid()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/performance_model.html#AEIC.performance_model.PerformanceModel.initialize_performance"><code class="docutils literal notranslate"><span class="pre">PerformanceModel.initialize_performance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/performance_model.html#AEIC.performance_model.PerformanceModel.read_performance_data"><code class="docutils literal notranslate"><span class="pre">PerformanceModel.read_performance_data()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../AEIC/performance_model.html#attributes">Attributes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#config"><code class="docutils literal notranslate"><span class="pre">config</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#missions"><code class="docutils literal notranslate"><span class="pre">missions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#ac_params"><code class="docutils literal notranslate"><span class="pre">ac_params</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#engine_model"><code class="docutils literal notranslate"><span class="pre">engine_model</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#LTO_data"><code class="docutils literal notranslate"><span class="pre">LTO_data</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#model_info"><code class="docutils literal notranslate"><span class="pre">model_info</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#performance_table"><code class="docutils literal notranslate"><span class="pre">performance_table</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#performance_table_cols"><code class="docutils literal notranslate"><span class="pre">performance_table_cols</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/performance_model.html#performance_table_colnames"><code class="docutils literal notranslate"><span class="pre">performance_table_colnames</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../AEIC/trajectories/trajectories.html">Trajectory Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#available-trajectory-models">Available Trajectory Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/trajectories/legacy_trajectory.html">Legacy <code class="docutils literal notranslate"><span class="pre">MATLAB</span></code> Trajectory</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/legacy_trajectory.html#legacy-trajectory-class">Legacy Trajectory Class</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#trajectory-parent-class">Trajectory Parent Class</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory"><code class="docutils literal notranslate"><span class="pre">Trajectory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.name"><code class="docutils literal notranslate"><span class="pre">Trajectory.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.ac_performance"><code class="docutils literal notranslate"><span class="pre">Trajectory.ac_performance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.dep_lon_lat_alt"><code class="docutils literal notranslate"><span class="pre">Trajectory.dep_lon_lat_alt</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.arr_lon_lat_alt"><code class="docutils literal notranslate"><span class="pre">Trajectory.arr_lon_lat_alt</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.start_time"><code class="docutils literal notranslate"><span class="pre">Trajectory.start_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.end_time"><code class="docutils literal notranslate"><span class="pre">Trajectory.end_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.gc_distance"><code class="docutils literal notranslate"><span class="pre">Trajectory.gc_distance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.load_factor"><code class="docutils literal notranslate"><span class="pre">Trajectory.load_factor</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.optimize_traj"><code class="docutils literal notranslate"><span class="pre">Trajectory.optimize_traj</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.iter_mass"><code class="docutils literal notranslate"><span class="pre">Trajectory.iter_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.max_mass_iters"><code class="docutils literal notranslate"><span class="pre">Trajectory.max_mass_iters</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.mass_iter_reltol"><code class="docutils literal notranslate"><span class="pre">Trajectory.mass_iter_reltol</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.mass_converged"><code class="docutils literal notranslate"><span class="pre">Trajectory.mass_converged</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.starting_mass"><code class="docutils literal notranslate"><span class="pre">Trajectory.starting_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.fuel_mass"><code class="docutils literal notranslate"><span class="pre">Trajectory.fuel_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.NClm"><code class="docutils literal notranslate"><span class="pre">Trajectory.NClm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.NCrz"><code class="docutils literal notranslate"><span class="pre">Trajectory.NCrz</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.NDes"><code class="docutils literal notranslate"><span class="pre">Trajectory.NDes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.Ntot"><code class="docutils literal notranslate"><span class="pre">Trajectory.Ntot</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.clm_start_altitude"><code class="docutils literal notranslate"><span class="pre">Trajectory.clm_start_altitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.crz_start_altitude"><code class="docutils literal notranslate"><span class="pre">Trajectory.crz_start_altitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.des_start_altitude"><code class="docutils literal notranslate"><span class="pre">Trajectory.des_start_altitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.des_end_altitude"><code class="docutils literal notranslate"><span class="pre">Trajectory.des_end_altitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.traj_data"><code class="docutils literal notranslate"><span class="pre">Trajectory.traj_data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.fly_flight"><code class="docutils literal notranslate"><span class="pre">Trajectory.fly_flight()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../AEIC/trajectories/trajectories.html#AEIC.trajectories.trajectory.Trajectory.fly_flight_iteration"><code class="docutils literal notranslate"><span class="pre">Trajectory.fly_flight_iteration()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../emissions/emission.html">Emissions Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#usage-example">Usage Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#constructor">Constructor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#attributes">Attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#methods">Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.emission.Emission"><code class="docutils literal notranslate"><span class="pre">Emission</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../emissions/emission.html#emissions.emission.Emission.get_GSE_emissions"><code class="docutils literal notranslate"><span class="pre">Emission.get_GSE_emissions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../emissions/emission.html#emissions.emission.Emission.get_LTO_emissions"><code class="docutils literal notranslate"><span class="pre">Emission.get_LTO_emissions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../emissions/emission.html#emissions.emission.Emission.get_trajectory_emissions"><code class="docutils literal notranslate"><span class="pre">Emission.get_trajectory_emissions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../emissions/emission.html#emissions.emission.Emission.sum_total_emissions"><code class="docutils literal notranslate"><span class="pre">Emission.sum_total_emissions()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.APU_emissions.get_APU_emissions"><code class="docutils literal notranslate"><span class="pre">get_APU_emissions()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_CO2.EI_CO2"><code class="docutils literal notranslate"><span class="pre">EI_CO2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_H2O.EI_H2O"><code class="docutils literal notranslate"><span class="pre">EI_H2O()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_SOx.EI_SOx"><code class="docutils literal notranslate"><span class="pre">EI_SOx()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_HCCO.EI_HCCO"><code class="docutils literal notranslate"><span class="pre">EI_HCCO()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_NOx.BFFM2_EINOx"><code class="docutils literal notranslate"><span class="pre">BFFM2_EINOx()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_NOx.NOx_speciation"><code class="docutils literal notranslate"><span class="pre">NOx_speciation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_PMnvol.PMnvol_MEEM"><code class="docutils literal notranslate"><span class="pre">PMnvol_MEEM()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_PMnvol.calculate_PMnvolEI_scope11"><code class="docutils literal notranslate"><span class="pre">calculate_PMnvolEI_scope11()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_PMvol.EI_PMvol_FOA3"><code class="docutils literal notranslate"><span class="pre">EI_PMvol_FOA3()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.EI_PMvol.EI_PMvol_NEW"><code class="docutils literal notranslate"><span class="pre">EI_PMvol_NEW()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emissions/emission.html#emissions.lifecycle_CO2.lifecycle_CO2"><code class="docutils literal notranslate"><span class="pre">lifecycle_CO2()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#emission-dtype-fields">Emission dtype Fields</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../emissions/emission.html#notes">Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../BADA/bada.html">BADA Methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../BADA/bada.html#engine-and-fuel-burn-models">Engine and Fuel Burn Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_descent_thrust_app"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_app()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_descent_thrust_high"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_high()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_descent_thrust_land"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_land()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_descent_thrust_low"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_low()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_max_climb_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_max_climb_thrust()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3EngineModel.calculate_max_cruise_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_max_cruise_thrust()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3JetEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3JetEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_cruise_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3JetEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_max_climb_thrust_isa()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3JetEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_nominal_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3JetEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_specific_fuel_consumption()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3TurbopropEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3TurbopropEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_cruise_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3TurbopropEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_max_climb_thrust_isa()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3TurbopropEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_nominal_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3TurbopropEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_specific_fuel_consumption()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3PistonEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3PistonEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_cruise_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3PistonEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_max_climb_thrust_isa()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3PistonEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_nominal_fuel_flow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3PistonEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_specific_fuel_consumption()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_cd"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_cd()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_cl"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_cl()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_drag"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_drag()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_specific_ground_range"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_specific_ground_range()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_thrust()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.calculate_thrust_by_total_energy"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_thrust_by_total_energy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_constant_final_mass"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_constant_final_mass()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_constant_initial_mass"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_constant_initial_mass()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_fraction"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_fraction()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_value"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_value()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../BADA/bada.html#aircraft-parameters">Aircraft Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.aircraft_parameters.Bada3AircraftParameters"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.aircraft_parameters.Bada3AircraftParameters.assign_parameters_fromdict"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters.assign_parameters_fromdict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../BADA/bada.html#BADA.aircraft_parameters.Bada3AircraftParameters.get_params_asdict"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters.get_params_asdict()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../BADA/bada.html#fuel-burn-base-classes">Fuel Burn Base Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.fuel_burn_base.BaseAircraftParameters"><code class="docutils literal notranslate"><span class="pre">BaseAircraftParameters</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../BADA/bada.html#BADA.fuel_burn_base.BaseFuelBurnModel"><code class="docutils literal notranslate"><span class="pre">BaseFuelBurnModel</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../BADA/bada.html#helper-functions">Helper Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../gridding/gridding.html">Gridding Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../data/IO/io_formats.html">I/O Formats and Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="missions.html">Mission database</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="missions.html#usage-example">Usage example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="missions.html#reference-documentation">Reference documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#database-class">Database class</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="missions.html#missions.Database"><code class="docutils literal notranslate"><span class="pre">Database</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#queries">Queries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="missions.html#base-query-class">Base query class</a></li>
+<li class="toctree-l4"><a class="reference internal" href="missions.html#scheduled-flight-queries">Scheduled flight queries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="missions.html#frequent-flights-queries">Frequent flights queries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="missions.html#count-queries">Count queries</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#filters">Filters</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="missions.html#missions.Filter"><code class="docutils literal notranslate"><span class="pre">Filter</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="missions.html#database-schema">Database schema</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">OAG flight data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#database-creation">Database creation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#input-record-filtering">Input record filtering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#file-sizes">File sizes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../parsers/parsers.html">Available Parsers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../utils/utils.html">Utility Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../weather/weather.html">Weather Module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">AEIC</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">OAG flight data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/src/missions/oag.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="oag-flight-data">
+<h1>OAG flight data<a class="headerlink" href="#oag-flight-data" title="Link to this heading"></a></h1>
+<p>Currently the primary source of scheduled flight data for AEIC is OAG data.
+This is converted from the CSV files provided by OAG into AEIC mission
+databases using code in the <code class="docutils literal notranslate"><span class="pre">missions.oag</span></code> package. This contains classes
+representing records from OAG CSV files and a specialized database class
+(<code class="docutils literal notranslate"><span class="pre">OAGDatabase</span></code>) to generate the database entries needed to represent OAG data.</p>
+<p>In normal use, these classes will mostly only be used via that
+<code class="docutils literal notranslate"><span class="pre">convert-oag-data</span></code> utility. Once a mission database has been created from OAG
+data, it can be accessed using the classes in the top-level <code class="docutils literal notranslate"><span class="pre">missions</span></code>
+package.</p>
+<section id="database-creation">
+<h2>Database creation<a class="headerlink" href="#database-creation" title="Link to this heading"></a></h2>
+<p>To convert a CSV file containing OAG data to an AEIC SQLite mission database,
+use the <code class="docutils literal notranslate"><span class="pre">convert-oag-data</span></code> script like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uv</span> <span class="n">run</span> <span class="n">convert</span><span class="o">-</span><span class="n">oag</span><span class="o">-</span><span class="n">data</span> <span class="o">-</span><span class="n">i</span> <span class="mf">2024.</span><span class="n">csv</span> <span class="o">-</span><span class="n">y</span> <span class="mi">2024</span> <span class="o">-</span><span class="n">d</span> <span class="n">oag</span><span class="o">-</span><span class="mf">2024.</span><span class="n">sqlite</span> <span class="o">-</span><span class="n">w</span> <span class="n">warnings</span><span class="o">-</span><span class="mf">2024.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>The options to the <code class="docutils literal notranslate"><span class="pre">convert-oag-data</span></code> script are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-i</span></code> / <code class="docutils literal notranslate"><span class="pre">--in-file</span></code> (required): input OAG CSV file;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-d</span></code> / <code class="docutils literal notranslate"><span class="pre">--db-file</span></code> (required): output SQLite database file;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-y</span></code> / <code class="docutils literal notranslate"><span class="pre">--year</span></code> (required): input data year;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-w</span></code> / <code class="docutils literal notranslate"><span class="pre">--warnings-file</span></code> (optional): additional output file for data
+quality control warnings (defaults to standard output).</p></li>
+</ul>
+<section id="input-record-filtering">
+<h3>Input record filtering<a class="headerlink" href="#input-record-filtering" title="Link to this heading"></a></h3>
+<p>Rows from the input OAG CSV file are ignored if any of the following
+conditions apply:</p>
+<ul class="simple">
+<li><p>The row is for a flight that is not of IATA service type J, S, or Q. These
+three represent “normal” passenger flights.</p></li>
+<li><p>The row is for a flight with stops. The OAG file format includes rows for
+all sub-flights of multi-leg flights, but we only want to include the
+direct flights in the mission database.</p></li>
+<li><p>The row is for a “non-operating” carrier. These rows record details of
+duplicate flights that are operating by one carrier but labelled as flights
+of another carrier. Excluding non-operating carrier flights means that we
+do not include duplicate flights in the mission database.</p></li>
+<li><p>The row is for a non-aviation equipment type. The OAG CSV files include
+many legs that are not flights, and these can be excluded by ignoring rows
+for a fixed list of generic equipment types.</p></li>
+</ul>
+<p>In addition, no mission database records are created, and a warning is
+recorded, for any rows from the input CSV file that:</p>
+<ol class="arabic simple">
+<li><p>Include unknown airport codes. This can occur for historical airports that
+have closed, or for some special IATA airport codes that are not real
+airports.</p></li>
+<li><p>Contain a suspicious great circle distance between origin and destination
+airports. In this context, “suspicious” means either too small (less than 1
+kilometer), or not matching the calculated great circle distance between
+the origin and destination airports (an absolute difference of at least 50
+km and relative difference of more than ±10%).</p></li>
+</ol>
+<p>The suspicious distance check helps to identify cases where airports are
+miscoded, either in the sense of their locations not being recorded correctly,
+or the OAG data including the wrong IATA code for an airport.</p>
+</section>
+<section id="file-sizes">
+<h3>File sizes<a class="headerlink" href="#file-sizes" title="Link to this heading"></a></h3>
+<p>The 2024 OAG CSV file contains 3,609,388 relevant flight records, i.e., flight
+records that pass the filtering described above, is 618 Mb in size and results
+in an SQLite database that is about 1.5 Gb in size (which is a perfectly OK
+size for an SQLite database to be, by the way).</p>
+<p>The database contains 3,609,322 <strong>flights</strong> and 17,362,184 <strong>flight
+instances</strong>. The difference in the number of flights in the original CSV file
+and the database arises from the existence of some flights to non-existent
+airports in the input file (specifically, using the fictitious airport codes
+QPX and QPY).</p>
+<p>The difference in size between the CSV and the SQLite files is explained by
+the flight schedule data being expanded into a separate table to enable
+quicker queries in the SQLite database, as well as the additional space taken
+up by indexes to optimize queries.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="missions.html" class="btn btn-neutral float-left" title="Mission database" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../parsers/parsers.html" class="btn btn-neutral float-right" title="Available Parsers" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Wyatt Giroux, Prashanth Prakash, Prateek Ranjan, Aditeya Shukla, Raymond Speth.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
