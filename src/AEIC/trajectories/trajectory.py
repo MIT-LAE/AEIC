@@ -182,7 +182,7 @@ class Trajectory:
         if self.iter_mass:
             self.mass_converged = False
 
-            for m_iter in range(self.max_mass_iters):
+            for _ in range(self.max_mass_iters):
                 mass_res = self.fly_flight_iteration(**kwargs)
 
                 # Keep the calculated trajectory if the mass is sufficiently small
@@ -192,6 +192,7 @@ class Trajectory:
 
                 # Perform a `dumb` correction of the starting mass
                 self.starting_mass = self.starting_mass - (mass_res * self.fuel_mass)
+                self.fuel_mass = self.fuel_mass - (mass_res * self.fuel_mass)
 
             if not self.mass_converged:
                 print(
