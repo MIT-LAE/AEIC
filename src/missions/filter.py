@@ -104,6 +104,9 @@ class Filter:
     destination_bounding_box: BoundingBox | None = None
     """Bounding box for terminating airports."""
 
+    service_type: str | list[str] | None = None
+    """Service type(s) (using IATA single-letter codes, documented `here
+    <https://knowledge.oag.com/v1/docs/iata-service-type-codes>`__)."""
     aircraft_type: str | list[str] | None = None
     """Aircraft type(s) (e.g., '737', '320')."""
 
@@ -137,6 +140,11 @@ class Filter:
         simple(f'{table}seat_capacity <= ?', self.max_seat_capacity)
 
         # Other simple filters.
+        if self.service_type is not None and len(self.service_type) > 0:
+            placeholders = ', '.join('?' * len(self.service_type))
+            conditions.append(
+                (f'{table}service_type IN ({placeholders})', self.service_type)
+            )
         if self.aircraft_type is not None and len(self.aircraft_type) > 0:
             placeholders = ', '.join('?' * len(self.aircraft_type))
             conditions.append(
@@ -366,6 +374,7 @@ class Filter:
             'continent',
             'origin_continent',
             'destination_continent',
+            'service_type',
             'aircraft_type',
         ]:
             if isinstance(getattr(self, attr), str):
