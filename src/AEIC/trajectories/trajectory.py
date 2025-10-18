@@ -2,9 +2,8 @@ import numpy as np
 from pyproj import Geod
 
 from AEIC.performance_model import PerformanceModel
-
 from utils import airports
-from utils.units import FEET_TO_METERS
+
 
 class Trajectory:
     """Parent class for all trajectory implementations in AEIC. Contains overall
@@ -96,18 +95,22 @@ class Trajectory:
         # in `src/missions/sample_missions_10.json`. We also assume that
         # Load Factor for the flight will be
         # included in the mission object.
-        self.name = (
-            f'{mission.origin}_{mission.destination}_{mission.aircraft_type}'
-        )
+        self.name = f'{mission.origin}_{mission.destination}_{mission.aircraft_type}'
         self.ac_performance = ac_performance
 
         # Save airport locations and dep/arr times; lat/long in degrees
         ori_airport_data = airports.airports[mission.origin]
         des_airport_data = airports.airports[mission.destination]
-        self.dep_lon_lat_alt =\
-            [ori_airport_data.longitude,ori_airport_data.latitude,ori_airport_data.elevation]
-        self.arr_lon_lat_alt =\
-            [des_airport_data.longitude,des_airport_data.latitude,des_airport_data.elevation]
+        self.dep_lon_lat_alt = [
+            ori_airport_data.longitude,
+            ori_airport_data.latitude,
+            ori_airport_data.elevation,
+        ]
+        self.arr_lon_lat_alt = [
+            des_airport_data.longitude,
+            des_airport_data.latitude,
+            des_airport_data.elevation,
+        ]
 
         self.start_time = mission.departure
         self.end_time = mission.arrival
@@ -117,7 +120,7 @@ class Trajectory:
         self.geod = Geod(ellps="WGS84")
 
         # Get load factor from mission object
-        self.load_factor = 1.0 #FIXME: mission.seat_capacity 
+        self.load_factor = 1.0  # FIXME: mission.seat_capacity
 
         # Controls whether or not route optimization is performed
         # NOTE: This currently does nothing
