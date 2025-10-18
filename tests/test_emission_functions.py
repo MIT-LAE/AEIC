@@ -4,26 +4,26 @@ import numpy as np
 import pytest
 
 # Add the src directory to the path to import modules
-from AEIC.performance_model import PerformanceModel
-from AEIC.trajectories.legacy_trajectory import LegacyTrajectory
 from emissions.APU_emissions import get_APU_emissions
 from emissions.EI_CO2 import EI_CO2
 from emissions.EI_H2O import EI_H2O
 from emissions.EI_HCCO import EI_HCCO
 from emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
 from emissions.EI_SOx import EI_SOx
-from emissions.emission import Emission
-from utils import file_location
 
 # Path to a real fuel TOML file in your repo
-performance_model_file = file_location("IO/default_config.toml")
+# performance_model_file = file_location("IO/default_config.toml")
 
-perf = PerformanceModel(performance_model_file)
-mis = perf.missions[0]
+# perf = PerformanceModel(performance_model_file)
 
-traj = LegacyTrajectory(perf, mis, False, False)
-traj.fly_flight()
-em = Emission(perf, traj, True)
+# sample_mission = SimpleNamespace(
+#     origin="BOS",
+#     destination="LAX",
+#     aircraft_type="738",
+#     departure=pd.Timestamp('2019-01-01 12:00:00+0000', tz='UTC'),
+#     arrival=pd.Timestamp('2019-01-01 18:00:00+0000', tz='UTC'),
+#     distance=5556.0
+# )
 
 
 class TestEI_CO2:
