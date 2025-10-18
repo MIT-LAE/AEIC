@@ -36,6 +36,7 @@ dev = [
     "sphinx_rtd_theme",
     "myst-parser",
     "pytest-cov>=6.2.1",
+    "ipykernel>=6.30.1",
 ]
 
 [build-system]
