@@ -131,7 +131,7 @@ class LegacyTrajectory(Trajectory):
             )
 
         alts = np.linspace(self.clm_start_altitude, self.crz_start_altitude, self.NClm)
-        self.traj_data['altitude'][0 : self.NClm] = alts
+        self.traj_data['altitude'].values[0 : self.NClm] = alts
 
         self.__legacy_climb()
 
@@ -139,11 +139,13 @@ class LegacyTrajectory(Trajectory):
         """Function called by ``fly_flight_iteration()`` to simulate cruise"""
         # Start cruise at end-of-climb position and mass (fuel flow, TAS will be
         # replaced)
-        for field in self.traj_data.dtype.names:
-            self.traj_data[field][self.NClm] = self.traj_data[field][self.NClm - 1]
+        for field in self.traj_data.data_vars:
+            self.traj_data[field].values[self.NClm] = self.traj_data[field].values[
+                self.NClm - 1
+            ]
 
         # Cruise at constant altitude
-        self.traj_data['altitude'][self.NClm : self.NClm + self.NCrz] = (
+        self.traj_data['altitude'].values[self.NClm : self.NClm + self.NCrz] = (
             self.crz_start_altitude
         )
 
@@ -152,11 +154,9 @@ class LegacyTrajectory(Trajectory):
         if descent_dist_approx < 0:
             raise ValueError('Arrival airport should not be above cruise altitude')
 
-        cruise_start_distance = self.traj_data['groundDist'][self.NClm - 1]
+        cruise_start_distance = self.traj_data['groundDist'].values[self.NClm - 1]
         cruise_dist_approx = (
-            self.gc_distance * NAUTICAL_MILES_TO_METERS
-            - cruise_start_distance
-            - descent_dist_approx
+            self.gc_distance - cruise_start_distance - descent_dist_approx
         )
 
         # Cruise is discretized into ground distance steps
@@ -164,7 +164,7 @@ class LegacyTrajectory(Trajectory):
         cruise_distance_values = np.linspace(
             cruise_start_distance, cruise_end_distance, self.NCrz
         )
-        self.traj_data['groundDist'][self.NClm : self.NClm + self.NCrz] = (
+        self.traj_data['groundDist'].values[self.NClm : self.NClm + self.NCrz] = (
             cruise_distance_values
         )
 
@@ -177,10 +177,10 @@ class LegacyTrajectory(Trajectory):
         """Function called by ``fly_flight_iteration()`` to simulate descent"""
         # Start descent at end-of-cruise position and mass (fuel flow, TAS will be
         # replaced)
-        for field in self.traj_data.dtype.names:
-            self.traj_data[field][self.NClm + self.NCrz] = self.traj_data[field][
-                self.NClm + self.NCrz - 1
-            ]
+        for field in self.traj_data.data_vars:
+            self.traj_data[field].values[self.NClm + self.NCrz] = self.traj_data[
+                field
+            ].values[self.NClm + self.NCrz - 1]
 
         dAlt = (self.des_end_altitude - self.des_start_altitude) / (self.NDes)
         if dAlt > 0:
@@ -191,7 +191,7 @@ class LegacyTrajectory(Trajectory):
         alts = np.linspace(self.des_start_altitude, self.des_end_altitude, self.NDes)
         startN = self.NClm + self.NCrz
         endN = startN + self.NDes
-        self.traj_data['altitude'][startN:endN] = alts
+        self.traj_data['altitude'].values[startN:endN] = alts
 
         self.__legacy_descent()
 
@@ -409,13 +409,13 @@ class LegacyTrajectory(Trajectory):
                 altitude
         """
         FL = alt * METERS_TO_FEET / 100
-        self.traj_data['FLs'][i] = FL
+        self.traj_data['FLs'].values[i] = FL
         FL_inds = self.__search_flight_levels_ind(FL)
         bounding_fls = np.array(self.ac_performance.performance_table_cols[0])[FL_inds]
 
         # Construct interpolation weightings
         fl_weighting = (FL - bounding_fls[0]) / (bounding_fls[1] - bounding_fls[0])
-        self.traj_data['FL_weight'][i] = fl_weighting
+        self.traj_data['FL_weight'].values[i] = fl_weighting
 
         # Filter to bounding flight levels
         pos_roc_fl_reduced_perf = roc_perf[
@@ -483,7 +483,7 @@ class LegacyTrajectory(Trajectory):
             Tuple[float]: Interpolated TAS and weighting used in linear interpolation.
         """
         FL = alt * METERS_TO_FEET / 100
-        self.traj_data['FLs'][i] = FL
+        self.traj_data['FLs'].values[i] = FL
 
         # Construct interpolation weightings
         fl_weighting = (FL - self.crz_FLs[0]) / (self.crz_FLs[1] - self.crz_FLs[0])
@@ -567,7 +567,7 @@ class LegacyTrajectory(Trajectory):
             roc_mat[ii, jj] = rocs[kk]
 
         # Get the precomputed flight-level interpolation weighting
-        fl_weight = self.traj_data['FL_weight'][i]
+        fl_weight = self.traj_data['FL_weight'].values[i]
 
         # Calculate the mass-based interpolation weighting
         mass_weight = (seg_start_mass - bounding_mass[0]) / (
@@ -628,7 +628,7 @@ class LegacyTrajectory(Trajectory):
             ff_mat[ii, jj] = ffs[kk]
 
         # Get flight level and mass weights for interpolation
-        fl_weight = self.traj_data['FL_weight'][i]
+        fl_weight = self.traj_data['FL_weight'].values[i]
         mass_weight = (seg_start_mass - bounding_mass[0]) / (
             bounding_mass[1] - bounding_mass[0]
         )
@@ -669,63 +669,69 @@ class LegacyTrajectory(Trajectory):
         # to avoid repeat calculations.
         # In AEIC v2 fuel flow and TAS are only dependent on flight level in climb.
         for i in range(0, self.NClm):
-            alt = self.traj_data['altitude'][i]
+            alt = self.traj_data['altitude'].values[i]
             tas_interp, ff_interp, _ = self.__calc_FL_interp_vals(i, alt, pos_roc_perf)
-            self.traj_data['fuelFlow'][i] = ff_interp
-            self.traj_data['tas'][i] = tas_interp
+            self.traj_data['fuelFlow'].values[i] = ff_interp
+            self.traj_data['tas'].values[i] = tas_interp
 
         # Now we get rate of climb by running the flight
         for i in range(0, self.NClm - 1):
-            FL = self.traj_data['FLs'][i]
-            tas = self.traj_data['tas'][i]
-            ff = self.traj_data['fuelFlow'][i]
-            seg_start_mass = self.traj_data['acMass'][i]
+            FL = self.traj_data['FLs'].values[i]
+            tas = self.traj_data['tas'].values[i]
+            ff = self.traj_data['fuelFlow'].values[i]
+            seg_start_mass = self.traj_data['acMass'].values[i]
 
             # Calculate rate of climb
             roc = self.__calc_roc_climb(i, FL, seg_start_mass, pos_roc_perf, pos_rocs)
-            self.traj_data['rocs'][i] = roc
+            self.traj_data['rocs'].values[i] = roc
 
             # Calculate the forward true airspeed (will be used for ground speed)
             fwd_tas = np.sqrt(tas**2 - roc**2)
 
             # Get time to complete alititude change segment and total fuel burned
             segment_time = (
-                self.traj_data['altitude'][i + 1] - self.traj_data['altitude'][i]
+                self.traj_data['altitude'].values[i + 1]
+                - self.traj_data['altitude'].values[i]
             ) / roc
             segment_fuel = ff * segment_time
-            self.traj_data['groundSpeed'][i], self.traj_data['heading'][i], u, v = (
-                compute_ground_speed(
-                    lon=self.traj_data['latitude'][i],
-                    lat=self.traj_data['latitude'][i],
-                    az=self.traj_data['azimuth'][i],
-                    alt_ft=FL * 100,
-                    tas_ms=fwd_tas,
-                    weather_data=None,
-                )
+            (
+                self.traj_data['groundSpeed'].values[i],
+                self.traj_data['heading'].values[i],
+                u,
+                v,
+            ) = compute_ground_speed(
+                lon=self.traj_data['latitude'].values[i],
+                lat=self.traj_data['latitude'].values[i],
+                az=self.traj_data['azimuth'].values[i],
+                alt_ft=FL * 100,
+                tas_ms=fwd_tas,
+                weather_data=None,
             )
 
             # Calculate distance along route travelled
-            dist = self.traj_data['groundSpeed'][i] * segment_time
+            dist = self.traj_data['groundSpeed'].values[i] * segment_time
 
-            self.traj_data['longitude'][i + 1], self.traj_data['latitude'][i + 1], _ = (
-                self.geod.fwd(
-                    self.traj_data['longitude'][i],
-                    self.traj_data['latitude'][i],
-                    self.traj_data['azimuth'][i],
-                    dist,
-                )
+            (
+                self.traj_data['longitude'].values[i + 1],
+                self.traj_data['latitude'].values[i + 1],
+                _,
+            ) = self.geod.fwd(
+                self.traj_data['longitude'].values[i],
+                self.traj_data['latitude'].values[i],
+                self.traj_data['azimuth'].values[i],
+                dist,
             )
 
             lon_arr, lat_arr, _ = self.arr_lon_lat_alt
-            self.traj_data['azimuth'][i + 1], _, _ = self.geod.inv(
-                self.traj_data['longitude'][i],
-                self.traj_data['latitude'][i],
+            self.traj_data['azimuth'].values[i + 1], _, _ = self.geod.inv(
+                self.traj_data['longitude'].values[i],
+                self.traj_data['latitude'].values[i],
                 lon_arr,
                 lat_arr,
             )
             # Account for acceleration/deceleration over
             # the segment using end-of-segment tas
-            tas_end = self.traj_data['tas'][i + 1]
+            tas_end = self.traj_data['tas'].values[i + 1]
             kinetic_energy_chg = 1 / 2 * seg_start_mass * (tas_end**2 - tas**2)
 
             # Calculate fuel required for acceleration
@@ -735,13 +741,17 @@ class LegacyTrajectory(Trajectory):
             segment_fuel += accel_fuel
 
             # Update the state vector
-            self.traj_data['fuelMass'][i + 1] = (
-                self.traj_data['fuelMass'][i] - segment_fuel
+            self.traj_data['fuelMass'].values[i + 1] = (
+                self.traj_data['fuelMass'].values[i] - segment_fuel
             )
-            self.traj_data['acMass'][i + 1] = self.traj_data['acMass'][i] - segment_fuel
-            self.traj_data['groundDist'][i + 1] = self.traj_data['groundDist'][i] + dist
-            self.traj_data['flightTime'][i + 1] = (
-                self.traj_data['flightTime'][i] + segment_time
+            self.traj_data['acMass'].values[i + 1] = (
+                self.traj_data['acMass'].values[i] - segment_fuel
+            )
+            self.traj_data['groundDist'].values[i + 1] = (
+                self.traj_data['groundDist'].values[i] + dist
+            )
+            self.traj_data['flightTime'].values[i + 1] = (
+                self.traj_data['flightTime'].values[i] + segment_time
             )
 
     def __legacy_cruise(self, dGD: float) -> None:
@@ -764,59 +774,68 @@ class LegacyTrajectory(Trajectory):
         tas_interp, fl_weight = self.__calc_tas_crz(
             self.NClm, self.crz_start_altitude, subset_performance
         )
-        self.traj_data['tas'][self.NClm : self.NClm + self.NCrz] = tas_interp
-        self.traj_data['rocs'][self.NClm : self.NClm + self.NCrz] = 0
-        self.traj_data['FL_weight'][self.NClm : self.NClm + self.NCrz] = fl_weight
+        self.traj_data['tas'].values[self.NClm : self.NClm + self.NCrz] = tas_interp
+        self.traj_data['rocs'].values[self.NClm : self.NClm + self.NCrz] = 0
+        self.traj_data['FL_weight'].values[self.NClm : self.NClm + self.NCrz] = (
+            fl_weight
+        )
 
         # Get fuel flow, ground speed, etc. for cruise segments
         for i in range(self.NClm, self.NClm + self.NCrz - 1):
-            self.traj_data['groundSpeed'][i], self.traj_data['heading'][i], _, _ = (
-                compute_ground_speed(
-                    lon=self.traj_data['latitude'][i],
-                    lat=self.traj_data['latitude'][i],
-                    az=self.traj_data['azimuth'][i],
-                    alt_ft=self.crz_FL * 100,
-                    tas_ms=self.traj_data['tas'][i],
-                    weather_data=None,
-                )
+            (
+                self.traj_data['groundSpeed'].values[i],
+                self.traj_data['heading'].values[i],
+                _,
+                _,
+            ) = compute_ground_speed(
+                lon=self.traj_data['latitude'].values[i],
+                lat=self.traj_data['latitude'].values[i],
+                az=self.traj_data['azimuth'].values[i],
+                alt_ft=self.crz_FL * 100,
+                tas_ms=self.traj_data['tas'].values[i],
+                weather_data=None,
             )
 
             # Calculate time required to fly the segment
-            segment_time = dGD / self.traj_data['groundSpeed'][i]
+            segment_time = dGD / self.traj_data['groundSpeed'].values[i]
 
-            self.traj_data['longitude'][i + 1], self.traj_data['latitude'][i + 1], _ = (
-                self.geod.fwd(
-                    self.traj_data['longitude'][i],
-                    self.traj_data['latitude'][i],
-                    self.traj_data['azimuth'][i],
-                    dGD,
-                )
+            (
+                self.traj_data['longitude'].values[i + 1],
+                self.traj_data['latitude'].values[i + 1],
+                _,
+            ) = self.geod.fwd(
+                self.traj_data['longitude'].values[i],
+                self.traj_data['latitude'].values[i],
+                self.traj_data['azimuth'].values[i],
+                dGD,
             )
             lon_arr, lat_arr, _ = self.arr_lon_lat_alt
-            self.traj_data['azimuth'][i + 1], _, _ = self.geod.inv(
-                self.traj_data['longitude'][i],
-                self.traj_data['latitude'][i],
+            self.traj_data['azimuth'].values[i + 1], _, _ = self.geod.inv(
+                self.traj_data['longitude'].values[i],
+                self.traj_data['latitude'].values[i],
                 lon_arr,
                 lat_arr,
             )
 
             # Get fuel flow rate based on FL and mass interpolation
             ff = self.__calc_ff_cruise(
-                i, self.traj_data['acMass'][i], subset_performance
+                i, self.traj_data['acMass'].values[i], subset_performance
             )
 
             # Calculate fuel burn in [kg] over the segment
             segment_fuel = ff * segment_time
 
             # Set aircraft state values
-            self.traj_data['fuelFlow'][i + 1] = ff
-            self.traj_data['fuelMass'][i + 1] = (
-                self.traj_data['fuelMass'][i] - segment_fuel
+            self.traj_data['fuelFlow'].values[i + 1] = ff
+            self.traj_data['fuelMass'].values[i + 1] = (
+                self.traj_data['fuelMass'].values[i] - segment_fuel
             )
-            self.traj_data['acMass'][i + 1] = self.traj_data['acMass'][i] - segment_fuel
+            self.traj_data['acMass'].values[i + 1] = (
+                self.traj_data['acMass'].values[i] - segment_fuel
+            )
 
-            self.traj_data['flightTime'][i + 1] = (
-                self.traj_data['flightTime'][i] + segment_time
+            self.traj_data['flightTime'].values[i + 1] = (
+                self.traj_data['flightTime'].values[i] + segment_time
             )
 
     def __legacy_descent(self) -> None:
@@ -850,63 +869,69 @@ class LegacyTrajectory(Trajectory):
         # to avoid repeat calculations.
         # In AEIC v2 fuel flow and TAS are only dependent on flight level.
         for i in range(startN, endN):
-            alt = self.traj_data['altitude'][i]
+            alt = self.traj_data['altitude'].values[i]
             tas_interp, ff_interp, roc_interp = self.__calc_FL_interp_vals(
                 i, alt, neg_roc_perf
             )
-            self.traj_data['fuelFlow'][i] = ff_interp
-            self.traj_data['tas'][i] = tas_interp
-            self.traj_data['rocs'][i] = roc_interp
+            self.traj_data['fuelFlow'].values[i] = ff_interp
+            self.traj_data['tas'].values[i] = tas_interp
+            self.traj_data['rocs'].values[i] = roc_interp
 
         # Now we calculate segment level info by running the flight
         for i in range(startN, endN - 1):
-            tas = self.traj_data['tas'][i]
-            ff = self.traj_data['fuelFlow'][i]
-            roc = self.traj_data['rocs'][i]
-            seg_start_mass = self.traj_data['acMass'][i]
+            tas = self.traj_data['tas'].values[i]
+            ff = self.traj_data['fuelFlow'].values[i]
+            roc = self.traj_data['rocs'].values[i]
+            seg_start_mass = self.traj_data['acMass'].values[i]
 
             # Calculate the forward true airspeed (will be used for ground speed)
             fwd_tas = np.sqrt(tas**2 - roc**2)
 
             # Get time to complete alititude change segment and total fuel burned
             segment_time = (
-                self.traj_data['altitude'][i + 1] - self.traj_data['altitude'][i]
+                self.traj_data['altitude'].values[i + 1]
+                - self.traj_data['altitude'].values[i]
             ) / roc
             segment_fuel = ff * segment_time
 
-            self.traj_data['groundSpeed'][i], self.traj_data['heading'][i], _, _ = (
-                compute_ground_speed(
-                    lon=self.traj_data['latitude'][i],
-                    lat=self.traj_data['latitude'][i],
-                    az=self.traj_data['azimuth'][i],
-                    alt_ft=self.traj_data['altitude'][i] * METERS_TO_FEET,
-                    tas_ms=fwd_tas,
-                    weather_data=None,
-                )
+            (
+                self.traj_data['groundSpeed'].values[i],
+                self.traj_data['heading'].values[i],
+                _,
+                _,
+            ) = compute_ground_speed(
+                lon=self.traj_data['latitude'].values[i],
+                lat=self.traj_data['latitude'].values[i],
+                az=self.traj_data['azimuth'].values[i],
+                alt_ft=self.traj_data['altitude'].values[i] * METERS_TO_FEET,
+                tas_ms=fwd_tas,
+                weather_data=None,
             )
 
             # Calculate distance along route travelled
-            dist = self.traj_data['groundSpeed'][i] * segment_time
+            dist = self.traj_data['groundSpeed'].values[i] * segment_time
 
-            self.traj_data['longitude'][i + 1], self.traj_data['latitude'][i + 1], _ = (
-                self.geod.fwd(
-                    self.traj_data['longitude'][i],
-                    self.traj_data['latitude'][i],
-                    self.traj_data['azimuth'][i],
-                    dist,
-                )
+            (
+                self.traj_data['longitude'].values[i + 1],
+                self.traj_data['latitude'].values[i + 1],
+                _,
+            ) = self.geod.fwd(
+                self.traj_data['longitude'].values[i],
+                self.traj_data['latitude'].values[i],
+                self.traj_data['azimuth'].values[i],
+                dist,
             )
             lon_arr, lat_arr, _ = self.arr_lon_lat_alt
-            self.traj_data['azimuth'][i + 1], _, _ = self.geod.inv(
-                self.traj_data['longitude'][i],
-                self.traj_data['latitude'][i],
+            self.traj_data['azimuth'].values[i + 1], _, _ = self.geod.inv(
+                self.traj_data['longitude'].values[i],
+                self.traj_data['latitude'].values[i],
                 lon_arr,
                 lat_arr,
             )
 
             # Account for acceleration/deceleration over the segment
             # using end-of-segment tas
-            tas_end = self.traj_data['tas'][i + 1]
+            tas_end = self.traj_data['tas'].values[i + 1]
             kinetic_energy_chg = 1 / 2 * seg_start_mass * (tas_end**2 - tas**2)
 
             # Calculate fuel required for acceleration
@@ -920,11 +945,15 @@ class LegacyTrajectory(Trajectory):
                 segment_fuel = 0
 
             # Update the state vector
-            self.traj_data['fuelMass'][i + 1] = (
-                self.traj_data['fuelMass'][i] - segment_fuel
+            self.traj_data['fuelMass'].values[i + 1] = (
+                self.traj_data['fuelMass'].values[i] - segment_fuel
             )
-            self.traj_data['acMass'][i + 1] = self.traj_data['acMass'][i] - segment_fuel
-            self.traj_data['groundDist'][i + 1] = self.traj_data['groundDist'][i] + dist
-            self.traj_data['flightTime'][i + 1] = (
-                self.traj_data['flightTime'][i] + segment_time
+            self.traj_data['acMass'].values[i + 1] = (
+                self.traj_data['acMass'].values[i] - segment_fuel
+            )
+            self.traj_data['groundDist'].values[i + 1] = (
+                self.traj_data['groundDist'].values[i] + dist
+            )
+            self.traj_data['flightTime'].values[i + 1] = (
+                self.traj_data['flightTime'].values[i] + segment_time
             )
