@@ -1,7 +1,9 @@
 import numpy as np
+import xarray as xr
 from pyproj import Geod
 
 from AEIC.performance_model import PerformanceModel
+from utils import airports
 
 
 class Trajectory:
@@ -60,8 +62,8 @@ class Trajectory:
         crz_start_altitude (float): Cruise starting altitude.
         des_start_altitude (float): Descent starting altitude.
         des_end_altitude (float): End-of-descent altitude.
-        traj_data (NDArray[np.float64]): Numpy structured array containing all
-            trajectory data. Only defined when ``fly_flight`` is called. Columns are:\n
+        traj_data (xr.Dataset): xarray Dataset containing all trajectory data.
+            Only defined when ``fly_flight`` is called. Variables are:\n
             ``fuelFlow``: fuel flow rate.\n
             ``acMass``: aircraft mass.\n
             ``fuelMass``: fuel mass.\n
@@ -72,6 +74,7 @@ class Trajectory:
             ``flightTime``: elapsed flight time.\n
             ``latitude``: current latitude.\n
             ``longitude``: current longitude.\n
+            ``azimuth``: azimuth angle.\n
             ``heading``: current heading.\n
             ``tas``: true airspeed.\n
             ``groundSpeed``: ground speed.\n
@@ -94,25 +97,32 @@ class Trajectory:
         # in `src/missions/sample_missions_10.json`. We also assume that
         # Load Factor for the flight will be
         # included in the mission object.
-        self.name = (
-            f'{mission["dep_airport"]}_{mission["arr_airport"]}_{mission["ac_code"]}'
-        )
+        self.name = f'{mission.origin}_{mission.destination}_{mission.aircraft_type}'
         self.ac_performance = ac_performance
 
         # Save airport locations and dep/arr times; lat/long in degrees
-        self.dep_lon_lat_alt = mission['dep_location']
-        self.arr_lon_lat_alt = mission['arr_location']
+        ori_airport_data = airports.airports[mission.origin]
+        des_airport_data = airports.airports[mission.destination]
+        self.dep_lon_lat_alt = [
+            ori_airport_data.longitude,
+            ori_airport_data.latitude,
+            ori_airport_data.elevation,
+        ]
+        self.arr_lon_lat_alt = [
+            des_airport_data.longitude,
+            des_airport_data.latitude,
+            des_airport_data.elevation,
+        ]
 
-        self.start_time = mission["dep_datetime"]
-        self.end_time = mission["arr_datetime"]
+        self.start_time = mission.departure
+        self.end_time = mission.arrival
 
-        # Convert gc distance to meters
-        self.gc_distance = mission["distance_nm"]
-        # FIXME: check to make sure this is changed to meters
+        # Convert gc distance from km to meters
+        self.gc_distance = mission.distance * 1e3
         self.geod = Geod(ellps="WGS84")
 
         # Get load factor from mission object
-        self.load_factor = mission["load_factor"]
+        self.load_factor = 1.0  # FIXME: mission.seat_capacity
 
         # Controls whether or not route optimization is performed
         # NOTE: This currently does nothing
@@ -151,25 +161,39 @@ class Trajectory:
             kwargs: Additional parameters needed by the specific type of trajectory
                 being used.
         """
-        # Initialize data array as numpy structured array
-        traj_dtype = [
-            ('fuelFlow', np.float64, self.Ntot),
-            ('acMass', np.float64, self.Ntot),
-            ('fuelMass', np.float64, self.Ntot),
-            ('groundDist', np.float64, self.Ntot),
-            ('altitude', np.float64, self.Ntot),
-            ('FLs', np.float64, self.Ntot),
-            ('rocs', np.float64, self.Ntot),
-            ('flightTime', np.float64, self.Ntot),
-            ('latitude', np.float64, self.Ntot),
-            ('longitude', np.float64, self.Ntot),
-            ('azimuth', np.float64, self.Ntot),
-            ('heading', np.float64, self.Ntot),
-            ('tas', np.float64, self.Ntot),
-            ('groundSpeed', np.float64, self.Ntot),
-            ('FL_weight', np.float64, self.Ntot),
-        ]
-        self.traj_data = np.empty((), dtype=traj_dtype)
+        # Initialize dataset with point dimension
+        self.traj_data = xr.Dataset(coords={'point': np.arange(self.Ntot)})
+
+        # Define variable metadata
+        var_metadata = {
+            'fuelFlow': {'description': 'Fuel flow rate', 'units': 'kg/s'},
+            'acMass': {'description': 'Aircraft mass', 'units': 'kg'},
+            'fuelMass': {'description': 'Fuel mass remaining', 'units': 'kg'},
+            'groundDist': {'description': 'Ground distance traveled', 'units': 'm'},
+            'altitude': {'description': 'Altitude above sea level', 'units': 'm'},
+            'FLs': {'description': 'Flight level', 'units': 'FL'},
+            'rocs': {'description': 'Rate of climb/descent', 'units': 'm/s'},
+            'flightTime': {'description': 'Flight time elapsed', 'units': 's'},
+            'latitude': {'description': 'Latitude', 'units': 'degrees'},
+            'longitude': {'description': 'Longitude', 'units': 'degrees'},
+            'azimuth': {'description': 'Azimuth angle', 'units': 'degrees'},
+            'heading': {'description': 'Aircraft heading', 'units': 'degrees'},
+            'tas': {'description': 'True airspeed', 'units': 'm/s'},
+            'groundSpeed': {'description': 'Ground speed', 'units': 'm/s'},
+            'FL_weight': {
+                'description': 'Flight level weight factor',
+                'units': 'dimensionless',
+            },
+        }
+
+        # Add all data variables with metadata
+        for var_name, metadata in var_metadata.items():
+            self.traj_data[var_name] = ('point', np.zeros(self.Ntot, dtype=np.float64))
+            self.traj_data[var_name].attrs['description'] = metadata['description']
+            self.traj_data[var_name].attrs['units'] = metadata['units']
+
+        self.traj_data.attrs['title'] = 'Aircraft trajectory data'
+        self.traj_data.attrs['description'] = '1D trajectory over mission points'
 
         if self.starting_mass < 0:
             self.calc_starting_mass(**kwargs)
@@ -195,7 +219,7 @@ class Trajectory:
 
             if not self.mass_converged:
                 print(
-                    "Mass iteration failed to converge; final residual"
+                    "Mass iteration failed to converge; final residual "
                     f"{mass_res * 100}% > {self.mass_iter_reltol * 100}%"
                 )
 
@@ -216,26 +240,26 @@ class Trajectory:
         """
         self.current_mass = self.starting_mass
 
-        for field in self.traj_data.dtype.names:
-            self.traj_data[field][:] = np.nan
+        # Initialize all data variables to NaN
+        for field in self.traj_data.data_vars:
+            self.traj_data[field].values[:] = np.nan
 
         # Set initial values
-        self.traj_data['flightTime'][0] = 0
-        self.traj_data['acMass'][0] = self.starting_mass
-        self.traj_data['fuelMass'][0] = self.fuel_mass
-        self.traj_data['groundDist'][0] = 0
-        self.traj_data['altitude'][0] = self.clm_start_altitude
+        self.traj_data['flightTime'].values[0] = 0
+        self.traj_data['acMass'].values[0] = self.starting_mass
+        self.traj_data['fuelMass'].values[0] = self.fuel_mass
+        self.traj_data['groundDist'].values[0] = 0
+        self.traj_data['altitude'].values[0] = self.clm_start_altitude
 
         # Calculate lat, lon, heading of initial point
         # Get great circle trajectory in lat,lon points
-
         lon_dep, lat_dep, _ = self.dep_lon_lat_alt
         lon_arr, lat_arr, _ = self.arr_lon_lat_alt
         # lat_lon_trajectory = self.geod.npts(
         #                   lon_dep, lat_dep, lon_arr, lat_arr, self.Ntot)
-        self.traj_data['latitude'][0] = lat_dep
-        self.traj_data['longitude'][0] = lon_dep
-        self.traj_data['azimuth'][0], _, _ = self.geod.inv(
+        self.traj_data['latitude'].values[0] = lat_dep
+        self.traj_data['longitude'].values[0] = lon_dep
+        self.traj_data['azimuth'].values[0], _, _ = self.geod.inv(
             lon_dep, lat_dep, lon_arr, lat_arr
         )
 
@@ -245,7 +269,7 @@ class Trajectory:
         self.descent(**kwargs)
 
         # Calculate weight residual normalized by fuel_mass
-        fuelBurned = self.starting_mass - self.traj_data['acMass'][-1]
+        fuelBurned = self.starting_mass - self.traj_data['acMass'].values[-1]
         mass_residual = (self.fuel_mass - fuelBurned) / self.fuel_mass
 
         return mass_residual
