@@ -1,4 +1,7 @@
+from types import SimpleNamespace
+
 import numpy as np
+import pandas as pd
 import pytest
 
 from AEIC.performance_model import PerformanceModel
@@ -11,9 +14,20 @@ performance_model_file = file_location("IO/default_config.toml")
 
 # Path to a real fuel TOML file in your repo
 perf = PerformanceModel(performance_model_file)
-mis = perf.missions[0]
 
-traj = LegacyTrajectory(perf, mis, False, False)
+sample_mission = SimpleNamespace(
+    origin="BOS",
+    destination="LAX",
+    aircraft_type="738",
+    departure=pd.Timestamp('2019-01-01 12:00:00+0000', tz='UTC'),
+    arrival=pd.Timestamp('2019-01-01 18:00:00+0000', tz='UTC'),
+    distance=5556.0,
+)
+
+
+# for q in db(Query()):
+#     mis = q
+traj = LegacyTrajectory(perf, sample_mission, False, False)
 traj.fly_flight()
 em = Emission(perf, traj, True)
 

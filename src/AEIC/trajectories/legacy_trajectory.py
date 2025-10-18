@@ -154,9 +154,7 @@ class LegacyTrajectory(Trajectory):
 
         cruise_start_distance = self.traj_data['groundDist'][self.NClm - 1]
         cruise_dist_approx = (
-            self.gc_distance * NAUTICAL_MILES_TO_METERS
-            - cruise_start_distance
-            - descent_dist_approx
+            self.gc_distance - cruise_start_distance - descent_dist_approx
         )
 
         # Cruise is discretized into ground distance steps
@@ -265,7 +263,7 @@ class LegacyTrajectory(Trajectory):
         )
 
         # Fuel Needed (distance / velocity * fuel flow rate)
-        approxTime = self.gc_distance * NAUTICAL_MILES_TO_METERS / tas
+        approxTime = self.gc_distance / tas
         fuelMass = approxTime * fuelflow
 
         # Reserve fuel (assumed 5%)

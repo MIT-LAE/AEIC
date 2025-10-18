@@ -2,6 +2,7 @@ import numpy as np
 from pyproj import Geod
 
 from AEIC.performance_model import PerformanceModel
+from utils import airports
 
 
 class Trajectory:
@@ -94,25 +95,32 @@ class Trajectory:
         # in `src/missions/sample_missions_10.json`. We also assume that
         # Load Factor for the flight will be
         # included in the mission object.
-        self.name = (
-            f'{mission["dep_airport"]}_{mission["arr_airport"]}_{mission["ac_code"]}'
-        )
+        self.name = f'{mission.origin}_{mission.destination}_{mission.aircraft_type}'
         self.ac_performance = ac_performance
 
         # Save airport locations and dep/arr times; lat/long in degrees
-        self.dep_lon_lat_alt = mission['dep_location']
-        self.arr_lon_lat_alt = mission['arr_location']
+        ori_airport_data = airports.airports[mission.origin]
+        des_airport_data = airports.airports[mission.destination]
+        self.dep_lon_lat_alt = [
+            ori_airport_data.longitude,
+            ori_airport_data.latitude,
+            ori_airport_data.elevation,
+        ]
+        self.arr_lon_lat_alt = [
+            des_airport_data.longitude,
+            des_airport_data.latitude,
+            des_airport_data.elevation,
+        ]
 
-        self.start_time = mission["dep_datetime"]
-        self.end_time = mission["arr_datetime"]
+        self.start_time = mission.departure
+        self.end_time = mission.arrival
 
-        # Convert gc distance to meters
-        self.gc_distance = mission["distance_nm"]
-        # FIXME: check to make sure this is changed to meters
+        # Convert gc distance from km to meters
+        self.gc_distance = mission.distance * 1e3
         self.geod = Geod(ellps="WGS84")
 
         # Get load factor from mission object
-        self.load_factor = mission["load_factor"]
+        self.load_factor = 1.0  # FIXME: mission.seat_capacity
 
         # Controls whether or not route optimization is performed
         # NOTE: This currently does nothing
