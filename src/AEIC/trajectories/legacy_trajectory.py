@@ -154,9 +154,7 @@ class LegacyTrajectory(Trajectory):
 
         cruise_start_distance = self.traj_data['groundDist'][self.NClm - 1]
         cruise_dist_approx = (
-            self.gc_distance
-            - cruise_start_distance
-            - descent_dist_approx
+            self.gc_distance - cruise_start_distance - descent_dist_approx
         )
 
         # Cruise is discretized into ground distance steps
