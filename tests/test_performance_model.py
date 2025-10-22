@@ -14,7 +14,7 @@ def test_performance_model_initialization():
 
     # Test missions
     assert isinstance(model.missions, list)
-    assert model.missions[0]['load_factor'] == 1.0
+    assert model.missions[0].load_factor == 1.0
 
     # Check aircraft parameters were loaded
     assert hasattr(model, "ac_params")

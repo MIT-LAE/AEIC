@@ -27,6 +27,8 @@ dependencies = [
     "xarray",
     "httpx>=0.28.1",
     "timezonefinder>=8.0.0",
+    "netcdf4>=1.7.3",
+    "cachetools>=6.2.1",
 ]
 
 [dependency-groups]

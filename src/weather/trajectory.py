@@ -1,5 +1,6 @@
 import numpy as np
-from pyproj import Geod
+
+from utils import GEOD
 
 
 def get_mission_points(mission):
@@ -37,9 +38,6 @@ def get_mission_points(mission):
         mission-specific data in actual use.
     """
 
-    # Instantiate WGS84 ellipsoid
-    geod = Geod(ellps="WGS84")
-
     # Extract OD lat-lon
     lon_dep, lat_dep, _ = mission["dep_location"]
     lon_arr, lat_arr, _ = mission["arr_location"]
@@ -47,7 +45,7 @@ def get_mission_points(mission):
     # Assume 100 points for discretization (for demo only)
     # Note: This will change when flying actual missions
 
-    points = geod.npts(lon_dep, lat_dep, lon_arr, lat_arr, 100)
+    points = GEOD.npts(lon_dep, lat_dep, lon_arr, lat_arr, 100)
 
     lons = [lon_dep] + [pt[0] for pt in points] + [lon_arr]
     lats = [lat_dep] + [pt[1] for pt in points] + [lat_arr]
@@ -84,16 +82,13 @@ def create_dummy_traj(mission):
             - 'TAS'  : list of True Air Speed [knots]
             - 'H'   : list of altitudes [feet]
     """
-    # Instantiate GGS84 ellipsoid for geodesic calculation
-    geod = Geod(ellps="WGS84")
-
     # Extract dept + Arrival lat-lon
     lon_dep, lat_dep, _ = mission["dep_location"]
     lon_arr, lat_arr, _ = mission["arr_location"]
 
     # Assume 100 points for trajectory discretization (demo only)
     n_total = 100
-    points = geod.npts(lon_dep, lat_dep, lon_arr, lat_arr, n_total)
+    points = GEOD.npts(lon_dep, lat_dep, lon_arr, lat_arr, n_total)
     lons = [lon_dep] + [pt[0] for pt in points] + [lon_arr]
     lats = [lat_dep] + [pt[1] for pt in points] + [lat_arr]
 

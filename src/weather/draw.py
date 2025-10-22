@@ -1,7 +1,8 @@
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
-from pyproj import Geod
+
+from utils import GEOD
 
 
 def plot_flight_arc(mission):
@@ -23,11 +24,8 @@ def plot_flight_arc(mission):
     lon_dep, lat_dep, _ = mission["dep_location"]
     lon_arr, lat_arr, _ = mission["arr_location"]
 
-    # Use WGS84 ellipse definition
-    geod = Geod(ellps="WGS84")
-
     # Get 100 equally spaced points along the arc
-    points = geod.npts(lon_dep, lat_dep, lon_arr, lat_arr, 100)
+    points = GEOD.npts(lon_dep, lat_dep, lon_arr, lat_arr, 100)
     lons = [lon_dep] + [pt[0] for pt in points] + [lon_arr]
     lats = [lat_dep] + [pt[1] for pt in points] + [lat_arr]
 

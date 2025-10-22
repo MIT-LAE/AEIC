@@ -1,9 +1,8 @@
 import numpy as np
 import xarray as xr
-from pyproj import Geod
 from scipy.interpolate import RegularGridInterpolator
 
-geod = Geod(ellps="WGS84")
+from utils import GEOD
 
 
 def altitude_to_pressure_hpa(alt_ft):
@@ -140,7 +139,6 @@ def get_tas(mission_data, era5_path):
     u_vals, v_vals, wind_speed = get_wind_at_points(mission_data, era5_path)
 
     # Compute geodesic track angles between consecutive flight segments
-    geod = Geod(ellps="WGS84")
     lons = mission_data["lons"]
     lats = mission_data["lats"]
     gs = mission_data["GS"]
@@ -155,7 +153,7 @@ def get_tas(mission_data, era5_path):
         # Compute track angle for the two lat-lon pairs
         lon1, lat1 = lons[i], lats[i]
         lon2, lat2 = lons[i + 1], lats[i + 1]
-        az_fwd, _, _ = geod.inv(lon1, lat1, lon2, lat2)
+        az_fwd, _, _ = GEOD.inv(lon1, lat1, lon2, lat2)
         track = az_fwd % 360
         track_angles.append(track)
 
@@ -212,7 +210,6 @@ def apply_drift_to_mission_points(mission_data, drift_angles):
     drifted_lats : list
         Adjusted latitude values after drift.
     """
-    geod = Geod(ellps="WGS84")
     lons = mission_data["lons"]
     lats = mission_data["lats"]
 
@@ -226,13 +223,13 @@ def apply_drift_to_mission_points(mission_data, drift_angles):
         lat2 = lats[i + 1]
 
         # Compute track azimuth and distance from original points
-        fwd_azimuth, _, distance_m = geod.inv(lon1, lat1, lon2, lat2)
+        fwd_azimuth, _, distance_m = GEOD.inv(lon1, lat1, lon2, lat2)
 
         # Apply drift to adjust heading
         drifted_heading = (fwd_azimuth + drift_angles[i]) % 360
 
         # Project new position using drifted heading and same distance
-        lon_drifted, lat_drifted, _ = geod.fwd(lon1, lat1, drifted_heading, distance_m)
+        lon_drifted, lat_drifted, _ = GEOD.fwd(lon1, lat1, drifted_heading, distance_m)
 
         drifted_lons.append(lon_drifted)
         drifted_lats.append(lat_drifted)

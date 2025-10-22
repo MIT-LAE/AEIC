@@ -4,7 +4,7 @@ import tomllib
 import numpy as np
 
 from AEIC.performance_model import PerformanceModel
-from AEIC.trajectories.trajectory import Trajectory
+from AEIC.trajectories import Trajectory
 from utils import file_location
 from utils.consts import R_air, kappa
 from utils.standard_atmosphere import (
@@ -57,7 +57,7 @@ class Emission:
             self.fuel = tomllib.load(f)
 
         # Unpack trajectory lengths: total, climb, cruise, descent points
-        self.Ntot = trajectory.Ntot
+        self.Ntot = len(trajectory)
         self.NClm = trajectory.NClm
         self.NCrz = trajectory.NCrz
         self.NDes = trajectory.NDes
@@ -86,7 +86,7 @@ class Emission:
         self.summed_emission_g = np.full((), -1, dtype=self.__emission_dtype(1))
 
         # Compute fuel burn per segment from fuelMass time series
-        fuel_mass = trajectory.traj_data['fuelMass']
+        fuel_mass = trajectory.fuelMass
         fuel_burn = np.zeros_like(fuel_mass)
         # Difference between sequential mass values for ascent segments
         fuel_burn[1:] = fuel_mass[:-1] - fuel_mass[1:]
@@ -183,14 +183,14 @@ class Emission:
             lto_ff_array = np.array([mode['FUEL_KGs'] for mode in settings])
 
         # --- Compute NOx, NO, NO2, HONO indices via BFFM2 model ---
-        flight_alts = trajectory.traj_data['altitude'][i_start:i_end]
+        flight_alts = trajectory.altitude[i_start:i_end]
         flight_temps = temperature_at_altitude_isa_bada4(flight_alts)
         flight_pressures = pressure_at_altitude_isa_bada4(flight_alts)
-        mach_number = trajectory.traj_data['tas'][i_start:i_end] / np.sqrt(
+        mach_number = trajectory.tas[i_start:i_end] / np.sqrt(
             kappa * R_air * flight_temps
         )
         sls_equiv_fuel_flow = get_SLS_equivalent_fuel_flow(
-            trajectory.traj_data['fuelFlow'][i_start:i_end],
+            trajectory.fuelFlow[i_start:i_end],
             flight_pressures,
             flight_temps,
             mach_number,
@@ -231,14 +231,14 @@ class Emission:
 
         # --- Compute volatile organic PM and organic carbon ---
         thrustCat = get_thrust_cat(
-            trajectory.traj_data['fuelFlow'][i_start:i_end],
+            trajectory.fuelFlow[i_start:i_end],
             lto_ff_array,
             cruiseCalc=True,
         )
         (
             self.emission_indices['PMvol'][i_start:i_end],
             self.emission_indices['OCic'][i_start:i_end],
-        ) = EI_PMvol_NEW(trajectory.traj_data['fuelFlow'][i_start:i_end], thrustCat)
+        ) = EI_PMvol_NEW(trajectory.fuelFlow[i_start:i_end], thrustCat)
 
         # --- Compute black carbon indices via MEEM ---
         (

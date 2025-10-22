@@ -1,13 +1,13 @@
-from types import SimpleNamespace
-
 import numpy as np
-import pandas as pd
 import pytest
 
+import AEIC.trajectories.builders as tb
 from AEIC.performance_model import PerformanceModel
-from AEIC.trajectories.legacy_trajectory import LegacyTrajectory
 from emissions.emission import Emission
+from missions import Mission
 from utils import file_location
+from utils.custom_types import Position
+from utils.helpers import iso_to_timestamp
 
 # Path to a real fuel TOML file in your repo
 performance_model_file = file_location("IO/default_config.toml")
@@ -15,20 +15,23 @@ performance_model_file = file_location("IO/default_config.toml")
 # Path to a real fuel TOML file in your repo
 perf = PerformanceModel(performance_model_file)
 
-sample_mission = SimpleNamespace(
-    origin="BOS",
-    destination="LAX",
-    aircraft_type="738",
-    departure=pd.Timestamp('2019-01-01 12:00:00+0000', tz='UTC'),
-    arrival=pd.Timestamp('2019-01-01 18:00:00+0000', tz='UTC'),
-    distance=5556.0,
+sample_mission = Mission(
+    dep_airport="BOS",
+    arr_airport="LAX",
+    ac_code="738",
+    dep_datetime=iso_to_timestamp('2019-01-01 12:00:00'),
+    arr_datetime=iso_to_timestamp('2019-01-01 18:00:00'),
+    dep_position=Position(longitude=-71.00527778, latitude=42.36444444, altitude=20),
+    arr_position=Position(longitude=-118.4080556, latitude=33.9425, altitude=125),
+    load_factor=1.0,
 )
 
 
 # for q in db(Query()):
 #     mis = q
-traj = LegacyTrajectory(perf, sample_mission, False, False)
-traj.fly_flight()
+
+builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+traj = builder.fly(perf, sample_mission)
 em = Emission(perf, traj, True)
 
 # --- Unit tests ---
@@ -36,7 +39,7 @@ em = Emission(perf, traj, True)
 
 def test_fuel_burn_consumption():
     """Test if fuel burn per segment sums up to total fuel consumption"""
-    fuel_consumed = traj.traj_data['fuelMass'][0] - traj.traj_data['fuelMass'][-1]
+    fuel_consumed = traj.fuelMass[0] - traj.fuelMass[-1]
     assert pytest.approx(np.sum(em.fuel_burn_per_segment), rel=1e-6) == fuel_consumed
 
 
@@ -121,7 +124,7 @@ def test_total_emissions_sum():
 def test_trajectory_dimensions():
     """Test that trajectory dimensions are consistent"""
     assert em.Ntot == len(em.fuel_burn_per_segment)
-    assert em.Ntot == traj.Ntot
+    assert em.Ntot == len(traj)
     assert em.NClm + em.NCrz + em.NDes == em.Ntot
 
 
@@ -132,7 +135,7 @@ def test_fuel_burn_first_segment():
 
 def test_fuel_burn_decreasing_mass():
     """Test that fuel mass is monotonically decreasing"""
-    fuel_mass = traj.traj_data['fuelMass']
+    fuel_mass = traj.fuelMass
     assert np.all(np.diff(fuel_mass) <= 0), (
         "Fuel mass should be monotonically decreasing"
     )
@@ -274,7 +277,7 @@ def test_emission_units_consistency():
     # This is more of a documentation test
     # ensures the class produces results in expected units
     total_co2_kg = np.sum(em.pointwise_emissions_g['CO2']) / 1000.0  # Convert g to kg
-    fuel_consumed_kg = traj.traj_data['fuelMass'][0] - traj.traj_data['fuelMass'][-1]
+    fuel_consumed_kg = traj.fuelMass[0] - traj.fuelMass[-1]
 
     # CO2 per kg fuel should be reasonable (typically 3.1-3.2 kg CO2/kg fuel)
     if fuel_consumed_kg > 0:

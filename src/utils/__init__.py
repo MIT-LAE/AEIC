@@ -1,7 +1,10 @@
 import os
 
 import httpx
+from pyproj import Geod
 from tqdm import tqdm
+
+GEOD = Geod(ellps="WGS84")
 
 
 def file_location(path: str) -> str:

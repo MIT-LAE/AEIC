@@ -3,27 +3,40 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-# Add the src directory to the path to import modules
+import AEIC.trajectories.builders as tb
+from AEIC.performance_model import PerformanceModel
 from emissions.APU_emissions import get_APU_emissions
 from emissions.EI_CO2 import EI_CO2
 from emissions.EI_H2O import EI_H2O
 from emissions.EI_HCCO import EI_HCCO
 from emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
 from emissions.EI_SOx import EI_SOx
+from emissions.emission import Emission
+from missions import Mission
+from utils import file_location
+from utils.custom_types import Position
+from utils.helpers import iso_to_timestamp
 
 # Path to a real fuel TOML file in your repo
-# performance_model_file = file_location("IO/default_config.toml")
+performance_model_file = file_location("IO/default_config.toml")
 
-# perf = PerformanceModel(performance_model_file)
+perf = PerformanceModel(performance_model_file)
+mis = perf.missions[0]
 
-# sample_mission = SimpleNamespace(
-#     origin="BOS",
-#     destination="LAX",
-#     aircraft_type="738",
-#     departure=pd.Timestamp('2019-01-01 12:00:00+0000', tz='UTC'),
-#     arrival=pd.Timestamp('2019-01-01 18:00:00+0000', tz='UTC'),
-#     distance=5556.0
-# )
+sample_mission = Mission(
+    dep_airport="BOS",
+    arr_airport="LAX",
+    ac_code="738",
+    dep_datetime=iso_to_timestamp('2019-01-01 12:00:00'),
+    arr_datetime=iso_to_timestamp('2019-01-01 18:00:00'),
+    dep_position=Position(longitude=-71.00527778, latitude=42.36444444, altitude=20),
+    arr_position=Position(longitude=-118.4080556, latitude=33.9425, altitude=125),
+    load_factor=1.0,
+)
+
+builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+traj = builder.fly(perf, sample_mission)
+em = Emission(perf, traj, True)
 
 
 class TestEI_CO2:

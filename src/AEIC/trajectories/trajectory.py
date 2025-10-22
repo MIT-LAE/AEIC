@@ -1,274 +1,302 @@
-import numpy as np
-from pyproj import Geod
+import sys
+from typing import Any
 
-from AEIC.performance_model import PerformanceModel
-from utils import airports
+import numpy as np
+
+from .field_sets import FieldMetadata, FieldSet, HasFieldSet
+
+BASE_FIELDSET_NAME = 'base'
+
+BASE_FIELDS = FieldSet(
+    BASE_FIELDSET_NAME,
+    # Trajectory data fields and their metadata. Each of these fields is
+    # defined for each point along the trajectory.
+    fuelFlow=FieldMetadata(description='Fuel flow rate', units='kg/s'),
+    acMass=FieldMetadata(description='Aircraft mass', units='kg'),
+    fuelMass=FieldMetadata(description='Fuel mass remaining', units='kg'),
+    groundDist=FieldMetadata(description='Ground distance traveled', units='m'),
+    altitude=FieldMetadata(description='Altitude above sea level', units='m'),
+    FLs=FieldMetadata(description='Flight level', units='FL'),
+    rocs=FieldMetadata(description='Rate of climb/descent', units='m/s'),
+    flightTime=FieldMetadata(description='Flight time elapsed', units='s'),
+    latitude=FieldMetadata(description='Latitude', units='degrees'),
+    longitude=FieldMetadata(description='Longitude', units='degrees'),
+    azimuth=FieldMetadata(description='Azimuth angle', units='degrees'),
+    heading=FieldMetadata(description='Aircraft heading', units='degrees'),
+    tas=FieldMetadata(description='True airspeed', units='m/s'),
+    groundSpeed=FieldMetadata(description='Ground speed', units='m/s'),
+    FL_weight=FieldMetadata(
+        description='Flight level weight factor', units='dimensionless'
+    ),
+    # Trajectory metadata fields and their metadata. Each of these fields has a
+    # single value per trajectory.
+    starting_mass=FieldMetadata(
+        metadata=True, description='Aircraft mass at start of trajectory', units='kg'
+    ),
+    fuel_mass=FieldMetadata(
+        metadata=True, description='Total fuel mass used during trajectory', units='kg'
+    ),
+    NClm=FieldMetadata(
+        metadata=True,
+        field_type=np.int32,
+        description='Number of climb points in trajectory',
+        units='count',
+    ),
+    NCrz=FieldMetadata(
+        metadata=True,
+        field_type=np.int32,
+        description='Number of cruise points in trajectory',
+        units='count',
+    ),
+    NDes=FieldMetadata(
+        metadata=True,
+        field_type=np.int32,
+        description='Number of descent points in trajectory',
+        units='count',
+    ),
+)
 
 
 class Trajectory:
-    """Parent class for all trajectory implementations in AEIC. Contains overall
-    ``fly_flight`` logic.
+    """Class representing a 1D trajectory with various data fields and
+    metadata.
 
-    Args:
-        ac_performance (PerformanceModel): Performance model used for trajectory
-            simulation.
-        mission (_type_): Data dictating the mission to be flown (departure/arrival
-            info, etc.).
-        optimize_traj (bool): (Currently unimplemented) Flag controlling whether the
-            nominal trajectory undergoes horizontal, vertical, and speed optimization
-            during simulation.
-        iterate_mass (bool): Flag controlling whether starting mass is iterated on such
-            that the remaining fuel (non-reserve) is close to 0 at the arrival airport.
-        startMass (float, optional): Starting mass of the aircraft; leave as default to
-            calculate starting mass during simulation. Defaults to -1.
-        max_mass_iters (int, optional): Maximum number of mass iterations (if used).
-            Defaults to 5.
-        mass_iter_reltol (float, optional): Desired relative tolerance for mass
-            iteration. Defaults to 1e-2.
-
-    Attributes:
-        name (str): Identifier for the flight; format is
-            ``departureAirport_arrivalAirport_ACCode``.
-        ac_performance (PerformanceModel): Performance model used for trajectory
-            simulation.
-        dep_lon_lat_alt (list[float]): Longitude, latitude, and altitude of the
-            departure airport.
-        arr_lon_lat_alt (list[float]): Longitude, latitude, and altitude of the arrival
-            airport.
-        start_time (str): Departure date and time.
-        end_time (str): Nominal arrival date and time.
-        gc_distance (float): (TODO: Change from naut. miles to meters) Great circle
-            distance between departure and arrival airports.
-        load_factor (float): Load factor of the flight relative to maximum payload.
-        optimize_traj (bool): (Currently unimplemented) Flag controlling whether the
-            nominal trajectory undergoes horizontal, vertical, and speed optimization
-            during simulation.
-        iter_mass (bool): Flag controlling whether starting mass is iterated on such
-            that the remaining fuel (non-reserve) is close to 0 at the arrival airport.
-        max_mass_iters (int): Maximum number of mass iterations (if used). Defaults to
-            5.
-        mass_iter_reltol (float): Desired relative tolerance for mass iteration.
-            Defaults to 1e-2.
-        mass_converged (bool): ``True`` if mass iteration was converged, ``False`` if
-            not. ``None`` if not iterating mass.
-        starting_mass (float): Starting mass of the aircraft.
-        fuel_mass (float): Total fuel mass loaded onto the aircraft.
-        NClm (int): Number of points simulated in climb.
-        NCrz (int): Number of points simulated in cruise.
-        NDes (int): Number of points simulated in descent.
-        Ntot (int): Number of points simulated across total mission.
-        clm_start_altitude (float): Climb starting altitude.
-        crz_start_altitude (float): Cruise starting altitude.
-        des_start_altitude (float): Descent starting altitude.
-        des_end_altitude (float): End-of-descent altitude.
-        traj_data (NDArray[np.float64]): Numpy structured array containing all
-            trajectory data. Only defined when ``fly_flight`` is called. Columns are:\n
-            ``fuelFlow``: fuel flow rate.\n
-            ``acMass``: aircraft mass.\n
-            ``fuelMass``: fuel mass.\n
-            ``groundDist``: total ground distance covered.\n
-            ``altitude``: current pressure altitude.\n
-            ``FLs``: flight level equivalent of the pressure altitude.\n
-            ``rocs``: rate of climb/descent.\n
-            ``flightTime``: elapsed flight time.\n
-            ``latitude``: current latitude.\n
-            ``longitude``: current longitude.\n
-            ``heading``: current heading.\n
-            ``tas``: true airspeed.\n
-            ``groundSpeed``: ground speed.\n
-            ``FL_weight``: weighting used in linear interpolation over flight levels.
+    The "various fields" include a base set of trajectory fields, one value per
+    trajectory point and a base set of metadata fields, one value per
+    trajectory, plus optional additional per-point or metadata fields added by
+    adding field sets to the trajectory.
     """
 
-    def __init__(
-        self,
-        ac_performance: PerformanceModel,
-        mission,
-        optimize_traj: bool,
-        iterate_mass: bool,
-        startMass: float = -1,
-        max_mass_iters: int = 5,
-        mass_iter_reltol: float = 1e-2,
-    ) -> None:
-        # Save A/C performance model and the mission to be flown
-        # NOTE: Currently assume that `mission` comes in as a dictionary with
-        # the format of a single flight
-        # in `src/missions/sample_missions_10.json`. We also assume that
-        # Load Factor for the flight will be
-        # included in the mission object.
-        self.name = f'{mission.origin}_{mission.destination}_{mission.aircraft_type}'
-        self.ac_performance = ac_performance
+    # The fixed set of attributes used for implementation of the flexible field
+    # interface.
+    FIXED_FIELDS = set(
+        ['data_dictionary', 'fieldsets', 'data', 'metadata', 'npoints', 'name']
+    )
 
-        # Save airport locations and dep/arr times; lat/long in degrees
-        ori_airport_data = airports.airports[mission.origin]
-        des_airport_data = airports.airports[mission.destination]
-        self.dep_lon_lat_alt = [
-            ori_airport_data.longitude,
-            ori_airport_data.latitude,
-            ori_airport_data.elevation,
-        ]
-        self.arr_lon_lat_alt = [
-            des_airport_data.longitude,
-            des_airport_data.latitude,
-            des_airport_data.elevation,
-        ]
+    def __init__(self, npoints: int, name: str | None = None):
+        """Initialized with a fixed number of points and an optional name.
 
-        self.start_time = mission.departure
-        self.end_time = mission.arrival
+        The name is used for labelling trajectories within trajectory sets (and
+        NetCDF files).
 
-        # Convert gc distance from km to meters
-        self.gc_distance = mission.distance * 1e3
-        self.geod = Geod(ellps="WGS84")
-
-        # Get load factor from mission object
-        self.load_factor = 1.0  # FIXME: mission.seat_capacity
-
-        # Controls whether or not route optimization is performed
-        # NOTE: This currently does nothing
-        self.optimize_traj = optimize_traj
-
-        # Control whether or not starting mass is iterated on
-        self.iter_mass = iterate_mass
-        self.max_mass_iters = max_mass_iters
-        self.mass_iter_reltol = mass_iter_reltol
-        self.mass_converged = None
-
-        # Allow user to specify starting mass if desired
-        self.starting_mass = startMass
-
-        # Initialize a non-reserve, non-divert/hold fuel mass for mass residual
-        # calculation
-        self.fuel_mass = None
-
-        # Initialize values for number of simulated points per segment
-        # (to be defined in child classes)
-        self.NClm = None
-        self.NCrz = None
-        self.NDes = None
-        self.Ntot = None
-
-        # Initialize important altitudes (clm = climb, crz = cruise, des = descent)
-        self.clm_start_altitude = None
-        self.crz_start_altitude = None
-        self.des_start_altitude = None
-        self.des_end_altitude = None
-
-    def fly_flight(self, **kwargs) -> None:
-        """Top-level function that initiates and runs flights.
-
-        Args:
-            kwargs: Additional parameters needed by the specific type of trajectory
-                being used.
+        All per-point data and per-trajectory metadata fields included in every
+        trajectory by default are taken from the `BASE_FIELDS` dictionary
+        above. Other per-point and metadata fields may be added using the
+        `add_fields` method.
         """
-        # Initialize data array as numpy structured array
-        traj_dtype = [
-            ('fuelFlow', np.float64, self.Ntot),
-            ('acMass', np.float64, self.Ntot),
-            ('fuelMass', np.float64, self.Ntot),
-            ('groundDist', np.float64, self.Ntot),
-            ('altitude', np.float64, self.Ntot),
-            ('FLs', np.float64, self.Ntot),
-            ('rocs', np.float64, self.Ntot),
-            ('flightTime', np.float64, self.Ntot),
-            ('latitude', np.float64, self.Ntot),
-            ('longitude', np.float64, self.Ntot),
-            ('azimuth', np.float64, self.Ntot),
-            ('heading', np.float64, self.Ntot),
-            ('tas', np.float64, self.Ntot),
-            ('groundSpeed', np.float64, self.Ntot),
-            ('FL_weight', np.float64, self.Ntot),
-        ]
-        self.traj_data = np.empty((), dtype=traj_dtype)
 
-        if self.starting_mass < 0:
-            self.calc_starting_mass(**kwargs)
+        # TODO: Add field sets initialization parameter to add extra fields
+        # right away at creation time?
 
-        # Trajectory optimization
-        if self.optimize_traj:
-            # Will be implemented in a future version
-            pass
+        # A trajectory has a fixed number of points, known in advance.
+        # TODO: Lift this restriction? How could we make it so that you can add
+        # points incrementally, in a nice way?
+        self.npoints = npoints
 
-        if self.iter_mass:
-            self.mass_converged = False
+        # A trajectory has an optional name.
+        self.name = name
 
-            for m_iter in range(self.max_mass_iters):
-                mass_res = self.fly_flight_iteration(**kwargs)
+        # A trajectory has a set of per-point data fields and per-trajectory
+        # metadata fields. Both are defined by a FieldSet, and the total sets
+        # of all fields are stored in a data dictionary.
+        self.data_dictionary: FieldSet = BASE_FIELDS
 
-                # Keep the calculated trajectory if the mass is sufficiently small
-                if abs(mass_res) < self.mass_iter_reltol:
-                    self.mass_converged = True
-                    break
+        # Keep track of the FieldSets that contributed to this trajectory.
+        self.fieldsets = set([BASE_FIELDS.name])
 
-                # Perform a `dumb` correction of the starting mass
-                self.starting_mass = self.starting_mass - (mass_res * self.fuel_mass)
+        # Data fields.
+        self.data: dict[str, np.ndarray[tuple[int], Any]] = {
+            name: np.zeros((npoints,), dtype=field.field_type)
+            for name, field in self.data_dictionary.items()
+            if not field.metadata
+        }
 
-            if not self.mass_converged:
-                print(
-                    "Mass iteration failed to converge; final residual"
-                    f"{mass_res * 100}% > {self.mass_iter_reltol * 100}%"
-                )
+        # Metadata fields.
+        self.metadata: dict[str, Any] = {
+            name: None for name, field in self.data_dictionary.items() if field.metadata
+        }
 
+    def __len__(self):
+        """The total number of points in the trajectory."""
+        return self.npoints
+
+    @property
+    def nbytes(self) -> int:
+        """Calculate approximate memory size of the trajectory in bytes.
+
+        (This only needs to be approximate because it's just used for sizing
+        the `TrajectoryStore` LRU cache.)
+        """
+        size = 0
+        for array in self.data.values():
+            size += array.nbytes
+        for value in self.metadata.values():
+            if isinstance(value, np.ndarray):
+                size += value.nbytes
+            else:
+                size += sys.getsizeof(value)
+        return size
+
+    def __getattr__(self, name: str) -> np.ndarray[tuple[int], Any] | Any:
+        """Override attribute retrieval to access data and metadata fields."""
+
+        # Fixed attributes use for implementation: delegate to normal attribute
+        # access.
+        if name in self.FIXED_FIELDS:
+            return super().__getattribute__(name)
+
+        if name in self.data:
+            return self.data[name]
+        elif name in self.metadata:
+            return self.metadata[name]
         else:
-            self.fly_flight_iteration(**kwargs)
+            raise AttributeError(f"'Trajectory' object has no attribute '{name}'")
 
-    def fly_flight_iteration(self, **kwargs):
-        """Function for running a single flight iteration. In non-weight-iterating
-        mode, only runs once. `kwargs` used to pass in relevent optimization variables
-        in applicable cases.
+    def __setattr__(self, name: str, value: Any):
+        """Override attribute setting to handle data and metadata fields.
 
-        Args:
-            kwargs: Additional parameters needed by the specific type of trajectory
-                being used.
+        The type and length of assigned values are checked to ensure
+        consistency with the trajectory's data dictionary. The type checking
+        rules used here are the same as those used by NumPy's `np.can_cast`
+        with `casting='same_kind'`.
 
-        Returns:
-            (float) Difference in fuel burned and calculated required fuel mass.
+        NOTE: These type checking rules mean that assigning a value of type `int` to a
+        field of type `np.int32` will work, but may result in loss of information if the
+        integer value is too large to fit in an `np.int32`. Caveat emptor!
         """
-        self.current_mass = self.starting_mass
 
-        for field in self.traj_data.dtype.names:
-            self.traj_data[field][:] = np.nan
+        # Fixed attributes use for implementation: delegate to normal attribute
+        # access.
+        if name in self.FIXED_FIELDS:
+            return super().__setattr__(name, value)
 
-        # Set initial values
-        self.traj_data['flightTime'][0] = 0
-        self.traj_data['acMass'][0] = self.starting_mass
-        self.traj_data['fuelMass'][0] = self.fuel_mass
-        self.traj_data['groundDist'][0] = 0
-        self.traj_data['altitude'][0] = self.clm_start_altitude
+        # Assignment for data or metadata fields.
+        if name in self.data:
+            # The number of points in a trajectory is currently fixed at
+            # creation time.
+            if len(value) != self.npoints:
+                raise ValueError('Assigned length does not match number of points')
 
-        # Calculate lat, lon, heading of initial point
-        # Get great circle trajectory in lat,lon points
+            # Check that the type of the assigned value can be safely cast to
+            # the field type and cast and assign the value if OK.
+            self.data[name] = _convert_types(
+                self.data_dictionary[name].field_type, value, 'data', name
+            )
+        elif name in self.metadata:
+            # Check that the type of the assigned value can be safely cast to
+            # the field type and cast and assign the value if OK.
+            self.metadata[name] = _convert_types(
+                self.data_dictionary[name].field_type, value, 'metadata', name
+            )
+        else:
+            raise ValueError(f"'Trajectory' object has no attribute '{name}'")
 
-        lon_dep, lat_dep, _ = self.dep_lon_lat_alt
-        lon_arr, lat_arr, _ = self.arr_lon_lat_alt
-        # lat_lon_trajectory = self.geod.npts(
-        #                   lon_dep, lat_dep, lon_arr, lat_arr, self.Ntot)
-        self.traj_data['latitude'][0] = lat_dep
-        self.traj_data['longitude'][0] = lon_dep
-        self.traj_data['azimuth'][0], _, _ = self.geod.inv(
-            lon_dep, lat_dep, lon_arr, lat_arr
+    def copy_point(self, from_idx: int, to_idx: int):
+        """Copy data from one point to another within the trajectory."""
+        if from_idx < 0 or from_idx >= self.npoints:
+            raise IndexError('from_idx out of range')
+        if to_idx < 0 or to_idx >= self.npoints:
+            raise IndexError('to_idx out of range')
+        for name, field in self.data_dictionary.items():
+            if not field.metadata:
+                self.data[name][to_idx] = self.data[name][from_idx]
+
+    def _check_fieldset(self, fieldset: FieldSet):
+        # Fields may not overlap with fixed implementatin fields.
+        if any(name in self.FIXED_FIELDS for name in fieldset):
+            raise ValueError('Field name conflicts with Trajectory fixed attribute')
+
+        # Field sets can only be added once.
+        if fieldset.name in self.fieldsets:
+            raise ValueError(
+                f'FieldSet with name "{fieldset.name}" already added to Trajectory'
+            )
+
+    def add_fields(self, fieldset: FieldSet | HasFieldSet):
+        """Add fields from a FieldSet to the trajectory.
+
+        Either just add fields with empty values, or, if the field set is
+        attached to a value object using the `HasFieldSet` protocol, try to
+        initialize data values too.
+        """
+
+        # Set up field set: either passed directly, or attached to another
+        # object as a `FIELD_SET` class attribute.
+        fs = fieldset
+        try_data = False
+        if not isinstance(fieldset, FieldSet):
+            fs = fieldset.FIELD_SET
+            try_data = True
+        assert isinstance(fs, FieldSet)
+        self._check_fieldset(fs)
+
+        # Adjust the trajectory to include the new fields.
+        self.fieldsets.add(fs.name)
+        self.data_dictionary = self.data_dictionary.merge(fs)
+
+        # Add data and metadata fields and set values from the `HasFieldSet`
+        # object if there is one.
+        for name, metadata in fs.items():
+            if metadata.metadata:
+                if try_data:
+                    if hasattr(fieldset, name):
+                        # Check that the type of the assigned value can be
+                        # safely cast to the field type and cast and assign the
+                        # value if OK.
+                        self.metadata[name] = _convert_types(
+                            metadata.field_type,
+                            getattr(fieldset, name),
+                            'metadata',
+                            name,
+                        )
+                        continue
+                self.metadata[name] = None
+            else:
+                if try_data:
+                    if hasattr(fieldset, name):
+                        value = getattr(fieldset, name)
+
+                        # The number of points in a trajectory is currently
+                        # fixed at creation time.
+                        if len(value) != self.npoints:
+                            raise ValueError(
+                                'Assigned length does not match number of points'
+                            )
+
+                        # Check that the type of the assigned value can be
+                        # safely cast to the field type and cast and assign the
+                        # value if OK.
+                        self.data[name] = _convert_types(
+                            metadata.field_type, value, 'data', name
+                        )
+                        continue
+                self.data[name] = np.zeros((self.npoints,), dtype=metadata.field_type)
+
+
+def _convert_types(expected_type: type, value: Any, label: str, name: str) -> Any:
+    """Check that the type of the assigned value can be safely cast to the
+    expected type and return the cast value.
+
+    (Metadata fields are single values, so we convert to a 1-element array for
+    the type check and casting.)
+    """
+
+    arr = value
+    wrapped = False
+    if not isinstance(value, np.ndarray):
+        arr = np.asarray(value)
+        wrapped = True
+
+    # Check that the type of the assigned value can be safely cast to
+    # the field type.
+    if not np.can_cast(arr, expected_type, casting='same_kind'):
+        raise TypeError(
+            f'Cannot cast assigned value of type {type(value)} '
+            f'to expected type {expected_type} for {label} field {name}'
         )
 
-        # Fly the climb, cruise, descent segments in order
-        self.climb(**kwargs)
-        self.cruise(**kwargs)
-        self.descent(**kwargs)
-
-        # Calculate weight residual normalized by fuel_mass
-        fuelBurned = self.starting_mass - self.traj_data['acMass'][-1]
-        mass_residual = (self.fuel_mass - fuelBurned) / self.fuel_mass
-
-        return mass_residual
-
-    ############################################################
-    # UNIVERSAL TRAJECTORY FUNCTIONS - TO BE DEFINED PER MODEL #
-    ############################################################
-    def climb(self):
-        pass
-
-    def cruise(self):
-        pass
-
-    def descent(self):
-        pass
-
-    def calc_starting_mass(self):
-        pass
+    # Return cast value.
+    cast_value = np.asarray(arr).astype(expected_type, casting='same_kind')
+    if wrapped:
+        cast_value = cast_value.item()
+    return cast_value

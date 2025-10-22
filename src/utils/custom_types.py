@@ -35,3 +35,24 @@ class TimeOfDay:
 
     minute: int
     """Minute of hour, 0-59."""
+
+
+@dataclass
+class Location:
+    """A geographic location defined by longitude and latitude."""
+
+    longitude: float
+    latitude: float
+
+
+@dataclass
+class Position:
+    """An aircraft position defined by longitude, latitude, and altitude."""
+
+    longitude: float
+    latitude: float
+    altitude: float
+
+    @property
+    def location(self) -> Location:
+        return Location(longitude=self.longitude, latitude=self.latitude)

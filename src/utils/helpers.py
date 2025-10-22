@@ -1,4 +1,4 @@
-from datetime import UTC, date
+from datetime import UTC, date, datetime
 from typing import cast
 
 import numpy as np
@@ -92,3 +92,10 @@ def filter_order_duplicates(seq):
 
 def date_to_timestamp(d: date) -> pd.Timestamp:
     return cast(pd.Timestamp, pd.Timestamp(d, tzinfo=UTC))
+
+
+def iso_to_timestamp(s: str) -> pd.Timestamp:
+    ts = cast(pd.Timestamp, pd.Timestamp(datetime.fromisoformat(s)))
+    if ts.tzinfo is None:
+        ts = ts.tz_localize(UTC)
+    return ts.tz_convert(UTC)
