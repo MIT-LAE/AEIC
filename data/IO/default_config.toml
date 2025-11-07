@@ -74,5 +74,7 @@ APU_calculation = true      # Compute emissions from APU
 
 GSE_calculation = true      # Compute emissions from GSE
 
+LC_calculation = true       # Compute lifecycle emissions
+
 ["OUTPUT"]
 output_folder = "Emission_Files"

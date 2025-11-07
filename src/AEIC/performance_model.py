@@ -91,7 +91,7 @@ class PerformanceModel:
             # Read UID
             UID = data['LTO_performance']['ICAO_UID']
             # Read EDB file and get engine
-            engine_info = self.get_engine_by_uid(UID, self.config["edb_engine_file"])
+            engine_info = self.get_engine_by_uid(UID, self.config["EDB_input_file"])
             if engine_info is not None:
                 self.EDB_data = engine_info
             else:
