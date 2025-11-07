@@ -1,5 +1,7 @@
 # Emissions class
 import tomllib
+from collections.abc import Mapping
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -21,6 +23,26 @@ from .EI_NOx import BFFM2_EINOx, NOx_speciation
 from .EI_PMnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
 from .EI_PMvol import EI_PMvol_FOA3, EI_PMvol_NEW
 from .EI_SOx import EI_SOx
+
+
+@dataclass(frozen=True)
+class EmissionSettings:
+    fuel_file: str
+    traj_all: bool
+    apu_enabled: bool
+    gse_enabled: bool
+    pmvol_method: str
+    pmnvol_method: str
+    lifecycle_enabled: bool
+    metric_flags: Mapping[str, bool]
+    method_flags: Mapping[str, str]
+
+
+@dataclass(frozen=True)
+class AtmosphericState:
+    temperature: np.ndarray | None
+    pressure: np.ndarray | None
+    mach: np.ndarray | None
 
 
 class Emission:
@@ -67,10 +89,10 @@ class Emission:
         self.so2_ei, self.so4_ei = EI_SOx(self.fuel)
 
         # Unpack trajectory lengths: total, climb, cruise, descent points
-        self.n_total = len(trajectory)
-        self.n_climb = trajectory.n_climb
-        self.n_cruise = trajectory.n_cruise
-        self.n_descent = trajectory.n_descent
+        self.Ntot = trajectory.Ntot
+        self.NClm = trajectory.NClm
+        self.NCrz = trajectory.NCrz
+        self.NDes = trajectory.NDes
 
         fill_value = -1.0  # Setting all emissions to -1 at the start
         # This helps in testing as any value still -1
@@ -104,8 +126,8 @@ class Emission:
             self.summed_emission_g,
         )
 
-        # Compute fuel burn per segment from fuel_mass time series
-        fuel_mass = trajectory.fuel_mass
+        # Compute fuel burn per segment from fuelMass time series
+        fuel_mass = trajectory.traj_data['fuelMass']
         fuel_burn = np.zeros_like(fuel_mass)
         # Difference between sequential mass values for ascent segments
         fuel_burn[1:] = fuel_mass[:-1] - fuel_mass[1:]
@@ -502,27 +524,13 @@ class Emission:
         wnsf : str
             Wide, Narrow, Small, or Freight ('w','n','s','f').
         """
-        # Map WNSF letter to index for nominal emission lists
-        mapping = {'wide': 0, 'narrow': 1, 'small': 2, 'freight': 3}
-        idx = mapping.get(wnsf.lower())
-        if idx is None:
-            raise ValueError(
-                "Invalid WNSF code; must be one of 'wide','narrow','small','freight'"
-            )
-
-        # Nominal emissions per engine start cycle [g/cycle]
-        CO2_nom = [58e3, 18e3, 10e3, 58e3]  # g/cycle
-        NOx_nom = [0.9e3, 0.4e3, 0.3e3, 0.9e3]  # g/cycle
-        HC_nom = [0.07e3, 0.04e3, 0.03e3, 0.07e3]  # g/cycle (NMVOC)
-        CO_nom = [0.3e3, 0.15e3, 0.1e3, 0.3e3]  # g/cycle
-        PM10_nom = [0.055e3, 0.025e3, 0.020e3, 0.055e3]  # g/cycle (≈PM2.5)
-
-        # Pick out the scalar values
-        self.GSE_emissions_g['CO2'] = CO2_nom[idx]
-        self.GSE_emissions_g['NOx'] = NOx_nom[idx]
-        self.GSE_emissions_g['HC'] = HC_nom[idx]
-        self.GSE_emissions_g['CO'] = CO_nom[idx]
-        pm_core = PM10_nom[idx]
+        idx = self._wnsf_index(wnsf)
+        nominal = self._gse_nominal_profile(idx)
+        self._assign_constant_indices(
+            self.GSE_emissions_g,
+            {key: nominal[key] for key in ('CO2', 'NOx', 'HC', 'CO')},
+        )
+        pm_core = nominal['PM10']
 
         CO2_EI = getattr(self, 'co2_ei', EI_CO2(self.fuel)[0])
         gse_fuel = self.GSE_emissions_g['CO2'] / CO2_EI
@@ -565,6 +573,50 @@ class Emission:
             fuel['LC_CO2'] * (traj.total_fuel_mass * fuel['Energy_MJ_per_kg'])
         ) - self.summed_emission_g['CO2']
         self.summed_emission_g['CO2'] += lc_CO2
+=======
+        lifecycle_total = fuel['LC_CO2'] * (traj.fuel_mass * fuel['Energy_MJ_per_kg'])
+        self.summed_emission_g['CO2'] = lifecycle_total
+
+    def compute_EI_NOx(
+        self,
+        idx_slice: slice,
+        lto_inputs,
+        atmos_state: AtmosphericState,
+        sls_equiv_fuel_flow,
+    ):
+        """Fill NOx-related EI arrays according to the selected method."""
+        method = self.method_flags.get('nox', 'none')
+        if method == 'none':
+            return
+        if method == 'bffm2':
+            if (
+                sls_equiv_fuel_flow is None
+                or atmos_state.temperature is None
+                or atmos_state.pressure is None
+            ):
+                raise RuntimeError(
+                    "BFFM2 NOx requires atmosphere and SLS equivalent fuel flow."
+                )
+            (
+                self.emission_indices['NOx'][idx_slice],
+                self.emission_indices['NO'][idx_slice],
+                self.emission_indices['NO2'][idx_slice],
+                self.emission_indices['HONO'][idx_slice],
+                *_,
+            ) = BFFM2_EINOx(
+                sls_equiv_fuel_flow=sls_equiv_fuel_flow,
+                NOX_EI_matrix=lto_inputs['nox_ei'],
+                fuelflow_performance=lto_inputs['fuel_flow'],
+                Pamb=atmos_state.pressure,
+                Tamb=atmos_state.temperature,
+            )
+        elif method == 'p3t3':
+            print("P3T3 method not implemented yet..")
+        else:
+            raise NotImplementedError(
+                f"EI_NOx_method '{self.method_flags['nox']}' is not supported."
+            )
+>>>>>>> 3cd11cb (cleaned up emissions class, solution slightly more elegant now, emissions not in config set to -1):src/emissions/emission.py
 
     ###################
     # PRIVATE METHODS #
