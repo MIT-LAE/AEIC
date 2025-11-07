@@ -57,7 +57,7 @@ def get_APU_emissions(
         APU_PM10 - APU_emission_indices['PMnvol']
     ).item()
 
-    if nvpm_method == "SCOPE11":
+    if nvpm_method.lower() in ('scope11', 'meem'):
         APU_emission_indices['PMnvolN'] = np.zeros_like(APU_emission_indices['PMvol'])
     APU_emission_indices['PMnvolGMD'] = np.zeros_like(APU_emission_indices['PMvol'])
     APU_emission_indices['OCic'] = np.zeros_like(APU_emission_indices['PMvol'])
