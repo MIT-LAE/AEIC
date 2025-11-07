@@ -15,13 +15,6 @@ performance_model_input = "PerformanceModel"
                                 # "PerformanceModel" : JSON file with state variables - fuel_flow = f(h, V, gamma, m_fuel) (TABULAR INPUT)
 
 performance_model_input_file = "IO/sample_performance_model.toml"
-climb_descent_usage = true # If true, then full trajectory is used for emissions calculate (including takeoff, landing)
-                           # If false, then only cruise used, LTO data used for takeoff, climb, approach
-
-["LTO data"]
-LTO_input_mode = "EDB"  # "PerformanceModel" : LTO data provided in PerformanceModel file
-                        # "EDB" : Use EDB data to get LTO performance
-edb_engine_file = "engines/EDB_data_06_2025.toml"
 
 ["Missions"]
 missions_folder = "missions"
@@ -34,8 +27,52 @@ sample_schedule = false         # Sample schedule distribution to get smaller co
 sample_number = 1000            # If sample_schedule: how many flights for the sample
 
 ["Emissions"]
-fuel_file = "fuels/conventional_jetA.toml"
-nvpm_method = "SCOPE11" # PMnvol estimation method for LTO (SCOPE11, fox, foa3, dop, sst, newsnci)
+Fuel = "conventional_jetA"  # Fuel files stored in data/fuels/
+                            # Current options include:
+                            # conventional_jetA
+
+CO2_calculation = true      # Compute CO2 emissions with EI in fuels file
+
+H2O_calculation = true      # Compute H2O emissions with EI in fuels file
+
+SOx_calculation = true      # Compute SOx emissions with EI in fuels file
+
+EI_NOx_method = "BFFM2"     # Options include
+                            # P3T3: Pt3, Tt3 method
+                            # BFFM2: Boeing Fuel flow method 2
+                            # None: Do not compute NOx emissions
+
+EI_HC_method = "BFFM2"      # Options include
+                            # BFFM2: Boeing Fuel flow method 2
+                            # None: Do not compute HC emissions
+
+EI_CO_method = "BFFM2"      # Options include
+                            # BFFM2: Boeing Fuel flow method 2
+                            # None: Do not compute CO emissions
+
+EI_PMvol_method = "fuel_flow"
+                            # Options include
+                            # fuel_flow: Calculate EI(PMvolo) and OCicEI based on fuel flow
+                            # FOA3: Using the FOA3.0 method (Wayson et al., 2009)
+                            # None: Do not compute PMvol emissions
+
+EI_PMnvol_method = "MEEM"   # Options include
+                            # MEEM: Mission Emissions Estimation Methodology (MEEM)
+                            #        based on Ahrens et al. (2022),
+                            #        SCOPE11, and the methodology of Peck et al. (2013).
+                            # SCOPE11: SCOPE11 methodology
+                            # None: Do not compute PMnvol emissions
+
+LTO_input_mode = "EDB"  # "PerformanceModel" : LTO data provided in PerformanceModel file
+                        # "EDB" : Use EDB data to get LTO performance
+EDB_input_file = "engines/EDB_data_06_2025.toml"
+
+climb_descent_usage = true  # true: emissions calculated for entire trajectory (takeoff, climb, cruise, descent)
+                            # false: emissions only calculated for cruise, LTO data used for takeoff, climb, approach
+
+APU_calculation = true      # Compute emissions from APU
+
+GSE_calculation = true      # Compute emissions from GSE
 
 ["OUTPUT"]
 output_folder = "Emission_Files"
