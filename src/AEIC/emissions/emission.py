@@ -858,11 +858,12 @@ class Emission:
 
     def _collect_emissions(self, lifecycle_adjustment: float | None) -> EmissionsOutput:
         """Bundle intermediate arrays into immutable emission slices."""
+        total_fuel_burn = float(np.asarray(self.total_fuel_burn).reshape(-1)[0])
         trajectory_slice = TrajectoryEmissionSlice(
             indices=self.emission_indices,
             emissions_g=self.pointwise_emissions_g,
             fuel_burn_per_segment=self.fuel_burn_per_segment,
-            total_fuel_burn=float(self.total_fuel_burn),
+            total_fuel_burn=total_fuel_burn,
         )
         lto_slice = EmissionSlice(
             indices=self.LTO_emission_indices,
