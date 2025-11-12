@@ -63,7 +63,7 @@ EI_PMnvol_method = "MEEM"   # Options include
                             # SCOPE11: SCOPE11 methodology
                             # None: Do not compute PMnvol emissions
 
-LTO_input_mode = "EDB"  # "PerformanceModel" : LTO data provided in PerformanceModel file
+LTO_input_mode = "EDB"  # "performance_model" : LTO data provided in PerformanceModel file
                         # "EDB" : Use EDB data to get LTO performance
 EDB_input_file = "engines/EDB_data_06_2025.toml"
 

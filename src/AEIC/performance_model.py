@@ -1,17 +1,104 @@
 import gc
 import os
 import tomllib
+from collections.abc import Mapping
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
 import numpy as np
 
-from AEIC.BADA.aircraft_parameters import Bada3AircraftParameters
-from AEIC.BADA.model import Bada3JetEngineModel
+from BADA.aircraft_parameters import Bada3AircraftParameters
+from BADA.model import Bada3JetEngineModel
+from parsers.LTO_reader import parseLTO
+from parsers.OPF_reader import parse_OPF
+from utils import file_location, inspect_inputs
 
-# from src.missions.OAG_filter import filter_OAG_schedule
-from AEIC.missions import Mission
-from AEIC.parsers.LTO_reader import parseLTO
-from AEIC.parsers.OPF_reader import parse_OPF
-from AEIC.utils.files import file_location
+
+class PerformanceInputMode(Enum):
+    """Config for selecting input modes Performance Model"""
+
+    # INPUT OPTIONS
+    OPF = "opf"
+    PERFORMANCE_MODEL = "performancemodel"
+
+    @classmethod
+    def from_value(cls, value: str | None) -> "PerformanceInputMode":
+        normalized = (value or cls.PERFORMANCE_MODEL.value).strip().lower()
+        for mode in cls:
+            if mode.value == normalized:
+                return mode
+        raise ValueError(
+            f"performance_model_input '{value}' is invalid. "
+            f"Valid options: {[m.value for m in cls]}"
+        )
+
+
+@dataclass(frozen=True)
+class PerformanceConfig:
+    """Immutable, validated view of the performance configuration consumed by
+    `PerformanceModel`. Has convenience accessors for emission-specific options.
+
+    Attributes:
+        missions_folder: Directory that holds the mission definition TOML files.
+        missions_in_file: Name of the missions list to load from `missions_folder`.
+        performance_model_input: Selected `PerformanceInputMode` (OPF vs table data).
+        performance_model_input_file: Path (relative or absolute) to the
+                                        performance input.
+        emissions: Raw mapping of emission-related configuration used by helpers like
+            `lto_input_mode`/`edb_input_file`.
+    """
+
+    missions_folder: str
+    missions_in_file: str
+    performance_model_input: PerformanceInputMode
+    performance_model_input_file: str
+    emissions: Mapping[str, Any]
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> "PerformanceConfig":
+        missions = mapping.get('Missions', {})
+        general = mapping.get('General Information', {})
+        emissions = mapping.get('Emissions', {})
+        if not missions:
+            raise ValueError("Missing [Missions] section in configuration file.")
+        if not general:
+            raise ValueError(
+                "Missing [General Information] section in configuration file."
+            )
+        if not emissions:
+            raise ValueError("Missing [Emissions] section in configuration file.")
+        return cls(
+            missions_folder=inspect_inputs.require_str(missions, 'missions_folder'),
+            missions_in_file=inspect_inputs.require_str(missions, 'missions_in_file'),
+            performance_model_input=PerformanceInputMode.from_value(
+                general.get('performance_model_input')
+            ),
+            performance_model_input_file=inspect_inputs.require_str(
+                general, 'performance_model_input_file'
+            ),
+            emissions=emissions,
+        )
+
+    def emission_option(self, key: str, default: Any = None) -> Any:
+        return self.emissions.get(key, default)
+
+    @property
+    def lto_input_mode(self) -> str:
+        raw = self.emission_option('LTO_input_mode', 'EDB')
+        return str(raw or 'EDB')
+
+    @property
+    def lto_input_file(self) -> str | None:
+        value = self.emission_option('LTO_input_file')
+        return None if value in (None, '') else str(value)
+
+    @property
+    def edb_input_file(self) -> str:
+        raw = self.emission_option('EDB_input_file')
+        if not isinstance(raw, str) or not raw.strip():
+            raise ValueError("EDB_input_file must be provided in [Emissions].")
+        return raw
 
 
 class PerformanceModel:
@@ -19,23 +106,27 @@ class PerformanceModel:
     fuel flow, airspeed, ROC/ROD, LTO emissions,
     and OAG schedule'''
 
+    """Loads the configuration and mission set, ingests the
+    requested performance input (OPF or TOML input), and prepares performance model
+    table, LTO, and APU artefacts needed for downstream analysis.
+
+    Parameters:
+        config_file: Path resolved via `file_location` that points to the master TOML
+            configuration describing missions, performance data, and emissions settings.
+    """
+
     def __init__(self, config_file="IO/default_config.toml"):
         '''Initializes the performance model by reading the configuration,
         loading mission data, and setting up performance and engine models.'''
         config_file_loc = file_location(config_file)
-        self.config = {}
         with open(config_file_loc, 'rb') as f:
             config_data = tomllib.load(f)
-            self.config = {
-                k: v for subdict in config_data.values() for k, v in subdict.items()
-            }
+        self.config = PerformanceConfig.from_mapping(config_data)
 
         # Get mission data
         # self.filter_OAG_schedule = filter_OAG_schedule
         mission_file = file_location(
-            os.path.join(
-                self.config['missions_folder'], self.config['missions_in_file']
-            )
+            os.path.join(self.config.missions_folder, self.config.missions_in_file)
         )
         with open(mission_file, 'rb') as f:
             self.missions = Mission.from_toml(tomllib.load(f))
@@ -49,15 +140,16 @@ class PerformanceModel:
         Also loads LTO/EDB data and sets up the engine model using BADA3 parameters.'''
 
         self.ac_params = Bada3AircraftParameters()
+        input_mode = self.config.performance_model_input
         # If OPF data input
-        if self.config["performance_model_input"] == "OPF":
+        if input_mode is PerformanceInputMode.OPF:
             opf_params = parse_OPF(
-                file_location(self.config["performance_model_input_file"])
+                file_location(self.config.performance_model_input_file)
             )
             for key in opf_params:
                 setattr(self.ac_params, key, opf_params[key])
         # If fuel flow function input
-        elif self.config["performance_model_input"] == "PerformanceModel":
+        elif input_mode is PerformanceInputMode.PERFORMANCE_MODEL:
             self.read_performance_data()
             ac_params_input = {
                 "cas_cruise_lo": self.model_info["speeds"]['cruise']['cas_lo'],
@@ -67,31 +159,35 @@ class PerformanceModel:
             for key in ac_params_input:
                 setattr(self.ac_params, key, ac_params_input[key])
         else:
-            print("Invalid performance model input provided!")
+            raise ValueError("Invalid performance model input provided!")
 
         # Initialize BADA engine model
         self.engine_model = Bada3JetEngineModel(self.ac_params)
 
-        if self.config["LTO_input_mode"] == "input_file":
+        if self.config.lto_input_mode.strip().lower() == "input_file":
             # Load LTO data
-            self.LTO_data = parseLTO(self.config['LTO_input_file'])
+            lto_input_file = self.config.lto_input_file
+            if not lto_input_file:
+                raise ValueError(
+                    "LTO_input_file must be provided when"
+                    "using LTO_input_mode='input_file'."
+                )
+            self.LTO_data = parseLTO(file_location(lto_input_file))
 
     def read_performance_data(self):
         '''Parses the TOML input file containing flight and LTO performance data.
         Separates model metadata and prepares the data for table generation.'''
 
         # Read and load TOML data
-        with open(
-            file_location(self.config["performance_model_input_file"]), "rb"
-        ) as f:
+        with open(file_location(self.config.performance_model_input_file), "rb") as f:
             data = tomllib.load(f)
 
         self.LTO_data = data['LTO_performance']
-        if self.config["LTO_input_mode"] == "EDB":
+        if self.config.lto_input_mode.strip().lower() == "edb":
             # Read UID
             UID = data['LTO_performance']['ICAO_UID']
             # Read EDB file and get engine
-            engine_info = self.get_engine_by_uid(UID, self.config["EDB_input_file"])
+            engine_info = self.get_engine_by_uid(UID, self.config.edb_input_file)
             if engine_info is not None:
                 self.EDB_data = engine_info
             else:
