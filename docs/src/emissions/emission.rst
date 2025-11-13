@@ -1,17 +1,69 @@
+.. _emissions-module:
+
 Emissions Module
 ================
 
-The ``Emission`` class encapsulates the full calculation of aircraft emissions for a mission:
+``emissions.emission.Emission`` is the module that uses
+:class:`AEIC.performance_model.PerformanceModel` and a flown
+:class:`AEIC.trajectories.trajectory.Trajectory` to compute emissions for the
+entire mission. It layers multiple methods for emission calculations
+from user choices in the configuration file.
 
-- **Trajectory emissions** (CO₂, H₂O, SO₂, NOₓ, HC, CO, particulate species) for every time step
-- **LTO cycle emissions** (taxi, approach, climb, takeoff)
-- **APU** (auxiliary power unit) emissions
-- **Ground Service Equipment** (GSE) emissions
-- **Life-cycle CO₂** additive for fuel production
+Overview
+----------
 
-All results are stored internally in structured NumPy arrays and can be summed.
+- Computes trajectory, LTO, APU, GSE, and life-cycle :math:`\mathrm{CO_2}`.
+- Uses :class:`EmissionsConfig` / :class:`EmissionSettings` objects so
+  configuration defaults and switches are enforced before any computation begins.
+- Emits structured arrays (grams by species) plus convenience
+  containers (``EmissionSlice`` and ``EmissionsOutput``) for downstream analysis.
+- Has helper methods such as :meth:`Emission.emit_trajectory` or
+  :meth:`Emission.emit_lto` when only a subset is needed.
 
-----
+Configuration Inputs
+--------------------
+
+The ``[Emissions]`` section of the configuration TOML file is validated through
+:class:`EmissionsConfig`. Keys and meanings are summarised below.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 25 50
+
+   * - Key
+     - Allowed values
+     - Description
+   * - ``Fuel``
+     - any fuel name matching ``fuels/<name>.toml``
+     - Selects the fuel file used for EIs and life-cycle data.
+   * - ``climb_descent_usage``
+     - ``true`` / ``false``
+     - When ``true``, the emissions are calculated over all segments of the trajectory;
+       otherwise climb/descent reverts to only LTO.
+   * - ``CO2_calculation`` / ``H2O_calculation`` / ``_calculation``
+     - ``true`` / ``false``
+     - Toggles calculation of fuel-dependent, constant EI species.
+   * - ``EI_NOx_method``
+     - ``BFFM2`` / ``P3T3`` / ``none``
+     - Selects the method for :math:`\mathrm{NO_x}` calculation (None disables calculation).
+   * - ``EI_HC_method`` / ``EI_CO_method``
+     - ``BFFM2`` / ``none``
+     - Selects the method for HC/CO calculation (None disables calculation).
+   * - ``EI_PMvol_method``
+     - ``fuel_flow`` / ``FOA3`` / ``none``
+     - Chooses the PMvol method.
+   * - ``EI_PMnvol_method``
+     - ``meem`` / ``scope11`` / ``FOA3`` / ``none``
+     - Chooses the PMnvol method.
+   * - ``LTO_input_mode``
+     - ``performance_model`` / ``EDB``
+     - Pulls LTO EI/fuel-flow data from the performance tables or EDB file.
+   * - ``EDB_input_file``
+     - path
+     - Required when ``LTO_input_mode = "EDB"`` to locate the ICAO databank file.
+   * - ``APU_calculation`` / ``GSE_calculation`` / ``LC_calculation``
+     - ``true`` / ``false``
+     - Enables non-trajectory emission sources and life-cycle :math:`\mathrm{CO_2}` adjustments.
 
 Usage Example
 -------------
@@ -20,203 +72,133 @@ Usage Example
 
    from AEIC.performance_model import PerformanceModel
    from AEIC.trajectories.trajectory import Trajectory
-   from emissions import Emission
+   from emissions.emission import Emission
 
-   # Initialize performance model & trajectory (user code)
-   perf = PerformanceModel.from_edb('path/to/config_file.toml')
-   # Load mission and set trajectory
-   traj = Trajectory(perf, mission, optimize_traj, iterate_mass)
+   perf = PerformanceModel("IO/default_config.toml")
+   mission = perf.missions[0]
+
+   traj = Trajectory(perf, mission, optimize_traj=True, iterate_mass=False)
    traj.fly_flight()
 
-   # Compute emissions
-   em = Emission(
-       ac_performance=perf,
-       trajectory=traj,
-       EDB_data=True,
-       fuel_file='fuels/conventional_jetA.toml'
-   )
+   emitter = Emission(perf)
+   output = emitter.emit(traj)
 
-   # Access summed emissions (g)
-   total = em.summed_emission_g
-   print("Total CO₂ (g):", total['CO2'])
-   print("Total NOx (g):", total['NOx'])
+   print("Total CO2 (g)", output.total['CO2'])
+   print("Taxi NOx (g)", output.lto.emissions_g['NOx'][0])
 
-----
+   # Need only the trajectory segment
+   segments = emitter.emit_trajectory(traj)
+   print("Per-segment PM number", segments.emissions_g['PMnvol'])
 
-Constructor
------------
+Inner Containers
+------------------
 
-.. code-block:: python
+The module defines dataclasses that document both inputs and
+outputs of the computation:
 
-   Emission(
-       ac_performance: PerformanceModel,
-       trajectory: Trajectory,
-       EDB_data: bool,
-       fuel_file: str
-   )
+- :class:`EmissionsConfig`: user-facing configuration parsed from the TOML file.
+  It validates enums (:class:`LTOInputMode`, :class:`EINOxMethod`,
+  :class:`PMvolMethod`, :class:`PMnvolMethod`), resolves defaults, and ensures
+  databank paths are present when required.
+- :class:`EmissionSettings`: flattened, runtime-only view of the above. It keeps
+  booleans for metric flags, file paths, and LTO/auxiliary toggles so subsequent
+  runs avoid re-validating the original mapping.
+- :class:`AtmosphericState`: carries temperature, pressure, and Mach arrays that
+  emission-index models reuse when HC/CO/:math:`\text{NO}_x`/PM need ambient conditions.
+- :class:`EmissionSlice`: describes any source (trajectory, LTO, APU, GSE). It
+  stores ``indices`` (emission indices in g/kg) and the realized ``emissions_g``.
+- :class:`TrajectoryEmissionSlice`: extends ``EmissionSlice`` with
+  ``fuel_burn_per_segment`` (kg) and ``total_fuel_burn`` (kg) so users can derive
+  intensity metrics.
+- :class:`EmissionsOutput`: top-level container returned by :meth:`Emission.emit`.
+  It exposes ``trajectory``, ``lto``, ``apu``, ``gse``, ``total`` (summed
+  structured array), and optional ``lifecycle_co2_g``.
 
-**Parameters**
+Computation Workflow
+--------------------
 
-+-------------------+----------------------+----------------------------------------------------------------------------------------+
-| Name              | Type                 | Description                                                                            |
-+===================+======================+========================================================================================+
-| ``ac_performance``| ``PerformanceModel`` | Aircraft performance object providing climb/cruise/descent and LTO data matrices.      |
-+-------------------+----------------------+----------------------------------------------------------------------------------------+
-| ``trajectory``    | ``Trajectory``       | Flight trajectory containing altitude, speed, fuel‐mass, and fuel‐flow time series.    |
-+-------------------+----------------------+----------------------------------------------------------------------------------------+
-| ``EDB_data``      | ``bool``             | If ``True``, uses tabulated EDB emissions; otherwise uses user‐specified LTO settings. |
-+-------------------+----------------------+----------------------------------------------------------------------------------------+
-| ``fuel_file``     | ``str``              | Path to TOML file of fuel properties (e.g. CO₂ factors, sulfur content, lifecycle CO₂).|
-+-------------------+----------------------+----------------------------------------------------------------------------------------+
+The ``Emission`` object is instanced once per performance model:
 
-Upon instantiation, the following steps occur:
+1. ``EmissionsConfig`` is materialized from
+   ``PerformanceModel.config.emissions`` and converted to ``EmissionSettings``.
+2. Fuel properties are read from ``fuels/<Fuel>.toml``. These provide :math:`\mathrm{CO_2}`/:math:`\mathrm{H_2O}`/:math:`\mathrm{SO_x}`
+   emission indices, and life-cycle factors.
+3. ``emit(traj)`` resets internal arrays sized to the trajectory steps
+4. :meth:`Emission.get_trajectory_emissions` computes EI values for each mission point:
 
-1. Fuel TOML is loaded.
-2. Array shapes are initialized based on trajectory lengths and config flags.
-3. Fuel burn per segment is derived from the trajectory’s fuel-mass time-series.
-4. **Trajectory**, **LTO**, **APU**, and **GSE** emissions are computed.
-5. All sources are summed and life-cycle CO₂ is added.
+   - Constant EI species (:math:`\mathrm{CO_2}`, :math:`\mathrm{H_2O}`, :math:`\mathrm{SO}_x``).
+   - Methods for HC/CO/:math:`\mathrm{NO_x}`/PMvol/PMnvol applied according to user specification.
+5. :meth:`Emission.get_LTO_emissions` builds the ICAO style landing and take off emissions using either
+   databank values (``LTO_input_mode = "edb"``) or the per-mode inputs embedded in
+   the performance file.
+6. :func:`emissions.APU_emissions.get_APU_emissions` and
+   :meth:`Emission.get_GSE_emissions` contributions are added if enabled.
+7. :meth:`Emission.sum_total_emissions` aggregates each pollutant into
+   ``self.summed_emission_g`` and, when requested, life-cycle :math:`\mathrm{CO_2}` is appended via
+   :meth:`Emission.get_lifecycle_emissions`.
 
-----
+Structured Arrays
+-----------------
 
-Attributes
-----------
-.. list-table:: Emission Class Attributes
-   :header-rows: 1
-   :widths: 25 10 65
+All emission indices and gram totals share the dtype emitted by the private
+``__emission_dtype`` helper. Each field is ``float64``:
 
-   * - Name
-     - Type
-     - Description
-   * - ``fuel``
-     - ``dict``
-     - Fuel properties loaded from TOML (e.g. ``EI_CO2``, ``LC_CO2``).
-   * - ``Ntot``, ``NClm``, ``NCrz``, ``NDes``
-     - ``int``
-     - Total, climb, cruise, and descent time-step counts.
-   * - ``traj_emissions_all``
-     - ``bool``
-     - Whether climb/descent uses performance model or LTO data.
-   * - ``pmnvol_mode``
-     - ``str``
-     - PM number estimation method (e.g. ``"SCOPE11"``).
-   * - ``fuel_burn_per_segment``
-     - ``ndarray``
-     - Fuel burned (kg) per time step.
-   * - ``emission_indices``
-     - ``ndarray``
-     - Emission indices (g/kg fuel) per species and time step.
-   * - ``pointwise_emissions_g``
-     - ``ndarray``
-     - Emissions (g) per time step.
-   * - ``LTO_emission_indices``
-     - ``ndarray``
-     - Emission indices for each LTO mode.
-   * - ``LTO_emissions_g``
-     - ``ndarray``
-     - Emissions (g) for each LTO mode.
-   * - ``APU_emission_indices``
-     - ``ndarray``
-     - APU emission indices (g/kg fuel).
-   * - ``APU_emissions_g``
-     - ``ndarray``
-     - APU emissions (g).
-   * - ``GSE_emissions_g``
-     - ``ndarray``
-     - GSE emissions (g) per engine-start cycle.
-   * - ``summed_emission_g``
-     - ``ndarray``
-     - Total emissions (g) across all sources.
+``CO2``, ``H2O``, ``HC``, ``CO``, ``NOx``, ``NO``, ``NO2``, ``HONO``,
+``PMnvol``, ``PMnvolGMD``, ``PMvol``, ``OCic``, ``SO2``, ``SO4``.
 
+If ``EI_PMnvol_method`` is ``SCOPE11`` or ``MEEM``, the additional ``PMnvolN``
+field is emitted. Metric-specific flags (see ``Emission.metric_flags``) determine
+which fields are populated; disabled species stay as ``0``, making it easy to filter downstream.
 
-----
+API Reference
+-------------
 
-Methods
---------------
-.. autoclass:: emissions.emission.Emission
+.. autoclass:: emissions.emission.EmissionsConfig
    :members:
+
+.. autoclass:: emissions.emission.EmissionSettings
+   :members:
+
+.. autoclass:: emissions.emission.Emission
+   :members: __init__, emit, emit_trajectory, emit_lto, emit_apu, emit_gse
+   :show-inheritance:
+
+.. autoclass:: emissions.emission.EmissionSlice
+   :members:
+
+.. autoclass:: emissions.emission.TrajectoryEmissionSlice
+   :members:
+
+.. autoclass:: emissions.emission.EmissionsOutput
+   :members:
+
+Helper Functions
+------------------
 
 .. automodule:: emissions.APU_emissions
    :members:
    :undoc-members:
-   :show-inheritance:
 
 .. automodule:: emissions.EI_CO2
    :members:
-   :undoc-members:
-   :show-inheritance:
 
 .. automodule:: emissions.EI_H2O
    :members:
-   :undoc-members:
-   :show-inheritance:
 
 .. automodule:: emissions.EI_SOx
    :members:
-   :undoc-members:
-   :show-inheritance:
 
 .. automodule:: emissions.EI_HCCO
    :members:
-   :undoc-members:
-   :show-inheritance:
 
 .. automodule:: emissions.EI_NOx
    :members:
-   :undoc-members:
-   :show-inheritance:
 
 .. automodule:: emissions.EI_PMnvol
    :members:
-   :undoc-members:
-   :show-inheritance:
 
 .. automodule:: emissions.EI_PMvol
    :members:
-   :undoc-members:
-   :show-inheritance:
 
 .. automodule:: emissions.lifecycle_CO2
    :members:
-   :undoc-members:
-   :show-inheritance:
-
-----
-
-Emission dtype Fields
----------------------
-
-The private helper ``__emission_dtype(shape)`` defines a structured NumPy dtype with the following fields (all ``float64``):
-
-- **CO2**: Carbon dioxide
-- **H2O**: Water vapor
-- **HC**: Hydrocarbons
-- **CO**: Carbon monoxide
-- **NOx**: Total nitrogen oxides
-- **NO**: Nitric oxide
-- **NO2**: Nitrogen dioxide
-- **HONO**: Nitrous acid
-- **PMnvol**: Black carbon
-- **PMnvol_lo**: Lower bound black carbon
-- **PMnvol_hi**: Upper bound black carbon
-- **PMnvolN**: Black carbon number
-- **PMnvolN_lo**: Lower bound number
-- **PMnvolN_hi**: Upper bound number
-- **PMnvolGMD**: Geometric mean diameter of black carbon (nm)
-- **PMvol**: Organic particulate matter mass
-- **OCic**: Organic carbon (incomplete combustion)
-- **SO2**: Sulfur dioxide
-- **SO4**: Sulfate
-
-.. note::
-
-   If ``pmnvol_mode`` is disabled, the ``*_lo``, ``*_hi``, and ``PMnvolN`` fields are omitted.
-
-----
-
-Notes
------
-
-- **Structured arrays** are used heavily—one field per pollutant, shaped by segment or mode count.
-- Private helper ``__emission_dtype(shape)`` defines the NumPy dtype fields.
-- Fuel burn is computed as the decrease in ``traj.traj_data['fuelMass']``.

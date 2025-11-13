@@ -1,49 +1,111 @@
 Performance Model
-=======================
+=================
 
-The ``PerformanceModel`` class encapsulates aircraft performance data. It builds a structured matrix of fuel flows as a function of altitude, TAS, ROCD, mass.
+``AEIC.performance_model.PerformanceModel`` takes aircraft performance,
+missions, and emissions configuration data as input and produces the
+data structure needed by trajectory solvers and the emissions pipeline.
+It builds a fuel-flow performance table as a function of aircraft mass,
+altitude, rate of climb/descent, and true airspeed.
 
-Class Definition
-----------------
-
-.. autoclass:: AEIC.performance_model.PerformanceModel
-   :members:
-
-Attributes
+Overview
 ----------
 
-.. attribute:: config
+- Loads project-wide TOML configuration and as :class:`PerformanceConfig`.
+- Supports two input modes via :class:`PerformanceInputMode`: reading BADA style OPF
+  files or ingesting the custom performance-model TOML tables.
+- Automatically loads mission definitions, LTO data (either from the performance
+  file or EDB databank), APU characteristics, and BADA3-based engine parameters.
+- Provides convenience accessors such as :attr:`PerformanceModel.missions`,
+  :attr:`PerformanceModel.performance_table`, and :attr:`PerformanceModel.model_info`
+  that later modules can consume without re-parsing TOML files.
 
-   Dictionary of all parsed key-value pairs from the configuration TOML file.
+Usage Example
+-------------
 
-.. attribute:: missions
+.. code-block:: python
 
-   List of missions (flights) parsed from the input TOML file.
+   from AEIC.performance_model import PerformanceModel
 
-.. attribute:: ac_params
+   perf = PerformanceModel("IO/default_config.toml")
+   print("Loaded missions:", len(perf.missions))
 
-   Instance of ``Bada3AircraftParameters`` representing aircraft configuration parameters.
+   table = perf.performance_table
+   fl_grid, tas_grid, roc_grid, mass_grid = perf.performance_table_cols
+   print("Fuel-flow grid shape:", table.shape)
 
-.. attribute:: engine_model
+   # Pass to trajectory or emissions builders
+   from emissions.emission import Emission
+   emitter = Emission(perf)
 
-   Instance of ``Bada3JetEngineModel`` initialized with aircraft parameters.
+Configuration Schema
+--------------------
 
-.. attribute:: LTO_data
+``PerformanceConfig`` converts the nested TOML mapping into a frozen dataclass
+with well-defined fields. Key sections include:
 
-   Dictionary of emissions or fuel flow data during the landing-takeoff cycle.
+.. list-table::
+   :header-rows: 1
+   :widths: 30 15 55
 
-.. attribute:: model_info
+   * - Section.Key
+     - Required
+     - Description
+   * - ``[Missions].missions_folder``
+     - ✓
+     - Directory containing the mission TOML files (relative to the repo root).
+   * - ``[Missions].missions_in_file``
+     - ✓
+     - File within ``missions_folder`` that lists available missions under ``[flight]``.
+   * - ``[General Information].performance_model_input``
+     - ✓
+     - Determines :class:`PerformanceInputMode`; accepts ``"opf"`` or ``"performancemodel"``.
+   * - ``[General Information].performance_model_input_file``
+     - ✓
+     - Path to the OPF file or the performance-model TOML containing
+       ``[flight_performance]`` and ``[LTO_performance]`` sections.
+   * - ``[Emissions]``
+     - ✓
+     - Stored as :attr:`PerformanceConfig.emissions` and forwarded to
+       :class:`emissions.emission.EmissionsConfig` for validation of LTO/fuel
+       choices (see :ref:`Emissions Module <emissions-module>`).
 
-   Parsed metadata from TOML describing the aircraft performance model (e.g., cruise speeds).
+Data Products
+-------------
 
-.. attribute:: performance_table
+After :meth:`PerformanceModel.initialize_performance` runs, the instance
+contains:
 
-   Multidimensional NumPy array of fuel flow rates indexed by input variables.
+- :attr:`PerformanceModel.missions`: list of mission dictionaries read from the
+  ``missions_in_file``.
+- :attr:`PerformanceModel.ac_params`: populated :class:`BADA.aircraft_parameters.Bada3AircraftParameters`
+  reflecting either OPF inputs or the performance table metadata.
+- :attr:`PerformanceModel.engine_model`: a :class:`BADA.model.Bada3JetEngineModel`
+  initialised with ``ac_params`` for thrust and fuel-flow calculations.
+- :attr:`PerformanceModel.performance_table`: the multidimensional NumPy array
+  mapping (flight level, TAS, ROCD, mass, …) onto fuel flow (kg/s).
+- :attr:`PerformanceModel.performance_table_cols` and
+  :attr:`PerformanceModel.performance_table_colnames`: the coordinate arrays and
+  names that describe each dimension of ``performance_table``.
+- :attr:`PerformanceModel.LTO_data`: modal thrust settings, fuel flows, and
+  emission indices pulled from the performance file (when ``LTO_input_mode =
+  "performance_model"``) or parsed via :func:`parsers.LTO_reader.parseLTO`.
+- :attr:`PerformanceModel.EDB_data`: ICAO engine databank entry loaded by
+  :meth:`PerformanceModel.get_engine_by_uid` when ``LTO_input_mode = "edb"``.
+- :attr:`PerformanceModel.APU_data`: auxiliary-power-unit properties resolved
+  from ``engines/APU_data.toml`` using the ``APU_name`` specified in the
+  performance file.
+- :attr:`PerformanceModel.model_info`: the remaining metadata (e.g., cruise
+  speeds, aerodynamic coefficients) trimmed away from ``flight_performance`` after
+  the table is created.
 
-.. attribute:: performance_table_cols
+API Reference
+-------------
 
-   List of sorted values for each input dimension of the performance table.
+.. autoclass:: AEIC.performance_model.PerformanceInputMode
+   :members:
 
-.. attribute:: performance_table_colnames
+.. autoclass:: AEIC.performance_model.PerformanceConfig
+   :members:
 
-   Names of each input dimension (excluding fuel flow) used to construct the table.
+.. autoclass:: AEIC.performance_model.PerformanceModel
+   :members: __init__, initialize_performance, read_performance_data, create_performance_table, get_engine_by_uid
