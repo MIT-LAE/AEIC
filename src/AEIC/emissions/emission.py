@@ -304,9 +304,6 @@ class Emission:
 
         with open(file_location(self.conf.fuel_file), 'rb') as f:
             self.fuel = tomllib.load(f)
-        self.co2_ei, self.nvol_carb_cont = EI_CO2(self.fuel)
-        self.h2o_ei = EI_H2O(self.fuel)
-        self.so2_ei, self.so4_ei = EI_SOx(self.fuel)
 
         self._reset_run_state()
 
@@ -358,7 +355,7 @@ class Emission:
                 self.LTO_noProp,
                 self.LTO_no2Prop,
                 self.LTO_honoProp,
-                EI_H2O=self.h2o_ei,
+                EI_H2O=EI_H2O(self.fuel),
                 nvpm_method=self.conf.pmnvol_method.value,
             )
             self._apply_metric_mask(self.APU_emission_indices)
@@ -1056,12 +1053,11 @@ class Emission:
         """Return constant EI values that do not depend on thrust or atmosphere."""
         constants = {}
         if self.metric_flags.get('CO2'):
-            constants['CO2'] = self.co2_ei
+            constants['CO2'], _ = EI_CO2(self.fuel)
         if self.metric_flags.get('H2O'):
-            constants['H2O'] = self.h2o_ei
+            constants['H2O'] = EI_H2O(self.fuel)
         if self.metric_flags.get('SOx'):
-            constants['SO2'] = self.so2_ei
-            constants['SO4'] = self.so4_ei
+            constants['SO2'], constants['SO4'] = EI_SOx(self.fuel)
         return constants
 
     def _atmospheric_state(

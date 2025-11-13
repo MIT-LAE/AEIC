@@ -207,10 +207,10 @@ def _expected_trajectory_indices(emission, trajectory):
     sls_flow = emission._sls_equivalent_fuel_flow(True, fuel_flow, atmos)
 
     expected = {
-        'CO2': np.full_like(fuel_flow, emission.co2_ei),
-        'H2O': np.full_like(fuel_flow, emission.h2o_ei),
-        'SO2': np.full_like(fuel_flow, emission.so2_ei),
-        'SO4': np.full_like(fuel_flow, emission.so4_ei),
+        'CO2': np.full_like(fuel_flow, 3155.6),
+        'H2O': np.full_like(fuel_flow, 1233.3865),
+        'SO2': np.full_like(fuel_flow, 1.176),
+        'SO4': np.full_like(fuel_flow, 0.036),
     }
 
     (
