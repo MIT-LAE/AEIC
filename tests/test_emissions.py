@@ -1,41 +1,54 @@
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
-from emissions.emission import AtmosphericState, Emission
+from emissions.EI_HCCO import EI_HCCO
+from emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
+from emissions.EI_PMnvol import calculate_PMnvolEI_scope11
+from emissions.EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
+from emissions.emission import (
+    AtmosphericState,
+    EINOxMethod,
+    Emission,
+    EmissionsConfig,
+    LTOInputMode,
+    PMnvolMethod,
+    PMvolMethod,
+)
+from utils.standard_fuel import get_thrust_cat
+
+_BASE_EMISSIONS = {
+    'Fuel': 'conventional_jetA',
+    'EDB_input_file': 'engines/example.edb',
+    'LTO_input_mode': 'EDB',
+    'EI_NOx_method': 'BFFM2',
+    'EI_HC_method': 'BFFM2',
+    'EI_CO_method': 'BFFM2',
+    'EI_PMvol_method': 'fuel_flow',
+    'EI_PMnvol_method': 'scope11',
+    'CO2_calculation': True,
+    'H2O_calculation': True,
+    'SOx_calculation': True,
+    'APU_calculation': True,
+    'GSE_calculation': True,
+    'LC_calculation': True,
+    'climb_descent_usage': True,
+}
 
 
-def _scalar(value: np.ndarray | float) -> float:
-    """Convert 0-D/length-1 numpy structures into native floats safely."""
-    arr = np.asarray(value)
-    if arr.size != 1:
-        raise AssertionError("Expected scalar-like value")
-    return float(arr.reshape(-1)[0])
+class DummyConfig:
+    def __init__(self, overrides: dict | None = None):
+        payload = dict(_BASE_EMISSIONS)
+        if overrides:
+            payload.update(overrides)
+        self.emissions = payload
+        self.lto_input_mode = payload.get('LTO_input_mode', 'EDB')
 
 
 class DummyPerformanceModel:
-    """Lightweight stand-in for PerformanceModel with deterministic data."""
-
-    def __init__(self, config_overrides=None, edb_overrides=None):
-        base_config = {
-            'Fuel': 'conventional_jetA',
-            'LTO_input_mode': 'EDB',
-            'EI_NOx_method': 'BFFM2',
-            'EI_HC_method': 'BFFM2',
-            'EI_CO_method': 'BFFM2',
-            'EI_PMvol_method': 'fuel_flow',
-            'EI_PMnvol_method': 'scope11',
-            'CO2_calculation': True,
-            'H2O_calculation': True,
-            'SOx_calculation': True,
-            'APU_calculation': True,
-            'GSE_calculation': True,
-            'LC_calculation': True,
-            'climb_descent_usage': True,
-        }
-        if config_overrides:
-            base_config.update(config_overrides)
-        self.config = base_config
-
+    def __init__(self, config_overrides=None, edb_overrides=None, lto_settings=None):
+        self.config = DummyConfig(config_overrides)
         base_edb = {
             'fuelflow_KGperS': np.array([0.25, 0.5, 0.9, 1.2], dtype=float),
             'NOX_EI_matrix': np.array([8.0, 12.0, 26.0, 32.0], dtype=float),
@@ -61,7 +74,41 @@ class DummyPerformanceModel:
         if edb_overrides:
             base_edb.update(edb_overrides)
         self.EDB_data = base_edb
-
+        default_lto_settings = {
+            'takeoff': {
+                'FUEL_KGs': 1.2,
+                'EI_NOx': 40.0,
+                'EI_HC': 1.0,
+                'EI_CO': 2.0,
+                'THRUST_FRAC': 1.0,
+            },
+            'climb': {
+                'FUEL_KGs': 0.9,
+                'EI_NOx': 32.0,
+                'EI_HC': 1.5,
+                'EI_CO': 3.0,
+                'THRUST_FRAC': 0.85,
+            },
+            'approach': {
+                'FUEL_KGs': 0.5,
+                'EI_NOx': 12.0,
+                'EI_HC': 3.0,
+                'EI_CO': 10.0,
+                'THRUST_FRAC': 0.30,
+            },
+            'idle': {
+                'FUEL_KGs': 0.25,
+                'EI_NOx': 8.0,
+                'EI_HC': 4.0,
+                'EI_CO': 20.0,
+                'THRUST_FRAC': 0.07,
+            },
+        }
+        self.LTO_data = {
+            'thrust_settings': lto_settings
+            if lto_settings is not None
+            else default_lto_settings
+        }
         self.APU_data = {
             'fuel_kg_per_s': 0.03,
             'PM10_g_per_kg': 0.4,
@@ -75,19 +122,21 @@ class DummyPerformanceModel:
 
 
 class DummyTrajectory:
-    """Minimal trajectory profile with monotonic fuel depletion."""
-
     def __init__(self):
         self.NClm = 2
         self.NCrz = 2
         self.NDes = 2
         self.Ntot = self.NClm + self.NCrz + self.NDes
-        fuel_mass = np.array([2000.0, 1994.0, 1987.5, 1975.0, 1960.0, 1945.0])
+        fuel_mass = np.array(
+            [2000.0, 1994.0, 1987.5, 1975.0, 1960.0, 1945.0], dtype=float
+        )
         self.traj_data = {
             'fuelMass': fuel_mass,
-            'fuelFlow': np.array([0.3, 0.35, 0.55, 0.65, 0.5, 0.32]),
-            'altitude': np.array([0.0, 1500.0, 6000.0, 11000.0, 9000.0, 2000.0]),
-            'tas': np.array([120.0, 150.0, 190.0, 210.0, 180.0, 140.0]),
+            'fuelFlow': np.array([0.3, 0.35, 0.55, 0.65, 0.5, 0.32], dtype=float),
+            'altitude': np.array(
+                [0.0, 1500.0, 6000.0, 11000.0, 9000.0, 2000.0], dtype=float
+            ),
+            'tas': np.array([120.0, 150.0, 190.0, 210.0, 180.0, 140.0], dtype=float),
         }
         self.fuel_mass = float(fuel_mass[0])
 
@@ -98,79 +147,222 @@ def trajectory():
 
 
 @pytest.fixture
-def perf_factory():
-    def _factory(config_overrides=None, edb_overrides=None):
-        return DummyPerformanceModel(config_overrides, edb_overrides)
+def sample_perf_model():
+    def _factory(config_overrides=None, edb_overrides=None, lto_settings=None):
+        return DummyPerformanceModel(config_overrides, edb_overrides, lto_settings)
 
     return _factory
 
 
 @pytest.fixture
-def emission(perf_factory, trajectory):
-    perf = perf_factory()
-    em = Emission(perf, trajectory)
-    em.compute_emissions()
-    return em
+def emission_with_run(sample_perf_model, trajectory):
+    perf = sample_perf_model()
+    emission = Emission(perf)
+    output = emission.emit(trajectory)
+    return emission, output, trajectory
 
 
-def test_emission_settings_parse_string_flags(perf_factory, trajectory):
-    perf = perf_factory(
+def _map_modes_to_categories(mode_values: np.ndarray, thrust_categories: np.ndarray):
+    values = np.asarray(mode_values, dtype=float).ravel()
+    mapped = np.full(thrust_categories.shape, values[-1], dtype=float)
+    mapped[thrust_categories == 2] = values[0]
+    if values.size > 1:
+        mapped[thrust_categories == 3] = values[1]
+    if values.size > 2:
+        mapped[thrust_categories == 1] = values[2]
+    return mapped
+
+
+def _expected_scope11_mapping(performance_model, thrust_categories):
+    edb = performance_model.EDB_data
+    mass_modes = calculate_PMnvolEI_scope11(
+        np.array(edb['SN_matrix']),
+        np.array(edb['PR']),
+        edb['ENGINE_TYPE'],
+        np.array(edb['BP_Ratio']),
+    )
+    number_modes = edb.get('PMnvolEIN_best_ICAOthrust')
+    mass = _map_modes_to_categories(mass_modes, thrust_categories)
+    number = (
+        _map_modes_to_categories(np.array(number_modes), thrust_categories)
+        if number_modes is not None
+        else None
+    )
+    return mass, number
+
+
+def _expected_trajectory_indices(emission, trajectory):
+    idx_slice = emission._trajectory_slice()
+    traj_data = trajectory.traj_data
+    lto_inputs = emission._extract_lto_inputs()
+
+    fuel_flow = traj_data['fuelFlow'][idx_slice]
+    thrust_categories = get_thrust_cat(
+        fuel_flow, lto_inputs['fuel_flow'], cruiseCalc=True
+    )
+
+    altitudes = traj_data['altitude'][idx_slice]
+    tas = traj_data['tas'][idx_slice]
+    atmos = emission._atmospheric_state(altitudes, tas, True)
+    sls_flow = emission._sls_equivalent_fuel_flow(True, fuel_flow, atmos)
+
+    expected = {
+        'CO2': np.full_like(fuel_flow, emission.co2_ei),
+        'H2O': np.full_like(fuel_flow, emission.h2o_ei),
+        'SO2': np.full_like(fuel_flow, emission.so2_ei),
+        'SO4': np.full_like(fuel_flow, emission.so4_ei),
+    }
+
+    (
+        expected['NOx'],
+        expected['NO'],
+        expected['NO2'],
+        expected['HONO'],
+        no_prop,
+        no2_prop,
+        hono_prop,
+    ) = BFFM2_EINOx(
+        sls_equiv_fuel_flow=sls_flow,
+        NOX_EI_matrix=lto_inputs['nox_ei'],
+        fuelflow_performance=lto_inputs['fuel_flow'],
+        Tamb=atmos.temperature,
+        Pamb=atmos.pressure,
+    )
+
+    expected['HC'] = EI_HCCO(
+        sls_flow,
+        lto_inputs['hc_ei'],
+        lto_inputs['fuel_flow'],
+        Tamb=atmos.temperature,
+        Pamb=atmos.pressure,
+        cruiseCalc=True,
+    )
+    expected['CO'] = EI_HCCO(
+        sls_flow,
+        lto_inputs['co_ei'],
+        lto_inputs['fuel_flow'],
+        Tamb=atmos.temperature,
+        Pamb=atmos.pressure,
+        cruiseCalc=True,
+    )
+
+    if emission.conf.pmvol_method is PMvolMethod.FUEL_FLOW:
+        thrust_labels = np.full(thrust_categories.shape, 'H', dtype='<U1')
+        thrust_labels[thrust_categories == 2] = 'L'
+        pmvol, ocic = EI_PMvol_FuelFlow(fuel_flow, thrust_labels)
+    else:
+        thrust_pct = emission._thrust_percentages_from_categories(thrust_categories)
+        pmvol, ocic = EI_PMvol_FOA3(thrust_pct, expected['HC'])
+    expected['PMvol'] = pmvol
+    expected['OCic'] = ocic
+
+    if emission.conf.pmnvol_method is PMnvolMethod.SCOPE11:
+        mass, number = _expected_scope11_mapping(
+            emission.performance_model, thrust_categories
+        )
+        expected['PMnvol'] = mass
+        expected['PMnvolGMD'] = np.zeros_like(fuel_flow)
+        if emission._include_pmnvol_number and number is not None:
+            expected['PMnvolN'] = number
+    else:
+        expected['PMnvolGMD'] = np.zeros_like(fuel_flow)
+
+    return expected, (no_prop, no2_prop, hono_prop)
+
+
+def _expected_lto_nox_split(emission):
+    lto_inputs = emission._extract_lto_inputs()
+    thrust_categories = get_thrust_cat(lto_inputs['fuel_flow'], None, cruiseCalc=False)
+    return NOx_speciation(thrust_categories)
+
+
+def test_emissions_config_parses_string_flags():
+    cfg = EmissionsConfig.from_mapping(
         {
+            'Fuel': 'synthetic_jet',
+            'EDB_input_file': 'engines/custom.edb',
+            'LTO_input_mode': 'EDB',
+            'EI_NOx_method': 'none',
+            'EI_HC_method': 'BFFM2',
+            'EI_CO_method': 'BFFM2',
+            'EI_PMvol_method': 'FOA3',
+            'EI_PMnvol_method': 'scope11',
             'APU_calculation': 'no',
             'GSE_calculation': 'Yes',
-            'LC_calculation': 'n',
-            'EI_PMvol_method': 'FOA3',
+            'LC_calculation': '0',
+            'climb_descent_usage': 'n',
         }
     )
-    em = Emission(perf, trajectory)
-    assert em.apu_enabled is False
-    assert em.gse_enabled is True
-    assert em.lifecycle_enabled is False
-    assert em.pmvol_method == 'foa3'
+    assert cfg.fuel_file == 'fuels/synthetic_jet.toml'
+    assert cfg.nox_method is EINOxMethod.NONE
+    assert cfg.apu_calculation is False
+    assert cfg.gse_calculation is True
+    assert cfg.lc_calculation is False
+    assert cfg.pmvol_method is PMvolMethod.FOA3
+    assert cfg.pmnvol_method is PMnvolMethod.SCOPE11
+    assert cfg.climb_descent_usage is False
+    assert cfg.lto_input_mode is LTOInputMode.EDB
+    assert cfg.edb_input_file == 'engines/custom.edb'
 
 
-def test_compute_emissions_populates_active_fields(emission):
-    FILL_VALUE = -1.0
-    for field in emission._active_fields:
-        indices = emission.emission_indices[field]
-        assert np.all(indices != FILL_VALUE)
-        assert np.all(indices >= 0.0)
-        assert np.all(emission.pointwise_emissions_g[field] >= 0.0)
-
-
-def test_apu_and_gse_outputs_positive(emission):
-    for store in (emission.APU_emissions_g, emission.GSE_emissions_g):
-        for field in store.dtype.names:
-            assert _scalar(store[field]) >= 0.0
-
-
-def test_total_fuel_burn_positive(emission):
-    assert emission.total_fuel_burn > 0.0
-
-
-def test_sum_total_emissions_matches_components(perf_factory, trajectory):
-    perf = perf_factory({'LC_calculation': False})
-    em = Emission(perf, trajectory)
-    em.compute_emissions()
-
-    for field in em.summed_emission_g.dtype.names:
-        expected = (
-            np.sum(em.pointwise_emissions_g[field])
-            + np.sum(em.LTO_emissions_g[field])
-            + _scalar(em.APU_emissions_g[field])
-            + _scalar(em.GSE_emissions_g[field])
-        )
-        assert _scalar(em.summed_emission_g[field]) == pytest.approx(expected, rel=1e-6)
-
-
-def test_lifecycle_emissions_override_total_co2(emission):
-    expected = emission.fuel['LC_CO2'] * (
-        emission.trajectory.fuel_mass * emission.fuel['Energy_MJ_per_kg']
+def test_emit_matches_expected_indices_and_pointwise(emission_with_run):
+    emission, output, trajectory = emission_with_run
+    expected, (no_prop, no2_prop, hono_prop) = _expected_trajectory_indices(
+        emission, trajectory
     )
-    assert _scalar(emission.summed_emission_g['CO2']) == pytest.approx(expected)
+    idx_slice = emission._trajectory_slice()
+    for field, expected_values in expected.items():
+        if field not in emission.emission_indices.dtype.names:
+            continue
+        np.testing.assert_allclose(
+            emission.emission_indices[field][idx_slice], expected_values
+        )
+    fuel_burn = emission.fuel_burn_per_segment[idx_slice]
+    for field in emission._active_fields:
+        np.testing.assert_allclose(
+            emission.pointwise_emissions_g[field][idx_slice],
+            emission.emission_indices[field][idx_slice] * fuel_burn,
+        )
+    np.testing.assert_allclose(
+        emission.emission_indices['NO'][idx_slice],
+        emission.emission_indices['NOx'][idx_slice] * no_prop,
+    )
+    np.testing.assert_allclose(
+        emission.emission_indices['NO2'][idx_slice],
+        emission.emission_indices['NOx'][idx_slice] * no2_prop,
+    )
+    np.testing.assert_allclose(
+        emission.emission_indices['HONO'][idx_slice],
+        emission.emission_indices['NOx'][idx_slice] * hono_prop,
+    )
+    assert output.trajectory.total_fuel_burn == pytest.approx(emission.total_fuel_burn)
+    assert output.lifecycle_co2_g is not None
 
 
-def test_scope11_profile_caching(emission):
+def test_sum_total_emissions_matches_components(sample_perf_model, trajectory):
+    perf = sample_perf_model({'LC_calculation': False})
+    emission = Emission(perf)
+    emission.emit(trajectory)
+    for field in emission.summed_emission_g.dtype.names:
+        expected = (
+            np.sum(emission.pointwise_emissions_g[field])
+            + np.sum(emission.LTO_emissions_g[field])
+            + np.sum(emission.APU_emissions_g[field])
+            + np.sum(emission.GSE_emissions_g[field])
+        )
+        assert emission.summed_emission_g[field] == pytest.approx(expected)
+
+
+def test_lifecycle_emissions_require_total_fuel_mass(sample_perf_model):
+    emission = Emission(sample_perf_model())
+    bad_traj = DummyTrajectory()
+    bad_traj.fuel_mass = None
+    with pytest.raises(ValueError):
+        emission.emit(bad_traj)
+
+
+def test_scope11_profile_caching(sample_perf_model):
+    emission = Emission(sample_perf_model())
     profile_first = emission._scope11_profile(emission.performance_model)
     profile_second = emission._scope11_profile(emission.performance_model)
     assert profile_first is profile_second
@@ -180,113 +372,296 @@ def test_scope11_profile_caching(emission):
     )
 
 
-def test_get_lto_tims_respects_traj_flag(perf_factory, trajectory):
-    em_all = Emission(perf_factory({'climb_descent_usage': True}), trajectory)
-    durations_all = em_all._get_LTO_TIMs()
-    assert np.allclose(durations_all[1:3], 0.0)
-
-    em_partial = Emission(perf_factory({'climb_descent_usage': False}), trajectory)
-    durations_partial = em_partial._get_LTO_TIMs()
-    assert np.all(durations_partial[1:3] > 0.0)
+def test_get_lto_tims_respects_traj_flag(sample_perf_model):
+    emission_all = Emission(sample_perf_model({'climb_descent_usage': True}))
+    assert np.allclose(emission_all._get_LTO_TIMs()[1:3], 0.0)
+    emission_partial = Emission(sample_perf_model({'climb_descent_usage': False}))
+    assert np.all(emission_partial._get_LTO_TIMs()[1:3] > 0.0)
 
 
-def test_wnsf_index_mapping_and_errors(perf_factory, trajectory):
-    em = Emission(perf_factory(), trajectory)
-    assert em._wnsf_index('wide') == 0
-    assert em._wnsf_index('FREIGHT') == 3
+def test_lto_nox_split_matches_speciation(emission_with_run):
+    emission, _, _ = emission_with_run
+    no_prop, no2_prop, hono_prop = _expected_lto_nox_split(emission)
+    np.testing.assert_allclose(
+        emission.LTO_emission_indices['NO'],
+        emission.LTO_emission_indices['NOx'] * no_prop,
+    )
+    np.testing.assert_allclose(
+        emission.LTO_emission_indices['NO2'],
+        emission.LTO_emission_indices['NOx'] * no2_prop,
+    )
+    np.testing.assert_allclose(
+        emission.LTO_emission_indices['HONO'],
+        emission.LTO_emission_indices['NOx'] * hono_prop,
+    )
+
+
+def test_extract_lto_inputs_orders_performance_modes(sample_perf_model, trajectory):
+    lto_settings = {
+        'TakeOff': {
+            'FUEL_KGs': 1.7,
+            'EI_NOx': 45.0,
+            'EI_HC': 1.1,
+            'EI_CO': 2.2,
+            'THRUST_FRAC': 1.0,
+        },
+        'Climb': {
+            'FUEL_KGs': 0.95,
+            'EI_NOx': 33.0,
+            'EI_HC': 1.4,
+            'EI_CO': 2.8,
+            'THRUST_FRAC': 0.85,
+        },
+        'Approach': {
+            'FUEL_KGs': 0.55,
+            'EI_NOx': 14.0,
+            'EI_HC': 2.8,
+            'EI_CO': 9.5,
+            'THRUST_FRAC': 0.30,
+        },
+        'Idle': {
+            'FUEL_KGs': 0.28,
+            'EI_NOx': 9.0,
+            'EI_HC': 3.5,
+            'EI_CO': 18.0,
+            'THRUST_FRAC': 0.07,
+        },
+    }
+    perf = sample_perf_model(
+        {'LTO_input_mode': 'performance_model'},
+        lto_settings=lto_settings,
+    )
+    emission = Emission(perf)
+    emission._prepare_run_state(trajectory)
+    lto_inputs = emission._extract_lto_inputs()
+    assert np.allclose(lto_inputs['fuel_flow'], [0.28, 0.55, 0.95, 1.7])
+    assert np.allclose(lto_inputs['nox_ei'], [9.0, 14.0, 33.0, 45.0])
+    assert np.allclose(lto_inputs['hc_ei'], [3.5, 2.8, 1.4, 1.1])
+    assert np.allclose(lto_inputs['co_ei'], [18.0, 9.5, 2.8, 2.2])
+    assert np.allclose(lto_inputs['thrust_pct'], [7.0, 30.0, 85.0, 100.0])
+
+
+def test_pmvol_foa3_uses_thrust_percentages(monkeypatch, sample_perf_model, trajectory):
+    perf = sample_perf_model({'EI_PMvol_method': 'foa3'})
+    emission = Emission(perf)
+    emission._prepare_run_state(trajectory)
+    idx_slice = emission._trajectory_slice()
+    thrust_categories = np.array([1, 2, 3, 1, 2, 3])
+    hc_ei = np.linspace(1.0, 2.5, thrust_categories.size)
+    captured = {}
+
+    def fake_foa3(thrusts, hc_values):
+        captured['thrusts'] = thrusts.copy()
+        captured['hc'] = hc_values.copy()
+        return np.zeros_like(hc_values), np.zeros_like(hc_values)
+
+    monkeypatch.setattr('emissions.emission.EI_PMvol_FOA3', fake_foa3)
+    emission._calculate_EI_PMvol(
+        idx_slice,
+        thrust_categories,
+        trajectory.traj_data['fuelFlow'][idx_slice],
+        hc_ei,
+    )
+    expected = emission._thrust_percentages_from_categories(thrust_categories)
+    np.testing.assert_allclose(captured['thrusts'], expected)
+    np.testing.assert_allclose(captured['hc'], hc_ei)
+
+
+def test_wnsf_index_mapping_and_errors(sample_perf_model, trajectory):
+    emission = Emission(sample_perf_model())
+    emission._prepare_run_state(trajectory)
+    assert emission._wnsf_index('wide') == 0
+    assert emission._wnsf_index('FREIGHT') == 3
     with pytest.raises(ValueError):
-        em._wnsf_index('unknown')
+        emission._wnsf_index('unknown')
 
 
-def test_calculate_pmvol_requires_hc_for_foa3(perf_factory, trajectory):
-    em = Emission(perf_factory({'EI_PMvol_method': 'foa3'}), trajectory)
-    idx_slice = em._trajectory_slice()
-    fuel_flow = em.trajectory.traj_data['fuelFlow'][idx_slice]
+def test_calculate_pmvol_requires_hc_for_foa3(sample_perf_model, trajectory):
+    emission = Emission(sample_perf_model({'EI_PMvol_method': 'foa3'}))
+    emission._prepare_run_state(trajectory)
+    idx_slice = emission._trajectory_slice()
+    fuel_flow = trajectory.traj_data['fuelFlow'][idx_slice]
     thrust_categories = np.ones_like(fuel_flow, dtype=int)
     with pytest.raises(RuntimeError):
-        em._calculate_EI_PMvol(
-            idx_slice,
-            thrust_categories,
-            fuel_flow,
-            None,
+        emission._calculate_EI_PMvol(idx_slice, thrust_categories, fuel_flow, None)
+
+
+def test_calculate_pmnvol_scope11_populates_fields(sample_perf_model, trajectory):
+    emission = Emission(sample_perf_model({'EI_PMnvol_method': 'scope11'}))
+    emission._prepare_run_state(trajectory)
+    idx_slice = emission._trajectory_slice()
+    thrust_categories = np.ones_like(
+        trajectory.traj_data['fuelFlow'][idx_slice], dtype=int
+    )
+    emission._calculate_EI_PMnvol(
+        idx_slice,
+        thrust_categories,
+        trajectory.traj_data['altitude'][idx_slice],
+        AtmosphericState(None, None, None),
+        emission.performance_model,
+    )
+    traj_len = idx_slice.stop - idx_slice.start
+    expected_mass = np.full(traj_len, 0.07311027)
+    expected_number = np.full(traj_len, 1.3e13)
+    np.testing.assert_allclose(
+        emission.emission_indices['PMnvol'][idx_slice], expected_mass
+    )
+    np.testing.assert_allclose(
+        emission.emission_indices['PMnvolGMD'][idx_slice],
+        np.zeros(traj_len, dtype=float),
+    )
+    if 'PMnvolN' in emission.emission_indices.dtype.names:
+        np.testing.assert_allclose(
+            emission.emission_indices['PMnvolN'][idx_slice], expected_number
         )
 
 
-def test_calculate_pmnvol_scope11_populates_fields(perf_factory, trajectory):
-    em = Emission(perf_factory({'EI_PMnvol_method': 'scope11'}), trajectory)
-    idx_slice = em._trajectory_slice()
+def test_calculate_pmnvol_meem_populates_fields(sample_perf_model, trajectory):
+    emission = Emission(sample_perf_model({'EI_PMnvol_method': 'meem'}))
+    emission._prepare_run_state(trajectory)
+    idx_slice = emission._trajectory_slice()
+    altitudes = trajectory.traj_data['altitude'][idx_slice]
+    tas = trajectory.traj_data['tas'][idx_slice]
+    atmos = emission._atmospheric_state(altitudes, tas, True)
     thrust_categories = np.ones_like(
-        em.trajectory.traj_data['fuelFlow'][idx_slice], dtype=int
+        trajectory.traj_data['fuelFlow'][idx_slice], dtype=int
     )
-    em._calculate_EI_PMnvol(
+    emission._calculate_EI_PMnvol(
         idx_slice,
         thrust_categories,
-        em.trajectory.traj_data['altitude'][idx_slice],
-        AtmosphericState(None, None, None),
-        em.performance_model,
+        altitudes,
+        atmos,
+        emission.performance_model,
     )
-    assert np.all(em.emission_indices['PMnvol'][idx_slice] >= 0.0)
-    assert np.all(em.emission_indices['PMnvolGMD'][idx_slice] == 0.0)
-
-
-def test_calculate_pmnvol_meem_populates_fields(perf_factory, trajectory):
-    em = Emission(perf_factory({'EI_PMnvol_method': 'meem'}), trajectory)
-    idx_slice = em._trajectory_slice()
-    altitudes = em.trajectory.traj_data['altitude'][idx_slice]
-    tas = em.trajectory.traj_data['tas'][idx_slice]
-    atmos = em._atmospheric_state(altitudes, tas, True)
-    thrust_categories = np.ones_like(
-        em.trajectory.traj_data['fuelFlow'][idx_slice], dtype=int
+    expected_gmd = np.array(
+        [40.0, 38.4671063303, 35.9228905331, 30.6483151751, 20.0, 20.0]
     )
-    em._calculate_EI_PMnvol(
-        idx_slice, thrust_categories, altitudes, atmos, em.performance_model
+    expected_mass = np.array(
+        [
+            0.008296638,
+            0.0073855157,
+            0.0060141937,
+            0.0048486474,
+            0.0031337246,
+            0.0057335216,
+        ]
     )
-    assert np.all(em.emission_indices['PMnvol'][idx_slice] >= 0.0)
-    assert np.all(em.emission_indices['PMnvolGMD'][idx_slice] >= 0.0)
-    if 'PMnvolN' in em.emission_indices.dtype.names:
-        assert np.all(em.emission_indices['PMnvolN'][idx_slice] >= 0.0)
+    expected_number = np.array(
+        [
+            2.9357334337e14,
+            2.6122814630e14,
+            2.0133216668e14,
+            1.4705704051e14,
+            1.2534898598e14,
+            2.2714835290e14,
+        ]
+    )
+    np.testing.assert_allclose(
+        emission.emission_indices['PMnvolGMD'][idx_slice], expected_gmd
+    )
+    np.testing.assert_allclose(
+        emission.emission_indices['PMnvol'][idx_slice], expected_mass
+    )
+    if 'PMnvolN' in emission.emission_indices.dtype.names:
+        np.testing.assert_allclose(
+            emission.emission_indices['PMnvolN'][idx_slice], expected_number
+        )
 
 
-def test_compute_ei_nox_requires_inputs(perf_factory, trajectory):
-    em = Emission(perf_factory(), trajectory)
-    idx_slice = em._trajectory_slice()
-    lto_inputs = em._extract_lto_inputs()
+def test_compute_ei_nox_requires_inputs(sample_perf_model, trajectory):
+    emission = Emission(sample_perf_model())
+    emission._prepare_run_state(trajectory)
+    idx_slice = emission._trajectory_slice()
+    lto_inputs = emission._extract_lto_inputs()
     with pytest.raises(RuntimeError):
-        em.compute_EI_NOx(
+        emission.compute_EI_NOx(
             idx_slice, lto_inputs, AtmosphericState(None, None, None), None
         )
 
 
-def test_atmospheric_state_and_sls_flow_shapes(perf_factory, trajectory):
-    em = Emission(perf_factory(), trajectory)
-    idx_slice = em._trajectory_slice()
-    altitudes = em.trajectory.traj_data['altitude'][idx_slice]
-    tas = em.trajectory.traj_data['tas'][idx_slice]
-    atmos = em._atmospheric_state(altitudes, tas, True)
-    assert atmos.temperature.shape == altitudes.shape
-    assert atmos.pressure.shape == altitudes.shape
-    assert atmos.mach.shape == altitudes.shape
+def test_atmospheric_state_and_sls_flow_shapes(sample_perf_model, trajectory):
+    emission = Emission(sample_perf_model())
+    idx_slice = slice(0, trajectory.Ntot)
+    altitudes = trajectory.traj_data['altitude'][idx_slice]
+    tas = trajectory.traj_data['tas'][idx_slice]
+    atmos = emission._atmospheric_state(altitudes, tas, True)
+    expected_temp = np.array([288.15, 278.4, 249.15, 216.65, 229.65, 275.15])
+    expected_pressure = np.array(
+        [
+            101325.0,
+            84555.9940737564,
+            47181.0021852292,
+            22632.0400950078,
+            30742.4326120969,
+            79495.201934051,
+        ]
+    )
+    expected_mach = np.array(
+        [
+            0.3526362622,
+            0.4484475741,
+            0.6004518548,
+            0.7116967515,
+            0.5925081326,
+            0.4210157206,
+        ]
+    )
+    np.testing.assert_allclose(atmos.temperature, expected_temp)
+    np.testing.assert_allclose(atmos.pressure, expected_pressure)
+    np.testing.assert_allclose(atmos.mach, expected_mach)
 
-    fuel_flow = em.trajectory.traj_data['fuelFlow'][idx_slice]
-    sls_flow = em._sls_equivalent_fuel_flow(True, fuel_flow, atmos)
-    assert sls_flow.shape == fuel_flow.shape
-    assert em._sls_equivalent_fuel_flow(False, fuel_flow, atmos) is None
+    fuel_flow = trajectory.traj_data['fuelFlow'][idx_slice]
+    sls_flow = emission._sls_equivalent_fuel_flow(True, fuel_flow, atmos)
+    expected_sls = np.array(
+        [
+            0.153777,
+            0.203788,
+            0.474551,
+            0.910231,
+            0.561445,
+            0.192661,
+        ]
+    )
+    np.testing.assert_allclose(sls_flow, expected_sls, atol=1e-5)
+    assert emission._sls_equivalent_fuel_flow(False, fuel_flow, atmos) is None
 
 
-def test_get_gse_emissions_assigns_all_species(perf_factory, trajectory):
-    em = Emission(perf_factory(), trajectory)
-    em.get_GSE_emissions('wide')
-    for field in ('CO2', 'NOx', 'HC', 'CO', 'PMvol', 'PMnvol', 'H2O', 'SO2', 'SO4'):
-        assert _scalar(em.GSE_emissions_g[field]) >= 0.0
+def test_get_gse_emissions_matches_reference_profile(sample_perf_model, trajectory):
+    emission = Emission(sample_perf_model())
+    emission._prepare_run_state(trajectory)
+    emission.get_GSE_emissions('wide')
+    expected = {
+        'CO2': 58_000.0,
+        'NOx': 900.0,
+        'HC': 70.0,
+        'CO': 300.0,
+        'H2O': 22669.67201166181,
+        'NO': 810.0,
+        'NO2': 81.0,
+        'HONO': 9.0,
+        'SO4': 0.0003,
+        'SO2': 0.0098,
+        'PMvol': 27.49985,
+        'PMnvol': 27.49985,
+        'PMnvolGMD': 0.0,
+        'OCic': 0.0,
+    }
+    for field, value in expected.items():
+        assert emission.GSE_emissions_g[field] == pytest.approx(value)
+    if 'PMnvolN' in emission.GSE_emissions_g.dtype.names:
+        assert emission.GSE_emissions_g['PMnvolN'] == pytest.approx(0.0)
 
 
-def test_get_gse_emissions_invalid_code(perf_factory, trajectory):
-    em = Emission(perf_factory(), trajectory)
+def test_get_gse_emissions_invalid_code(sample_perf_model, trajectory):
+    emission = Emission(sample_perf_model())
+    emission._prepare_run_state(trajectory)
     with pytest.raises(ValueError):
-        em.get_GSE_emissions('bad')
+        emission.get_GSE_emissions('bad')
 
 
-def test_emission_dtype_consistency(emission):
+def test_emission_dtype_consistency(sample_perf_model, trajectory):
+    emission = Emission(sample_perf_model())
+    emission._prepare_run_state(trajectory)
     dtype_names = set(emission.emission_indices.dtype.names)
     assert set(emission.pointwise_emissions_g.dtype.names) == dtype_names
     assert set(emission.LTO_emissions_g.dtype.names) == dtype_names

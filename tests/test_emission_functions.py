@@ -1,80 +1,49 @@
+import tomllib
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 
-import AEIC.trajectories.builders as tb
-from AEIC.emissions.APU_emissions import get_APU_emissions
-from AEIC.emissions.EI_CO2 import EI_CO2
-from AEIC.emissions.EI_H2O import EI_H2O
-from AEIC.emissions.EI_HCCO import EI_HCCO
-from AEIC.emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
-from AEIC.emissions.EI_SOx import EI_SOx
-from AEIC.emissions.emission import Emission
-from AEIC.missions import Mission
-from AEIC.performance_model import PerformanceModel
-from AEIC.utils.files import file_location
-from AEIC.utils.helpers import iso_to_timestamp
-
-# Path to a real fuel TOML file in your repo
-performance_model_file = file_location("IO/default_config.toml")
-
-perf = PerformanceModel(performance_model_file)
-mis = perf.missions[0]
-
-sample_mission = Mission(
-    origin="BOS",
-    destination="LAX",
-    aircraft_type="738",
-    departure=iso_to_timestamp('2019-01-01 12:00:00'),
-    arrival=iso_to_timestamp('2019-01-01 18:00:00'),
-    load_factor=1.0,
-)
-
-builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
-traj = builder.fly(perf, sample_mission)
-em = Emission(perf, traj, True)
+from emissions.APU_emissions import get_APU_emissions
+from emissions.EI_CO2 import EI_CO2
+from emissions.EI_H2O import EI_H2O
+from emissions.EI_HCCO import EI_HCCO
+from emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
+from emissions.EI_PMnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
+from emissions.EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
+from emissions.EI_SOx import EI_SOx
+from emissions.lifecycle_CO2 import lifecycle_CO2
+from utils import file_location
 
 
 class TestEI_CO2:
     """Tests for EI_CO2 function"""
 
-    def test_basic_functionality(self):
-        """Test basic CO2 emissions calculation"""
-        fuel = {'EI_CO2': 3160.0, 'nvolCarbCont': 0.95}
+    def test_returns_documented_jet_a_values(self):
+        """Jet-A reference EI and carbon fraction should match documentation"""
+        with open(file_location("fuels/conventional_jetA.toml"), 'rb') as f:
+            fuel = tomllib.load(f)
         co2_ei, nvol_carb = EI_CO2(fuel)
 
-        assert co2_ei == 3160.0
-        assert nvol_carb == 0.95
-        assert isinstance(co2_ei, int | float)
-        assert isinstance(nvol_carb, int | float)
+        assert co2_ei == pytest.approx(3155.6)
+        assert nvol_carb == pytest.approx(0.95)
 
-    def test_non_negativity(self):
-        """Test that outputs are non-negative"""
-        fuel = {'EI_CO2': 3160.0, 'nvolCarbCont': 0.95}
+    def test_distinguishes_saf_inputs(self):
+        """Different fuels propagate their specific EI metadata."""
+        with open(file_location("fuels/SAF.toml"), 'rb') as f:
+            fuel = tomllib.load(f)
         co2_ei, nvol_carb = EI_CO2(fuel)
 
-        assert co2_ei >= 0
-        assert nvol_carb >= 0
-
-    def test_finiteness(self):
-        """Test that outputs are finite"""
-        fuel = {'EI_CO2': 3160.0, 'nvolCarbCont': 0.95}
-        co2_ei, nvol_carb = EI_CO2(fuel)
-
-        assert np.isfinite(co2_ei)
-        assert np.isfinite(nvol_carb)
+        assert co2_ei == pytest.approx(fuel['EI_CO2'])
+        assert nvol_carb == pytest.approx(fuel['nvolCarbCont'])
 
     def test_error_handling(self):
         """Test error handling for invalid inputs"""
-        # Missing keys
         with pytest.raises(KeyError):
             EI_CO2({})
 
-        # Invalid data types - should work but test for reasonable values
         fuel = {'EI_CO2': -100, 'nvolCarbCont': -0.5}
         co2_ei, nvol_carb = EI_CO2(fuel)
-        # Function doesn't validate inputs, but we can check they're returned as-is
         assert co2_ei == -100
         assert nvol_carb == -0.5
 
@@ -82,19 +51,17 @@ class TestEI_CO2:
 class TestEI_H2O:
     """Tests for EI_H2O function"""
 
-    def test_basic_functionality(self):
-        """Test basic H2O emissions calculation"""
-        fuel = {'EI_H2O': 1230.0}
-        h2o_ei = EI_H2O(fuel)
+    def test_returns_documented_jet_a_values(self):
+        """Jet-A water EI should match the nominal property sheet."""
+        with open(file_location("fuels/conventional_jetA.toml"), 'rb') as f:
+            fuel = tomllib.load(f)
+        assert EI_H2O(fuel) == pytest.approx(1233.3865)
 
-        assert h2o_ei == 1230.0
-        assert isinstance(h2o_ei, int | float)
-
-    def test_non_negativity(self):
-        """Test reasonable values are non-negative"""
-        fuel = {'EI_H2O': 1230.0}
-        h2o_ei = EI_H2O(fuel)
-        assert h2o_ei >= 0
+    def test_distinguishes_saf_inputs(self):
+        """SAF water EI is different and should be propagated verbatim."""
+        with open(file_location("fuels/SAF.toml"), 'rb') as f:
+            fuel = tomllib.load(f)
+        assert EI_H2O(fuel) == pytest.approx(1356.72515)
 
     def test_error_handling(self):
         """Test error handling"""
@@ -182,6 +149,46 @@ class TestEI_HCCO:
         assert result.shape == test_flow.shape
         assert np.all(np.isfinite(result))
         assert np.all(result >= 0.0)
+
+    def test_duplicate_calibration_flows_flatten_slanted_segment(self):
+        """Duplicate calibration flows should force a flat lower segment"""
+        fuelflow_eval = np.array([0.15, 0.25, 0.3, 0.5])
+        x_EI_matrix = np.array([10.0, 10.0, 5.0, 3.0])
+        fuelflow_calibrate = np.array([0.3, 0.3, 0.7, 1.4])
+
+        result = EI_HCCO(fuelflow_eval, x_EI_matrix, fuelflow_calibrate)
+        expected_upper = np.sqrt(x_EI_matrix[2] * x_EI_matrix[3])
+        expected = np.full_like(fuelflow_eval, expected_upper)
+
+        low_thrust_mask = fuelflow_eval < fuelflow_calibrate[0]
+        expected[low_thrust_mask] *= 1 - 52.0 * (
+            fuelflow_eval[low_thrust_mask] - fuelflow_calibrate[0]
+        )
+
+        assert np.allclose(result, expected)
+
+    def test_intercept_adjustment_uses_second_mode_value(self):
+        """When intercept drifts low, the second mode should set the ceiling"""
+        fuelflow_eval = np.array([0.2, 0.5, 0.9])
+        x_EI_matrix = np.array([38.33753758, 2.4406048, 106.49710981, 13.57427593])
+        fuelflow_calibrate = np.array([0.10569869, 0.40041291, 0.81271722, 0.86727924])
+
+        result = EI_HCCO(fuelflow_eval, x_EI_matrix, fuelflow_calibrate)
+        high_mask = fuelflow_eval >= fuelflow_calibrate[1]
+
+        assert np.allclose(result[high_mask], x_EI_matrix[1])
+        assert np.all(result >= 0.0)
+
+    def test_positive_slope_forces_horizontal_segment(self):
+        """Non-negative slopes should collapse to the upper horizontal level"""
+        fuelflow_eval = np.array([0.2, 0.35, 0.5])
+        x_EI_matrix = np.array([10.0, 11.0, 2.0, 1.0])
+        fuelflow_calibrate = np.array([0.2, 0.3, 0.4, 0.5])
+
+        result = EI_HCCO(fuelflow_eval, x_EI_matrix, fuelflow_calibrate)
+        expected_value = np.sqrt(x_EI_matrix[2] * x_EI_matrix[3])
+
+        assert np.allclose(result, expected_value)
 
 
 class TestBFFM2_EINOx:
@@ -304,6 +311,27 @@ class TestBFFM2_EINOx:
         for result in results:
             assert np.all(np.isfinite(result))
 
+    def test_matches_reference_component_values(self):
+        """Reference regression to guard against inadvertent logic changes"""
+        results = BFFM2_EINOx(
+            self.fuelflow_trajectory,
+            self.NOX_EI_matrix,
+            self.fuelflow_performance,
+            self.Tamb,
+            self.Pamb,
+        )
+        expected_arrays = [
+            np.array([28.26762038, 15.01898492, 12.50815229, 18.59189322]),
+            np.array([3.64440296, 12.0482297, 11.48326556, 17.06851997]),
+            np.array([23.3511745, 2.2949009, 0.93107559, 1.38393405]),
+            np.array([1.27204292, 0.67585432, 0.09381114, 0.1394392]),
+            np.array([0.128925, 0.8022, 0.9180625, 0.9180625]),
+            np.array([0.826075, 0.1528, 0.0744375, 0.0744375]),
+            np.array([0.045, 0.045, 0.0075, 0.0075]),
+        ]
+        for result, expected in zip(results, expected_arrays):
+            np.testing.assert_allclose(result, expected, rtol=1e-6, atol=1e-9)
+
 
 class TestNOxSpeciation:
     """Tests for NOx_speciation function"""
@@ -423,6 +451,7 @@ class TestGetAPUEmissions:
             ('PMnvol', 'f8'),
             ('PMvol', 'f8'),
             ('PMnvolGMD', 'f8'),
+            ('PMnvolN', 'f8'),
             ('OCic', 'f8'),
             ('NO', 'f8'),
             ('NO2', 'f8'),
@@ -542,6 +571,159 @@ class TestGetAPUEmissions:
         assert apu_ei['SO4'] == 0.0
         assert apu_ei['CO2'] == 0.0
         assert apu_g['CO2'] == 0.0
+
+    def test_nvpm_method_enables_number_channel(self):
+        """PM number index should be emitted when nvpm_method requests it"""
+        apu_ei, _, _ = get_APU_emissions(
+            self.APU_emission_indices,
+            self.APU_emissions_g,
+            self.LTO_emission_indices,
+            self.APU_data,
+            self.LTO_noProp,
+            self.LTO_no2Prop,
+            self.LTO_honoProp,
+            EI_H2O=1233.3865,
+            nvpm_method='scope11',
+        )
+
+        assert 'PMnvolN' in apu_ei.dtype.names
+        assert apu_ei['PMnvolN'] == 0.0
+
+
+class TestPMnvolMEEM:
+    """Tests for the PMnvol_MEEM cruise methodology"""
+
+    def test_reconstructs_missing_mode_data_and_interpolates(self):
+        """Negative mode inputs should be rebuilt and yield finite cruise profiles"""
+        EDB_data = {
+            'ENGINE_TYPE': 'MTF',
+            'BP_Ratio': 5.0,
+            'SN_matrix': np.array([10.0, 20.0, 25.0, 30.0]),
+            'nvPM_mass_matrix': np.full(4, -1.0),
+            'nvPM_num_matrix': np.full(4, -1.0),
+            'PR': np.array([25.0]),
+            'EImass_max': 50.0,
+            'EImass_max_thrust': 0.575,
+            'EInum_max': 4.5e15,
+            'EInum_max_thrust': 0.925,
+        }
+        altitudes = np.array([0.0, 6000.0, 12000.0])
+        Tamb = np.array([288.15, 250.0, 220.0])
+        Pamb = np.array([101325.0, 54000.0, 26500.0])
+        mach = np.array([0.0, 0.7, 0.8])
+
+        gmd, mass, num = PMnvol_MEEM(EDB_data, altitudes, Tamb, Pamb, mach)
+
+        assert gmd.shape == altitudes.shape
+        assert mass.shape == altitudes.shape
+        assert num.shape == altitudes.shape
+        assert np.all(gmd > 0.0)
+        assert np.all(mass > 0.0)
+        assert np.all(num > 0.0)
+        assert np.all(np.isfinite(mass))
+
+    def test_invalid_smoke_numbers_zero_results(self):
+        """All-negative smoke numbers should zero out the trajectory"""
+        EDB_data = {
+            'ENGINE_TYPE': 'TF',
+            'BP_Ratio': 0.0,
+            'SN_matrix': np.full(4, -5.0),
+            'nvPM_mass_matrix': np.linspace(1.0, 4.0, 4),
+            'nvPM_num_matrix': np.linspace(1.0, 4.0, 4),
+            'PR': np.array([20.0]),
+            'EImass_max': 10.0,
+            'EImass_max_thrust': float('nan'),
+            'EInum_max': 1.0e12,
+            'EInum_max_thrust': float('nan'),
+        }
+        altitudes = np.array([3000.0, 3500.0])
+        Tamb = np.array([260.0, 250.0])
+        Pamb = np.array([70000.0, 65000.0])
+        mach = np.array([0.3, 0.4])
+
+        gmd, mass, num = PMnvol_MEEM(EDB_data, altitudes, Tamb, Pamb, mach)
+
+        assert np.all(gmd == 0.0)
+        assert np.all(mass == 0.0)
+        assert np.all(num == 0.0)
+
+
+class TestCalculatePMnvolScope11:
+    """Tests for calculate_PMnvolEI_scope11"""
+
+    def test_engine_type_scaling_and_invalid_smoke_numbers(self):
+        SN_matrix = np.array([5.0, 50.0, -1.0, 0.0])
+        PR = np.array([20.0, 20.0, 20.0, 20.0])
+        BP_Ratio = np.array([2.0, 1.0, 0.0, 0.0])
+
+        mtf = calculate_PMnvolEI_scope11(SN_matrix, PR, 'MTF', BP_Ratio)
+        tf = calculate_PMnvolEI_scope11(SN_matrix, PR, 'TF', BP_Ratio)
+
+        assert mtf.shape == SN_matrix.shape
+        assert tf.shape == SN_matrix.shape
+
+        SN0 = min(SN_matrix[0], 40.0)
+        CBC0 = 0.6484 * np.exp(0.0766 * SN0) / (1 + np.exp(-1.098 * (SN0 - 3.064)))
+        AFR = np.array([106, 83, 51, 45], dtype=float)
+
+        bypass = 1 + BP_Ratio[0]
+        kslm_mtf = np.log(
+            (3.219 * CBC0 * bypass * 1000 + 312.5) / (CBC0 * bypass * 1000 + 42.6)
+        )
+        Q_mtf = 0.776 * AFR[0] * bypass + 0.767
+        expected_mtf = (kslm_mtf * CBC0 * Q_mtf) / 1000.0
+        assert np.isclose(mtf[0], expected_mtf)
+
+        kslm_tf = np.log((3.219 * CBC0 * 1000 + 312.5) / (CBC0 * 1000 + 42.6))
+        Q_tf = 0.776 * AFR[0] + 0.767
+        expected_tf = (kslm_tf * CBC0 * Q_tf) / 1000.0
+        assert np.isclose(tf[0], expected_tf)
+
+        assert mtf[0] > tf[0]
+        assert mtf[2] == 0.0
+        assert tf[3] == 0.0
+
+
+class TestEI_PMvol:
+    """Tests for EI_PMvol helper functions"""
+
+    def test_fuel_flow_path_uses_lube_contributions(self):
+        fuelflow = np.ones((2, 4))
+        thrustCat = np.array(['L', 'H'])
+
+        pmvol, ocic = EI_PMvol_FuelFlow(fuelflow, thrustCat)
+
+        assert pmvol.shape == thrustCat.shape
+        assert ocic.shape == fuelflow.shape
+        assert np.isclose(pmvol[0], 0.02 / (1 - 0.15))
+        assert np.isclose(pmvol[1], 0.02 / (1 - 0.50))
+        assert np.allclose(ocic, 0.02)
+
+    def test_foa3_interpolation_matches_reference_curve(self):
+        thrusts = np.array([[7.0, 30.0, 85.0, 100.0], [50.0, 70.0, 90.0, 100.0]])
+        HCEI = np.array([[1.0, 2.0, 3.0, 4.0], [0.5, 0.75, 1.0, 1.5]])
+
+        pmvol, ocic = EI_PMvol_FOA3(thrusts, HCEI)
+
+        ICAO_thrust = np.array([7.0, 30.0, 85.0, 100.0])
+        delta = np.array([6.17, 56.25, 76.0, 115.0])
+        expected_delta = np.interp(thrusts, ICAO_thrust, delta)
+        expected_pmvol = expected_delta * HCEI / 1000.0
+
+        assert np.allclose(pmvol, expected_pmvol)
+        assert np.allclose(ocic, expected_pmvol)
+
+
+class TestLifecycleCO2:
+    """Tests for lifecycle_CO2"""
+
+    def test_lifecycle_offset_applies(self):
+        fuel = {'LC_CO2': 4500.0, 'EI_CO2': 3150.0}
+
+        result = lifecycle_CO2(fuel, fuel_burn=10.0)
+
+        assert result == pytest.approx(10.0 * (fuel['LC_CO2'] - fuel['EI_CO2']))
+        assert result > 0.0
 
 
 # Integration tests
