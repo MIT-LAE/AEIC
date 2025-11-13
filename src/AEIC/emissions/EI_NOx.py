@@ -1,8 +1,22 @@
 import warnings
+from dataclasses import dataclass
 
 import numpy as np
 
 from AEIC.utils.standard_fuel import get_thrust_cat
+
+
+@dataclass(frozen=True)
+class BFFM2EINOxResult:
+    """Bundled NOx emissions indices and speciation data."""
+
+    NOxEI: np.ndarray
+    NOEI: np.ndarray
+    NO2EI: np.ndarray
+    HONOEI: np.ndarray
+    noProp: np.ndarray
+    no2Prop: np.ndarray
+    honoProp: np.ndarray
 
 
 def BFFM2_EINOx(
@@ -12,9 +26,7 @@ def BFFM2_EINOx(
     Tamb: np.ndarray,
     Pamb: np.ndarray,
     cruiseCalc: bool = True,
-) -> tuple[
-    np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
-]:
+) -> BFFM2EINOxResult:
     """
     Calculate NOx, NO, NO2, and HONO emission indices
     All inputs are 1-dimensional arrays of equal length for calibration
@@ -39,21 +51,8 @@ def BFFM2_EINOx(
 
     Returns
     -------
-    NOxEI   : ndarray, shape (n_times,)
-        Interpolated NOx emission index [g NOx / kg fuel]
-        for each SLS_equivalent_fuel_flow.
-    NOEI    : ndarray, shape (n_times,)
-        NO emission index [g NO / kg fuel].
-    NO2EI   : ndarray, shape (n_times,)
-        NO2 emission index [g NO2 / kg fuel].
-    HONOEI  : ndarray, shape (n_times,)
-        HONO emission index [g HONO / kg fuel].
-    noProp  : ndarray, shape (n_times,)
-        Fraction of NO within total NOy (unitless).
-    no2Prop : ndarray, shape (n_times,)
-        Fraction of NO2 within total NOy (unitless).
-    honoProp: ndarray, shape (n_times,)
-        Fraction of HONO within total NOy (unitless).
+    BFFM2EINOxResult
+        Structured NOx EI arrays and speciation fractions.
     """
 
     # ---------------------------------------------------------------------
@@ -133,7 +132,15 @@ def BFFM2_EINOx(
     NO2EI = NOxEI * no2Prop  # g NO2 / kg fuel
     HONOEI = NOxEI * honoProp  # g HONO / kg fuel
 
-    return NOxEI, NOEI, NO2EI, HONOEI, noProp, no2Prop, honoProp
+    return BFFM2EINOxResult(
+        NOxEI=NOxEI,
+        NOEI=NOEI,
+        NO2EI=NO2EI,
+        HONOEI=HONOEI,
+        noProp=noProp,
+        no2Prop=no2Prop,
+        honoProp=honoProp,
+    )
 
 
 def NOx_speciation(thrustCat):

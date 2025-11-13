@@ -1,19 +1,30 @@
-def EI_SOx(fuel: dict):
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass(frozen=True)
+class SOxEmissionResult:
+    """Structured SOx emission indices."""
+
+    EI_SO2: float
+    EI_SO4: float
+
+
+def EI_SOx(fuel: Mapping[str, Any]) -> SOxEmissionResult:
     """
     Calculate universal SOx emissions indices (SO2EI and SO4EI).
 
     Parameters
     ----------
 
-    fuel : dictionary
+    fuel : Mapping[str, Any]
         Fuel information (input from toml file)
 
     Returns
     -------
-    SO2EI : ndarray
-        SO2 emissions index [g SO2 per kg fuel]
-    SO4EI : ndarray
-        SO4 emissions index [g SO4 per kg fuel]
+    SOxEmissionResult
+        Structured SO2/SO4 emissions indices [g/kg fuel]
     """
     # Nominal values
     FSCnom = fuel['FSCnom']
@@ -40,4 +51,4 @@ def EI_SOx(fuel: dict):
     SO4EI = 1e3 * ((FSC / 1e6) * Eps * MW_SO4) / MW_S
     SO2EI = 1e3 * ((FSC / 1e6) * (1 - Eps) * MW_SO2) / MW_S
 
-    return SO2EI, SO4EI
+    return SOxEmissionResult(EI_SO2=SO2EI, EI_SO4=SO4EI)

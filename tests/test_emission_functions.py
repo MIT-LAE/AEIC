@@ -5,13 +5,13 @@ import numpy as np
 import pytest
 
 from emissions.APU_emissions import get_APU_emissions
-from emissions.EI_CO2 import EI_CO2
+from emissions.EI_CO2 import EI_CO2, CO2EmissionResult
 from emissions.EI_H2O import EI_H2O
 from emissions.EI_HCCO import EI_HCCO
-from emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
+from emissions.EI_NOx import BFFM2_EINOx, BFFM2EINOxResult, NOx_speciation
 from emissions.EI_PMnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
 from emissions.EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
-from emissions.EI_SOx import EI_SOx
+from emissions.EI_SOx import EI_SOx, SOxEmissionResult
 from emissions.lifecycle_CO2 import lifecycle_CO2
 from utils import file_location
 
@@ -23,19 +23,20 @@ class TestEI_CO2:
         """Jet-A reference EI and carbon fraction should match documentation"""
         with open(file_location("fuels/conventional_jetA.toml"), 'rb') as f:
             fuel = tomllib.load(f)
-        co2_ei, nvol_carb = EI_CO2(fuel)
+        result = EI_CO2(fuel)
 
-        assert co2_ei == pytest.approx(3155.6)
-        assert nvol_carb == pytest.approx(0.95)
+        assert isinstance(result, CO2EmissionResult)
+        assert result.EI_CO2 == pytest.approx(3155.6)
+        assert result.nvolCarbCont == pytest.approx(0.95)
 
     def test_distinguishes_saf_inputs(self):
         """Different fuels propagate their specific EI metadata."""
         with open(file_location("fuels/SAF.toml"), 'rb') as f:
             fuel = tomllib.load(f)
-        co2_ei, nvol_carb = EI_CO2(fuel)
+        result = EI_CO2(fuel)
 
-        assert co2_ei == pytest.approx(fuel['EI_CO2'])
-        assert nvol_carb == pytest.approx(fuel['nvolCarbCont'])
+        assert result.EI_CO2 == pytest.approx(fuel['EI_CO2'])
+        assert result.nvolCarbCont == pytest.approx(fuel['nvolCarbCont'])
 
     def test_error_handling(self):
         """Test error handling for invalid inputs"""
@@ -43,9 +44,9 @@ class TestEI_CO2:
             EI_CO2({})
 
         fuel = {'EI_CO2': -100, 'nvolCarbCont': -0.5}
-        co2_ei, nvol_carb = EI_CO2(fuel)
-        assert co2_ei == -100
-        assert nvol_carb == -0.5
+        result = EI_CO2(fuel)
+        assert result.EI_CO2 == -100
+        assert result.nvolCarbCont == -0.5
 
 
 class TestEI_H2O:
@@ -202,9 +203,20 @@ class TestBFFM2_EINOx:
         self.Tamb = np.array([288.15, 250.0, 220.0, 280.0])
         self.Pamb = np.array([101325.0, 25000.0, 15000.0, 95000.0])
 
+    def _components(self, result: BFFM2EINOxResult):
+        return (
+            result.NOxEI,
+            result.NOEI,
+            result.NO2EI,
+            result.HONOEI,
+            result.noProp,
+            result.no2Prop,
+            result.honoProp,
+        )
+
     def test_basic_functionality(self):
         """Test basic NOx emissions calculation"""
-        results = BFFM2_EINOx(
+        result = BFFM2_EINOx(
             self.fuelflow_trajectory,
             self.NOX_EI_matrix,
             self.fuelflow_performance,
@@ -212,18 +224,16 @@ class TestBFFM2_EINOx:
             self.Pamb,
         )
 
-        # Should return 7 arrays
-        assert len(results) == 7
-        NOxEI, NOEI, NO2EI, HONOEI, noProp, no2Prop, honoProp = results
+        assert isinstance(result, BFFM2EINOxResult)
 
         # Check shapes
         expected_shape = self.fuelflow_trajectory.shape
-        for result in results:
-            assert result.shape == expected_shape
+        for array in self._components(result):
+            assert array.shape == expected_shape
 
     def test_non_negativity(self):
         """Test that all outputs are non-negative"""
-        results = BFFM2_EINOx(
+        result = BFFM2_EINOx(
             self.fuelflow_trajectory,
             self.NOX_EI_matrix,
             self.fuelflow_performance,
@@ -231,12 +241,12 @@ class TestBFFM2_EINOx:
             self.Pamb,
         )
 
-        for result in results:
-            assert np.all(result >= 0)
+        for array in self._components(result):
+            assert np.all(array >= 0)
 
     def test_summation_consistency(self):
         """Test that NO + NO2 + HONO proportions sum to 1"""
-        results = BFFM2_EINOx(
+        result = BFFM2_EINOx(
             self.fuelflow_trajectory,
             self.NOX_EI_matrix,
             self.fuelflow_performance,
@@ -244,7 +254,13 @@ class TestBFFM2_EINOx:
             self.Pamb,
         )
 
-        NOxEI, NOEI, NO2EI, HONOEI, noProp, no2Prop, honoProp = results
+        NOxEI = result.NOxEI
+        NOEI = result.NOEI
+        NO2EI = result.NO2EI
+        HONOEI = result.HONOEI
+        noProp = result.noProp
+        no2Prop = result.no2Prop
+        honoProp = result.honoProp
 
         # Proportions should sum to 1
         total_prop = noProp + no2Prop + honoProp
@@ -256,7 +272,7 @@ class TestBFFM2_EINOx:
 
     def test_finiteness(self):
         """Test that all outputs are finite"""
-        results = BFFM2_EINOx(
+        result = BFFM2_EINOx(
             self.fuelflow_trajectory,
             self.NOX_EI_matrix,
             self.fuelflow_performance,
@@ -264,8 +280,8 @@ class TestBFFM2_EINOx:
             self.Pamb,
         )
 
-        for result in results:
-            assert np.all(np.isfinite(result))
+        for array in self._components(result):
+            assert np.all(np.isfinite(array))
 
     def test_cruise_correction_effect(self):
         """Test that cruise correction has an effect"""
@@ -288,7 +304,10 @@ class TestBFFM2_EINOx:
         )
 
         # NOx EI should be different
-        assert not np.allclose(results_no_cruise[0], results_with_cruise[0])
+        assert not np.allclose(
+            results_no_cruise.NOxEI,
+            results_with_cruise.NOxEI,
+        )
 
     @patch('AEIC.utils.standard_fuel.get_thrust_cat')
     def test_thrust_categorization(self, mock_get_thrust_cat):
@@ -298,7 +317,7 @@ class TestBFFM2_EINOx:
             [1, 2, 3, 1]
         )  # High, Low, Approach, High
 
-        results = BFFM2_EINOx(
+        result = BFFM2_EINOx(
             self.fuelflow_trajectory,
             self.NOX_EI_matrix,
             self.fuelflow_performance,
@@ -307,13 +326,12 @@ class TestBFFM2_EINOx:
         )
 
         # Should still return valid results
-        assert len(results) == 7
-        for result in results:
-            assert np.all(np.isfinite(result))
+        for array in self._components(result):
+            assert np.all(np.isfinite(array))
 
     def test_matches_reference_component_values(self):
         """Reference regression to guard against inadvertent logic changes"""
-        results = BFFM2_EINOx(
+        result = BFFM2_EINOx(
             self.fuelflow_trajectory,
             self.NOX_EI_matrix,
             self.fuelflow_performance,
@@ -329,8 +347,8 @@ class TestBFFM2_EINOx:
             np.array([0.826075, 0.1528, 0.0744375, 0.0744375]),
             np.array([0.045, 0.045, 0.0075, 0.0075]),
         ]
-        for result, expected in zip(results, expected_arrays):
-            np.testing.assert_allclose(result, expected, rtol=1e-6, atol=1e-9)
+        for array, expected in zip(self._components(result), expected_arrays):
+            np.testing.assert_allclose(array, expected, rtol=1e-6, atol=1e-9)
 
 
 class TestNOxSpeciation:
@@ -383,19 +401,20 @@ class TestEI_SOx:
             'Epsnom': 0.02,  # fraction
         }
 
-        SO2EI, SO4EI = EI_SOx(fuel)
+        result = EI_SOx(fuel)
 
-        assert isinstance(SO2EI, int | float)
-        assert isinstance(SO4EI, int | float)
+        assert isinstance(result, SOxEmissionResult)
+        assert isinstance(result.EI_SO2, int | float)
+        assert isinstance(result.EI_SO4, int | float)
 
     def test_non_negativity(self):
         """Test that outputs are non-negative"""
         fuel = {'FSCnom': 600.0, 'Epsnom': 0.02}
 
-        SO2EI, SO4EI = EI_SOx(fuel)
+        result = EI_SOx(fuel)
 
-        assert SO2EI >= 0
-        assert SO4EI >= 0
+        assert result.EI_SO2 >= 0
+        assert result.EI_SO4 >= 0
 
     def test_mass_balance(self):
         """Test that SO2 + SO4 production makes sense relative to sulfur content"""
@@ -404,14 +423,14 @@ class TestEI_SOx:
             'Epsnom': 0.02,  # 2% converted to SO4
         }
 
-        SO2EI, SO4EI = EI_SOx(fuel)
+        result = EI_SOx(fuel)
 
         # Calculate total sulfur converted (should be proportional to FSC)
         MW_SO2, MW_SO4, MW_S = 64.0, 96.0, 32.0
 
         # Back-calculate sulfur content from emissions
-        sulfur_as_SO2 = SO2EI * MW_S / MW_SO2
-        sulfur_as_SO4 = SO4EI * MW_S / MW_SO4
+        sulfur_as_SO2 = result.EI_SO2 * MW_S / MW_SO2
+        sulfur_as_SO4 = result.EI_SO4 * MW_S / MW_SO4
         total_sulfur_converted = sulfur_as_SO2 + sulfur_as_SO4
 
         # Should be approximately equal to input sulfur (with unit conversions)
@@ -422,10 +441,10 @@ class TestEI_SOx:
         """Test that outputs are finite"""
         fuel = {'FSCnom': 600.0, 'Epsnom': 0.02}
 
-        SO2EI, SO4EI = EI_SOx(fuel)
+        result = EI_SOx(fuel)
 
-        assert np.isfinite(SO2EI)
-        assert np.isfinite(SO4EI)
+        assert np.isfinite(result.EI_SO2)
+        assert np.isfinite(result.EI_SO4)
 
     def test_error_handling(self):
         """Test error handling"""
@@ -434,9 +453,9 @@ class TestEI_SOx:
 
         # Test with zero values
         fuel = {'FSCnom': 0.0, 'Epsnom': 0.0}
-        SO2EI, SO4EI = EI_SOx(fuel)
-        assert SO2EI == 0.0
-        assert SO4EI == 0.0
+        result = EI_SOx(fuel)
+        assert result.EI_SO2 == 0.0
+        assert result.EI_SO4 == 0.0
 
 
 class TestGetAPUEmissions:
@@ -738,12 +757,13 @@ class TestIntegration:
         Tamb = np.array([288.15, 250.0, 220.0])
         Pamb = np.array([101325.0, 25000.0, 15000.0])
 
-        results = BFFM2_EINOx(
+        result = BFFM2_EINOx(
             fuelflow_trajectory, NOX_EI_matrix, fuelflow_performance, Tamb, Pamb
         )
 
-        NOxEI, *_ = results
-        assert np.allclose(NOxEI, np.array([27.11460822, 14.28251747, 11.92937893]))
+        assert np.allclose(
+            result.NOxEI, np.array([27.11460822, 14.28251747, 11.92937893])
+        )
 
 
 if __name__ == "__main__":

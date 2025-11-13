@@ -1,20 +1,29 @@
-def EI_CO2(fuel):
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass(frozen=True)
+class CO2EmissionResult:
+    """Named return values for CO₂ EI calculations."""
+
+    EI_CO2: float
+    nvolCarbCont: float
+
+
+def EI_CO2(fuel: Mapping[str, Any]) -> CO2EmissionResult:
     """
     Calculate carbon-balanced CO2 emissions index (EI).
 
     Parameters
     ----------
-    fuel : dictionary
+    fuel : Mapping[str, Any]
         Fuel information (input from toml file)
 
     Returns
     -------
-    CO2EI : ndarray
-        CO2 emissions index [g/kg fuel], same shape as HCEI.
-    CO2EInom : float
-        Nominal CO2 emissions index (scalar).
-    nvolCarbCont : float
-        Non-volatile particulate carbon content fraction.
+    CO2EmissionResult
+        Structured CO2 emissions metadata.
     """
 
     # if mcs == 1:
@@ -24,4 +33,4 @@ def EI_CO2(fuel):
     CO2EInom = fuel['EI_CO2']
     nvolCarbCont = fuel['nvolCarbCont']
 
-    return CO2EInom, nvolCarbCont
+    return CO2EmissionResult(EI_CO2=CO2EInom, nvolCarbCont=nvolCarbCont)

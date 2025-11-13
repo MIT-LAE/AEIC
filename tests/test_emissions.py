@@ -213,21 +213,20 @@ def _expected_trajectory_indices(emission, trajectory):
         'SO4': np.full_like(fuel_flow, 0.036),
     }
 
-    (
-        expected['NOx'],
-        expected['NO'],
-        expected['NO2'],
-        expected['HONO'],
-        no_prop,
-        no2_prop,
-        hono_prop,
-    ) = BFFM2_EINOx(
+    nox_result = BFFM2_EINOx(
         sls_equiv_fuel_flow=sls_flow,
         NOX_EI_matrix=lto_inputs['nox_ei'],
         fuelflow_performance=lto_inputs['fuel_flow'],
         Tamb=atmos.temperature,
         Pamb=atmos.pressure,
     )
+    expected['NOx'] = nox_result.NOxEI
+    expected['NO'] = nox_result.NOEI
+    expected['NO2'] = nox_result.NO2EI
+    expected['HONO'] = nox_result.HONOEI
+    no_prop = nox_result.noProp
+    no2_prop = nox_result.no2Prop
+    hono_prop = nox_result.honoProp
 
     expected['HC'] = EI_HCCO(
         sls_flow,

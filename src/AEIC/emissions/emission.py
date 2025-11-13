@@ -713,7 +713,10 @@ class Emission:
         )
         pm_core = nominal['PM10']
 
-        CO2_EI = getattr(self, 'co2_ei', EI_CO2(self.fuel)[0])
+        co2_result = getattr(self, 'co2_ei', None)
+        if co2_result is None:
+            co2_result = EI_CO2(self.fuel)
+        CO2_EI = co2_result.EI_CO2
         gse_fuel = self.GSE_emissions_g['CO2'] / CO2_EI
         self.total_fuel_burn += gse_fuel
 
@@ -780,19 +783,17 @@ class Emission:
                 raise RuntimeError(
                     "BFFM2 NOx requires atmosphere and SLS equivalent fuel flow."
                 )
-            (
-                self.emission_indices['NOx'][idx_slice],
-                self.emission_indices['NO'][idx_slice],
-                self.emission_indices['NO2'][idx_slice],
-                self.emission_indices['HONO'][idx_slice],
-                *_,
-            ) = BFFM2_EINOx(
+            bffm2_result = BFFM2_EINOx(
                 sls_equiv_fuel_flow=sls_equiv_fuel_flow,
                 NOX_EI_matrix=lto_inputs['nox_ei'],
                 fuelflow_performance=lto_inputs['fuel_flow'],
                 Pamb=atmos_state.pressure,
                 Tamb=atmos_state.temperature,
             )
+            self.emission_indices['NOx'][idx_slice] = bffm2_result.NOxEI
+            self.emission_indices['NO'][idx_slice] = bffm2_result.NOEI
+            self.emission_indices['NO2'][idx_slice] = bffm2_result.NO2EI
+            self.emission_indices['HONO'][idx_slice] = bffm2_result.HONOEI
         elif method is EINOxMethod.P3T3:
             print("P3T3 method not implemented yet..")
         else:
@@ -1053,11 +1054,14 @@ class Emission:
         """Return constant EI values that do not depend on thrust or atmosphere."""
         constants = {}
         if self.metric_flags.get('CO2'):
-            constants['CO2'], _ = EI_CO2(self.fuel)
+            co2_result = EI_CO2(self.fuel)
+            constants['CO2'] = co2_result.EI_CO2
         if self.metric_flags.get('H2O'):
             constants['H2O'] = EI_H2O(self.fuel)
         if self.metric_flags.get('SOx'):
-            constants['SO2'], constants['SO4'] = EI_SOx(self.fuel)
+            sox_result = EI_SOx(self.fuel)
+            constants['SO2'] = sox_result.EI_SO2
+            constants['SO4'] = sox_result.EI_SO4
         return constants
 
     def _atmospheric_state(
