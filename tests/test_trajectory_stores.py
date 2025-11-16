@@ -218,8 +218,48 @@ def test_extra_fields_in_associated_nc(tmp_path: Path):
     assert ts2_read[2].mf is not None
 
 
-# TODO: Equivalent of last case with appending to the files in between creating
-# and reading the store.
+def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
+    # Equivalent of last case with appending to the files in between creating
+    # and reading the store.
+
+    path = tmp_path / 'test.nc'
+    extra_path = tmp_path / 'extra.nc'
+    ts = TrajectoryStore.create(
+        title='Use case 5',
+        nc_file=path,
+        associated_nc_files=[(extra_path, ['demo'])],
+    )
+    for i in range(1, 6):
+        t = make_test_trajectory(i * 5, i)
+        t.add_fields(Extras.random(i * 5))
+        ts.add(t)
+    ts.close()
+
+    ts2 = TrajectoryStore.append(nc_file=path, associated_nc_files=[extra_path])
+    t = make_test_trajectory(10, 100)
+    t.add_fields(Extras.random(10))
+    ts2.add(t)
+    ts2.close()
+
+    # Opening just the base NetCDF file (without the associated file) should
+    # give trajectories without the extra fields.
+    ts_read = TrajectoryStore.open(nc_file=path)
+    assert len(ts_read) == 6
+    assert len(ts_read.files) == 1
+    assert ts_read.files[0].fieldsets == {'base'}
+    t = ts_read[2]
+    assert hasattr(t, 'acMass')
+    assert not hasattr(t, 'f1')
+
+    # Opening with the associated file should give trajectories with the
+    # extra fields.
+    ts2_read = TrajectoryStore.open(nc_file=path, associated_nc_files=[extra_path])
+    assert len(ts2_read) == 6
+    assert len(ts2_read.files) == 2
+    assert ts2_read.files[0].fieldsets == {'base'}
+    assert ts2_read.files[1].fieldsets == {'demo'}
+    assert ts2_read[2].f1.shape == (15,)
+    assert ts2_read[2].mf is not None
 
 
 # TODO: Test case where we try to open associated file that doesn't match the
