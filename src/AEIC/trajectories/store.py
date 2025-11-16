@@ -113,7 +113,7 @@ class TrajectoryStore:
     #           files must be specified).
     def __init__(
         self,
-        /,
+        *,
         nc_file: str | None = None,
         mode: FileMode = FileMode.READ,
         override: bool | None = None,
@@ -222,14 +222,7 @@ class TrajectoryStore:
         self.associated_nc_files = associated_nc_files
         self.associated_fieldsets: set[str] = set()
         if mode == self.FileMode.CREATE:
-            # This is slightly unwieldy because of Python's restrictions on
-            # using isinstance with parameterized generics.
-            assert isinstance(associated_nc_files, list)
-            self.associated_fieldsets = set()
-            for t in associated_nc_files:
-                assert isinstance(t, tuple)
-                for f in t[1]:
-                    self.associated_fieldsets.add(f)
+            self._calc_associated_fieldsets()
 
         # Trajectories are stored as an LRU cache indexed by the index of the
         # trajectory. (This is done to handle cases where the trajectory store
@@ -257,7 +250,9 @@ class TrajectoryStore:
         # create the file (or files) until we know what field sets are
         # involved, and we only get to see that when a `Trajectory` is added to
         # the store.
-        self._file_creation_pending = mode == self.FileMode.CREATE
+        self._file_creation_pending = (
+            mode == self.FileMode.CREATE and nc_file is not None
+        )
 
         # Next trajectory index to assign. This is the length of the trajectory
         # dimension. It gets set to the correct value for APPEND mode when we
@@ -295,11 +290,53 @@ class TrajectoryStore:
         """
         return self._nc_files
 
-    def save(self, nc_file: str):
-        """Create a NetCDF files for a TrajectoryStore currently not linked to
-        one."""
-        # TODO: Implement this method.
-        raise NotImplementedError('TrajectoryStore.save not yet implemented')
+    def _calc_associated_fieldsets(self) -> None:
+        # This is slightly unwieldy because of Python's restrictions on
+        # using isinstance with parameterized generics.
+        assert isinstance(self.associated_nc_files, list)
+        self.associated_fieldsets = set()
+        for t in self.associated_nc_files:
+            assert isinstance(t, tuple)
+            for f in t[1]:
+                self.associated_fieldsets.add(f)
+
+    def save(
+        self, nc_file: PathType, associated_nc_files: AssociatedFiles | None = None
+    ):
+        """Create NetCDF files for a TrajectoryStore currently not linked to
+        one.
+        """
+        if self.nc_linked:
+            raise RuntimeError(
+                'TrajectoryStore.save: TrajectoryStore is already linked to a '
+                'NetCDF file'
+            )
+
+        # If associated files are provided, check them in the same way as in
+        # the constructor.
+        if associated_nc_files is None:
+            associated_nc_files = []
+        if any(not valid_associated_file_tuple(f) for f in associated_nc_files):
+            raise ValueError(
+                'associated_nc_files must be tuple[PathType, list[str]] in save'
+            )
+        self.associated_nc_files = associated_nc_files
+        self._calc_associated_fieldsets()
+
+        # Remember how many trajectories we have to save. (Extracted here
+        # because the logic for this will be different once we've opened NetCDF
+        # files.)
+        trajectories_to_save = len(self)
+
+        # The workflow here is essentially the same as in _create, but we need
+        # to enable writing first.
+        self.nc_file = nc_file
+        self._write_enabled = True
+        self._create()
+
+        # Write trajectories to the newly created files.
+        for i in range(trajectories_to_save):
+            self._write_trajectory(i)
 
         # Once the files have been created successfully and the existing data
         # persisted, we can allow evictions from the trajectory cache.

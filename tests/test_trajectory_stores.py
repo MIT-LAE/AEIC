@@ -267,6 +267,30 @@ def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
 # etc.)
 
 
+def test_save(tmp_path: Path):
+    # Test saving TrajectoryStore to a different NetCDF file.
+
+    # Create a TrajectoryStore in memory (not linked to a NetCDF file).
+    ts = TrajectoryStore.create()
+    for i in range(1, 6):
+        t = make_test_trajectory(i * 5, i)
+        t.add_fields(Extras.random(i * 5))
+        ts.add(t)
+
+    path = tmp_path / 'test.nc'
+    extra_path = tmp_path / 'extra.nc'
+    ts.save(nc_file=path, associated_nc_files=[(extra_path, ['demo'])])
+    ts.close()
+
+    ts_read = TrajectoryStore.open(nc_file=path, associated_nc_files=[extra_path])
+    assert len(ts_read) == 5
+    assert len(ts_read.files) == 2
+    assert ts_read.files[0].fieldsets == {'base'}
+    assert ts_read.files[1].fieldsets == {'demo'}
+    assert ts_read[2].f1.shape == (15,)
+    assert ts_read[2].mf is not None
+
+
 def test_use_case_6():
     # USE CASE 6: create associated file from existing TrajectoryStore.
 
