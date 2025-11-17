@@ -125,7 +125,7 @@ def test_create_append_reopen(tmp_path: Path):
     assert len(ts_read[2]) == 20
 
 
-@pytest.mark.skip(reason="VERY long test case, enable manually")
+@pytest.mark.skip(reason='long test case, enable manually')
 def test_create_reopen_large(tmp_path: Path):
     # Create large TrajectoryStore linked with NetCDF file (~13 Gb) for
     # writing, close the NetCDF file, reopen for reading and check contents.
@@ -291,17 +291,28 @@ def test_save(tmp_path: Path):
     assert ts_read[2].mf is not None
 
 
-def test_use_case_6():
+def test_create_associated(tmp_path: Path):
     # USE CASE 6: create associated file from existing TrajectoryStore.
 
-    # TODO: Is this essentially a map over trajectories? You need to fill in
-    # the associated data for each trajectory, so you basically need a function
-    # taking a trajectory and returning data conformable with a given field
-    # set.
-    #
-    # That makes it sound like you don't need a CREATE_ASSOCIATED mode: just
-    # open the input file in READ mode, then call a method on TrajectoryStore
-    # that does the mapping and creates the associated file. Once you have an
-    # associated file, you can just reopen the TrajectoryStore in READ or
-    # APPEND mode.
-    ...
+    path = tmp_path / 'test.nc'
+    extra_path = tmp_path / 'extra.nc'
+    ts = TrajectoryStore.create(title='Use case 6', nc_file=path)
+    ts.add(make_test_trajectory(10, 1))
+    ts.add(make_test_trajectory(15, 2))
+    ts.close()
+
+    ts_create_assoc = TrajectoryStore.open(nc_file=path)
+    ts_create_assoc.create_associated(
+        associated_nc_file=extra_path,
+        fieldsets=['demo'],
+        mapping_function=lambda traj: Extras.random(len(traj)),
+    )
+    ts_create_assoc.close()
+
+    ts_read = TrajectoryStore.open(nc_file=path, associated_nc_files=[extra_path])
+    assert len(ts_read) == 2
+    assert len(ts_read.files) == 2
+    assert ts_read.files[0].fieldsets == {'base'}
+    assert ts_read.files[1].fieldsets == {'demo'}
+    assert ts_read[1].f1.shape == (15,)
+    assert ts_read[1].mf is not None
