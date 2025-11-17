@@ -1,4 +1,5 @@
 import hashlib
+import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -209,11 +210,6 @@ class TrajectoryStore:
         if override is not None and not override_ok:
             raise ValueError('override may only be specified in READ mode')
         self.override = override if override is not None else False
-        if override is not None:
-            raise NotImplementedError(
-                'TrajectoryStore.__init__: override not yet implemented'
-            )
-        # TODO: Implement field set override behavior.
 
         if associated_nc_files is None:
             associated_nc_files = []
@@ -413,7 +409,6 @@ class TrajectoryStore:
 
         for i in range(len(self)):
             # Create associated data value.
-            print(f'Creating associated data for trajectory {i}')
             associated_data = mapping_function(self[i], *args, **kwargs)
 
             # TODO: The result here should be a HasFieldSet, so we should be
@@ -664,12 +659,14 @@ class TrajectoryStore:
             assocated_file = self._open_nc_file(name, check_associated=base_nc_file)
             self._nc_files.append(assocated_file)
             for fs_name in assocated_file.fieldsets:
-                if fs_name in self._nc:
-                    raise ValueError(
+                if fs_name not in self._nc or self.override:
+                    self._nc[fs_name] = assocated_file
+                else:
+                    warnings.warn(
                         f'FieldSet with name "{fs_name}" found in associated '
-                        f'NetCDF file "{name}" already exists in base file'
+                        f'NetCDF file "{name}" already exists in base file',
+                        RuntimeWarning,
                     )
-                self._nc[fs_name] = assocated_file
 
     def _create(self):
         """Create a new NetCDF file (or files) for writing trajectories.
