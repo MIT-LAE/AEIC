@@ -10,7 +10,7 @@ from typing import Any, Protocol
 from cachetools import LRUCache
 from netCDF4 import Dataset, Dimension, Group, VLType
 
-from .field_sets import FieldSet, HasFieldSet
+from .field_sets import FieldSet, HasFieldSets
 from .trajectory import BASE_FIELDSET_NAME, Trajectory
 
 # Python doesn't have a simple way of saying "anything that's acceptable as a
@@ -27,7 +27,17 @@ AssociatedFiles = list[AssociatedFileCreate] | list[AssociatedFileOpen]
 
 
 class AssociatedFileCreateFn(Protocol):
-    def __call__(self, traj: Trajectory, *args, **kwargs) -> HasFieldSet: ...
+    """The type of functions used to create associated NetCDF files.
+
+    The function is passed the input trajectory plus any additional arguments
+    supplied to the `create_associated` method of `TrajectoryStore`, and must
+    return an object implementing the HasFieldSets protocol, i.e., an object
+    that has a `FIELD_SETS` class attribute giving the FieldSets that should be
+    used to save the result data.
+
+    """
+
+    def __call__(self, traj: Trajectory, *args, **kwargs) -> HasFieldSets: ...
 
 
 class _TrajectoryStoreIterator(Iterator):
@@ -77,9 +87,57 @@ class TrajectoryCache(LRUCache[int, Trajectory]):
 class TrajectoryStore:
     """Class representing a set of trajectories stored in NetCDF files.
 
-    This is a complicated and flexible class that needs a big documentation
-    comment here.
-    TODO: Write it!
+    Fundamentally, a `TrajectoryStore` is an append-only collection of
+    `Trajectory` objects that can be stored in and retrieved from NetCDF files.
+    In the simplest file-based use case, a `TrajectoryStore` stores plain
+    trajectory data in a single NetCDF file. However, the class offers
+    additional functionality that allows additional data fields to be combined
+    with trajectory data, either in the same ("base") NetCDF file, or in
+    additional ("associated") NetCDF files.
+
+    The intention here is to support a number of different use cases for
+    storing trajectory and associated (normally emissions) data.
+
+    Data stored in a `TrajectoryStore` is divided into "field sets"
+    (represented by the `FieldSet` class from the
+    `AEIC.trajectories.field_sets` package). A field set is a collection of
+    data and metadata fields that are part of a trajectory or data that lives
+    alongside a trajectory (emissions data of one sort or another, for
+    example). "Data fields" in field sets have values for each point along a
+    trajectory: the length of the data values in each of these fields must
+    match the length of the trajectory. "Metadata fields" in field sets are
+    per-trajectory values: there is one value of each of each of these fields
+    for each trajectory. Each field in a field set has a name, a data type and
+    associated information used for serialization to and from NetCDF files.
+
+    A `TrajectoryStore` always contains the "base" field set, which holds the
+    basic trajectory data (defined as `BASE_FIELDS` in the
+    `AEIC.trajectories.trajectory` package). Additional field sets can be
+    stored in a `TrajectoryStore` as needed.
+
+    The `TrajectoryStore` class supports three access modes: CREATE, READ and
+    APPEND. In addition, it is possible to create additional associated NetCDF
+    files associated with an existing `TrajectoryStore` using the
+    `create_associated` method.
+
+    A `TrajectoryStore` may be:
+     - created purely in-memory, or
+     - it may be connected to a single NetCDF file (in which data from all
+       field sets will be stored), or
+     - it may be connected to a base NetCDF file (holding the "base" field set
+       of trajectory data and zero or more additional field sets) and one or
+       more associated NetCDF files (storing other non-base field sets).
+
+    Trajectories are managed by a `TrajectoryStore` using an LRU memory cache
+    with a (user configurable) fixed size. When a `TrajectoryStore` is
+    associated with NetCDF files, entries from the trajectory cache can be
+    evicted, since they are stored in external files. An in-memory
+    `TrajectoryStore` does not have this flexibility, and if the stored
+    trajectories overflow the cache size, requiring an eviction, a
+    `TrajectoryCache.EvictionOccurred` exception is raised.
+
+    TODO: Continue this and work out the best way to integrate it into the
+    Sphinx docs. This could get quite long.
     """
 
     class FileMode(str, Enum):
@@ -124,6 +182,7 @@ class TrajectoryStore:
         nc_file: str | None = None,
         mode: FileMode = FileMode.READ,
         override: bool | None = None,
+        force_fieldset_matches: bool | None = None,
         cache_size_mb: int = 2048,
         associated_nc_files: AssociatedFiles | None = None,
         title: str | None = None,
@@ -147,6 +206,11 @@ class TrajectoryStore:
         override : bool | None, optional
             If True in READ mode, FieldSets from associated files will override
             any FieldSets of the same name in the base file. Default is False.
+        force_fieldset_matches : bool | None, optional
+            If True in READ mode, FieldSets from NetCDF files that do not match
+            the corresponding FieldSet in the registry will be accepted with a
+            warning. Default is False. There are no guarantees that things will
+            work if this is set to True!
         associated_nc_files : list[PathType] | list[tuple[PathType, list[str]]] | None
             Paths to associated NetCDF files containing additional data or
             metadata fields. Each associated file may be specified as a string
@@ -210,6 +274,15 @@ class TrajectoryStore:
         if override is not None and not override_ok:
             raise ValueError('override may only be specified in READ mode')
         self.override = override if override is not None else False
+
+        force_fieldset_matches_ok = mode == self.FileMode.READ
+        if force_fieldset_matches is not None and not force_fieldset_matches_ok:
+            raise ValueError(
+                'force_fieldset_matches may only be specified in READ mode'
+            )
+        self.force_fieldset_matches = (
+            force_fieldset_matches if force_fieldset_matches is not None else False
+        )
 
         if associated_nc_files is None:
             associated_nc_files = []
@@ -411,8 +484,25 @@ class TrajectoryStore:
             # Create associated data value.
             associated_data = mapping_function(self[i], *args, **kwargs)
 
-            # TODO: The result here should be a HasFieldSet, so we should be
-            # able to check that things all line up properly.
+            # These are the only checks we're going to do here: the call to
+            # _write_data will fail if any of the fields from the field sets
+            # are missing or of the wrong type.
+            if not hasattr(associated_data, 'FIELD_SETS'):
+                raise ValueError(
+                    'Result of mapping_function must implement HasFieldSets protocol'
+                )
+            assoc_field_sets = associated_data.FIELD_SETS
+            assert isinstance(assoc_field_sets, list)
+            if len(assoc_field_sets) != len(fieldsets):
+                raise ValueError(
+                    'Result of mapping_function must contain all field sets '
+                    'specified for associated NetCDF file'
+                )
+            if set(fs.name for fs in assoc_field_sets) != set(fieldsets):
+                raise ValueError(
+                    'Field sets in mapping_function result must match field sets '
+                    'specified for associated NetCDF file'
+                )
 
             # Write data for field set to associated file.
             self._write_data(
@@ -776,12 +866,17 @@ class TrajectoryStore:
             )
         for fs_name, fs_hash in zip(fieldset_names, fieldset_hashes):
             fs = FieldSet.from_registry(fs_name)
-            # TODO: Add force option to make this into a warning instead of
-            # error.
             if fs.digest != fs_hash:
-                raise ValueError(
+                if not self.force_fieldset_matches:
+                    raise ValueError(
+                        f'Field set hash for field set "{fs_name}" in file {nc_file} '
+                        f'does not match hash of FieldSet in registry'
+                    )
+                warnings.warn(
                     f'Field set hash for field set "{fs_name}" in file {nc_file} '
-                    f'does not match hash of FieldSet in registry'
+                    f'does not match hash of FieldSet in registry, but '
+                    f'force_fieldset_matches is True so continuing anyway',
+                    RuntimeWarning,
                 )
         m = hashlib.md5()
         for h in fieldset_hashes:

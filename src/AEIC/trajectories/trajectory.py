@@ -3,7 +3,7 @@ from typing import Any
 
 import numpy as np
 
-from .field_sets import FieldMetadata, FieldSet, HasFieldSet
+from .field_sets import FieldMetadata, FieldSet, HasFieldSets
 
 BASE_FIELDSET_NAME = 'base'
 
@@ -212,7 +212,7 @@ class Trajectory:
                 f'FieldSet with name "{fieldset.name}" already added to Trajectory'
             )
 
-    def add_fields(self, fieldset: FieldSet | HasFieldSet):
+    def add_fields(self, fieldset: FieldSet | HasFieldSets):
         """Add fields from a FieldSet to the trajectory.
 
         Either just add fields with empty values, or, if the field set is
@@ -221,56 +221,68 @@ class Trajectory:
         """
 
         # Set up field set: either passed directly, or attached to another
-        # object as a `FIELD_SET` class attribute.
-        fs = fieldset
+        # object as a `FIELD_SETS` class attribute. (There are asserts all over
+        # the place here because PyRight gets confused about the types. Not
+        # sure why. It seems like a fairly clear case.)
+        fss = [fieldset]
         try_data = False
         if not isinstance(fieldset, FieldSet):
-            fs = fieldset.FIELD_SET
+            assert isinstance(fieldset, HasFieldSets)
+            fss = fieldset.FIELD_SETS
+            assert isinstance(fss, list)
             try_data = True
-        assert isinstance(fs, FieldSet)
-        self._check_fieldset(fs)
+        assert all(isinstance(fs, FieldSet) for fs in fss)
+        for fs in fss:
+            assert isinstance(fs, FieldSet)
+            self._check_fieldset(fs)
 
         # Adjust the trajectory to include the new fields.
-        self.fieldsets.add(fs.name)
-        self.data_dictionary = self.data_dictionary.merge(fs)
+        for fs in fss:
+            assert isinstance(fs, FieldSet)
+            self.fieldsets.add(fs.name)
+            self.data_dictionary = self.data_dictionary.merge(fs)
 
         # Add data and metadata fields and set values from the `HasFieldSet`
         # object if there is one.
-        for name, metadata in fs.items():
-            if metadata.metadata:
-                if try_data:
-                    if hasattr(fieldset, name):
-                        # Check that the type of the assigned value can be
-                        # safely cast to the field type and cast and assign the
-                        # value if OK.
-                        self.metadata[name] = _convert_types(
-                            metadata.field_type,
-                            getattr(fieldset, name),
-                            'metadata',
-                            name,
-                        )
-                        continue
-                self.metadata[name] = None
-            else:
-                if try_data:
-                    if hasattr(fieldset, name):
-                        value = getattr(fieldset, name)
-
-                        # The number of points in a trajectory is currently
-                        # fixed at creation time.
-                        if len(value) != self.npoints:
-                            raise ValueError(
-                                'Assigned length does not match number of points'
+        for fs in fss:
+            assert isinstance(fs, FieldSet)
+            for name, metadata in fs.items():
+                if metadata.metadata:
+                    if try_data:
+                        if hasattr(fieldset, name):
+                            # Check that the type of the assigned value can be
+                            # safely cast to the field type and cast and assign
+                            # the value if OK.
+                            self.metadata[name] = _convert_types(
+                                metadata.field_type,
+                                getattr(fieldset, name),
+                                'metadata',
+                                name,
                             )
+                            continue
+                    self.metadata[name] = None
+                else:
+                    if try_data:
+                        if hasattr(fieldset, name):
+                            value = getattr(fieldset, name)
 
-                        # Check that the type of the assigned value can be
-                        # safely cast to the field type and cast and assign the
-                        # value if OK.
-                        self.data[name] = _convert_types(
-                            metadata.field_type, value, 'data', name
-                        )
-                        continue
-                self.data[name] = np.zeros((self.npoints,), dtype=metadata.field_type)
+                            # The number of points in a trajectory is currently
+                            # fixed at creation time.
+                            if len(value) != self.npoints:
+                                raise ValueError(
+                                    'Assigned length does not match number of points'
+                                )
+
+                            # Check that the type of the assigned value can be
+                            # safely cast to the field type and cast and assign
+                            # the value if OK.
+                            self.data[name] = _convert_types(
+                                metadata.field_type, value, 'data', name
+                            )
+                            continue
+                    self.data[name] = np.zeros(
+                        (self.npoints,), dtype=metadata.field_type
+                    )
 
 
 def _convert_types(expected_type: type, value: Any, label: str, name: str) -> Any:

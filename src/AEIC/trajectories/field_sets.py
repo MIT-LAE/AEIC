@@ -13,7 +13,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cached_property
 from types import MappingProxyType
-from typing import ClassVar, Protocol
+from typing import ClassVar, Protocol, runtime_checkable
 
 import numpy as np
 from netCDF4 import Group, VLType
@@ -150,13 +150,14 @@ class FieldSet(Mapping):
             raise ValueError(f'Overlapping field names: {overlap}')
         merged_fields = dict(self._fields)
         merged_fields.update(other._fields)
-        return FieldSet(f'{self.name}+{other.name}', **merged_fields)
+        return FieldSet(f'{self.name}+{other.name}', False, **merged_fields)
 
     def __repr__(self):
         return f'<FieldSet {self.name}: {list(self._fields)}>'
 
 
-class HasFieldSet(Protocol):
-    """Protocol for objects that have an associated FieldSet."""
+@runtime_checkable
+class HasFieldSets(Protocol):
+    """Protocol for objects that have associated FieldSets."""
 
-    FIELD_SET = ClassVar[FieldSet]
+    FIELD_SETS = ClassVar[list[FieldSet]]

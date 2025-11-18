@@ -9,22 +9,24 @@ from AEIC.trajectories.field_sets import FieldMetadata, FieldSet
 from AEIC.trajectories.store import TrajectoryStore
 from AEIC.trajectories.trajectory import Trajectory
 
-# Some extra fields in a field set to add to trajectories for testing.
-
 
 @dataclass
 class Extras:
-    FIELD_SET: ClassVar[FieldSet] = FieldSet(
-        'demo',
-        f1=FieldMetadata(description='Test 1', units='unit1'),
-        f2=FieldMetadata(description='Test 2', units='unit2'),
-        mf=FieldMetadata(
-            metadata=True,
-            field_type=np.int32,
-            description='Test metadata',
-            units='unit3',
-        ),
-    )
+    """Extra fields add to trajectories for testing."""
+
+    FIELD_SETS: ClassVar[list[FieldSet]] = [
+        FieldSet(
+            'demo',
+            f1=FieldMetadata(description='Test 1', units='unit1'),
+            f2=FieldMetadata(description='Test 2', units='unit2'),
+            mf=FieldMetadata(
+                metadata=True,
+                field_type=np.int32,
+                description='Test metadata',
+                units='unit3',
+            ),
+        )
+    ]
 
     # Note type of mf is int, not np.int32. Conversion is done by the
     # trajectory store when saving data. The field_type in FieldMetadata has to
@@ -92,21 +94,32 @@ def test_init_checking():
     # TODO: MORE HERE...
 
 
+def simple_create_ts(
+    nc_file: Path | None = None, title: str | None = None
+) -> TrajectoryStore:
+    ts = TrajectoryStore.create(nc_file=nc_file, title=title)
+    ts.add(make_test_trajectory(10, 1))
+    ts.add(make_test_trajectory(15, 2))
+    ts.close()
+    return ts
+
+
+def simple_check_ts(path: Path, title: str, lengths: list[int]):
+    ts_read = TrajectoryStore.open(nc_file=path)
+    assert ts_read.global_attributes['title'] == title
+    assert len(ts_read) == len(lengths)
+    for i in range(len(lengths)):
+        assert len(ts_read[i]) == lengths[i]
+
+
 def test_create_reopen(tmp_path: Path):
     # Create a small TrajectoryStore, save to NetCDF, disabling further
     # appending (closes NetCDF file), reload from NetCDF.
 
     path = tmp_path / 'test.nc'
-    ts = TrajectoryStore.create(title='simple case', nc_file=path)
-    ts.add(make_test_trajectory(10, 1))
-    ts.add(make_test_trajectory(15, 2))
-    ts.close()
+    simple_create_ts(nc_file=path, title='simple case')
 
-    ts_read = TrajectoryStore.open(nc_file=path)
-    assert ts_read.global_attributes['title'] == 'simple case'
-    assert len(ts_read) == 2
-    assert len(ts_read[0]) == 10
-    assert len(ts_read[1]) == 15
+    simple_check_ts(path, 'simple case', [10, 15])
 
 
 def test_create_append_reopen(tmp_path: Path):
@@ -114,21 +127,13 @@ def test_create_append_reopen(tmp_path: Path):
     # mode, add another trajectory, close NetCDF file and reload from NetCDF.
 
     path = tmp_path / 'test.nc'
-    ts = TrajectoryStore.create(title='append case', nc_file=path)
-    ts.add(make_test_trajectory(10, 1))
-    ts.add(make_test_trajectory(15, 2))
-    ts.close()
+    simple_create_ts(nc_file=path, title='append case')
 
     ts2 = TrajectoryStore.append(nc_file=path)
     ts2.add(make_test_trajectory(20, 3))
     ts2.close()
 
-    ts_read = TrajectoryStore.open(nc_file=path)
-    assert ts_read.global_attributes['title'] == 'append case'
-    assert len(ts_read) == 3
-    assert len(ts_read[0]) == 10
-    assert len(ts_read[1]) == 15
-    assert len(ts_read[2]) == 20
+    simple_check_ts(path, 'append case', [10, 15, 20])
 
 
 @pytest.mark.skip(reason='long test case, enable manually')
