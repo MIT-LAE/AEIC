@@ -1,4 +1,5 @@
 import hashlib
+import threading
 import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -98,6 +99,10 @@ class TrajectoryStore:
     The intention here is to support a number of different use cases for
     storing trajectory and associated (normally emissions) data.
 
+    Trajectory stores are *not* thread-safe. A program may create and use
+    TrajectoryStore values from a single thread only. This single-threaded
+    restriction applies both to read-only access and mutation of stores.
+
     Data stored in a `TrajectoryStore` is divided into "field sets"
     (represented by the `FieldSet` class from the
     `AEIC.trajectories.field_sets` package). A field set is a collection of
@@ -138,6 +143,7 @@ class TrajectoryStore:
 
     TODO: Continue this and work out the best way to integrate it into the
     Sphinx docs. This could get quite long.
+
     """
 
     class FileMode(str, Enum):
@@ -152,7 +158,7 @@ class TrajectoryStore:
 
         path: Path
         fieldsets: set[str]
-        dataset: Dataset
+        dataset: Dataset  # UNSAFE
         traj_dim: Dimension
         groups: dict[str, Group]
         title: str | None = None
@@ -160,6 +166,8 @@ class TrajectoryStore:
         history: str | None = None
         source: str | None = None
         created: datetime | None = None
+
+    active_in_thread: int | None = None
 
     # Allowed constructor arguments by mode:
     #
@@ -232,6 +240,17 @@ class TrajectoryStore:
             If input arguments are inconsistent with the specified file mode.
 
         """
+
+        # Check thread activity: must be single-threaded.
+        if TrajectoryStore.active_in_thread is not None:
+            if TrajectoryStore.active_in_thread != threading.get_ident():
+                raise RuntimeError(
+                    'TrajectoryStore: multiple TrajectoryStore instances '
+                    'active in different threads simultaneously.'
+                )
+        else:
+            TrajectoryStore.active_in_thread = threading.get_ident()
+
         self.mode = mode
 
         # Check input arguments based on file mode.

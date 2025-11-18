@@ -1,3 +1,4 @@
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
@@ -151,6 +152,26 @@ def test_create_reopen_large(tmp_path: Path):
     assert len(ts_read) == 1000000
     assert len(ts_read[200000]) == 100
     assert len(ts_read[999999]) == 100
+
+
+def test_multi_threading(tmp_path: Path):
+    result = None
+
+    def worker(idx: int):
+        nonlocal result
+        path = tmp_path / f'test{idx}.nc'
+        try:
+            _ = simple_create_ts(nc_file=path, title=f'thread {idx}')
+            result = 'OK'
+        except Exception:
+            result = 'FAILED'
+
+    path = tmp_path / 'test.nc'
+    _ = simple_create_ts(nc_file=path, title='main thread')
+    t = threading.Thread(target=worker, args=(1,))
+    t.start()
+    t.join()
+    assert result == 'FAILED'
 
 
 def test_extra_fields_in_base_nc(tmp_path: Path):
