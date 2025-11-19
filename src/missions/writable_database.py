@@ -156,7 +156,7 @@ class WritableDatabase(Database):
             ('flights', 'carrier', False),
             ('flights', 'origin', False),
             ('flights', 'destination', False),
-            ('flights', 'service_type', False),
+            ('flights', 'aircraft_type', False),
             ('flights', 'aircraft_type', False),
             ('flights', 'distance', False),
             ('flights', 'seat_capacity', False),
@@ -398,7 +398,7 @@ class WritableDatabase(Database):
             return self._cache_airport(airport_id, airport)
 
         # Not found, so look up the airport in the static data.
-        airport = airports.airports[iata_code]
+        airport = airports.airport(iata_code)
         if not airport:
             self.unknown_airports.add(iata_code)
             self._warn(Warning.Type.UNKNOWN_AIRPORT, line, unknown_airport=iata_code)
@@ -484,7 +484,7 @@ class WritableDatabase(Database):
             return row[0]
 
         # Not found, so look up the country in the static data.
-        country = airports.countries[code]
+        country = airports.country(code)
         assert isinstance(country, airports.Country)
         if not country:
             raise ValueError(f'Unknown country code: {code}')

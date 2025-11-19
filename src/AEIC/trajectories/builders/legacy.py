@@ -53,12 +53,12 @@ class LegacyContext(Context):
         # Generate great circle ground track between departure and arrival
         # locations.
         ground_track = GroundTrack.great_circle(
-            mission.dep_position.location, mission.arr_position.location
+            mission.origin_position.location, mission.destination_position.location
         )
 
         # Climb defined as starting 3000' above airport.
         self.clm_start_altitude = (
-            mission.dep_position.altitude + 3000.0 * FEET_TO_METERS
+            mission.origin_position.altitude + 3000.0 * FEET_TO_METERS
         )
 
         # Maximum altitude in meters.
@@ -70,7 +70,7 @@ class LegacyContext(Context):
         # If starting altitude is above operating ceiling, set start altitude
         # to departure airport altitude.
         if self.clm_start_altitude >= max_alt:
-            self.clm_start_altitude = mission.dep_position.altitude
+            self.clm_start_altitude = mission.origin_position.altitude
 
         # Cruise altitude is the operating ceiling - 7000 feet.
         self.crz_start_altitude = max_alt - 7000.0 * FEET_TO_METERS
@@ -90,7 +90,9 @@ class LegacyContext(Context):
 
         # Set descent altitude based on 3000' above arrival airport altitude;
         # clamp to aircraft operating ceiling if needed.
-        self.des_end_altitude = mission.arr_position.altitude + 3000.0 * FEET_TO_METERS
+        self.des_end_altitude = (
+            mission.destination_position.altitude + 3000.0 * FEET_TO_METERS
+        )
         if self.des_end_altitude >= max_alt:
             self.des_end_altitude = max_alt
 

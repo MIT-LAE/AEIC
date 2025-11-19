@@ -14,7 +14,6 @@ from emissions.EI_SOx import EI_SOx
 from emissions.emission import Emission
 from missions import Mission
 from utils import file_location
-from utils.custom_types import Position
 from utils.helpers import iso_to_timestamp
 
 # Path to a real fuel TOML file in your repo
@@ -24,13 +23,11 @@ perf = PerformanceModel(performance_model_file)
 mis = perf.missions[0]
 
 sample_mission = Mission(
-    dep_airport="BOS",
-    arr_airport="LAX",
-    ac_code="738",
-    dep_datetime=iso_to_timestamp('2019-01-01 12:00:00'),
-    arr_datetime=iso_to_timestamp('2019-01-01 18:00:00'),
-    dep_position=Position(longitude=-71.00527778, latitude=42.36444444, altitude=20),
-    arr_position=Position(longitude=-118.4080556, latitude=33.9425, altitude=125),
+    origin="BOS",
+    destination="LAX",
+    aircraft_type="738",
+    departure=iso_to_timestamp('2019-01-01 12:00:00'),
+    arrival=iso_to_timestamp('2019-01-01 18:00:00'),
     load_factor=1.0,
 )
 

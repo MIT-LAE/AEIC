@@ -177,22 +177,22 @@ class TrajectoryStore:
     #  -----------------------
     #    ?    title, comment, history, source: Permitted only for creating a
     #           new NetCDF file.
-    #  X ? X  nc_file
+    #  X ? X  base_file
     #  X X X  mode
     #  ?      override
-    #  ? ? ?  *associated_nc_files: must be str for APPEND and READ (field sets
+    #  ? ? ?  *associated_files: must be str for APPEND and READ (field sets
     #           in each file are fixed already) and must be tuple[str,
     #           list[str]] for CREATE (allotment of field sets to associated
     #           files must be specified).
     def __init__(
         self,
         *,
-        nc_file: str | None = None,
+        base_file: str | None = None,
         mode: FileMode = FileMode.READ,
         override: bool | None = None,
         force_fieldset_matches: bool | None = None,
         cache_size_mb: int = 2048,
-        associated_nc_files: AssociatedFiles | None = None,
+        associated_files: AssociatedFiles | None = None,
         title: str | None = None,
         comment: str | None = None,
         history: str | None = None,
@@ -202,7 +202,7 @@ class TrajectoryStore:
 
         Parameter
         ----------
-        nc_file : str | None, optional
+        base_file : str | None, optional
             Path to the base NetCDF file. Required in READ and APPEND modes.
         mode : TrajectoryStore.FileMode, optional
             File access mode. One of:
@@ -219,7 +219,7 @@ class TrajectoryStore:
             the corresponding FieldSet in the registry will be accepted with a
             warning. Default is False. There are no guarantees that things will
             work if this is set to True!
-        associated_nc_files : list[PathType] | list[tuple[PathType, list[str]]] | None
+        associated_files : list[PathType] | list[tuple[PathType, list[str]]] | None
             Paths to associated NetCDF files containing additional data or
             metadata fields. Each associated file may be specified as a string
             path or as a tuple of the form (path, [fieldset_names]) where
@@ -275,19 +275,19 @@ class TrajectoryStore:
         if source is not None:
             self.global_attributes['source'] = source
 
-        # Setting nc_file=None in CREATE mode creates an empty TrajectoryStore.
+        # Setting base_file=None in CREATE mode creates an empty TrajectoryStore.
         # We can switch to a file-backed store later using the save method, but
         # in the meantime, the trajectory cache is limited in size and cannot
         # evict any items. Adding too many trajectories to an in-memory
         # TrajectoryStore will result in a TrajectoryCache.EvictionOccurred
         # exception.
-        nc_file_req = mode != self.FileMode.CREATE
-        if nc_file is None and nc_file_req:
-            raise ValueError(f'nc_file required in file mode {mode}')
-        self.nc_file = nc_file
+        base_file_req = mode != self.FileMode.CREATE
+        if base_file is None and base_file_req:
+            raise ValueError(f'base_file required in file mode {mode}')
+        self.base_file = base_file
         check_paths: list[PathType] = []
-        if nc_file is not None:
-            check_paths.append(nc_file)
+        if base_file is not None:
+            check_paths.append(base_file)
 
         override_ok = mode == self.FileMode.READ
         if override is not None and not override_ok:
@@ -303,27 +303,26 @@ class TrajectoryStore:
             force_fieldset_matches if force_fieldset_matches is not None else False
         )
 
-        if associated_nc_files is None:
-            associated_nc_files = []
+        if associated_files is None:
+            associated_files = []
         if mode in (self.FileMode.APPEND, self.FileMode.READ):
-            if any(not isinstance(f, PathType) for f in associated_nc_files):
+            if any(not isinstance(f, PathType) for f in associated_files):
                 raise ValueError(
-                    'associated_nc_files must be paths in APPEND and READ modes'
+                    'associated_files must be paths in APPEND and READ modes'
                 )
-            for f in associated_nc_files:
+            for f in associated_files:
                 assert isinstance(f, PathType)
                 check_paths.append(f)
         if mode == self.FileMode.CREATE:
-            if any(not valid_associated_file_tuple(f) for f in associated_nc_files):
+            if any(not valid_associated_file_tuple(f) for f in associated_files):
                 raise ValueError(
-                    'associated_nc_files must be '
-                    'tuple[PathType, list[str]] in CREATE mode'
+                    'associated_files must be tuple[PathType, list[str]] in CREATE mode'
                 )
-            for f in associated_nc_files:
+            for f in associated_files:
                 assert isinstance(f, tuple)
                 assert isinstance(f[0], PathType)
                 check_paths.append(f[0])
-        self.associated_nc_files = associated_nc_files
+        self.associated_files = associated_files
         self.associated_fieldsets: set[str] = set()
         if mode == self.FileMode.CREATE:
             self._calc_associated_fieldsets()
@@ -336,7 +335,7 @@ class TrajectoryStore:
         # trajectory. (This is done to handle cases where the trajectory store
         # is very large and cannot be held in memory all at once.)
         #
-        # A store created with nc_file=None is in-memory only. We can switch to
+        # A store created with base_file=None is in-memory only. We can switch to
         # a file-backed store using the save method, but in the meantime, the
         # trajectory cache cannot evict any entries. The custom TrajectoryCache
         # class has a flag to raise an exception on eviction for this use case.
@@ -345,7 +344,7 @@ class TrajectoryStore:
             cache_size_mb * 1024 * 1024,
             getsizeof=lambda t: t.nbytes,  # type: ignore
         )
-        if self.nc_file is None:
+        if self.base_file is None:
             self._trajectories.exception_on_eviction = True
 
         # List of NetCDF file information structures and mapping from field set
@@ -359,7 +358,7 @@ class TrajectoryStore:
         # involved, and we only get to see that when a `Trajectory` is added to
         # the store.
         self._file_creation_pending = (
-            mode == self.FileMode.CREATE and nc_file is not None
+            mode == self.FileMode.CREATE and base_file is not None
         )
 
         # Next trajectory index to assign. This is the length of the trajectory
@@ -401,15 +400,15 @@ class TrajectoryStore:
     def _calc_associated_fieldsets(self) -> None:
         # This is slightly unwieldy because of Python's restrictions on
         # using isinstance with parameterized generics.
-        assert isinstance(self.associated_nc_files, list)
+        assert isinstance(self.associated_files, list)
         self.associated_fieldsets = set()
-        for t in self.associated_nc_files:
+        for t in self.associated_files:
             assert isinstance(t, tuple)
             for f in t[1]:
                 self.associated_fieldsets.add(f)
 
     def save(
-        self, nc_file: PathType, associated_nc_files: AssociatedFiles | None = None
+        self, base_file: PathType, associated_files: AssociatedFiles | None = None
     ):
         """Create NetCDF files for a TrajectoryStore currently not linked to
         one.
@@ -421,21 +420,21 @@ class TrajectoryStore:
             )
 
         # Start list of file paths we need to check.
-        check_paths: list[PathType] = [nc_file]
+        check_paths: list[PathType] = [base_file]
 
         # If associated files are provided, check them in the same way as in
         # the constructor.
-        if associated_nc_files is None:
-            associated_nc_files = []
-        if any(not valid_associated_file_tuple(f) for f in associated_nc_files):
+        if associated_files is None:
+            associated_files = []
+        if any(not valid_associated_file_tuple(f) for f in associated_files):
             raise ValueError(
-                'associated_nc_files must be tuple[PathType, list[str]] in save'
+                'associated_files must be tuple[PathType, list[str]] in save'
             )
-        for f in associated_nc_files:
+        for f in associated_files:
             assert isinstance(f, tuple)
             assert isinstance(f[0], PathType)
             check_paths.append(f[0])
-        self.associated_nc_files = associated_nc_files
+        self.associated_files = associated_files
         self._calc_associated_fieldsets()
 
         # Check that file paths do not already exist.
@@ -448,7 +447,7 @@ class TrajectoryStore:
 
         # The workflow here is essentially the same as in _create, but we need
         # to enable writing first.
-        self.nc_file = nc_file
+        self.base_file = base_file
         self._write_enabled = True
         self._create()
 
@@ -462,7 +461,7 @@ class TrajectoryStore:
 
     def create_associated(
         self,
-        associated_nc_file: PathType,
+        associated_file: PathType,
         fieldsets: list[str],
         mapping_function: AssociatedFileCreateFn,
         *args,
@@ -475,7 +474,7 @@ class TrajectoryStore:
         associated NetCDF file.
         """
         # Check that file doesn't already exist.
-        p = Path(associated_nc_file)
+        p = Path(associated_file)
         if not p.parent.exists():
             raise ValueError(
                 f'Parent directory of associated NetCDF file "{p}" does not exist'
@@ -492,7 +491,7 @@ class TrajectoryStore:
 
         # Create file.
         nc_info = self._create_nc_file(
-            associated_nc_file,
+            associated_file,
             set(fieldsets),
             save=False,
             associated_name=self._nc_files[0].path,
@@ -715,8 +714,8 @@ class TrajectoryStore:
         """
 
         # Open the NetCDF4 dataset from base file.
-        assert self.nc_file is not None
-        base_nc_file = self._open_nc_file(self.nc_file)
+        assert self.base_file is not None
+        base_nc_file = self._open_nc_file(self.base_file)
         self.global_attributes = {}
         if base_nc_file.title is not None:
             self.global_attributes['title'] = base_nc_file.title
@@ -763,7 +762,7 @@ class TrajectoryStore:
             self._next_index = len(base_nc_file.traj_dim)
 
         # Open any associated NetCDF files.
-        for name in self.associated_nc_files:
+        for name in self.associated_files:
             assert isinstance(name, PathType)
             assocated_file = self._open_nc_file(name, check_associated=base_nc_file)
             self._nc_files.append(assocated_file)
@@ -800,12 +799,12 @@ class TrajectoryStore:
         base_nc_fieldsets = proto.fieldsets - self.associated_fieldsets
 
         # Create the base NetCDF file.
-        assert self.nc_file is not None
-        self._create_nc_file(self.nc_file, base_nc_fieldsets)
+        assert self.base_file is not None
+        self._create_nc_file(self.base_file, base_nc_fieldsets)
 
         # Create the associated NetCDF files.
         base_nc_file = self._nc[BASE_FIELDSET_NAME]
-        for associated_file in self.associated_nc_files:
+        for associated_file in self.associated_files:
             # Another case of clumsy typing due to Python's restrictions on
             # isinstance.
             assert isinstance(associated_file, tuple)

@@ -22,7 +22,7 @@ def test_trajectory_simulation_1(tmp_path):
     performance_model_file = file_location('IO/default_config.toml')
     perf = PerformanceModel(performance_model_file)
     builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
-    ts = TrajectoryStore.create(nc_file=fname)
+    ts = TrajectoryStore.create(base_file=fname)
 
     for mis in perf.missions:
         traj = builder.fly(perf, mis)
@@ -33,6 +33,6 @@ def test_trajectory_simulation_1(tmp_path):
 
     ts.close()
 
-    ts_loaded = TrajectoryStore.open(nc_file=fname)
+    ts_loaded = TrajectoryStore.open(base_file=fname)
     assert len(ts_loaded) == len(ts)
     # TODO: Test that additional fields are correctly saved and loaded.

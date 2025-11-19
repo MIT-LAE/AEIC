@@ -88,17 +88,17 @@ def test_init_checking():
 
     # Specifying global attributes in non-create modes.
     with pytest.raises(ValueError):
-        _ = TrajectoryStore.open(nc_file='test.nc', title='Test')
+        _ = TrajectoryStore.open(base_file='test.nc', title='Test')
     with pytest.raises(ValueError):
-        _ = TrajectoryStore.append(nc_file='test.nc', title='Test')
+        _ = TrajectoryStore.append(base_file='test.nc', title='Test')
 
     # TODO: MORE HERE...
 
 
 def simple_create_ts(
-    nc_file: Path | None = None, title: str | None = None
+    base_file: Path | None = None, title: str | None = None
 ) -> TrajectoryStore:
-    ts = TrajectoryStore.create(nc_file=nc_file, title=title)
+    ts = TrajectoryStore.create(base_file=base_file, title=title)
     ts.add(make_test_trajectory(10, 1))
     ts.add(make_test_trajectory(15, 2))
     ts.close()
@@ -106,7 +106,7 @@ def simple_create_ts(
 
 
 def simple_check_ts(path: Path, title: str, lengths: list[int]):
-    ts_read = TrajectoryStore.open(nc_file=path)
+    ts_read = TrajectoryStore.open(base_file=path)
     assert ts_read.global_attributes['title'] == title
     assert len(ts_read) == len(lengths)
     for i in range(len(lengths)):
@@ -118,7 +118,7 @@ def test_create_reopen(tmp_path: Path):
     # appending (closes NetCDF file), reload from NetCDF.
 
     path = tmp_path / 'test.nc'
-    simple_create_ts(nc_file=path, title='simple case')
+    simple_create_ts(base_file=path, title='simple case')
 
     simple_check_ts(path, 'simple case', [10, 15])
 
@@ -128,9 +128,9 @@ def test_create_append_reopen(tmp_path: Path):
     # mode, add another trajectory, close NetCDF file and reload from NetCDF.
 
     path = tmp_path / 'test.nc'
-    simple_create_ts(nc_file=path, title='append case')
+    simple_create_ts(base_file=path, title='append case')
 
-    ts2 = TrajectoryStore.append(nc_file=path)
+    ts2 = TrajectoryStore.append(base_file=path)
     ts2.add(make_test_trajectory(20, 3))
     ts2.close()
 
@@ -143,12 +143,12 @@ def test_create_reopen_large(tmp_path: Path):
     # writing, close the NetCDF file, reopen for reading and check contents.
 
     path = tmp_path / 'test.nc'
-    ts = TrajectoryStore.create(nc_file=path)
+    ts = TrajectoryStore.create(base_file=path)
     for i in range(1000000):
         ts.add(make_test_trajectory(100, i))
     ts.close()
 
-    ts_read = TrajectoryStore.open(nc_file=path)
+    ts_read = TrajectoryStore.open(base_file=path)
     assert len(ts_read) == 1000000
     assert len(ts_read[200000]) == 100
     assert len(ts_read[999999]) == 100
@@ -161,13 +161,13 @@ def test_multi_threading(tmp_path: Path):
         nonlocal result
         path = tmp_path / f'test{idx}.nc'
         try:
-            _ = simple_create_ts(nc_file=path, title=f'thread {idx}')
+            _ = simple_create_ts(base_file=path, title=f'thread {idx}')
             result = 'OK'
         except Exception:
             result = 'FAILED'
 
     path = tmp_path / 'test.nc'
-    _ = simple_create_ts(nc_file=path, title='main thread')
+    _ = simple_create_ts(base_file=path, title='main thread')
     t = threading.Thread(target=worker, args=(1,))
     t.start()
     t.join()
@@ -179,14 +179,14 @@ def test_extra_fields_in_base_nc(tmp_path: Path):
     # (This should result in a file with a "base" group and a "demo" group.)
 
     path = tmp_path / 'test.nc'
-    ts = TrajectoryStore.create(nc_file=path)
+    ts = TrajectoryStore.create(base_file=path)
     for i in range(1, 6):
         t = make_test_trajectory(i * 5, i)
         t.add_fields(Extras.random(i * 5))
         ts.add(t)
     ts.close()
 
-    ts_read = TrajectoryStore.open(nc_file=path)
+    ts_read = TrajectoryStore.open(base_file=path)
     assert len(ts_read) == 5
     assert ts_read.files[0].fieldsets == {'base', 'demo'}
     assert ts_read[2].f1.shape == (15,)
@@ -203,7 +203,7 @@ def test_extra_fields_in_base_nc_bad(tmp_path: Path):
 
     with pytest.raises(ValueError):
         path = tmp_path / 'test.nc'
-        ts = TrajectoryStore.create(nc_file=path)
+        ts = TrajectoryStore.create(base_file=path)
         for i in range(1, 6):
             t = make_test_trajectory(i * 5, i)
             if i % 2 == 1:
@@ -219,8 +219,8 @@ def test_extra_fields_in_associated_nc(tmp_path: Path):
     path = tmp_path / 'test.nc'
     extra_path = tmp_path / 'extra.nc'
     ts = TrajectoryStore.create(
-        nc_file=path,
-        associated_nc_files=[(extra_path, ['demo'])],
+        base_file=path,
+        associated_files=[(extra_path, ['demo'])],
     )
     for i in range(1, 6):
         t = make_test_trajectory(i * 5, i)
@@ -230,7 +230,7 @@ def test_extra_fields_in_associated_nc(tmp_path: Path):
 
     # Opening just the base NetCDF file (without the associated file) should
     # give trajectories without the extra fields.
-    ts_read = TrajectoryStore.open(nc_file=path)
+    ts_read = TrajectoryStore.open(base_file=path)
     assert len(ts_read) == 5
     assert len(ts_read.files) == 1
     assert ts_read.files[0].fieldsets == {'base'}
@@ -240,7 +240,7 @@ def test_extra_fields_in_associated_nc(tmp_path: Path):
 
     # Opening with the associated file should give trajectories with the
     # extra fields.
-    ts2_read = TrajectoryStore.open(nc_file=path, associated_nc_files=[extra_path])
+    ts2_read = TrajectoryStore.open(base_file=path, associated_files=[extra_path])
     assert len(ts2_read) == 5
     assert len(ts2_read.files) == 2
     assert ts2_read.files[0].fieldsets == {'base'}
@@ -257,8 +257,8 @@ def test_extra_fields_in_associated_nc_bad(tmp_path: Path):
     base2 = tmp_path / 'base2.nc'
     extra1 = tmp_path / 'extra1.nc'
     ts1 = TrajectoryStore.create(
-        nc_file=base1,
-        associated_nc_files=[(extra1, ['demo'])],
+        base_file=base1,
+        associated_files=[(extra1, ['demo'])],
     )
     for i in range(1, 6):
         t = make_test_trajectory(i * 5, i)
@@ -267,7 +267,7 @@ def test_extra_fields_in_associated_nc_bad(tmp_path: Path):
     ts1.close()
 
     # Create another unrelated pair of files.
-    ts2 = TrajectoryStore.create(title='Use case 5 (different)', nc_file=base2)
+    ts2 = TrajectoryStore.create(title='Use case 5 (different)', base_file=base2)
     for i in range(1, 6):
         t = make_test_trajectory(i * 5, i)
         t.add_fields(Extras.random(i * 5))
@@ -276,7 +276,7 @@ def test_extra_fields_in_associated_nc_bad(tmp_path: Path):
 
     # Try opening a base file with the wrong associated file.
     with pytest.raises(ValueError):
-        _ = TrajectoryStore.open(nc_file=base2, associated_nc_files=[extra1])
+        _ = TrajectoryStore.open(base_file=base2, associated_files=[extra1])
 
 
 def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
@@ -286,8 +286,8 @@ def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
     path = tmp_path / 'test.nc'
     extra_path = tmp_path / 'extra.nc'
     ts = TrajectoryStore.create(
-        nc_file=path,
-        associated_nc_files=[(extra_path, ['demo'])],
+        base_file=path,
+        associated_files=[(extra_path, ['demo'])],
     )
     for i in range(1, 6):
         t = make_test_trajectory(i * 5, i)
@@ -295,7 +295,7 @@ def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
         ts.add(t)
     ts.close()
 
-    ts2 = TrajectoryStore.append(nc_file=path, associated_nc_files=[extra_path])
+    ts2 = TrajectoryStore.append(base_file=path, associated_files=[extra_path])
     t = make_test_trajectory(10, 100)
     t.add_fields(Extras.random(10))
     ts2.add(t)
@@ -303,7 +303,7 @@ def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
 
     # Opening just the base NetCDF file (without the associated file) should
     # give trajectories without the extra fields.
-    ts_read = TrajectoryStore.open(nc_file=path)
+    ts_read = TrajectoryStore.open(base_file=path)
     assert len(ts_read) == 6
     assert len(ts_read.files) == 1
     assert ts_read.files[0].fieldsets == {'base'}
@@ -313,7 +313,7 @@ def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
 
     # Opening with the associated file should give trajectories with the
     # extra fields.
-    ts2_read = TrajectoryStore.open(nc_file=path, associated_nc_files=[extra_path])
+    ts2_read = TrajectoryStore.open(base_file=path, associated_files=[extra_path])
     assert len(ts2_read) == 6
     assert len(ts2_read.files) == 2
     assert ts2_read.files[0].fieldsets == {'base'}
@@ -334,10 +334,10 @@ def test_save(tmp_path: Path):
 
     path = tmp_path / 'test.nc'
     extra_path = tmp_path / 'extra.nc'
-    ts.save(nc_file=path, associated_nc_files=[(extra_path, ['demo'])])
+    ts.save(base_file=path, associated_files=[(extra_path, ['demo'])])
     ts.close()
 
-    ts_read = TrajectoryStore.open(nc_file=path, associated_nc_files=[extra_path])
+    ts_read = TrajectoryStore.open(base_file=path, associated_files=[extra_path])
     assert len(ts_read) == 5
     assert len(ts_read.files) == 2
     assert ts_read.files[0].fieldsets == {'base'}
@@ -351,20 +351,20 @@ def test_create_associated(tmp_path: Path):
 
     path = tmp_path / 'test.nc'
     extra_path = tmp_path / 'extra.nc'
-    ts = TrajectoryStore.create(nc_file=path)
+    ts = TrajectoryStore.create(base_file=path)
     ts.add(make_test_trajectory(10, 1))
     ts.add(make_test_trajectory(15, 2))
     ts.close()
 
-    ts_create_assoc = TrajectoryStore.open(nc_file=path)
+    ts_create_assoc = TrajectoryStore.open(base_file=path)
     ts_create_assoc.create_associated(
-        associated_nc_file=extra_path,
+        associated_file=extra_path,
         fieldsets=['demo'],
         mapping_function=lambda traj: Extras.random(len(traj)),
     )
     ts_create_assoc.close()
 
-    ts_read = TrajectoryStore.open(nc_file=path, associated_nc_files=[extra_path])
+    ts_read = TrajectoryStore.open(base_file=path, associated_files=[extra_path])
     assert len(ts_read) == 2
     assert len(ts_read.files) == 2
     assert ts_read.files[0].fieldsets == {'base'}
@@ -383,23 +383,23 @@ def test_fieldset_override(tmp_path: Path):
     path = tmp_path / 'test.nc'
     extra = tmp_path / 'extra.nc'
 
-    ts = TrajectoryStore.create(nc_file=path)
+    ts = TrajectoryStore.create(base_file=path)
     for i in range(1, 6):
         t = make_test_trajectory(i * 5, i)
         t.add_fields(Extras.fixed(i * 5, i * 0.1, i * 0.2, 10 * i))
         ts.add(t)
     ts.close()
 
-    ts_create_assoc = TrajectoryStore.open(nc_file=path)
+    ts_create_assoc = TrajectoryStore.open(base_file=path)
     ts_create_assoc.create_associated(
-        associated_nc_file=extra,
+        associated_file=extra,
         fieldsets=['demo'],
         mapping_function=lambda traj: Extras.fixed(len(traj), 123, 456, 12345),
     )
 
     # Case 1: just read original base file, which contains both field sets.
     # Should just get the base file values.
-    ts_read1 = TrajectoryStore.open(nc_file=path)
+    ts_read1 = TrajectoryStore.open(base_file=path)
     assert len(ts_read1) == 5
     assert len(ts_read1.files) == 1
     assert ts_read1.files[0].fieldsets == {'base', 'demo'}
@@ -412,7 +412,7 @@ def test_fieldset_override(tmp_path: Path):
         RuntimeWarning,
         match='FieldSet with name "demo" found in associated NetCDF file',
     ):
-        ts_read2 = TrajectoryStore.open(nc_file=path, associated_nc_files=[extra])
+        ts_read2 = TrajectoryStore.open(base_file=path, associated_files=[extra])
         assert len(ts_read2) == 5
         assert len(ts_read2.files) == 2
         assert ts_read2.files[0].fieldsets == {'base', 'demo'}
@@ -423,7 +423,7 @@ def test_fieldset_override(tmp_path: Path):
     # Case 3: read with associated file, *with* override. Should get the
     # associated file values.
     ts_read3 = TrajectoryStore.open(
-        nc_file=path, associated_nc_files=[extra], override=True
+        base_file=path, associated_files=[extra], override=True
     )
     assert len(ts_read3) == 5
     assert len(ts_read3.files) == 2

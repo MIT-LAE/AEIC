@@ -205,7 +205,9 @@ class Builder(ABC):
             # to identify it in `TrajectorySets` and intermediate NetCDF files.
             traj = Trajectory(
                 self.Ntot,
-                name=(f'{mission.dep_airport}_{mission.arr_airport}_{mission.ac_code}'),
+                name=(
+                    f'{mission.origin}_{mission.destination}_{mission.aircraft_type}'
+                ),
             )
 
             # Do the simulation, initializing start location and azimuth from

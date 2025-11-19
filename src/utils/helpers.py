@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from .consts import R_E
+from . import GEOD
 from .custom_types import FloatOrNDArray
 
 
@@ -15,7 +15,7 @@ def great_circle_distance(
     lat2: FloatOrNDArray,
     lon2: FloatOrNDArray,
     degrees: bool = False,
-) -> FloatOrNDArray:
+):
     """Calculates the great circle distance between two points
 
     Args:
@@ -28,24 +28,7 @@ def great_circle_distance(
     Returns:
         Union[NDArray,float]: great circle distance between the two points in meters
     """
-    lat1 = np.asarray(lat1)
-    lon1 = np.asarray(lon1)
-    lat2 = np.asarray(lat2)
-    lon2 = np.asarray(lon2)
-    if degrees:
-        lat1 = np.radians(lat1)
-        lon1 = np.radians(lon1)
-        lat2 = np.radians(lat2)
-        lon2 = np.radians(lon2)
-
-    alpha = np.asarray(
-        np.sin(lat1) * np.sin(lat2) + np.cos(lat1) * np.cos(lat2) * np.cos(lon1 - lon2)
-    )
-
-    alpha[alpha > 1] = 1  # TODO: this is a hack to avoid invalid arccos value
-    alpha[alpha < -1] = -1
-
-    return R_E * (np.arccos(alpha))
+    return GEOD.inv(lon1, lat1, lon2, lat2, radians=not degrees)[2]
 
 
 def calculate_line_parameters(x: NDArray, y: NDArray) -> tuple[NDArray, NDArray]:

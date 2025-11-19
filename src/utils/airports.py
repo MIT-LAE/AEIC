@@ -104,18 +104,15 @@ _countries: CountriesData | None = None
 _airports: AirportsData | None = None
 
 
-# Lazy initialization of data objects using module-level __getattr__ trick.
+def country(code: str) -> Country | None:
+    global _countries
+    if _countries is None:
+        _countries = CountriesData()
+    return _countries[code]
 
 
-def __getattr__(name: str):
-    global _countries, _airports
-    if name == 'countries':
-        if _countries is None:
-            _countries = CountriesData()
-        return _countries
-    elif name == 'airports':
-        if _airports is None:
-            _airports = AirportsData()
-        return _airports
-    else:
-        raise AttributeError(f"module {__name__} has no attribute {name}")
+def airport(code: str) -> Airport | None:
+    global _airports
+    if _airports is None:
+        _airports = AirportsData()
+    return _airports[code]
