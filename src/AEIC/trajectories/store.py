@@ -351,7 +351,12 @@ class TrajectoryStore:
         # a file-backed store using the save method, but in the meantime, the
         # trajectory cache cannot evict any entries. The custom TrajectoryCache
         # class has a flag to raise an exception on eviction for this use case.
-        # TODO: THIS IS NOT THREAD-SAFE! ADD NECESSARY LOCKING.
+        #
+        # NOTE: The LRUCache on which TrajectoryCache is based is not
+        # thread-safe, but that's OK because TrajectoryStore isn't thread-safe
+        # anyway, because of the threading problems in the underlying NetCDF
+        # libraries. Our use cases for AEIC do not require TrajectoryStore to
+        # be thread-safe, so we're all good.
         self._trajectories = TrajectoryCache(
             cache_size_mb * 1024 * 1024,
             getsizeof=lambda t: t.nbytes,  # type: ignore
