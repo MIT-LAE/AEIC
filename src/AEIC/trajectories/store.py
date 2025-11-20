@@ -31,6 +31,11 @@ AssociatedFileOpen = PathType
 AssociatedFiles = list[AssociatedFileCreate] | list[AssociatedFileOpen]
 
 
+# NOTE: Whenever a NetCDF4 Dataset is opened, the keepweakref parameter must be
+# set to avoid the segmentation fault issues described at
+# https://github.com/Unidata/netcdf4-python/issues/1444
+
+
 class AssociatedFileCreateFn(Protocol):
     """The type of functions used to create associated NetCDF files.
 
@@ -1066,7 +1071,11 @@ class TrajectoryStore:
             raise ValueError(f'Input file {nc_file} does not exist')
 
         # Open NetCDF4 dataset in read or append mode.
-        dataset = Dataset(nc_file, mode='r' if self.mode == self.FileMode.READ else 'a')
+        dataset = Dataset(
+            nc_file,
+            mode='r' if self.mode == self.FileMode.READ else 'a',
+            keepweakref=True,
+        )
 
         # Retrieve trajectory dimension.
         traj_dim = dataset.dimensions['trajectory']
@@ -1171,7 +1180,7 @@ class TrajectoryStore:
             raise ValueError(f'No stores listed in metadata file {metadata_file}')
 
         # Open NetCDF4 dataset in read or append mode.
-        dataset = [Dataset(nc_file, mode='r') for nc_file in nc_files]
+        dataset = [Dataset(nc_file, mode='r', keepweakref=True) for nc_file in nc_files]
 
         # Retrieve trajectory dimension.
         traj_dim = [ds.dimensions['trajectory'] for ds in dataset]
@@ -1279,7 +1288,7 @@ class TrajectoryStore:
             raise ValueError(f'Output file {nc_file} already exists')
 
         # Create NetCDF4 file in write mode.
-        dataset = Dataset(nc_file, mode='w', format='NETCDF4')
+        dataset = Dataset(nc_file, mode='w', format='NETCDF4', keepweakref=True)
 
         # The only dimension we need is the trajectory. All per-point data is
         # stored using NetCDF4 variable-length arrays.
