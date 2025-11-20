@@ -54,8 +54,8 @@ class Extras:
 # trajectory store doesn't like incomplete data.
 
 
-def make_test_trajectory(npoints: int, seed: int) -> Trajectory:
-    t = Trajectory(npoints, name=f'traj_{seed}')
+def make_test_trajectory(npoints: int, seed: int, extras: bool = False) -> Trajectory:
+    t = Trajectory(npoints, name=f'traj_{seed}', fieldsets=['demo'] if extras else None)
     t.fuelFlow = np.random.rand(npoints) * 5000 + 2000
     t.acMass = np.random.rand(npoints) * 50000 + 100000
     t.fuelMass = np.random.rand(npoints) * 50000 + 5000
@@ -76,6 +76,11 @@ def make_test_trajectory(npoints: int, seed: int) -> Trajectory:
     t.NClm = npoints // 3
     t.NCrz = npoints // 3
     t.NDes = npoints - t.NClm - t.NCrz
+    if extras:
+        extra_fields = Extras.random(npoints)
+        t.f1 = extra_fields.f1
+        t.f2 = extra_fields.f2
+        t.mf = extra_fields.mf
     return t
 
 
@@ -181,9 +186,7 @@ def test_extra_fields_in_base_nc(tmp_path: Path):
     path = tmp_path / 'test.nc'
     ts = TrajectoryStore.create(base_file=path)
     for i in range(1, 6):
-        t = make_test_trajectory(i * 5, i)
-        t.add_fields(Extras.random(i * 5))
-        ts.add(t)
+        ts.add(make_test_trajectory(i * 5, i, extras=True))
     ts.close()
 
     ts_read = TrajectoryStore.open(base_file=path)
@@ -261,9 +264,7 @@ def test_extra_fields_in_associated_nc_bad(tmp_path: Path):
         associated_files=[(extra1, ['demo'])],
     )
     for i in range(1, 6):
-        t = make_test_trajectory(i * 5, i)
-        t.add_fields(Extras.random(i * 5))
-        ts1.add(t)
+        ts1.add(make_test_trajectory(i * 5, i, extras=True))
     ts1.close()
 
     # Create another unrelated pair of files.
@@ -494,4 +495,56 @@ def test_pattern_merging(tmp_path: Path):
     assert ts_merged[0].name == 'traj_0'
     assert ts_merged[7].name == 'traj_31'
     assert ts_merged[4].flightTime.shape == (5,)
+    ts_merged.close()
+
+
+def test_merging_with_associated_files(tmp_path: Path):
+    # How should this work? If you merge a set of base files that have
+    # associated files, you should then be able to merge the associated files
+    # and open the "base merged store" with the "associated merged store" to
+    # get what you would hope for.
+
+    # TODO: Think about what can go wrong here and add some error checking to
+    # the code that opens the merged stores.
+
+    #  1. Create stores with base + associated files.
+    base_paths = []
+    extra_paths = []
+    for j in range(10):
+        base_path = tmp_path / f'base{j}.nc'
+        extra_path = tmp_path / f'extra{j}.nc'
+        ts = TrajectoryStore.create(
+            base_file=base_path,
+            associated_files=[(extra_path, ['demo'])],
+        )
+        for i in range(1, 6):
+            t = make_test_trajectory(i * 5, j * 5 + i)
+            t.add_fields(Extras.random(i * 5))
+            ts.add(t)
+        ts.close()
+        base_paths.append(base_path)
+        extra_paths.append(extra_path)
+
+    #  2. Merge base files.
+    merged_base = tmp_path / 'merged_base.aeic-store'
+    TrajectoryStore.merge(input_stores=base_paths, output_store=merged_base)
+
+    #  3. Merge associated files.
+    merged_associated = tmp_path / 'merged_extra.aeic-store'
+    TrajectoryStore.merge(input_stores=extra_paths, output_store=merged_associated)
+
+    #  4. Open merged base + merged associated and check contents.
+    ts_merged = TrajectoryStore.open(
+        base_file=merged_base, associated_files=[merged_associated]
+    )
+    assert ts_merged.nc_linked is True
+    assert len(ts_merged) == 50
+    for i in range(50):
+        assert ts_merged[i].name == f'traj_{i + 1}'
+    assert ts_merged[4].flightTime.shape == (25,)
+    assert len(ts_merged.files) == 2
+    assert ts_merged.files[0].fieldsets == {'base'}
+    assert ts_merged.files[1].fieldsets == {'demo'}
+    assert ts_merged[2].f1.shape == (15,)
+    assert ts_merged[2].mf is not None
     ts_merged.close()

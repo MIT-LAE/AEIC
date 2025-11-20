@@ -78,7 +78,9 @@ class Trajectory:
     # interface.
     FIXED_FIELDS = set(['data_dictionary', 'fieldsets', 'data', 'metadata', 'npoints'])
 
-    def __init__(self, npoints: int, name: str | None = None):
+    def __init__(
+        self, npoints: int, name: str | None = None, fieldsets: list[str] | None = None
+    ):
         """Initialized with a fixed number of points and an optional name.
 
         The name is used for labelling trajectories within trajectory sets (and
@@ -89,9 +91,6 @@ class Trajectory:
         above. Other per-point and metadata fields may be added using the
         `add_fields` method.
         """
-
-        # TODO: Add field sets initialization parameter to add extra fields
-        # right away at creation time?
 
         # A trajectory has a fixed number of points, known in advance.
         # TODO: Lift this restriction? How could we make it so that you can add
@@ -121,6 +120,13 @@ class Trajectory:
         # A trajectory has an optional name.
         if name is not None:
             self.metadata['name'] = name
+
+        # Add any extra field sets named in the constructor.
+        if fieldsets is not None:
+            for fs_name in set(fieldsets) - {BASE_FIELDSET_NAME}:
+                if fs_name not in FieldSet.REGISTRY:
+                    raise ValueError(f'Unknown FieldSet name: {fs_name}')
+                self.add_fields(FieldSet.REGISTRY[fs_name])
 
     def __len__(self):
         """The total number of points in the trajectory."""
