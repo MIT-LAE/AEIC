@@ -67,7 +67,7 @@ class Context:
     to indicate that the starting mass should be calculated by the trajectory
     builder."""
 
-    fuel_mass: float | None = None
+    total_fuel_mass: float | None = None
     """Total fuel mass loaded onto the aircraft. Initialized as a non-reserve,
     non-divert/hold fuel mass for mass residual calculation."""
 
@@ -221,7 +221,7 @@ class Builder(ABC):
             # If everything was OK, we return the filled-in trajectory here,
             # setting up metadata variables before we do.
             traj.starting_mass = self.starting_mass
-            traj.fuel_mass = self.fuel_mass
+            traj.total_fuel_mass = self.total_fuel_mass
             traj.NClm = self.NClm
             traj.NCrz = self.NCrz
             traj.NDes = self.NDes
@@ -251,7 +251,9 @@ class Builder(ABC):
                     break
 
                 # Perform a "dumb" correction of the starting mass.
-                self.starting_mass = self.starting_mass - (mass_res * self.fuel_mass)
+                self.starting_mass = self.starting_mass - (
+                    mass_res * self.total_fuel_mass
+                )
 
             if not mass_converged:
                 raise RuntimeError(
@@ -280,10 +282,10 @@ class Builder(ABC):
 
         # Set initial values, taking initial position and azimuth from ground
         # track.
-        traj.flightTime[0] = 0
-        traj.acMass[0] = self.starting_mass
-        traj.fuelMass[0] = self.fuel_mass
-        traj.groundDist[0] = 0
+        traj.flight_time[0] = 0
+        traj.aircraft_mass[0] = self.starting_mass
+        traj.fuel_mass[0] = self.total_fuel_mass
+        traj.ground_distance[0] = 0
         traj.altitude[0] = self.initial_altitude
         start = self.ground_track[0]
         traj.longitude[0] = start.location.longitude
@@ -295,9 +297,9 @@ class Builder(ABC):
         self.cruise(traj, **kwargs)
         self.descent(traj, **kwargs)
 
-        # Calculate weight residual normalized by fuel_mass.
-        fuelBurned = self.starting_mass - traj.acMass[-1]
-        mass_residual = (self.fuel_mass - fuelBurned) / self.fuel_mass
+        # Calculate weight residual normalized by total_fuel_mass.
+        fuelBurned = self.starting_mass - traj.aircraft_mass[-1]
+        mass_residual = (self.total_fuel_mass - fuelBurned) / self.total_fuel_mass
 
         return mass_residual
 

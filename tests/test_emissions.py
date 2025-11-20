@@ -36,7 +36,7 @@ em = Emission(perf, traj, True)
 
 def test_fuel_burn_consumption():
     """Test if fuel burn per segment sums up to total fuel consumption"""
-    fuel_consumed = traj.fuelMass[0] - traj.fuelMass[-1]
+    fuel_consumed = traj.fuel_mass[0] - traj.fuel_mass[-1]
     assert pytest.approx(np.sum(em.fuel_burn_per_segment), rel=1e-6) == fuel_consumed
 
 
@@ -100,7 +100,7 @@ def test_total_emissions_sum():
         if field == 'CO2':
             # CO2 includes lifecycle adjustment, so check before lifecycle addition
             original_co2 = em.summed_emission_g[field] - (
-                em.fuel['LC_CO2'] * (traj.fuel_mass * em.fuel['Energy_MJ_per_kg'])
+                em.fuel['LC_CO2'] * (traj.total_fuel_mass * em.fuel['Energy_MJ_per_kg'])
                 - (
                     np.sum(em.pointwise_emissions_g[field])
                     + np.sum(em.LTO_emissions_g[field])
@@ -132,7 +132,7 @@ def test_fuel_burn_first_segment():
 
 def test_fuel_burn_decreasing_mass():
     """Test that fuel mass is monotonically decreasing"""
-    fuel_mass = traj.fuelMass
+    fuel_mass = traj.fuel_mass
     assert np.all(np.diff(fuel_mass) <= 0), (
         "Fuel mass should be monotonically decreasing"
     )
@@ -274,7 +274,7 @@ def test_emission_units_consistency():
     # This is more of a documentation test
     # ensures the class produces results in expected units
     total_co2_kg = np.sum(em.pointwise_emissions_g['CO2']) / 1000.0  # Convert g to kg
-    fuel_consumed_kg = traj.fuelMass[0] - traj.fuelMass[-1]
+    fuel_consumed_kg = traj.fuel_mass[0] - traj.fuel_mass[-1]
 
     # CO2 per kg fuel should be reasonable (typically 3.1-3.2 kg CO2/kg fuel)
     if fuel_consumed_kg > 0:

@@ -273,7 +273,7 @@ class LegacyBuilder(Builder):
             starting_mass = self.ac_performance.performance_table_cols[-1][-1]
 
         # Set fuel mass (for weight residual calculation).
-        self.fuel_mass = fuelMass
+        self.total_fuel_mass = fuelMass
 
         return starting_mass
 
@@ -308,7 +308,7 @@ class LegacyBuilder(Builder):
         if descent_dist_approx < 0:
             raise ValueError('Arrival airport should not be above cruise altitude')
 
-        cruise_start_distance = traj.groundDist[self.NClm - 1]
+        cruise_start_distance = traj.ground_distance[self.NClm - 1]
         cruise_dist_approx = (
             self.ground_track.total_distance
             - cruise_start_distance
@@ -320,7 +320,7 @@ class LegacyBuilder(Builder):
         cruise_distance_values = np.linspace(
             cruise_start_distance, cruise_end_distance, self.NCrz
         )
-        traj.groundDist[self.NClm : self.NClm + self.NCrz] = cruise_distance_values
+        traj.ground_distance[self.NClm : self.NClm + self.NCrz] = cruise_distance_values
 
         # Get distance step size.
         dGD = cruise_dist_approx / (self.NCrz - 1)
@@ -631,24 +631,24 @@ class LegacyBuilder(Builder):
             FL, fl_weighting, tas_interp, ff_interp, _ = self.__calc_FL_interp_vals(
                 traj.altitude[i], pos_roc_perf
             )
-            traj.FLs[i] = FL
-            traj.FL_weight[i] = fl_weighting
-            traj.fuelFlow[i] = ff_interp
-            traj.tas[i] = tas_interp
+            traj.flight_level[i] = FL
+            traj.flight_level_weight[i] = fl_weighting
+            traj.fuel_flow[i] = ff_interp
+            traj.true_airspeed[i] = tas_interp
 
         # Now we get rate of climb by running the flight
         for i in range(0, self.NClm - 1):
-            FL = traj.FLs[i]
-            fl_weight = traj.FL_weight[i]
-            tas = traj.tas[i]
-            ff = traj.fuelFlow[i]
-            seg_start_mass = traj.acMass[i]
+            FL = traj.flight_level[i]
+            fl_weight = traj.flight_level_weight[i]
+            tas = traj.true_airspeed[i]
+            ff = traj.fuel_flow[i]
+            seg_start_mass = traj.aircraft_mass[i]
 
             # Calculate rate of climb
             roc = self.__calc_roc_climb(
                 FL, fl_weight, seg_start_mass, pos_roc_perf, pos_rocs
             )
-            traj.rocs[i] = roc
+            traj.rate_of_climb[i] = roc
 
             # Calculate the forward true airspeed (will be used for ground speed)
             fwd_tas = np.sqrt(tas**2 - roc**2)
@@ -656,7 +656,7 @@ class LegacyBuilder(Builder):
             # Get time to complete alititude change segment and total fuel burned
             segment_time = (traj.altitude[i + 1] - traj.altitude[i]) / roc
             segment_fuel = ff * segment_time
-            traj.groundSpeed[i], traj.heading[i], u, v = compute_ground_speed(
+            traj.ground_speed[i], traj.heading[i], u, v = compute_ground_speed(
                 lon=traj.latitude[i],
                 lat=traj.latitude[i],
                 az=traj.azimuth[i],
@@ -666,17 +666,17 @@ class LegacyBuilder(Builder):
             )
 
             # Calculate distance along route travelled
-            dist = traj.groundSpeed[i] * segment_time
+            dist = traj.ground_speed[i] * segment_time
 
             # Take step along great circle route.
-            pt = self.ground_track.step(traj.groundDist[i], dist)
+            pt = self.ground_track.step(traj.ground_distance[i], dist)
             traj.longitude[i + 1] = pt.location.longitude
             traj.latitude[i + 1] = pt.location.latitude
             traj.azimuth[i + 1] = pt.azimuth
 
             # Account for acceleration/deceleration over
             # the segment using end-of-segment tas
-            tas_end = traj.tas[i + 1]
+            tas_end = traj.true_airspeed[i + 1]
             kinetic_energy_chg = 1 / 2 * seg_start_mass * (tas_end**2 - tas**2)
 
             # Calculate fuel required for acceleration
@@ -686,10 +686,10 @@ class LegacyBuilder(Builder):
             segment_fuel += accel_fuel
 
             # Update the state vector
-            traj.fuelMass[i + 1] = traj.fuelMass[i] - segment_fuel
-            traj.acMass[i + 1] = traj.acMass[i] - segment_fuel
-            traj.groundDist[i + 1] = traj.groundDist[i] + dist
-            traj.flightTime[i + 1] = traj.flightTime[i] + segment_time
+            traj.fuel_mass[i + 1] = traj.fuel_mass[i] - segment_fuel
+            traj.aircraft_mass[i + 1] = traj.aircraft_mass[i] - segment_fuel
+            traj.ground_distance[i + 1] = traj.ground_distance[i] + dist
+            traj.flight_time[i + 1] = traj.flight_time[i] + segment_time
 
     def __legacy_cruise(self, dGD: float, traj: Trajectory) -> None:
         """Computes state over cruise segment using AEIC v2 methods
@@ -712,45 +712,45 @@ class LegacyBuilder(Builder):
         FL, fl_weight, tas_interp = self.__calc_tas_crz(
             self.crz_start_altitude, subset_performance
         )
-        traj.FLs[self.NClm : self.NClm + self.NCrz] = FL
-        traj.tas[self.NClm : self.NClm + self.NCrz] = tas_interp
-        traj.rocs[self.NClm : self.NClm + self.NCrz] = 0
-        traj.FL_weight[self.NClm : self.NClm + self.NCrz] = fl_weight
+        traj.flight_level[self.NClm : self.NClm + self.NCrz] = FL
+        traj.true_airspeed[self.NClm : self.NClm + self.NCrz] = tas_interp
+        traj.rate_of_climb[self.NClm : self.NClm + self.NCrz] = 0
+        traj.flight_level_weight[self.NClm : self.NClm + self.NCrz] = fl_weight
 
         # Get fuel flow, ground speed, etc. for cruise segments
         for i in range(self.NClm, self.NClm + self.NCrz - 1):
-            traj.groundSpeed[i], traj.heading[i], _, _ = compute_ground_speed(
+            traj.ground_speed[i], traj.heading[i], _, _ = compute_ground_speed(
                 lon=traj.latitude[i],
                 lat=traj.latitude[i],
                 az=traj.azimuth[i],
                 alt_ft=self.crz_FL * 100,
-                tas_ms=traj.tas[i],
+                tas_ms=traj.true_airspeed[i],
                 weather_data=None,
             )
 
             # Calculate time required to fly the segment
-            segment_time = dGD / traj.groundSpeed[i]
+            segment_time = dGD / traj.ground_speed[i]
 
             # Take step along great circle route.
-            pt = self.ground_track.step(traj.groundDist[i], dGD)
+            pt = self.ground_track.step(traj.ground_distance[i], dGD)
             traj.longitude[i + 1] = pt.location.longitude
             traj.latitude[i + 1] = pt.location.latitude
             traj.azimuth[i + 1] = pt.azimuth
 
             # Get fuel flow rate based on FL and mass interpolation
             ff = self.__calc_ff_cruise(
-                traj.FL_weight[i], traj.acMass[i], subset_performance
+                traj.flight_level_weight[i], traj.aircraft_mass[i], subset_performance
             )
 
             # Calculate fuel burn in [kg] over the segment
             segment_fuel = ff * segment_time
 
             # Set aircraft state values
-            traj.fuelFlow[i + 1] = ff
-            traj.fuelMass[i + 1] = traj.fuelMass[i] - segment_fuel
-            traj.acMass[i + 1] = traj.acMass[i] - segment_fuel
+            traj.fuel_flow[i + 1] = ff
+            traj.fuel_mass[i + 1] = traj.fuel_mass[i] - segment_fuel
+            traj.aircraft_mass[i + 1] = traj.aircraft_mass[i] - segment_fuel
 
-            traj.flightTime[i + 1] = traj.flightTime[i] + segment_time
+            traj.flight_time[i + 1] = traj.flight_time[i] + segment_time
 
     def __legacy_descent(self, traj: Trajectory) -> None:
         """Computes state over the descent segment using AEIC v2
@@ -787,18 +787,18 @@ class LegacyBuilder(Builder):
             alt = traj.altitude[i]
             tmp = self.__calc_FL_interp_vals(alt, neg_roc_perf)
             FL, fl_weighting, tas_interp, ff_interp, roc_interp = tmp
-            traj.FLs[i] = FL
-            traj.FL_weight[i] = fl_weighting
-            traj.fuelFlow[i] = ff_interp
-            traj.tas[i] = tas_interp
-            traj.rocs[i] = roc_interp
+            traj.flight_level[i] = FL
+            traj.flight_level_weight[i] = fl_weighting
+            traj.fuel_flow[i] = ff_interp
+            traj.true_airspeed[i] = tas_interp
+            traj.rate_of_climb[i] = roc_interp
 
         # Now we calculate segment level info by running the flight
         for i in range(startN, endN - 1):
-            tas = traj.tas[i]
-            ff = traj.fuelFlow[i]
-            roc = traj.rocs[i]
-            seg_start_mass = traj.acMass[i]
+            tas = traj.true_airspeed[i]
+            ff = traj.fuel_flow[i]
+            roc = traj.rate_of_climb[i]
+            seg_start_mass = traj.aircraft_mass[i]
 
             # Calculate the forward true airspeed (will be used for ground speed)
             fwd_tas = np.sqrt(tas**2 - roc**2)
@@ -807,7 +807,7 @@ class LegacyBuilder(Builder):
             segment_time = (traj.altitude[i + 1] - traj.altitude[i]) / roc
             segment_fuel = ff * segment_time
 
-            traj.groundSpeed[i], traj.heading[i], _, _ = compute_ground_speed(
+            traj.ground_speed[i], traj.heading[i], _, _ = compute_ground_speed(
                 lon=traj.latitude[i],
                 lat=traj.latitude[i],
                 az=traj.azimuth[i],
@@ -817,17 +817,17 @@ class LegacyBuilder(Builder):
             )
 
             # Calculate distance along route travelled
-            dist = traj.groundSpeed[i] * segment_time
+            dist = traj.ground_speed[i] * segment_time
 
             # Take step along great circle route.
-            pt = self.ground_track.step(traj.groundDist[i], dist)
+            pt = self.ground_track.step(traj.ground_distance[i], dist)
             traj.longitude[i + 1] = pt.location.longitude
             traj.latitude[i + 1] = pt.location.latitude
             traj.azimuth[i + 1] = pt.azimuth
 
             # Account for acceleration/deceleration over the segment
             # using end-of-segment tas
-            tas_end = traj.tas[i + 1]
+            tas_end = traj.true_airspeed[i + 1]
             kinetic_energy_chg = 1 / 2 * seg_start_mass * (tas_end**2 - tas**2)
 
             # Calculate fuel required for acceleration
@@ -841,7 +841,7 @@ class LegacyBuilder(Builder):
                 segment_fuel = 0
 
             # Update the state vector
-            traj.fuelMass[i + 1] = traj.fuelMass[i] - segment_fuel
-            traj.acMass[i + 1] = traj.acMass[i] - segment_fuel
-            traj.groundDist[i + 1] = traj.groundDist[i] + dist
-            traj.flightTime[i + 1] = traj.flightTime[i] + segment_time
+            traj.fuel_mass[i + 1] = traj.fuel_mass[i] - segment_fuel
+            traj.aircraft_mass[i + 1] = traj.aircraft_mass[i] - segment_fuel
+            traj.ground_distance[i + 1] = traj.ground_distance[i] + dist
+            traj.flight_time[i + 1] = traj.flight_time[i] + segment_time

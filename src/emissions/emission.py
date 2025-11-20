@@ -85,8 +85,8 @@ class Emission:
         )
         self.summed_emission_g = np.full((), -1, dtype=self.__emission_dtype(1))
 
-        # Compute fuel burn per segment from fuelMass time series
-        fuel_mass = trajectory.fuelMass
+        # Compute fuel burn per segment from fuel_mass time series
+        fuel_mass = trajectory.fuel_mass
         fuel_burn = np.zeros_like(fuel_mass)
         # Difference between sequential mass values for ascent segments
         fuel_burn[1:] = fuel_mass[:-1] - fuel_mass[1:]
@@ -186,11 +186,11 @@ class Emission:
         flight_alts = trajectory.altitude[i_start:i_end]
         flight_temps = temperature_at_altitude_isa_bada4(flight_alts)
         flight_pressures = pressure_at_altitude_isa_bada4(flight_alts)
-        mach_number = trajectory.tas[i_start:i_end] / np.sqrt(
+        mach_number = trajectory.true_airspeed[i_start:i_end] / np.sqrt(
             kappa * R_air * flight_temps
         )
         sls_equiv_fuel_flow = get_SLS_equivalent_fuel_flow(
-            trajectory.fuelFlow[i_start:i_end],
+            trajectory.fuel_flow[i_start:i_end],
             flight_pressures,
             flight_temps,
             mach_number,
@@ -231,14 +231,14 @@ class Emission:
 
         # --- Compute volatile organic PM and organic carbon ---
         thrustCat = get_thrust_cat(
-            trajectory.fuelFlow[i_start:i_end],
+            trajectory.fuel_flow[i_start:i_end],
             lto_ff_array,
             cruiseCalc=True,
         )
         (
             self.emission_indices['PMvol'][i_start:i_end],
             self.emission_indices['OCic'][i_start:i_end],
-        ) = EI_PMvol_NEW(trajectory.fuelFlow[i_start:i_end], thrustCat)
+        ) = EI_PMvol_NEW(trajectory.fuel_flow[i_start:i_end], thrustCat)
 
         # --- Compute black carbon indices via MEEM ---
         (
@@ -463,7 +463,7 @@ class Emission:
     def get_lifecycle_emissions(self, fuel, traj):
         # add lifecycle CO2 emissions for climate model run
         lc_CO2 = (
-            fuel['LC_CO2'] * (traj.fuel_mass * fuel['Energy_MJ_per_kg'])
+            fuel['LC_CO2'] * (traj.total_fuel_mass * fuel['Energy_MJ_per_kg'])
         ) - self.summed_emission_g['CO2']
         self.summed_emission_g['CO2'] += lc_CO2
 

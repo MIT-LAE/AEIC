@@ -11,21 +11,21 @@ BASE_FIELDS = FieldSet(
     BASE_FIELDSET_NAME,
     # Trajectory data fields and their metadata. Each of these fields is
     # defined for each point along the trajectory.
-    fuelFlow=FieldMetadata(description='Fuel flow rate', units='kg/s'),
-    acMass=FieldMetadata(description='Aircraft mass', units='kg'),
-    fuelMass=FieldMetadata(description='Fuel mass remaining', units='kg'),
-    groundDist=FieldMetadata(description='Ground distance traveled', units='m'),
+    fuel_flow=FieldMetadata(description='Fuel flow rate', units='kg/s'),
+    aircraft_mass=FieldMetadata(description='Aircraft mass', units='kg'),
+    fuel_mass=FieldMetadata(description='Fuel mass remaining', units='kg'),
+    ground_distance=FieldMetadata(description='Ground distance traveled', units='m'),
     altitude=FieldMetadata(description='Altitude above sea level', units='m'),
-    FLs=FieldMetadata(description='Flight level', units='FL'),
-    rocs=FieldMetadata(description='Rate of climb/descent', units='m/s'),
-    flightTime=FieldMetadata(description='Flight time elapsed', units='s'),
+    flight_level=FieldMetadata(description='Flight level', units='FL'),
+    rate_of_climb=FieldMetadata(description='Rate of climb/descent', units='m/s'),
+    flight_time=FieldMetadata(description='Flight time elapsed', units='s'),
     latitude=FieldMetadata(description='Latitude', units='degrees'),
     longitude=FieldMetadata(description='Longitude', units='degrees'),
     azimuth=FieldMetadata(description='Azimuth angle', units='degrees'),
     heading=FieldMetadata(description='Aircraft heading', units='degrees'),
-    tas=FieldMetadata(description='True airspeed', units='m/s'),
-    groundSpeed=FieldMetadata(description='Ground speed', units='m/s'),
-    FL_weight=FieldMetadata(
+    true_airspeed=FieldMetadata(description='True airspeed', units='m/s'),
+    ground_speed=FieldMetadata(description='Ground speed', units='m/s'),
+    flight_level_weight=FieldMetadata(
         description='Flight level weight factor', units='dimensionless'
     ),
     # Trajectory metadata fields and their metadata. Each of these fields has a
@@ -40,7 +40,7 @@ BASE_FIELDS = FieldSet(
     starting_mass=FieldMetadata(
         metadata=True, description='Aircraft mass at start of trajectory', units='kg'
     ),
-    fuel_mass=FieldMetadata(
+    total_fuel_mass=FieldMetadata(
         metadata=True, description='Total fuel mass used during trajectory', units='kg'
     ),
     NClm=FieldMetadata(

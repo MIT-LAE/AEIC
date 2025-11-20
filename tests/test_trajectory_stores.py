@@ -56,23 +56,23 @@ class Extras:
 
 def make_test_trajectory(npoints: int, seed: int, extras: bool = False) -> Trajectory:
     t = Trajectory(npoints, name=f'traj_{seed}', fieldsets=['demo'] if extras else None)
-    t.fuelFlow = np.random.rand(npoints) * 5000 + 2000
-    t.acMass = np.random.rand(npoints) * 50000 + 100000
-    t.fuelMass = np.random.rand(npoints) * 50000 + 5000
-    t.groundDist = np.linspace(0, 1000, npoints)
+    t.fuel_flow = np.random.rand(npoints) * 5000 + 2000
+    t.aircraft_mass = np.random.rand(npoints) * 50000 + 100000
+    t.fuel_mass = np.random.rand(npoints) * 50000 + 5000
+    t.ground_distance = np.linspace(0, 1000, npoints)
     t.altitude = np.linspace(0, 35000, npoints)
-    t.FLs = t.altitude / 100
-    t.rocs = np.random.randn(npoints) * 10
-    t.flightTime = np.linspace(0, 3600, npoints)
+    t.flight_level = t.altitude / 100
+    t.rate_of_climb = np.random.randn(npoints) * 10
+    t.flight_time = np.linspace(0, 3600, npoints)
     t.latitude = np.random.rand(npoints) * 180 - 90
     t.longitude = np.random.rand(npoints) * 360 - 180
     t.azimuth = np.random.rand(npoints) * 360
     t.heading = np.random.rand(npoints) * 360
-    t.tas = np.random.rand(npoints) * 300 + 200
-    t.groundSpeed = t.tas + np.random.randn(npoints) * 5
-    t.FL_weight = np.ones(npoints)
-    t.starting_mass = t.acMass[0]
-    t.fuel_mass = t.fuelMass[0] - t.fuelMass[-1]
+    t.true_airspeed = np.random.rand(npoints) * 300 + 200
+    t.ground_speed = t.true_airspeed + np.random.randn(npoints) * 5
+    t.flight_level_weight = np.ones(npoints)
+    t.starting_mass = t.aircraft_mass[0]
+    t.total_fuel_mass = t.fuel_mass[0] - t.fuel_mass[-1]
     t.NClm = npoints // 3
     t.NCrz = npoints // 3
     t.NDes = npoints - t.NClm - t.NCrz
@@ -238,7 +238,7 @@ def test_extra_fields_in_associated_nc(tmp_path: Path):
     assert len(ts_read.files) == 1
     assert ts_read.files[0].fieldsets == {'base'}
     t = ts_read[2]
-    assert hasattr(t, 'acMass')
+    assert hasattr(t, 'aircraft_mass')
     assert not hasattr(t, 'f1')
 
     # Opening with the associated file should give trajectories with the
@@ -309,7 +309,7 @@ def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
     assert len(ts_read.files) == 1
     assert ts_read.files[0].fieldsets == {'base'}
     t = ts_read[2]
-    assert hasattr(t, 'acMass')
+    assert hasattr(t, 'aircraft_mass')
     assert not hasattr(t, 'f1')
 
     # Opening with the associated file should give trajectories with the
@@ -462,7 +462,7 @@ def test_basic_merging(tmp_path: Path):
     assert len(ts_merged) == 8
     assert ts_merged[0].name == 'traj_0'
     assert ts_merged[7].name == 'traj_31'
-    assert ts_merged[4].flightTime.shape == (5,)
+    assert ts_merged[4].flight_time.shape == (5,)
     ts_merged.close()
 
 
@@ -494,7 +494,7 @@ def test_pattern_merging(tmp_path: Path):
     assert len(ts_merged) == 20
     assert ts_merged[0].name == 'traj_0'
     assert ts_merged[7].name == 'traj_31'
-    assert ts_merged[4].flightTime.shape == (5,)
+    assert ts_merged[4].flight_time.shape == (5,)
     ts_merged.close()
 
 
@@ -541,7 +541,7 @@ def test_merging_with_associated_files(tmp_path: Path):
     assert len(ts_merged) == 50
     for i in range(50):
         assert ts_merged[i].name == f'traj_{i + 1}'
-    assert ts_merged[4].flightTime.shape == (25,)
+    assert ts_merged[4].flight_time.shape == (25,)
     assert len(ts_merged.files) == 2
     assert ts_merged.files[0].fieldsets == {'base'}
     assert ts_merged.files[1].fieldsets == {'demo'}
