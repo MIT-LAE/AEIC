@@ -570,7 +570,14 @@ class TrajectoryStore:
     def __len__(self):
         """Count number of trajectories in store."""
         if self.nc_linked:
-            return sum(len(d) for d in self._nc[BASE_FIELDSET_NAME].traj_dim)
+            # Normally, use the base field set for length calculations.
+            # Sometimes we need the length of a store that doesn't contain the
+            # base field set (this happens when merging associated files, for
+            # example), so we pick another field set that we do have.
+            check_fs = BASE_FIELDSET_NAME
+            if check_fs not in self._nc:
+                check_fs = next(iter(self._nc))
+            return sum(len(d) for d in self._nc[check_fs].traj_dim)
         return len(self._trajectories)
 
     def __getitem__(self, idx) -> Trajectory:
@@ -690,7 +697,7 @@ class TrajectoryStore:
         if source is not None:
             data['source'] = source
         with open(Path(output_store) / 'metadata.json', 'w') as f:
-            json.dump(data, f, indent=4)
+            json.dump(data, f)
 
     def _load_trajectory(self, index: int) -> None:
         """Load a trajectory at the given index from the NetCDF file(s)."""
@@ -1184,6 +1191,7 @@ class TrajectoryStore:
             val = getattr(ds, attr, None)
             if isinstance(val, str):
                 return [val]
+            assert isinstance(val, list)
             return val
 
         fieldset_names = get_list(dataset[0], 'fieldset_names')
