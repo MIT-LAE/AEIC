@@ -77,7 +77,6 @@ class GroundTrack:
 
         # Error cases.
         if distance not in self:
-            print(distance, self.index)
             raise GroundTrack.Exception('distance outside ground track range')
 
         # Find following waypoint.
@@ -128,10 +127,6 @@ class GroundTrack:
         before_pos = self.lookup_waypoint(from_distance)
         after_pos = self.lookup_waypoint(from_distance + distance_step)
         if before_pos != after_pos and from_distance < self.index[before_pos]:
-            print(self.waypoints)
-            print(self.index)
-            print(f'{from_distance} + {distance_step}')
-            print(before_pos, after_pos)
             raise GroundTrack.Exception('step would cross a waypoint')
 
         return self.location(from_distance + distance_step)

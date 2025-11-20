@@ -30,6 +30,13 @@ BASE_FIELDS = FieldSet(
     ),
     # Trajectory metadata fields and their metadata. Each of these fields has a
     # single value per trajectory.
+    name=FieldMetadata(
+        metadata=True,
+        field_type=str,
+        description='Trajectory name',
+        units='',
+        required=False,
+    ),
     starting_mass=FieldMetadata(
         metadata=True, description='Aircraft mass at start of trajectory', units='kg'
     ),
@@ -69,9 +76,7 @@ class Trajectory:
 
     # The fixed set of attributes used for implementation of the flexible field
     # interface.
-    FIXED_FIELDS = set(
-        ['data_dictionary', 'fieldsets', 'data', 'metadata', 'npoints', 'name']
-    )
+    FIXED_FIELDS = set(['data_dictionary', 'fieldsets', 'data', 'metadata', 'npoints'])
 
     def __init__(self, npoints: int, name: str | None = None):
         """Initialized with a fixed number of points and an optional name.
@@ -93,28 +98,29 @@ class Trajectory:
         # points incrementally, in a nice way?
         self.npoints = npoints
 
-        # A trajectory has an optional name.
-        self.name = name
-
         # A trajectory has a set of per-point data fields and per-trajectory
         # metadata fields. Both are defined by a FieldSet, and the total sets
         # of all fields are stored in a data dictionary.
         self.data_dictionary: FieldSet = BASE_FIELDS
 
         # Keep track of the FieldSets that contributed to this trajectory.
-        self.fieldsets = set([BASE_FIELDS.name])
+        self.fieldsets = set([BASE_FIELDS.fieldset_name])
 
         # Data fields.
         self.data: dict[str, np.ndarray[tuple[int], Any]] = {
-            name: np.zeros((npoints,), dtype=field.field_type)
-            for name, field in self.data_dictionary.items()
-            if not field.metadata
+            n: np.zeros((npoints,), dtype=f.field_type)
+            for n, f in self.data_dictionary.items()
+            if not f.metadata
         }
 
         # Metadata fields.
         self.metadata: dict[str, Any] = {
-            name: None for name, field in self.data_dictionary.items() if field.metadata
+            n: None for n, f in self.data_dictionary.items() if f.metadata
         }
+
+        # A trajectory has an optional name.
+        if name is not None:
+            self.metadata['name'] = name
 
     def __len__(self):
         """The total number of points in the trajectory."""
@@ -207,9 +213,10 @@ class Trajectory:
             raise ValueError('Field name conflicts with Trajectory fixed attribute')
 
         # Field sets can only be added once.
-        if fieldset.name in self.fieldsets:
+        if fieldset.fieldset_name in self.fieldsets:
             raise ValueError(
-                f'FieldSet with name "{fieldset.name}" already added to Trajectory'
+                f'FieldSet with name "{fieldset.fieldset_name}" '
+                'already added to Trajectory'
             )
 
     def add_fields(self, fieldset: FieldSet | HasFieldSets):
@@ -239,7 +246,7 @@ class Trajectory:
         # Adjust the trajectory to include the new fields.
         for fs in fss:
             assert isinstance(fs, FieldSet)
-            self.fieldsets.add(fs.name)
+            self.fieldsets.add(fs.fieldset_name)
             self.data_dictionary = self.data_dictionary.merge(fs)
 
         # Add data and metadata fields and set values from the `HasFieldSet`

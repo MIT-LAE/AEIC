@@ -96,7 +96,7 @@ def test_init_checking():
 
 
 def simple_create_ts(
-    base_file: Path | None = None, title: str | None = None
+    base_file: Path | str | None = None, title: str | None = None
 ) -> TrajectoryStore:
     ts = TrajectoryStore.create(base_file=base_file, title=title)
     ts.add(make_test_trajectory(10, 1))
@@ -105,7 +105,7 @@ def simple_create_ts(
     return ts
 
 
-def simple_check_ts(path: Path, title: str, lengths: list[int]):
+def simple_check_ts(path: Path | str, title: str, lengths: list[int]):
     ts_read = TrajectoryStore.open(base_file=path)
     assert ts_read.global_attributes['title'] == title
     assert len(ts_read) == len(lengths)
@@ -431,3 +431,67 @@ def test_fieldset_override(tmp_path: Path):
     assert ts_read3.files[1].fieldsets == {'demo'}
     assert ts_read3[1].f1[0] == 123
     assert ts_read3[1].mf == 12345
+
+
+def test_basic_merging(tmp_path: Path):
+    # Create a number of trajectory stores with names following a pattern.
+    paths = []
+    tss = []
+    for i in range(4):
+        path = tmp_path / f'test_{i}.nc'
+        paths.append(path)
+        ts = TrajectoryStore.create(base_file=path, title=f'store {i}')
+        for j in range(2):
+            t = make_test_trajectory((j + 1) * 5, j + i * 10)
+            ts.add(t)
+        ts.close()
+        tss.append(ts)
+
+    # Merge the stores into a new store.
+    merged_path = tmp_path / 'merged.aeic-store'
+    TrajectoryStore.merge(input_stores=paths, output_store=merged_path)
+
+    # Make sure we can't open the merged store for append!
+    with pytest.raises(ValueError):
+        _ = TrajectoryStore.append(base_file=merged_path)
+
+    # Open the merged store and check contents.
+    ts_merged = TrajectoryStore.open(base_file=merged_path)
+    assert ts_merged.nc_linked is True
+    assert len(ts_merged) == 8
+    assert ts_merged[0].name == 'traj_0'
+    assert ts_merged[7].name == 'traj_31'
+    assert ts_merged[4].flightTime.shape == (5,)
+    ts_merged.close()
+
+
+def test_pattern_merging(tmp_path: Path):
+    # Create a number of trajectory stores with names following a pattern.
+    paths = []
+    tss = []
+    for i in range(10):
+        path = tmp_path / f'test_{i:03d}.nc'
+        paths.append(path)
+        ts = TrajectoryStore.create(base_file=path, title=f'store {i}')
+        for j in range(2):
+            t = make_test_trajectory((j + 1) * 5, j + i * 10)
+            ts.add(t)
+        ts.close()
+        tss.append(ts)
+
+    # Merge the stores into a new store.
+    merged_path = tmp_path / 'merged.aeic-store'
+    TrajectoryStore.merge(
+        input_stores_pattern=tmp_path / 'test_{index:03d}.nc',
+        input_stores_index_range=(0, 9),
+        output_store=merged_path,
+    )
+
+    # Open the merged store and check contents.
+    ts_merged = TrajectoryStore.open(base_file=merged_path)
+    assert ts_merged.nc_linked is True
+    assert len(ts_merged) == 20
+    assert ts_merged[0].name == 'traj_0'
+    assert ts_merged[7].name == 'traj_31'
+    assert ts_merged[4].flightTime.shape == (5,)
+    ts_merged.close()

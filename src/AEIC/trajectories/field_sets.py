@@ -34,6 +34,7 @@ class FieldMetadata:
     field_type: type = np.float64
     description: str = ''
     units: str = ''
+    required: bool = True
 
     def __post_init__(self):
         # Acceptable field types include numpy dtypes and str, but *not* native
@@ -68,20 +69,26 @@ class FieldSet(Mapping):
     REGISTRY: dict[str, 'FieldSet'] = {}
     """Registry of named FieldSets for reuse."""
 
-    def __init__(self, name: str, registered: bool = True, **fields: FieldMetadata):
+    def __init__(
+        self, fieldset_name: str, registered: bool = True, **fields: FieldMetadata
+    ):
         # Ensure uniqueness in the registry.
         if (
             registered
-            and name in FieldSet.REGISTRY
-            and hash(FieldSet.REGISTRY[name]) != self.calc_hash(name, fields)
+            and fieldset_name in FieldSet.REGISTRY
+            and (
+                hash(FieldSet.REGISTRY[fieldset_name])
+                != self.calc_hash(fieldset_name, fields)
+            )
         ):
             raise ValueError(
-                f'incompatible FieldSet with name "{name}" already exists.'
+                f'incompatible FieldSet with name "{fieldset_name}" already exists.'
             )
-        self.name = name
+        # Use an awkward name here to allow "name" as a field name.
+        self.fieldset_name = fieldset_name
         self._fields = dict(fields)
         if registered:
-            FieldSet.REGISTRY[name] = self
+            FieldSet.REGISTRY[fieldset_name] = self
 
     @classmethod
     def known(cls, name: str) -> bool:
@@ -100,11 +107,16 @@ class FieldSet(Mapping):
         """Construct a FieldSet from a NetCDF group."""
         fields = {}
         for field_name, var in group.variables.items():
+            field_type = var.dtype
+            if hasattr(field_type, 'type'):
+                field_type = field_type.type
+            assert isinstance(field_type, type)
             metadata = FieldMetadata(
-                metadata=not isinstance(var.datatype, VLType),
-                field_type=var.dtype.type,
+                metadata=not isinstance(var.datatype, VLType) or field_type is str,
+                field_type=field_type,
                 description=var.getncattr('description'),
                 units=var.getncattr('units'),
+                required=var.getncattr('required') == 'true',
             )
             fields[field_name] = metadata
         return cls(group.name, registered=False, **fields)
@@ -127,13 +139,13 @@ class FieldSet(Mapping):
 
     def __hash__(self):
         """Hash based on name and field definitions."""
-        return self.calc_hash(self.name, self._fields)
+        return self.calc_hash(self.fieldset_name, self._fields)
 
     @cached_property
     def digest(self):
         """Generate persistent hash for field set."""
         m = hashlib.md5()
-        m.update(self.name.encode('utf-8'))
+        m.update(self.fieldset_name.encode('utf-8'))
         m.update(b':')
         m.update(repr(sorted(self._fields.items())).encode('utf-8'))
         return m.hexdigest()
@@ -150,10 +162,12 @@ class FieldSet(Mapping):
             raise ValueError(f'Overlapping field names: {overlap}')
         merged_fields = dict(self._fields)
         merged_fields.update(other._fields)
-        return FieldSet(f'{self.name}+{other.name}', False, **merged_fields)
+        return FieldSet(
+            f'{self.fieldset_name}+{other.fieldset_name}', False, **merged_fields
+        )
 
     def __repr__(self):
-        return f'<FieldSet {self.name}: {list(self._fields)}>'
+        return f'<FieldSet {self.fieldset_name}: {list(self._fields)}>'
 
 
 @runtime_checkable
