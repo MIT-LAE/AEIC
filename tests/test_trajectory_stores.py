@@ -1,6 +1,7 @@
 import random
 import threading
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
@@ -153,6 +154,10 @@ def test_create_reopen_large(tmp_path: Path):
     ts = TrajectoryStore.create(base_file=path)
     for i in range(1000000):
         ts.add(make_test_trajectory(100, i))
+    tstart = datetime.now()
+    ts._reindex()
+    duration = datetime.now() - tstart
+    print(f'Reindexing took {duration.total_seconds()} seconds')
     ts.close()
 
     ts_read = TrajectoryStore.open(base_file=path)
@@ -557,7 +562,7 @@ def test_indexing(tmp_path: Path):
     ntrajs = 100
     seeds = random.sample(range(1000, 10000), ntrajs)
 
-    # 2. Create trajectory store containing with those flight IDs.
+    # 2. Create trajectory store containing those flight IDs.
     path = tmp_path / 'test.nc'
     ts = TrajectoryStore.create(base_file=path)
     for s in seeds:
@@ -568,6 +573,35 @@ def test_indexing(tmp_path: Path):
     ts_read = TrajectoryStore.open(base_file=path)
 
     # 4. Look up trajectories by flight ID.
+    for s in seeds:
+        traj = ts_read.lookup(s)
+        assert traj is not None
+        assert traj.flight_id == s
+
+
+def test_merged_store_indexing(tmp_path: Path):
+    # 1. Create a unique set of flight IDs.
+    ntrajs = 1000
+    seeds = random.sample(range(10000, 100000), ntrajs)
+
+    # 2. Create individual trajectory stores containing those flight IDs.
+    paths = []
+    for i in range(10):
+        path = tmp_path / f'test{i}.nc'
+        paths.append(path)
+        ts = TrajectoryStore.create(base_file=path)
+        for s in seeds[i * 100 : (i + 1) * 100]:
+            ts.add(make_test_trajectory(50, s))
+        ts.close()
+
+    # 3. Merge the stores.
+    merged_path = tmp_path / 'merged.aeic-store'
+    TrajectoryStore.merge(input_stores=paths, output_store=merged_path)
+
+    # 4. Open the merged store.
+    ts_read = TrajectoryStore.open(base_file=merged_path)
+
+    # 5. Look up trajectories by flight ID.
     for s in seeds:
         traj = ts_read.lookup(s)
         assert traj is not None

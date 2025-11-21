@@ -279,6 +279,7 @@ class TrajectoryStore:
         # access separately from the main NcFiles mechanism.
         self.indexable = None
         self.index_group: Group | None = None
+        self.index_dataset: Dataset | None = None
 
         # The index can become stale when new items are added to the store. We
         # reindex lazily, either when an index lookup is performed or on a sync
@@ -584,8 +585,12 @@ class TrajectoryStore:
         for nc in self._nc_files:
             for ds in nc.dataset:
                 ds.close()
+        if self.index_dataset is not None:
+            self.index_dataset.close()
         self._nc.clear()
         self._nc_files.clear()
+        self.index_dataset = None
+        self.index_group = None
 
     def sync(self):
         """Synchronize any pending writes to the NetCDF file or files.
@@ -600,6 +605,8 @@ class TrajectoryStore:
             self._reindex()
         for nc in self._nc_files:
             nc.dataset[0].sync()
+        if self.index_dataset is not None:
+            self.index_dataset.sync()
 
     def __len__(self):
         """Count number of trajectories in store."""
@@ -706,6 +713,8 @@ class TrajectoryStore:
         for p in input_stores:
             if not Path(p).exists():
                 raise ValueError(f'Input TrajectoryStore file "{p}" does not exist')
+            if Path(p).suffix != '.nc':
+                raise ValueError(f'Merge input "{p}" is not a NetCDF file')
         if not str(output_store).endswith('.aeic-store'):
             raise ValueError(
                 'Output TrajectoryStore file must have ".aeic-store" extension'
@@ -718,10 +727,10 @@ class TrajectoryStore:
         # Create output directory.
         os.mkdir(output_store)
 
-        # Move input stores to output directory, collecting metadata and
-        # checking that the field sets match as we go.
+        # Collect metadata and check that the field sets match.
         store_data = []
         fieldset_names: set[str] | None = None
+        index_groups = []
         for input_store in input_stores:
             p = Path(input_store)
             ts = TrajectoryStore.open(base_file=p)
@@ -732,8 +741,45 @@ class TrajectoryStore:
                     'All input TrajectoryStore files must have the same field sets'
                 )
             store_data.append((p.name, len(ts)))
+            index_groups.append(ts.index_group)
+
+        # Check indexability consistency.
+        indexable = all(g is not None for g in index_groups)
+        if indexable != any(g is not None for g in index_groups):
+            raise ValueError('Either all or none of the input stores must be indexable')
+
+        # Move input stores to output directory.
+        for input_store in input_stores:
+            p = Path(input_store)
             dest = Path(output_store) / p.name
             os.rename(p, dest)
+
+        # Create merged index.
+        if indexable:
+            index_dataset = Dataset(
+                Path(output_store) / '_index.nc', 'w', keepweakref=True
+            )
+            index_dataset.createDimension('trajectory', None)
+            index_group = index_dataset.createGroup('_index')
+            index_group.createVariable('flight_id', np.int64, ('trajectory',))
+            index_group.createVariable('trajectory_index', np.int64, ('trajectory',))
+            flight_ids = []
+            trajectory_indexes = []
+            index_offset = 0
+            for input_store in input_stores:
+                ts = TrajectoryStore.open(
+                    base_file=Path(output_store) / Path(input_store).name
+                )
+                assert ts.index_group is not None
+                vs = ts.index_group.variables
+                flight_ids += list(vs['flight_id'][:])
+                trajectory_indexes += [
+                    idx + index_offset for idx in vs['trajectory_index'][:]
+                ]
+                index_offset += len(ts)
+            id_pairs = sorted(zip(trajectory_indexes, flight_ids), key=lambda x: x[1])
+            index_group.variables['flight_id'][:] = [id for _, id in id_pairs]
+            index_group.variables['trajectory_index'][:] = [idx for idx, _ in id_pairs]
 
         # Write metadata JSON file to output directory.
         data = dict(stores=store_data, created=datetime.now(tz=UTC).isoformat())
@@ -1209,12 +1255,14 @@ class TrajectoryStore:
     def _reindex(self):
         if not self.indexable or not self.index_stale:
             return
-        id_pairs = sorted(
-            [(self[i].flight_id, i) for i in range(len(self))], key=lambda x: x[0]
-        )
+        gs = self._nc[BASE_FIELDSET_NAME].groups[BASE_FIELDSET_NAME]
+        flight_ids = []
+        for g in gs:
+            flight_ids += list(g.variables['flight_id'][:])
+        id_pairs = sorted(enumerate(flight_ids), key=lambda x: x[1])
         assert self.index_group is not None
-        self.index_group.variables['flight_id'][:] = [id for id, _ in id_pairs]
-        self.index_group.variables['trajectory_index'][:] = [idx for _, idx in id_pairs]
+        self.index_group.variables['flight_id'][:] = [id for _, id in id_pairs]
+        self.index_group.variables['trajectory_index'][:] = [idx for idx, _ in id_pairs]
         self.index_stale = False
 
     def lookup(self, flight_id: int) -> Trajectory | None:
@@ -1333,6 +1381,13 @@ class TrajectoryStore:
                     f'Associated file hash in NetCDF store {store_dir} does '
                     f'not match hash of base file {check_associated.path}'
                 )
+
+        # Open index file.
+        index_file = store_dir / '_index.nc'
+        if index_file.exists():
+            index_dataset = Dataset(index_file, mode='r', keepweakref=True)
+            self.index_group = index_dataset.groups['_index']
+            self.indexable = True
 
         return TrajectoryStore.NcFiles(
             path=nc_files,
