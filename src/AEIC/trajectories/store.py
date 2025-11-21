@@ -280,6 +280,11 @@ class TrajectoryStore:
         self.indexable = None
         self.index_group: Group | None = None
 
+        # The index can become stale when new items are added to the store. We
+        # reindex lazily, either when an index lookup is performed or on a sync
+        # or close.
+        self.index_stale = False
+
         # Check input arguments based on file mode.
         global_attributes_ok = mode == self.FileMode.CREATE
         if not global_attributes_ok and (
@@ -574,7 +579,7 @@ class TrajectoryStore:
 
     def close(self):
         """Close any open NetCDF files associated with the trajectory store."""
-        if self.indexable and self.mode in (self.FileMode.CREATE, self.FileMode.APPEND):
+        if self.indexable and self.index_stale:
             self._reindex()
         for nc in self._nc_files:
             for ds in nc.dataset:
@@ -591,6 +596,8 @@ class TrajectoryStore:
         """
         if not self._write_enabled:
             raise RuntimeError('Cannot sync TrajectoryStore not opened in write mode')
+        if self.indexable and self.index_stale:
+            self._reindex()
         for nc in self._nc_files:
             nc.dataset[0].sync()
 
@@ -660,6 +667,9 @@ class TrajectoryStore:
 
         # Write the trajectory data to the output NetCDF file.
         self._write_trajectory(saved_index)
+
+        if self.indexable:
+            self.index_stale = True
 
         return saved_index
 
@@ -1197,7 +1207,7 @@ class TrajectoryStore:
         )
 
     def _reindex(self):
-        if not self.indexable:
+        if not self.indexable or not self.index_stale:
             return
         id_pairs = sorted(
             [(self[i].flight_id, i) for i in range(len(self))], key=lambda x: x[0]
@@ -1205,11 +1215,17 @@ class TrajectoryStore:
         assert self.index_group is not None
         self.index_group.variables['flight_id'][:] = [id for id, _ in id_pairs]
         self.index_group.variables['trajectory_index'][:] = [idx for _, idx in id_pairs]
+        self.index_stale = False
 
     def lookup(self, flight_id: int) -> Trajectory | None:
         """Lookup a trajectory by flight ID."""
         if not self.indexable:
             raise RuntimeError('Cannot lookup by flight_id in non-indexable store')
+
+        # Reindex lazily if needed.
+        if self.index_stale:
+            self._reindex()
+
         assert self.index_group is not None
         flight_ids = self.index_group.variables['flight_id'][:]
         traj_idxs = self.index_group.variables['trajectory_index'][:]
