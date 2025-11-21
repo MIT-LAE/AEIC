@@ -84,6 +84,12 @@ class FieldSet(Mapping):
             raise ValueError(
                 f'incompatible FieldSet with name "{fieldset_name}" already exists.'
             )
+
+        # Disallow names starting with underscore so that we can use them as
+        # internal group names.
+        if fieldset_name[0] == '_':
+            raise ValueError('FieldSet name cannot start with underscore "_"')
+
         # Use an awkward name here to allow "name" as a field name.
         self.fieldset_name = fieldset_name
         self._fields = dict(fields)

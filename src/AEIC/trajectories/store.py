@@ -12,6 +12,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Protocol
 
+import numpy as np
 from cachetools import LRUCache
 from netCDF4 import Dataset, Dimension, Group, VLType
 
@@ -263,7 +264,21 @@ class TrajectoryStore:
         else:
             TrajectoryStore.active_in_thread = threading.get_ident()
 
+        # File access mode for a TrajectoryStore is fixed: if you need to
+        # switch mode, close and reopen the store.
         self.mode = mode
+
+        # Indexable trajectory stores have trajectories that have a numeric
+        # flight ID from the mission database. For now, we don't know whether
+        # that's the case: when we open a store, we'll probe a trajectory to
+        # see if it has a flight ID anbd set this accordingly; similarly, if
+        # we're creating creating a new store, we'll decide on indexability
+        # when we see the first trajectory added to the store.
+        #
+        # The index information is stored in a special NetCDF group that we
+        # access separately from the main NcFiles mechanism.
+        self.indexable = None
+        self.index_group: Group | None = None
 
         # Check input arguments based on file mode.
         global_attributes_ok = mode == self.FileMode.CREATE
@@ -559,6 +574,8 @@ class TrajectoryStore:
 
     def close(self):
         """Close any open NetCDF files associated with the trajectory store."""
+        if self.indexable and self.mode in (self.FileMode.CREATE, self.FileMode.APPEND):
+            self._reindex()
         for nc in self._nc_files:
             for ds in nc.dataset:
                 ds.close()
@@ -617,6 +634,18 @@ class TrajectoryStore:
                     'All trajectories in a TrajectoryStore must have the same '
                     'data fields'
                 )
+
+        # Decide on whether or not we can index the store.
+        has_flight_id = (
+            hasattr(trajectory, 'flight_id') and trajectory.flight_id is not None
+        )
+        if self.indexable is not None and has_flight_id != self.indexable:
+            raise ValueError(
+                'All trajectories in an indexable TrajectoryStore must have '
+                'flight_id field, and non-indexable stores must not have it'
+            )
+        if self.indexable is None:
+            self.indexable = has_flight_id
 
         # Maintain count of trajectories in store for indexing.
         saved_index = self._next_index
@@ -878,6 +907,11 @@ class TrajectoryStore:
         if self.mode == self.FileMode.APPEND:
             self._next_index = len(base_nc_file.traj_dim[0])
 
+        # Set up index information.
+        if '_index' in base_nc_file.dataset[0].groups:
+            self.index_group = base_nc_file.dataset[0].groups['_index']
+            self.indexable = True
+
         # Open any associated NetCDF files.
         for name in self.associated_files:
             assert isinstance(name, PathType)
@@ -1107,7 +1141,7 @@ class TrajectoryStore:
         associated_hash = getattr(dataset, 'associated_hash', None)
 
         # Retrieve groups for each field set.
-        groups = {k: [g] for k, g in dataset.groups.items()}
+        groups = {k: [g] for k, g in dataset.groups.items() if not k[0] == '_'}
 
         # Check consistency.
         if set(groups.keys()) != set(fieldset_names):
@@ -1161,6 +1195,28 @@ class TrajectoryStore:
             source=source,
             created=created,
         )
+
+    def _reindex(self):
+        if not self.indexable:
+            return
+        id_pairs = sorted(
+            [(self[i].flight_id, i) for i in range(len(self))], key=lambda x: x[0]
+        )
+        assert self.index_group is not None
+        self.index_group.variables['flight_id'][:] = [id for id, _ in id_pairs]
+        self.index_group.variables['trajectory_index'][:] = [idx for _, idx in id_pairs]
+
+    def lookup(self, flight_id: int) -> Trajectory | None:
+        """Lookup a trajectory by flight ID."""
+        if not self.indexable:
+            raise RuntimeError('Cannot lookup by flight_id in non-indexable store')
+        assert self.index_group is not None
+        flight_ids = self.index_group.variables['flight_id'][:]
+        traj_idxs = self.index_group.variables['trajectory_index'][:]
+        idx = np.searchsorted(flight_ids, flight_id)
+        if idx >= len(flight_ids) or flight_ids[idx] != flight_id:
+            return None
+        return self[traj_idxs[idx]]
 
     def _open_merged_store(
         self,
@@ -1217,7 +1273,8 @@ class TrajectoryStore:
         # Retrieve groups for each field set.
         groups = {}
         for k in dataset[0].groups.keys():
-            groups[k] = [ds.groups[k] for ds in dataset]
+            if k[0] != '_':
+                groups[k] = [ds.groups[k] for ds in dataset]
 
         # Check consistency.
         # TODO: Abstract this stuff, share with _open and check for all files.
@@ -1398,6 +1455,13 @@ class TrajectoryStore:
 
                 # The variable `v` doesn't need to be saved anywhere special
                 # now; it can be accessed from its group.
+
+        if self.indexable and self.index_group is None:
+            self.index_group = dataset.createGroup('_index')
+            self.index_group.createVariable('flight_id', np.int64, ('trajectory',))
+            self.index_group.createVariable(
+                'trajectory_index', np.int64, ('trajectory',)
+            )
 
         # Save information about file for lookup by field set name. This is how
         # we find the file and group for a given field set later on.

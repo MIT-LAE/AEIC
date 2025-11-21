@@ -1,3 +1,4 @@
+import random
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -56,6 +57,7 @@ class Extras:
 
 def make_test_trajectory(npoints: int, seed: int, extras: bool = False) -> Trajectory:
     t = Trajectory(npoints, name=f'traj_{seed}', fieldsets=['demo'] if extras else None)
+    t.flight_id = seed
     t.fuel_flow = np.random.rand(npoints) * 5000 + 2000
     t.aircraft_mass = np.random.rand(npoints) * 50000 + 100000
     t.fuel_mass = np.random.rand(npoints) * 50000 + 5000
@@ -548,3 +550,25 @@ def test_merging_with_associated_files(tmp_path: Path):
     assert ts_merged[2].f1.shape == (15,)
     assert ts_merged[2].mf is not None
     ts_merged.close()
+
+
+def test_indexing(tmp_path: Path):
+    # 1. Create a unique set of flight IDs.
+    ntrajs = 100
+    seeds = random.sample(range(1000, 10000), ntrajs)
+
+    # 2. Create trajectory store containing with those flight IDs.
+    path = tmp_path / 'test.nc'
+    ts = TrajectoryStore.create(base_file=path)
+    for s in seeds:
+        ts.add(make_test_trajectory(50, s))
+    ts.close()
+
+    # 3. Reopen the trajectory store.
+    ts_read = TrajectoryStore.open(base_file=path)
+
+    # 4. Look up trajectories by flight ID.
+    for s in seeds:
+        traj = ts_read.lookup(s)
+        assert traj is not None
+        assert traj.flight_id == s

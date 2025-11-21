@@ -30,11 +30,16 @@ BASE_FIELDS = FieldSet(
     ),
     # Trajectory metadata fields and their metadata. Each of these fields has a
     # single value per trajectory.
+    flight_id=FieldMetadata(
+        metadata=True,
+        field_type=np.int64,
+        description='Mission database flight identifier',
+        required=False,
+    ),
     name=FieldMetadata(
         metadata=True,
         field_type=str,
         description='Trajectory name',
-        units='',
         required=False,
     ),
     starting_mass=FieldMetadata(
