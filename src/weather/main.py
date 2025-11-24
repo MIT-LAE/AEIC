@@ -3,6 +3,7 @@ import json
 import trajectory as traj
 
 import utils as util
+from utils.units import FEET_TO_METERS
 
 mission_path = "../missions/sample_missions_10.json"
 weather_data = "ERA5/sample.grib"
@@ -44,7 +45,7 @@ for i in range(len(lons)):
         lat=lats[i],
         lon_next=lon_next,
         lat_next=lat_next,
-        alt_ft=alts[i],
+        alt_m=alts[i] * FEET_TO_METERS,
         tas_kts=tas[i],
         u_interp=u_interp,
         v_interp=v_interp,

@@ -1,6 +1,6 @@
 import utils.airports as airports
 from missions.writable_database import WritableDatabase
-from utils.custom_types import DayOfWeek
+from utils.types import DayOfWeek
 
 
 def test_dow_mask():

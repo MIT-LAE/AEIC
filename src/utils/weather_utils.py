@@ -3,11 +3,11 @@ import xarray as xr
 from scipy.interpolate import RegularGridInterpolator
 
 from utils import GEOD
+from utils.units import FEET_TO_METERS
 
 
-def altitude_to_pressure_hpa(alt_ft):
-    """Convert altitude in feet to pressure in hPa using ISA approximation."""
-    alt_m = np.array(alt_ft) * 0.3048
+def altitude_to_pressure_hpa(alt_m):
+    """Convert altitude in meters to pressure in hPa using ISA approximation."""
     pressure = 1013.25 * (1 - (0.0065 * alt_m) / 288.15) ** 5.2561
     return pressure
 
@@ -63,7 +63,7 @@ def get_wind_at_points(mission_data, era5_path):
     )
 
     # Convert altitude (ft) to pressure (hPa)
-    pressures = altitude_to_pressure_hpa(mission_data['H'])
+    pressures = altitude_to_pressure_hpa(mission_data['H'] * FEET_TO_METERS)
 
     # Convert lon to [0, 360] for ERA5 grid compatibility
     lons_360 = [(lon + 360) if lon < 0 else lon for lon in mission_data['lons']]
@@ -282,7 +282,7 @@ def build_era5_interpolators(era5_path):
     return u_interp, v_interp, {"levels": levels, "lats": lats, "lons": lons}
 
 
-def compute_ground_speed(lon, lat, az, alt_ft, tas_ms, weather_data=None):
+def compute_ground_speed(lon, lat, az, alt_m, tas_ms, weather_data=None):
     """
     Computes ground speed for a single point using TAS, heading, and interpolated winds.
 
@@ -292,8 +292,8 @@ def compute_ground_speed(lon, lat, az, alt_ft, tas_ms, weather_data=None):
         Longitude and latitude of the point [degrees]
     lon_next, lat_next : float
         Next point [deg] to compute heading
-    alt_ft : float
-        Altitude in feet
+    alt_m : float
+        Altitude in meters
     tas_ms : float
         True airspeed in m/s
     heading_rad : float
@@ -310,7 +310,7 @@ def compute_ground_speed(lon, lat, az, alt_ft, tas_ms, weather_data=None):
     """
 
     # Convert altitude and TAS to S.I units
-    pressure_level = float(altitude_to_pressure_hpa(alt_ft))  # hPa
+    pressure_level = float(altitude_to_pressure_hpa(alt_m))  # hPa
     azimuth_deg = az
     heading_rad = np.deg2rad(azimuth_deg)
 

@@ -4,27 +4,31 @@ import numpy as np
 from numpy.typing import NDArray
 
 from AEIC.performance_model import PerformanceModel
+from AEIC.trajectories import FlightPhase, GroundTrack, Trajectory
 from missions import Mission
 from utils.helpers import filter_order_duplicates
-from utils.units import FEET_TO_METERS, METERS_TO_FEET, NAUTICAL_MILES_TO_METERS
+from utils.units import (
+    FEET_TO_METERS,
+    FL_TO_METERS,
+    METERS_TO_FL,
+    NAUTICAL_MILES_TO_METERS,
+)
 from utils.weather_utils import compute_ground_speed
 
-from .. import Trajectory
-from ..ground_track import GroundTrack
-from . import Builder, Context, Options
+from .base import Builder, Context, Options
 
 
 @dataclass
 class LegacyOptions:
     """Additional options for the legacy trajectory builder."""
 
-    pctStepClm: float = 0.01
+    pct_step_clm: float = 0.01
     """Climb step size as percentage of total climb altitude change."""
 
-    pctStepCrz: float = 0.01
+    pct_step_crz: float = 0.01
     """Cruise step size as percentage of total cruise ground distance."""
 
-    pctStepDes: float = 0.01
+    pct_step_des: float = 0.01
     """Descent step size as percentage of total descent altitude change."""
 
     fuel_LHV: float = 43.8e6
@@ -40,15 +44,15 @@ class LegacyContext(Context):
         builder: 'LegacyBuilder',
         ac_performance: PerformanceModel,
         mission: Mission,
-        starting_mass: float,
+        starting_mass: float | None,
     ):
         # The context constructor calculates all of the fixed information used
         # throughout the simulation by the trajectory builder.
 
         # Number of points in different flight phases.
-        NClm = int(1 / builder.pctStepClm + 1)
-        NCrz = int(1 / builder.pctStepCrz + 1)
-        NDes = int(1 / builder.pctStepDes + 1)
+        n_climb = int(1 / builder.pct_step_clm + 1)
+        n_cruise = int(1 / builder.pct_step_crz + 1)
+        n_descent = int(1 / builder.pct_step_des + 1)
 
         # Generate great circle ground track between departure and arrival
         # locations.
@@ -97,10 +101,10 @@ class LegacyContext(Context):
             self.des_end_altitude = max_alt
 
         # Save relevant flight levels.
-        self.crz_FL = self.crz_start_altitude * METERS_TO_FEET / 100
-        self.clm_FL = self.clm_start_altitude * METERS_TO_FEET / 100
-        self.des_FL = self.des_start_altitude * METERS_TO_FEET / 100
-        self.end_FL = self.des_end_altitude * METERS_TO_FEET / 100
+        self.crz_FL = self.crz_start_altitude * METERS_TO_FL
+        self.clm_FL = self.clm_start_altitude * METERS_TO_FL
+        self.des_FL = self.des_start_altitude * METERS_TO_FL
+        self.end_FL = self.des_end_altitude * METERS_TO_FL
 
         # Get the relevant bounding flight levels for cruise based on
         # performance data.
@@ -115,11 +119,13 @@ class LegacyContext(Context):
             ac_performance,
             mission,
             ground_track,
-            NClm,
-            NCrz,
-            NDes,
-            self.clm_start_altitude,
-            starting_mass,
+            npoints={
+                FlightPhase.CLIMB: n_climb,
+                FlightPhase.CRUISE: n_cruise,
+                FlightPhase.DESCENT: n_descent,
+            },
+            initial_altitude=self.clm_start_altitude,
+            starting_mass=starting_mass,
         )
 
     def __calc_crz_FLs(self, ac_performance: PerformanceModel) -> None:
@@ -169,9 +175,9 @@ class LegacyBuilder(Builder):
 
         # Define discretization of each phase in steps as a percent of
         # the overall distance/altitude change
-        self.pctStepClm = legacy_options.pctStepClm
-        self.pctStepCrz = legacy_options.pctStepCrz
-        self.pctStepDes = legacy_options.pctStepDes
+        self.pct_step_clm = legacy_options.pct_step_clm
+        self.pct_step_crz = legacy_options.pct_step_crz
+        self.pct_step_des = legacy_options.pct_step_des
 
         self.fuel_LHV = legacy_options.fuel_LHV
 
@@ -277,38 +283,134 @@ class LegacyBuilder(Builder):
 
         return starting_mass
 
-    def climb(self, traj: Trajectory, **kwargs) -> None:
-        """Simulate climb phase."""
+    def fly_climb(self, traj: Trajectory, **kwargs) -> None:
+        """Simulate climb phase.
 
-        dAlt = (self.crz_start_altitude - self.clm_start_altitude) / (self.NClm - 1)
+        Computes state over the climb segment using AEIC v2 methods based on
+        BADA-3 formulas.
+        """
+
+        dAlt = (self.crz_start_altitude - self.clm_start_altitude) / (self.n_climb - 1)
         if dAlt < 0:
             raise ValueError(
                 "Departure airport + 3000ft should not be higher"
                 "than start of cruise point"
             )
 
-        traj.altitude[0 : self.NClm] = np.linspace(
-            self.clm_start_altitude, self.crz_start_altitude, self.NClm
+        traj.altitude[0 : self.n_climb] = np.linspace(
+            self.clm_start_altitude, self.crz_start_altitude, self.n_climb
         )
 
-        self.__legacy_climb(traj)
+        # Create a mask for ROC limiting to only positive values (climb)
+        pos_roc_mask = np.array(self.ac_performance.performance_table_cols[2]) > 0
 
-    def cruise(self, traj: Trajectory, **kwargs):
-        """Simulate cruise phase."""
+        # Convert ROC mask to the indices of positive ROC
+        roc_inds = np.where(pos_roc_mask)[0]
+        pos_rocs = np.array(self.ac_performance.performance_table_cols[2])[roc_inds]
+
+        # Filter performance data to positive ROC
+        pos_roc_perf = self.ac_performance.performance_table[
+            np.ix_(
+                np.arange(self.ac_performance.performance_table.shape[0]),
+                # axis 0: flight levels
+                np.arange(self.ac_performance.performance_table.shape[1]),
+                # axis 1: all TAS's
+                np.where(pos_roc_mask)[0],
+                # axis 2: all positive ROC
+                np.arange(self.ac_performance.performance_table.shape[3]),
+                # axis 3: mass value
+            )
+        ]
+
+        # We first compute the instantaneous data at each flight level
+        # to avoid repeat calculations.
+        # In AEIC v2 fuel flow and TAS are only dependent on flight level in climb.
+        for i in range(0, self.n_climb):
+            FL, fl_weighting, tas_interp, ff_interp, _ = self.__calc_FL_interp_vals(
+                traj.altitude[i], pos_roc_perf
+            )
+            traj.flight_level[i] = FL
+            traj.flight_level_weight[i] = fl_weighting
+            traj.fuel_flow[i] = ff_interp
+            traj.true_airspeed[i] = tas_interp
+
+        # Now we get rate of climb by running the flight
+        for i in range(0, self.n_climb - 1):
+            FL = traj.flight_level[i]
+            fl_weight = traj.flight_level_weight[i]
+            tas = traj.true_airspeed[i]
+            ff = traj.fuel_flow[i]
+            seg_start_mass = traj.aircraft_mass[i]
+
+            # Calculate rate of climb
+            roc = self.__calc_roc_climb(
+                FL, fl_weight, seg_start_mass, pos_roc_perf, pos_rocs
+            )
+            traj.rate_of_climb[i] = roc
+
+            # Calculate the forward true airspeed (will be used for ground speed)
+            fwd_tas = np.sqrt(tas**2 - roc**2)
+
+            # Get time to complete alititude change segment and total fuel burned
+            segment_time = (traj.altitude[i + 1] - traj.altitude[i]) / roc
+            segment_fuel = ff * segment_time
+            traj.ground_speed[i], traj.heading[i], u, v = compute_ground_speed(
+                lon=traj.latitude[i],
+                lat=traj.latitude[i],
+                az=traj.azimuth[i],
+                alt_m=FL * FL_TO_METERS,
+                tas_ms=fwd_tas,
+                weather_data=None,
+            )
+
+            # Calculate distance along route travelled
+            dist = traj.ground_speed[i] * segment_time
+
+            # Take step along great circle route.
+            pt = self.ground_track.step(traj.ground_distance[i], dist)
+            traj.longitude[i + 1] = pt.location.longitude
+            traj.latitude[i + 1] = pt.location.latitude
+            traj.azimuth[i + 1] = pt.azimuth
+
+            # Account for acceleration/deceleration over
+            # the segment using end-of-segment tas
+            tas_end = traj.true_airspeed[i + 1]
+            kinetic_energy_chg = 1 / 2 * seg_start_mass * (tas_end**2 - tas**2)
+
+            # Calculate fuel required for acceleration
+            # NOTE: I have no idea where AEIC v2 got the efficiency of 0.15 from
+            accel_fuel = kinetic_energy_chg / (self.fuel_LHV) / 0.15
+
+            segment_fuel += accel_fuel
+
+            # Update the state vector
+            traj.fuel_mass[i + 1] = traj.fuel_mass[i] - segment_fuel
+            traj.aircraft_mass[i + 1] = traj.aircraft_mass[i] - segment_fuel
+            traj.ground_distance[i + 1] = traj.ground_distance[i] + dist
+            traj.flight_time[i + 1] = traj.flight_time[i] + segment_time
+
+    def fly_cruise(self, traj: Trajectory, **kwargs):
+        """Simulate cruise phase.
+
+        Computes state over cruise segment using AEIC v2 methods based on
+        BADA-3 formulas
+        """
 
         # Start cruise at end-of-climb position and mass (fuel flow, TAS will
         # be replaced).
-        traj.copy_point(self.NClm - 1, self.NClm)
+        traj.copy_point(self.n_climb - 1, self.n_climb)
 
         # Cruise at constant altitude.
-        traj.altitude[self.NClm : self.NClm + self.NCrz] = self.crz_start_altitude
+        traj.altitude[self.n_climb : self.n_climb + self.n_cruise] = (
+            self.crz_start_altitude
+        )
 
         descent_dist_approx = 18.23 * (self.des_start_altitude - self.des_end_altitude)
 
         if descent_dist_approx < 0:
             raise ValueError('Arrival airport should not be above cruise altitude')
 
-        cruise_start_distance = traj.ground_distance[self.NClm - 1]
+        cruise_start_distance = traj.ground_distance[self.n_climb - 1]
         cruise_dist_approx = (
             self.ground_track.total_distance
             - cruise_start_distance
@@ -318,34 +420,184 @@ class LegacyBuilder(Builder):
         # Cruise is discretized into ground distance steps.
         cruise_end_distance = cruise_start_distance + cruise_dist_approx
         cruise_distance_values = np.linspace(
-            cruise_start_distance, cruise_end_distance, self.NCrz
+            cruise_start_distance, cruise_end_distance, self.n_cruise
         )
-        traj.ground_distance[self.NClm : self.NClm + self.NCrz] = cruise_distance_values
+        traj.ground_distance[self.n_climb : self.n_climb + self.n_cruise] = (
+            cruise_distance_values
+        )
 
         # Get distance step size.
-        dGD = cruise_dist_approx / (self.NCrz - 1)
+        dGD = cruise_dist_approx / (self.n_cruise - 1)
 
-        self.__legacy_cruise(dGD, traj)
+        subset_performance = self.ac_performance.performance_table[
+            np.ix_(
+                np.array(self.crz_FL_inds),
+                # axis 0: flight levels
+                np.arange(self.ac_performance.performance_table.shape[1]),
+                # axis 1: all TAS's
+                np.where(self.zero_roc_mask)[0],
+                # axis 2: ROC ≈ 0
+                np.arange(self.ac_performance.performance_table.shape[3]),
+                # axis 3: all mass values
+            )
+        ]
 
-    def descent(self, traj: Trajectory, **kwargs):
-        """Simulate descent phase."""
+        # TAS in cruise is only dependent on flight level
+        FL, fl_weight, tas_interp = self.__calc_tas_crz(
+            self.crz_start_altitude, subset_performance
+        )
+        traj.flight_level[self.n_climb : self.n_climb + self.n_cruise] = FL
+        traj.true_airspeed[self.n_climb : self.n_climb + self.n_cruise] = tas_interp
+        traj.rate_of_climb[self.n_climb : self.n_climb + self.n_cruise] = 0
+        traj.flight_level_weight[self.n_climb : self.n_climb + self.n_cruise] = (
+            fl_weight
+        )
+
+        # Get fuel flow, ground speed, etc. for cruise segments
+        for i in range(self.n_climb, self.n_climb + self.n_cruise - 1):
+            traj.ground_speed[i], traj.heading[i], _, _ = compute_ground_speed(
+                lon=traj.latitude[i],
+                lat=traj.latitude[i],
+                az=traj.azimuth[i],
+                alt_m=self.crz_FL * FL_TO_METERS,
+                tas_ms=traj.true_airspeed[i],
+                weather_data=None,
+            )
+
+            # Calculate time required to fly the segment
+            segment_time = dGD / traj.ground_speed[i]
+
+            # Take step along great circle route.
+            pt = self.ground_track.step(traj.ground_distance[i], dGD)
+            traj.longitude[i + 1] = pt.location.longitude
+            traj.latitude[i + 1] = pt.location.latitude
+            traj.azimuth[i + 1] = pt.azimuth
+
+            # Get fuel flow rate based on FL and mass interpolation
+            ff = self.__calc_ff_cruise(
+                traj.flight_level_weight[i], traj.aircraft_mass[i], subset_performance
+            )
+
+            # Calculate fuel burn in [kg] over the segment
+            segment_fuel = ff * segment_time
+
+            # Set aircraft state values
+            traj.fuel_flow[i + 1] = ff
+            traj.fuel_mass[i + 1] = traj.fuel_mass[i] - segment_fuel
+            traj.aircraft_mass[i + 1] = traj.aircraft_mass[i] - segment_fuel
+
+            traj.flight_time[i + 1] = traj.flight_time[i] + segment_time
+
+    def fly_descent(self, traj: Trajectory, **kwargs):
+        """Simulate descent phase.
+
+        Computes state over the descent segment using AEIC v2 methods based on
+        BADA-3 formulas
+        """
 
         # Start descent at end-of-cruise position and mass (fuel flow, TAS will
         # be replaced).
-        traj.copy_point(self.NClm + self.NCrz - 1, self.NClm + self.NCrz)
+        traj.copy_point(self.n_climb + self.n_cruise - 1, self.n_climb + self.n_cruise)
 
-        dAlt = (self.des_end_altitude - self.des_start_altitude) / (self.NDes)
+        dAlt = (self.des_end_altitude - self.des_start_altitude) / (self.n_descent)
         if dAlt > 0:
             raise ValueError(
                 "Arrival airport + 3000ft should not be higher thanend of cruise point"
             )
 
-        alts = np.linspace(self.des_start_altitude, self.des_end_altitude, self.NDes)
-        startN = self.NClm + self.NCrz
-        endN = startN + self.NDes
+        alts = np.linspace(
+            self.des_start_altitude, self.des_end_altitude, self.n_descent
+        )
+        startN = self.n_climb + self.n_cruise
+        endN = startN + self.n_descent
         traj.altitude[startN:endN] = alts
 
-        self.__legacy_descent(traj)
+        # Create a mask for ROC limiting to only positive values (climb)
+        neg_roc_mask = np.array(self.ac_performance.performance_table_cols[2]) < 0
+
+        # Convert ROC mask to the indices of positive ROC
+        # roc_inds = np.where(neg_roc_mask)[0]
+        # neg_rocs = np.array(self.ac_performance.performance_table_cols[2])[roc_inds]
+
+        # Filter performance data to positive ROC
+        neg_roc_perf = self.ac_performance.performance_table[
+            np.ix_(
+                np.arange(self.ac_performance.performance_table.shape[0]),
+                # axis 0: flight levels
+                np.arange(self.ac_performance.performance_table.shape[1]),
+                # axis 1: all TAS's
+                np.where(neg_roc_mask)[0],
+                # axis 2: all positive ROC
+                np.arange(self.ac_performance.performance_table.shape[3]),
+                # axis 3: mass value
+            )
+        ]
+
+        # We first compute the instantaneous data at each flight level
+        # to avoid repeat calculations.
+        # In AEIC v2 fuel flow and TAS are only dependent on flight level.
+        for i in range(startN, endN):
+            alt = traj.altitude[i]
+            tmp = self.__calc_FL_interp_vals(alt, neg_roc_perf)
+            FL, fl_weighting, tas_interp, ff_interp, roc_interp = tmp
+            traj.flight_level[i] = FL
+            traj.flight_level_weight[i] = fl_weighting
+            traj.fuel_flow[i] = ff_interp
+            traj.true_airspeed[i] = tas_interp
+            traj.rate_of_climb[i] = roc_interp
+
+        # Now we calculate segment level info by running the flight
+        for i in range(startN, endN - 1):
+            tas = traj.true_airspeed[i]
+            ff = traj.fuel_flow[i]
+            roc = traj.rate_of_climb[i]
+            seg_start_mass = traj.aircraft_mass[i]
+
+            # Calculate the forward true airspeed (will be used for ground speed)
+            fwd_tas = np.sqrt(tas**2 - roc**2)
+
+            # Get time to complete alititude change segment and total fuel burned
+            segment_time = (traj.altitude[i + 1] - traj.altitude[i]) / roc
+            segment_fuel = ff * segment_time
+
+            traj.ground_speed[i], traj.heading[i], _, _ = compute_ground_speed(
+                lon=traj.latitude[i],
+                lat=traj.latitude[i],
+                az=traj.azimuth[i],
+                alt_m=traj.altitude[i],
+                tas_ms=fwd_tas,
+                weather_data=None,
+            )
+
+            # Calculate distance along route travelled
+            dist = traj.ground_speed[i] * segment_time
+
+            # Take step along great circle route.
+            pt = self.ground_track.step(traj.ground_distance[i], dist)
+            traj.longitude[i + 1] = pt.location.longitude
+            traj.latitude[i + 1] = pt.location.latitude
+            traj.azimuth[i + 1] = pt.azimuth
+
+            # Account for acceleration/deceleration over the segment
+            # using end-of-segment tas
+            tas_end = traj.true_airspeed[i + 1]
+            kinetic_energy_chg = 1 / 2 * seg_start_mass * (tas_end**2 - tas**2)
+
+            # Calculate fuel required for acceleration
+            # NOTE: I have no idea where AEIC v2 got the efficiency of 0.15 from
+            accel_fuel = kinetic_energy_chg / (self.fuel_LHV) / 0.15
+
+            segment_fuel += accel_fuel
+
+            # We cannot gain fuel by decelerating in a conventional fuel A/C
+            if segment_fuel < 0:
+                segment_fuel = 0
+
+            # Update the state vector
+            traj.fuel_mass[i + 1] = traj.fuel_mass[i] - segment_fuel
+            traj.aircraft_mass[i + 1] = traj.aircraft_mass[i] - segment_fuel
+            traj.ground_distance[i + 1] = traj.ground_distance[i] + dist
+            traj.flight_time[i + 1] = traj.flight_time[i] + segment_time
 
     ###################
     # PRIVATE METHODS #
@@ -370,7 +622,7 @@ class LegacyBuilder(Builder):
 
         """
 
-        FL = alt * METERS_TO_FEET / 100
+        FL = alt * METERS_TO_FL
         FL_inds = self.ac_performance.search_flight_levels_ind(FL)
         bounding_fls = np.array(self.ac_performance.performance_table_cols[0])[FL_inds]
 
@@ -442,7 +694,7 @@ class LegacyBuilder(Builder):
             Tuple[float]: Interpolated TAS and weighting used in linear interpolation.
         """
 
-        FL = alt * METERS_TO_FEET / 100
+        FL = alt * METERS_TO_FL
 
         # Construct interpolation weightings
         fl_weighting = (FL - self.crz_FLs[0]) / (self.crz_FLs[1] - self.crz_FLs[0])
@@ -597,251 +849,3 @@ class LegacyBuilder(Builder):
 
         ff = ff_1 + (ff_2 - ff_1) * mass_weight
         return ff
-
-    def __legacy_climb(self, traj: Trajectory) -> None:
-        """Computes state over the climb segment using AEIC v2 methods
-        based on BADA-3 formulas.
-        """
-
-        # Create a mask for ROC limiting to only positive values (climb)
-        pos_roc_mask = np.array(self.ac_performance.performance_table_cols[2]) > 0
-
-        # Convert ROC mask to the indices of positive ROC
-        roc_inds = np.where(pos_roc_mask)[0]
-        pos_rocs = np.array(self.ac_performance.performance_table_cols[2])[roc_inds]
-
-        # Filter performance data to positive ROC
-        pos_roc_perf = self.ac_performance.performance_table[
-            np.ix_(
-                np.arange(self.ac_performance.performance_table.shape[0]),
-                # axis 0: flight levels
-                np.arange(self.ac_performance.performance_table.shape[1]),
-                # axis 1: all TAS's
-                np.where(pos_roc_mask)[0],
-                # axis 2: all positive ROC
-                np.arange(self.ac_performance.performance_table.shape[3]),
-                # axis 3: mass value
-            )
-        ]
-
-        # We first compute the instantaneous data at each flight level
-        # to avoid repeat calculations.
-        # In AEIC v2 fuel flow and TAS are only dependent on flight level in climb.
-        for i in range(0, self.NClm):
-            FL, fl_weighting, tas_interp, ff_interp, _ = self.__calc_FL_interp_vals(
-                traj.altitude[i], pos_roc_perf
-            )
-            traj.flight_level[i] = FL
-            traj.flight_level_weight[i] = fl_weighting
-            traj.fuel_flow[i] = ff_interp
-            traj.true_airspeed[i] = tas_interp
-
-        # Now we get rate of climb by running the flight
-        for i in range(0, self.NClm - 1):
-            FL = traj.flight_level[i]
-            fl_weight = traj.flight_level_weight[i]
-            tas = traj.true_airspeed[i]
-            ff = traj.fuel_flow[i]
-            seg_start_mass = traj.aircraft_mass[i]
-
-            # Calculate rate of climb
-            roc = self.__calc_roc_climb(
-                FL, fl_weight, seg_start_mass, pos_roc_perf, pos_rocs
-            )
-            traj.rate_of_climb[i] = roc
-
-            # Calculate the forward true airspeed (will be used for ground speed)
-            fwd_tas = np.sqrt(tas**2 - roc**2)
-
-            # Get time to complete alititude change segment and total fuel burned
-            segment_time = (traj.altitude[i + 1] - traj.altitude[i]) / roc
-            segment_fuel = ff * segment_time
-            traj.ground_speed[i], traj.heading[i], u, v = compute_ground_speed(
-                lon=traj.latitude[i],
-                lat=traj.latitude[i],
-                az=traj.azimuth[i],
-                alt_ft=FL * 100,
-                tas_ms=fwd_tas,
-                weather_data=None,
-            )
-
-            # Calculate distance along route travelled
-            dist = traj.ground_speed[i] * segment_time
-
-            # Take step along great circle route.
-            pt = self.ground_track.step(traj.ground_distance[i], dist)
-            traj.longitude[i + 1] = pt.location.longitude
-            traj.latitude[i + 1] = pt.location.latitude
-            traj.azimuth[i + 1] = pt.azimuth
-
-            # Account for acceleration/deceleration over
-            # the segment using end-of-segment tas
-            tas_end = traj.true_airspeed[i + 1]
-            kinetic_energy_chg = 1 / 2 * seg_start_mass * (tas_end**2 - tas**2)
-
-            # Calculate fuel required for acceleration
-            # NOTE: I have no idea where AEIC v2 got the efficiency of 0.15 from
-            accel_fuel = kinetic_energy_chg / (self.fuel_LHV) / 0.15
-
-            segment_fuel += accel_fuel
-
-            # Update the state vector
-            traj.fuel_mass[i + 1] = traj.fuel_mass[i] - segment_fuel
-            traj.aircraft_mass[i + 1] = traj.aircraft_mass[i] - segment_fuel
-            traj.ground_distance[i + 1] = traj.ground_distance[i] + dist
-            traj.flight_time[i + 1] = traj.flight_time[i] + segment_time
-
-    def __legacy_cruise(self, dGD: float, traj: Trajectory) -> None:
-        """Computes state over cruise segment using AEIC v2 methods
-        based on BADA-3 formulas"""
-
-        subset_performance = self.ac_performance.performance_table[
-            np.ix_(
-                np.array(self.crz_FL_inds),
-                # axis 0: flight levels
-                np.arange(self.ac_performance.performance_table.shape[1]),
-                # axis 1: all TAS's
-                np.where(self.zero_roc_mask)[0],
-                # axis 2: ROC ≈ 0
-                np.arange(self.ac_performance.performance_table.shape[3]),
-                # axis 3: all mass values
-            )
-        ]
-
-        # TAS in cruise is only dependent on flight level
-        FL, fl_weight, tas_interp = self.__calc_tas_crz(
-            self.crz_start_altitude, subset_performance
-        )
-        traj.flight_level[self.NClm : self.NClm + self.NCrz] = FL
-        traj.true_airspeed[self.NClm : self.NClm + self.NCrz] = tas_interp
-        traj.rate_of_climb[self.NClm : self.NClm + self.NCrz] = 0
-        traj.flight_level_weight[self.NClm : self.NClm + self.NCrz] = fl_weight
-
-        # Get fuel flow, ground speed, etc. for cruise segments
-        for i in range(self.NClm, self.NClm + self.NCrz - 1):
-            traj.ground_speed[i], traj.heading[i], _, _ = compute_ground_speed(
-                lon=traj.latitude[i],
-                lat=traj.latitude[i],
-                az=traj.azimuth[i],
-                alt_ft=self.crz_FL * 100,
-                tas_ms=traj.true_airspeed[i],
-                weather_data=None,
-            )
-
-            # Calculate time required to fly the segment
-            segment_time = dGD / traj.ground_speed[i]
-
-            # Take step along great circle route.
-            pt = self.ground_track.step(traj.ground_distance[i], dGD)
-            traj.longitude[i + 1] = pt.location.longitude
-            traj.latitude[i + 1] = pt.location.latitude
-            traj.azimuth[i + 1] = pt.azimuth
-
-            # Get fuel flow rate based on FL and mass interpolation
-            ff = self.__calc_ff_cruise(
-                traj.flight_level_weight[i], traj.aircraft_mass[i], subset_performance
-            )
-
-            # Calculate fuel burn in [kg] over the segment
-            segment_fuel = ff * segment_time
-
-            # Set aircraft state values
-            traj.fuel_flow[i + 1] = ff
-            traj.fuel_mass[i + 1] = traj.fuel_mass[i] - segment_fuel
-            traj.aircraft_mass[i + 1] = traj.aircraft_mass[i] - segment_fuel
-
-            traj.flight_time[i + 1] = traj.flight_time[i] + segment_time
-
-    def __legacy_descent(self, traj: Trajectory) -> None:
-        """Computes state over the descent segment using AEIC v2
-        methods based on BADA-3 formulas"""
-
-        startN = self.NClm + self.NCrz
-        endN = startN + self.NDes
-
-        # Create a mask for ROC limiting to only positive values (climb)
-        neg_roc_mask = np.array(self.ac_performance.performance_table_cols[2]) < 0
-
-        # Convert ROC mask to the indices of positive ROC
-        # roc_inds = np.where(neg_roc_mask)[0]
-        # neg_rocs = np.array(self.ac_performance.performance_table_cols[2])[roc_inds]
-
-        # Filter performance data to positive ROC
-        neg_roc_perf = self.ac_performance.performance_table[
-            np.ix_(
-                np.arange(self.ac_performance.performance_table.shape[0]),
-                # axis 0: flight levels
-                np.arange(self.ac_performance.performance_table.shape[1]),
-                # axis 1: all TAS's
-                np.where(neg_roc_mask)[0],
-                # axis 2: all positive ROC
-                np.arange(self.ac_performance.performance_table.shape[3]),
-                # axis 3: mass value
-            )
-        ]
-
-        # We first compute the instantaneous data at each flight level
-        # to avoid repeat calculations.
-        # In AEIC v2 fuel flow and TAS are only dependent on flight level.
-        for i in range(startN, endN):
-            alt = traj.altitude[i]
-            tmp = self.__calc_FL_interp_vals(alt, neg_roc_perf)
-            FL, fl_weighting, tas_interp, ff_interp, roc_interp = tmp
-            traj.flight_level[i] = FL
-            traj.flight_level_weight[i] = fl_weighting
-            traj.fuel_flow[i] = ff_interp
-            traj.true_airspeed[i] = tas_interp
-            traj.rate_of_climb[i] = roc_interp
-
-        # Now we calculate segment level info by running the flight
-        for i in range(startN, endN - 1):
-            tas = traj.true_airspeed[i]
-            ff = traj.fuel_flow[i]
-            roc = traj.rate_of_climb[i]
-            seg_start_mass = traj.aircraft_mass[i]
-
-            # Calculate the forward true airspeed (will be used for ground speed)
-            fwd_tas = np.sqrt(tas**2 - roc**2)
-
-            # Get time to complete alititude change segment and total fuel burned
-            segment_time = (traj.altitude[i + 1] - traj.altitude[i]) / roc
-            segment_fuel = ff * segment_time
-
-            traj.ground_speed[i], traj.heading[i], _, _ = compute_ground_speed(
-                lon=traj.latitude[i],
-                lat=traj.latitude[i],
-                az=traj.azimuth[i],
-                alt_ft=traj.altitude[i] * METERS_TO_FEET,
-                tas_ms=fwd_tas,
-                weather_data=None,
-            )
-
-            # Calculate distance along route travelled
-            dist = traj.ground_speed[i] * segment_time
-
-            # Take step along great circle route.
-            pt = self.ground_track.step(traj.ground_distance[i], dist)
-            traj.longitude[i + 1] = pt.location.longitude
-            traj.latitude[i + 1] = pt.location.latitude
-            traj.azimuth[i + 1] = pt.azimuth
-
-            # Account for acceleration/deceleration over the segment
-            # using end-of-segment tas
-            tas_end = traj.true_airspeed[i + 1]
-            kinetic_energy_chg = 1 / 2 * seg_start_mass * (tas_end**2 - tas**2)
-
-            # Calculate fuel required for acceleration
-            # NOTE: I have no idea where AEIC v2 got the efficiency of 0.15 from
-            accel_fuel = kinetic_energy_chg / (self.fuel_LHV) / 0.15
-
-            segment_fuel += accel_fuel
-
-            # We cannot gain fuel by decelerating in a conventional fuel A/C
-            if segment_fuel < 0:
-                segment_fuel = 0
-
-            # Update the state vector
-            traj.fuel_mass[i + 1] = traj.fuel_mass[i] - segment_fuel
-            traj.aircraft_mass[i + 1] = traj.aircraft_mass[i] - segment_fuel
-            traj.ground_distance[i + 1] = traj.ground_distance[i] + dist
-            traj.flight_time[i + 1] = traj.flight_time[i] + segment_time

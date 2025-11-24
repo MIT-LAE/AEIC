@@ -76,9 +76,9 @@ def make_test_trajectory(npoints: int, seed: int, extras: bool = False) -> Traje
     t.flight_level_weight = np.ones(npoints)
     t.starting_mass = t.aircraft_mass[0]
     t.total_fuel_mass = t.fuel_mass[0] - t.fuel_mass[-1]
-    t.NClm = npoints // 3
-    t.NCrz = npoints // 3
-    t.NDes = npoints - t.NClm - t.NCrz
+    t.n_climb = npoints // 3
+    t.n_cruise = npoints // 3
+    t.n_descent = npoints - t.n_climb - t.n_cruise
     if extras:
         extra_fields = Extras.random(npoints)
         t.f1 = extra_fields.f1
@@ -105,20 +105,18 @@ def test_init_checking():
 
 def simple_create_ts(
     base_file: Path | str | None = None, title: str | None = None
-) -> TrajectoryStore:
-    ts = TrajectoryStore.create(base_file=base_file, title=title)
-    ts.add(make_test_trajectory(10, 1))
-    ts.add(make_test_trajectory(15, 2))
-    ts.close()
-    return ts
+) -> None:
+    with TrajectoryStore.create(base_file=base_file, title=title) as ts:
+        ts.add(make_test_trajectory(10, 1))
+        ts.add(make_test_trajectory(15, 2))
 
 
 def simple_check_ts(path: Path | str, title: str, lengths: list[int]):
-    ts_read = TrajectoryStore.open(base_file=path)
-    assert ts_read.global_attributes['title'] == title
-    assert len(ts_read) == len(lengths)
-    for i in range(len(lengths)):
-        assert len(ts_read[i]) == lengths[i]
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        assert ts_read.global_attributes['title'] == title
+        assert len(ts_read) == len(lengths)
+        for i in range(len(lengths)):
+            assert len(ts_read[i]) == lengths[i]
 
 
 def test_create_reopen(tmp_path: Path):
@@ -138,9 +136,8 @@ def test_create_append_reopen(tmp_path: Path):
     path = tmp_path / 'test.nc'
     simple_create_ts(base_file=path, title='append case')
 
-    ts2 = TrajectoryStore.append(base_file=path)
-    ts2.add(make_test_trajectory(20, 3))
-    ts2.close()
+    with TrajectoryStore.append(base_file=path) as ts:
+        ts.add(make_test_trajectory(20, 3))
 
     simple_check_ts(path, 'append case', [10, 15, 20])
 
@@ -151,19 +148,18 @@ def test_create_reopen_large(tmp_path: Path):
     # writing, close the NetCDF file, reopen for reading and check contents.
 
     path = tmp_path / 'test.nc'
-    ts = TrajectoryStore.create(base_file=path)
-    for i in range(1000000):
-        ts.add(make_test_trajectory(100, i))
-    tstart = datetime.now()
-    ts._reindex()
-    duration = datetime.now() - tstart
-    print(f'Reindexing took {duration.total_seconds()} seconds')
-    ts.close()
+    with TrajectoryStore.create(base_file=path) as ts:
+        for i in range(1000000):
+            ts.add(make_test_trajectory(100, i))
+        tstart = datetime.now()
+        ts._reindex()
+        duration = datetime.now() - tstart
+        print(f'Reindexing took {duration.total_seconds()} seconds')
 
-    ts_read = TrajectoryStore.open(base_file=path)
-    assert len(ts_read) == 1000000
-    assert len(ts_read[200000]) == 100
-    assert len(ts_read[999999]) == 100
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        assert len(ts_read) == 1000000
+        assert len(ts_read[200000]) == 100
+        assert len(ts_read[999999]) == 100
 
 
 def test_multi_threading(tmp_path: Path):
@@ -173,13 +169,13 @@ def test_multi_threading(tmp_path: Path):
         nonlocal result
         path = tmp_path / f'test{idx}.nc'
         try:
-            _ = simple_create_ts(base_file=path, title=f'thread {idx}')
+            simple_create_ts(base_file=path, title=f'thread {idx}')
             result = 'OK'
         except Exception:
             result = 'FAILED'
 
     path = tmp_path / 'test.nc'
-    _ = simple_create_ts(base_file=path, title='main thread')
+    simple_create_ts(base_file=path, title='main thread')
     t = threading.Thread(target=worker, args=(1,))
     t.start()
     t.join()
@@ -191,16 +187,15 @@ def test_extra_fields_in_base_nc(tmp_path: Path):
     # (This should result in a file with a "base" group and a "demo" group.)
 
     path = tmp_path / 'test.nc'
-    ts = TrajectoryStore.create(base_file=path)
-    for i in range(1, 6):
-        ts.add(make_test_trajectory(i * 5, i, extras=True))
-    ts.close()
+    with TrajectoryStore.create(base_file=path) as ts:
+        for i in range(1, 6):
+            ts.add(make_test_trajectory(i * 5, i, extras=True))
 
-    ts_read = TrajectoryStore.open(base_file=path)
-    assert len(ts_read) == 5
-    assert ts_read.files[0].fieldsets == {'base', 'demo'}
-    assert ts_read[2].f1.shape == (15,)
-    assert ts_read[2].mf is not None
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        assert len(ts_read) == 5
+        assert ts_read.files[0].fieldsets == {'base', 'demo'}
+        assert ts_read[2].f1.shape == (15,)
+        assert ts_read[2].mf is not None
 
 
 def test_extra_fields_in_base_nc_bad(tmp_path: Path):
@@ -213,13 +208,12 @@ def test_extra_fields_in_base_nc_bad(tmp_path: Path):
 
     with pytest.raises(ValueError):
         path = tmp_path / 'test.nc'
-        ts = TrajectoryStore.create(base_file=path)
-        for i in range(1, 6):
-            t = make_test_trajectory(i * 5, i)
-            if i % 2 == 1:
-                t.add_fields(Extras.random(i * 5))
-            ts.add(t)
-        ts.close()
+        with TrajectoryStore.create(base_file=path) as ts:
+            for i in range(1, 6):
+                t = make_test_trajectory(i * 5, i)
+                if i % 2 == 1:
+                    t.add_fields(Extras.random(i * 5))
+                ts.add(t)
 
 
 def test_extra_fields_in_associated_nc(tmp_path: Path):
@@ -228,35 +222,36 @@ def test_extra_fields_in_associated_nc(tmp_path: Path):
 
     path = tmp_path / 'test.nc'
     extra_path = tmp_path / 'extra.nc'
-    ts = TrajectoryStore.create(
+    with TrajectoryStore.create(
         base_file=path,
         associated_files=[(extra_path, ['demo'])],
-    )
-    for i in range(1, 6):
-        t = make_test_trajectory(i * 5, i)
-        t.add_fields(Extras.random(i * 5))
-        ts.add(t)
-    ts.close()
+    ) as ts:
+        for i in range(1, 6):
+            t = make_test_trajectory(i * 5, i)
+            t.add_fields(Extras.random(i * 5))
+            ts.add(t)
 
     # Opening just the base NetCDF file (without the associated file) should
     # give trajectories without the extra fields.
-    ts_read = TrajectoryStore.open(base_file=path)
-    assert len(ts_read) == 5
-    assert len(ts_read.files) == 1
-    assert ts_read.files[0].fieldsets == {'base'}
-    t = ts_read[2]
-    assert hasattr(t, 'aircraft_mass')
-    assert not hasattr(t, 'f1')
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        assert len(ts_read) == 5
+        assert len(ts_read.files) == 1
+        assert ts_read.files[0].fieldsets == {'base'}
+        t = ts_read[2]
+        assert hasattr(t, 'aircraft_mass')
+        assert not hasattr(t, 'f1')
 
     # Opening with the associated file should give trajectories with the
     # extra fields.
-    ts2_read = TrajectoryStore.open(base_file=path, associated_files=[extra_path])
-    assert len(ts2_read) == 5
-    assert len(ts2_read.files) == 2
-    assert ts2_read.files[0].fieldsets == {'base'}
-    assert ts2_read.files[1].fieldsets == {'demo'}
-    assert ts2_read[2].f1.shape == (15,)
-    assert ts2_read[2].mf is not None
+    with TrajectoryStore.open(
+        base_file=path, associated_files=[extra_path]
+    ) as ts2_read:
+        assert len(ts2_read) == 5
+        assert len(ts2_read.files) == 2
+        assert ts2_read.files[0].fieldsets == {'base'}
+        assert ts2_read.files[1].fieldsets == {'demo'}
+        assert ts2_read[2].f1.shape == (15,)
+        assert ts2_read[2].mf is not None
 
 
 def test_extra_fields_in_associated_nc_bad(tmp_path: Path):
@@ -266,25 +261,23 @@ def test_extra_fields_in_associated_nc_bad(tmp_path: Path):
     base1 = tmp_path / 'base1.nc'
     base2 = tmp_path / 'base2.nc'
     extra1 = tmp_path / 'extra1.nc'
-    ts1 = TrajectoryStore.create(
+    with TrajectoryStore.create(
         base_file=base1,
         associated_files=[(extra1, ['demo'])],
-    )
-    for i in range(1, 6):
-        ts1.add(make_test_trajectory(i * 5, i, extras=True))
-    ts1.close()
+    ) as ts1:
+        for i in range(1, 6):
+            ts1.add(make_test_trajectory(i * 5, i, extras=True))
 
     # Create another unrelated pair of files.
-    ts2 = TrajectoryStore.create(title='Use case 5 (different)', base_file=base2)
-    for i in range(1, 6):
-        t = make_test_trajectory(i * 5, i)
-        t.add_fields(Extras.random(i * 5))
-        ts2.add(t)
-    ts2.close()
+    with TrajectoryStore.create(title='Use case 5 (different)', base_file=base2) as ts2:
+        for i in range(1, 6):
+            t = make_test_trajectory(i * 5, i)
+            t.add_fields(Extras.random(i * 5))
+            ts2.add(t)
 
     # Try opening a base file with the wrong associated file.
     with pytest.raises(ValueError):
-        _ = TrajectoryStore.open(base_file=base2, associated_files=[extra1])
+        TrajectoryStore.open(base_file=base2, associated_files=[extra1])
 
 
 def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
@@ -293,65 +286,65 @@ def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
 
     path = tmp_path / 'test.nc'
     extra_path = tmp_path / 'extra.nc'
-    ts = TrajectoryStore.create(
+    with TrajectoryStore.create(
         base_file=path,
         associated_files=[(extra_path, ['demo'])],
-    )
-    for i in range(1, 6):
-        t = make_test_trajectory(i * 5, i)
-        t.add_fields(Extras.random(i * 5))
-        ts.add(t)
-    ts.close()
+    ) as ts:
+        for i in range(1, 6):
+            t = make_test_trajectory(i * 5, i)
+            t.add_fields(Extras.random(i * 5))
+            ts.add(t)
 
-    ts2 = TrajectoryStore.append(base_file=path, associated_files=[extra_path])
-    t = make_test_trajectory(10, 100)
-    t.add_fields(Extras.random(10))
-    ts2.add(t)
-    ts2.close()
+    with TrajectoryStore.append(base_file=path, associated_files=[extra_path]) as ts2:
+        t = make_test_trajectory(10, 100)
+        t.add_fields(Extras.random(10))
+        ts2.add(t)
 
     # Opening just the base NetCDF file (without the associated file) should
     # give trajectories without the extra fields.
-    ts_read = TrajectoryStore.open(base_file=path)
-    assert len(ts_read) == 6
-    assert len(ts_read.files) == 1
-    assert ts_read.files[0].fieldsets == {'base'}
-    t = ts_read[2]
-    assert hasattr(t, 'aircraft_mass')
-    assert not hasattr(t, 'f1')
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        assert len(ts_read) == 6
+        assert len(ts_read.files) == 1
+        assert ts_read.files[0].fieldsets == {'base'}
+        t = ts_read[2]
+        assert hasattr(t, 'aircraft_mass')
+        assert not hasattr(t, 'f1')
 
     # Opening with the associated file should give trajectories with the
     # extra fields.
-    ts2_read = TrajectoryStore.open(base_file=path, associated_files=[extra_path])
-    assert len(ts2_read) == 6
-    assert len(ts2_read.files) == 2
-    assert ts2_read.files[0].fieldsets == {'base'}
-    assert ts2_read.files[1].fieldsets == {'demo'}
-    assert ts2_read[2].f1.shape == (15,)
-    assert ts2_read[2].mf is not None
+    with TrajectoryStore.open(
+        base_file=path, associated_files=[extra_path]
+    ) as ts2_read:
+        assert len(ts2_read) == 6
+        assert len(ts2_read.files) == 2
+        assert ts2_read.files[0].fieldsets == {'base'}
+        assert ts2_read.files[1].fieldsets == {'demo'}
+        assert ts2_read[2].f1.shape == (15,)
+        assert ts2_read[2].mf is not None
 
 
 def test_save(tmp_path: Path):
     # Test saving TrajectoryStore to a different NetCDF file.
 
-    # Create a TrajectoryStore in memory (not linked to a NetCDF file).
-    ts = TrajectoryStore.create()
-    for i in range(1, 6):
-        t = make_test_trajectory(i * 5, i)
-        t.add_fields(Extras.random(i * 5))
-        ts.add(t)
-
     path = tmp_path / 'test.nc'
     extra_path = tmp_path / 'extra.nc'
-    ts.save(base_file=path, associated_files=[(extra_path, ['demo'])])
-    ts.close()
 
-    ts_read = TrajectoryStore.open(base_file=path, associated_files=[extra_path])
-    assert len(ts_read) == 5
-    assert len(ts_read.files) == 2
-    assert ts_read.files[0].fieldsets == {'base'}
-    assert ts_read.files[1].fieldsets == {'demo'}
-    assert ts_read[2].f1.shape == (15,)
-    assert ts_read[2].mf is not None
+    # Create a TrajectoryStore in memory (not linked to a NetCDF file).
+    with TrajectoryStore.create() as ts:
+        for i in range(1, 6):
+            t = make_test_trajectory(i * 5, i)
+            t.add_fields(Extras.random(i * 5))
+            ts.add(t)
+
+        ts.save(base_file=path, associated_files=[(extra_path, ['demo'])])
+
+    with TrajectoryStore.open(base_file=path, associated_files=[extra_path]) as ts_read:
+        assert len(ts_read) == 5
+        assert len(ts_read.files) == 2
+        assert ts_read.files[0].fieldsets == {'base'}
+        assert ts_read.files[1].fieldsets == {'demo'}
+        assert ts_read[2].f1.shape == (15,)
+        assert ts_read[2].mf is not None
 
 
 def test_create_associated(tmp_path: Path):
@@ -359,26 +352,24 @@ def test_create_associated(tmp_path: Path):
 
     path = tmp_path / 'test.nc'
     extra_path = tmp_path / 'extra.nc'
-    ts = TrajectoryStore.create(base_file=path)
-    ts.add(make_test_trajectory(10, 1))
-    ts.add(make_test_trajectory(15, 2))
-    ts.close()
+    with TrajectoryStore.create(base_file=path) as ts:
+        ts.add(make_test_trajectory(10, 1))
+        ts.add(make_test_trajectory(15, 2))
 
-    ts_create_assoc = TrajectoryStore.open(base_file=path)
-    ts_create_assoc.create_associated(
-        associated_file=extra_path,
-        fieldsets=['demo'],
-        mapping_function=lambda traj: Extras.random(len(traj)),
-    )
-    ts_create_assoc.close()
+    with TrajectoryStore.open(base_file=path) as ts_create_assoc:
+        ts_create_assoc.create_associated(
+            associated_file=extra_path,
+            fieldsets=['demo'],
+            mapping_function=lambda traj: Extras.random(len(traj)),
+        )
 
-    ts_read = TrajectoryStore.open(base_file=path, associated_files=[extra_path])
-    assert len(ts_read) == 2
-    assert len(ts_read.files) == 2
-    assert ts_read.files[0].fieldsets == {'base'}
-    assert ts_read.files[1].fieldsets == {'demo'}
-    assert ts_read[1].f1.shape == (15,)
-    assert ts_read[1].mf is not None
+    with TrajectoryStore.open(base_file=path, associated_files=[extra_path]) as ts_read:
+        assert len(ts_read) == 2
+        assert len(ts_read.files) == 2
+        assert ts_read.files[0].fieldsets == {'base'}
+        assert ts_read.files[1].fieldsets == {'demo'}
+        assert ts_read[1].f1.shape == (15,)
+        assert ts_read[1].mf is not None
 
 
 def test_fieldset_override(tmp_path: Path):
@@ -391,28 +382,27 @@ def test_fieldset_override(tmp_path: Path):
     path = tmp_path / 'test.nc'
     extra = tmp_path / 'extra.nc'
 
-    ts = TrajectoryStore.create(base_file=path)
-    for i in range(1, 6):
-        t = make_test_trajectory(i * 5, i)
-        t.add_fields(Extras.fixed(i * 5, i * 0.1, i * 0.2, 10 * i))
-        ts.add(t)
-    ts.close()
+    with TrajectoryStore.create(base_file=path) as ts:
+        for i in range(1, 6):
+            t = make_test_trajectory(i * 5, i)
+            t.add_fields(Extras.fixed(i * 5, i * 0.1, i * 0.2, 10 * i))
+            ts.add(t)
 
-    ts_create_assoc = TrajectoryStore.open(base_file=path)
-    ts_create_assoc.create_associated(
-        associated_file=extra,
-        fieldsets=['demo'],
-        mapping_function=lambda traj: Extras.fixed(len(traj), 123, 456, 12345),
-    )
+    with TrajectoryStore.open(base_file=path) as ts_create_assoc:
+        ts_create_assoc.create_associated(
+            associated_file=extra,
+            fieldsets=['demo'],
+            mapping_function=lambda traj: Extras.fixed(len(traj), 123, 456, 12345),
+        )
 
     # Case 1: just read original base file, which contains both field sets.
     # Should just get the base file values.
-    ts_read1 = TrajectoryStore.open(base_file=path)
-    assert len(ts_read1) == 5
-    assert len(ts_read1.files) == 1
-    assert ts_read1.files[0].fieldsets == {'base', 'demo'}
-    assert ts_read1[1].f1[0] == 0.2
-    assert ts_read1[1].mf == 20
+    with TrajectoryStore.open(base_file=path) as ts_read1:
+        assert len(ts_read1) == 5
+        assert len(ts_read1.files) == 1
+        assert ts_read1.files[0].fieldsets == {'base', 'demo'}
+        assert ts_read1[1].f1[0] == 0.2
+        assert ts_read1[1].mf == 20
 
     # Case 2: read with associated file, without override. Should get the base
     # file values.
@@ -420,40 +410,37 @@ def test_fieldset_override(tmp_path: Path):
         RuntimeWarning,
         match='FieldSet with name "demo" found in associated NetCDF file',
     ):
-        ts_read2 = TrajectoryStore.open(base_file=path, associated_files=[extra])
-        assert len(ts_read2) == 5
-        assert len(ts_read2.files) == 2
-        assert ts_read2.files[0].fieldsets == {'base', 'demo'}
-        assert ts_read2.files[1].fieldsets == {'demo'}
-        assert ts_read2[1].f1[0] == 0.2
-        assert ts_read2[1].mf == 20
+        with TrajectoryStore.open(base_file=path, associated_files=[extra]) as ts_read2:
+            assert len(ts_read2) == 5
+            assert len(ts_read2.files) == 2
+            assert ts_read2.files[0].fieldsets == {'base', 'demo'}
+            assert ts_read2.files[1].fieldsets == {'demo'}
+            assert ts_read2[1].f1[0] == 0.2
+            assert ts_read2[1].mf == 20
 
     # Case 3: read with associated file, *with* override. Should get the
     # associated file values.
-    ts_read3 = TrajectoryStore.open(
+    with TrajectoryStore.open(
         base_file=path, associated_files=[extra], override=True
-    )
-    assert len(ts_read3) == 5
-    assert len(ts_read3.files) == 2
-    assert ts_read3.files[0].fieldsets == {'base', 'demo'}
-    assert ts_read3.files[1].fieldsets == {'demo'}
-    assert ts_read3[1].f1[0] == 123
-    assert ts_read3[1].mf == 12345
+    ) as ts_read3:
+        assert len(ts_read3) == 5
+        assert len(ts_read3.files) == 2
+        assert ts_read3.files[0].fieldsets == {'base', 'demo'}
+        assert ts_read3.files[1].fieldsets == {'demo'}
+        assert ts_read3[1].f1[0] == 123
+        assert ts_read3[1].mf == 12345
 
 
 def test_basic_merging(tmp_path: Path):
     # Create a number of trajectory stores with names following a pattern.
     paths = []
-    tss = []
     for i in range(4):
         path = tmp_path / f'test_{i}.nc'
         paths.append(path)
-        ts = TrajectoryStore.create(base_file=path, title=f'store {i}')
-        for j in range(2):
-            t = make_test_trajectory((j + 1) * 5, j + i * 10)
-            ts.add(t)
-        ts.close()
-        tss.append(ts)
+        with TrajectoryStore.create(base_file=path, title=f'store {i}') as ts:
+            for j in range(2):
+                t = make_test_trajectory((j + 1) * 5, j + i * 10)
+                ts.add(t)
 
     # Merge the stores into a new store.
     merged_path = tmp_path / 'merged.aeic-store'
@@ -464,28 +451,24 @@ def test_basic_merging(tmp_path: Path):
         _ = TrajectoryStore.append(base_file=merged_path)
 
     # Open the merged store and check contents.
-    ts_merged = TrajectoryStore.open(base_file=merged_path)
-    assert ts_merged.nc_linked is True
-    assert len(ts_merged) == 8
-    assert ts_merged[0].name == 'traj_0'
-    assert ts_merged[7].name == 'traj_31'
-    assert ts_merged[4].flight_time.shape == (5,)
-    ts_merged.close()
+    with TrajectoryStore.open(base_file=merged_path) as ts_merged:
+        assert ts_merged.nc_linked is True
+        assert len(ts_merged) == 8
+        assert ts_merged[0].name == 'traj_0'
+        assert ts_merged[7].name == 'traj_31'
+        assert ts_merged[4].flight_time.shape == (5,)
 
 
 def test_pattern_merging(tmp_path: Path):
     # Create a number of trajectory stores with names following a pattern.
     paths = []
-    tss = []
     for i in range(10):
         path = tmp_path / f'test_{i:03d}.nc'
         paths.append(path)
-        ts = TrajectoryStore.create(base_file=path, title=f'store {i}')
-        for j in range(2):
-            t = make_test_trajectory((j + 1) * 5, j + i * 10)
-            ts.add(t)
-        ts.close()
-        tss.append(ts)
+        with TrajectoryStore.create(base_file=path, title=f'store {i}') as ts:
+            for j in range(2):
+                t = make_test_trajectory((j + 1) * 5, j + i * 10)
+                ts.add(t)
 
     # Merge the stores into a new store.
     merged_path = tmp_path / 'merged.aeic-store'
@@ -496,13 +479,12 @@ def test_pattern_merging(tmp_path: Path):
     )
 
     # Open the merged store and check contents.
-    ts_merged = TrajectoryStore.open(base_file=merged_path)
-    assert ts_merged.nc_linked is True
-    assert len(ts_merged) == 20
-    assert ts_merged[0].name == 'traj_0'
-    assert ts_merged[7].name == 'traj_31'
-    assert ts_merged[4].flight_time.shape == (5,)
-    ts_merged.close()
+    with TrajectoryStore.open(base_file=merged_path) as ts_merged:
+        assert ts_merged.nc_linked is True
+        assert len(ts_merged) == 20
+        assert ts_merged[0].name == 'traj_0'
+        assert ts_merged[7].name == 'traj_31'
+        assert ts_merged[4].flight_time.shape == (5,)
 
 
 def test_merging_with_associated_files(tmp_path: Path):
@@ -520,15 +502,14 @@ def test_merging_with_associated_files(tmp_path: Path):
     for j in range(10):
         base_path = tmp_path / f'base{j}.nc'
         extra_path = tmp_path / f'extra{j}.nc'
-        ts = TrajectoryStore.create(
+        with TrajectoryStore.create(
             base_file=base_path,
             associated_files=[(extra_path, ['demo'])],
-        )
-        for i in range(1, 6):
-            t = make_test_trajectory(i * 5, j * 5 + i)
-            t.add_fields(Extras.random(i * 5))
-            ts.add(t)
-        ts.close()
+        ) as ts:
+            for i in range(1, 6):
+                t = make_test_trajectory(i * 5, j * 5 + i)
+                t.add_fields(Extras.random(i * 5))
+                ts.add(t)
         base_paths.append(base_path)
         extra_paths.append(extra_path)
 
@@ -541,20 +522,19 @@ def test_merging_with_associated_files(tmp_path: Path):
     TrajectoryStore.merge(input_stores=extra_paths, output_store=merged_associated)
 
     #  4. Open merged base + merged associated and check contents.
-    ts_merged = TrajectoryStore.open(
+    with TrajectoryStore.open(
         base_file=merged_base, associated_files=[merged_associated]
-    )
-    assert ts_merged.nc_linked is True
-    assert len(ts_merged) == 50
-    for i in range(50):
-        assert ts_merged[i].name == f'traj_{i + 1}'
-    assert ts_merged[4].flight_time.shape == (25,)
-    assert len(ts_merged.files) == 2
-    assert ts_merged.files[0].fieldsets == {'base'}
-    assert ts_merged.files[1].fieldsets == {'demo'}
-    assert ts_merged[2].f1.shape == (15,)
-    assert ts_merged[2].mf is not None
-    ts_merged.close()
+    ) as ts_merged:
+        assert ts_merged.nc_linked is True
+        assert len(ts_merged) == 50
+        for i in range(50):
+            assert ts_merged[i].name == f'traj_{i + 1}'
+        assert ts_merged[4].flight_time.shape == (25,)
+        assert len(ts_merged.files) == 2
+        assert ts_merged.files[0].fieldsets == {'base'}
+        assert ts_merged.files[1].fieldsets == {'demo'}
+        assert ts_merged[2].f1.shape == (15,)
+        assert ts_merged[2].mf is not None
 
 
 def test_indexing(tmp_path: Path):
@@ -564,19 +544,17 @@ def test_indexing(tmp_path: Path):
 
     # 2. Create trajectory store containing those flight IDs.
     path = tmp_path / 'test.nc'
-    ts = TrajectoryStore.create(base_file=path)
-    for s in seeds:
-        ts.add(make_test_trajectory(50, s))
-    ts.close()
+    with TrajectoryStore.create(base_file=path) as ts:
+        for s in seeds:
+            ts.add(make_test_trajectory(50, s))
 
     # 3. Reopen the trajectory store.
-    ts_read = TrajectoryStore.open(base_file=path)
-
-    # 4. Look up trajectories by flight ID.
-    for s in seeds:
-        traj = ts_read.lookup(s)
-        assert traj is not None
-        assert traj.flight_id == s
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        # 4. Look up trajectories by flight ID.
+        for s in seeds:
+            traj = ts_read.get_flight(s)
+            assert traj is not None
+            assert traj.flight_id == s
 
 
 def test_merged_store_indexing(tmp_path: Path):
@@ -589,20 +567,18 @@ def test_merged_store_indexing(tmp_path: Path):
     for i in range(10):
         path = tmp_path / f'test{i}.nc'
         paths.append(path)
-        ts = TrajectoryStore.create(base_file=path)
-        for s in seeds[i * 100 : (i + 1) * 100]:
-            ts.add(make_test_trajectory(50, s))
-        ts.close()
+        with TrajectoryStore.create(base_file=path) as ts:
+            for s in seeds[i * 100 : (i + 1) * 100]:
+                ts.add(make_test_trajectory(50, s))
 
     # 3. Merge the stores.
     merged_path = tmp_path / 'merged.aeic-store'
     TrajectoryStore.merge(input_stores=paths, output_store=merged_path)
 
     # 4. Open the merged store.
-    ts_read = TrajectoryStore.open(base_file=merged_path)
-
-    # 5. Look up trajectories by flight ID.
-    for s in seeds:
-        traj = ts_read.lookup(s)
-        assert traj is not None
-        assert traj.flight_id == s
+    with TrajectoryStore.open(base_file=merged_path) as ts_read:
+        # 5. Look up trajectories by flight ID.
+        for s in seeds:
+            traj = ts_read.get_flight(s)
+            assert traj is not None
+            assert traj.flight_id == s

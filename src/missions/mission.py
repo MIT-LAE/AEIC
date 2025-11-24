@@ -4,19 +4,8 @@ from functools import cached_property
 import pandas as pd
 
 from utils.airports import airport
-from utils.custom_types import Position
 from utils.helpers import great_circle_distance, iso_to_timestamp
-
-
-def _airport_position(code: str) -> Position:
-    ap = airport(code)
-    if ap is None:
-        raise ValueError(f'Unknown airport code: {code}')
-    return Position(
-        longitude=ap.longitude,
-        latitude=ap.latitude,
-        altitude=ap.elevation or 0.0,
-    )
+from utils.types import Position
 
 
 @dataclass
@@ -28,13 +17,20 @@ class Mission:
     load_factor: float
     aircraft_type: str
 
+    @staticmethod
+    def _airport_position(code: str) -> Position:
+        ap = airport(code)
+        if ap is None:
+            raise ValueError(f'Unknown airport code: {code}')
+        return ap.position
+
     @cached_property
     def origin_position(self) -> Position:
-        return _airport_position(self.origin)
+        return self._airport_position(self.origin)
 
     @cached_property
     def destination_position(self) -> Position:
-        return _airport_position(self.destination)
+        return self._airport_position(self.destination)
 
     @cached_property
     def gc_distance(self) -> float:

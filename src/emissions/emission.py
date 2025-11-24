@@ -57,10 +57,10 @@ class Emission:
             self.fuel = tomllib.load(f)
 
         # Unpack trajectory lengths: total, climb, cruise, descent points
-        self.Ntot = len(trajectory)
-        self.NClm = trajectory.NClm
-        self.NCrz = trajectory.NCrz
-        self.NDes = trajectory.NDes
+        self.n_total = len(trajectory)
+        self.n_climb = trajectory.n_climb
+        self.n_cruise = trajectory.n_cruise
+        self.n_descent = trajectory.n_descent
 
         # Flag to use performance model for all segments or just cruise
         self.traj_emissions_all = ac_performance.config['climb_descent_usage']
@@ -68,7 +68,9 @@ class Emission:
         self.pmnvol_mode = ac_performance.config['nvpm_method']
 
         # Pre-allocate structured arrays for emission indices per point
-        self.emission_indices = np.full((), -1, dtype=self.__emission_dtype(self.Ntot))
+        self.emission_indices = np.full(
+            (), -1, dtype=self.__emission_dtype(self.n_total)
+        )
 
         # Pre-allocate LTO emissions arrays
         self.LTO_emission_indices = np.full((), -1, dtype=self.__emission_dtype(4))
@@ -81,7 +83,7 @@ class Emission:
 
         # Storage for pointwise (segment) emissions and summed totals
         self.pointwise_emissions_g = np.full(
-            (), -1, dtype=self.__emission_dtype(self.Ntot)
+            (), -1, dtype=self.__emission_dtype(self.n_total)
         )
         self.summed_emission_g = np.full((), -1, dtype=self.__emission_dtype(1))
 
@@ -154,9 +156,9 @@ class Emission:
         """
         # Determine start/end indices for climb-cruise-descent or full mission
         if self.traj_emissions_all:
-            i_start, i_end = 0, self.Ntot
+            i_start, i_end = 0, self.n_total
         else:
-            i_start, i_end = 0, -self.NDes
+            i_start, i_end = 0, -self.n_descent
 
         # --- Compute CO2 and H2O emission indices for cruise ---
         self.emission_indices['CO2'][i_start:i_end], _ = EI_CO2(self.fuel)

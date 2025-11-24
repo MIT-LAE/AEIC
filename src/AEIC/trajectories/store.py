@@ -109,9 +109,9 @@ class TrajectoryStore:
     The intention here is to support a number of different use cases for
     storing trajectory and associated (normally emissions) data.
 
-    Trajectory stores are *not* thread-safe. A program may create and use
+    **Trajectory stores are *not* thread-safe. A program may create and use
     TrajectoryStore values from a single thread only. This single-threaded
-    restriction applies both to read-only access and mutation of stores.
+    restriction applies both to read-only access and mutation of stores.**
 
     Data stored in a `TrajectoryStore` is divided into "field sets"
     (represented by the `FieldSet` class from the
@@ -121,8 +121,8 @@ class TrajectoryStore:
     example). "Data fields" in field sets have values for each point along a
     trajectory: the length of the data values in each of these fields must
     match the length of the trajectory. "Metadata fields" in field sets are
-    per-trajectory values: there is one value of each of each of these fields
-    for each trajectory. Each field in a field set has a name, a data type and
+    per-trajectory values: there is one value of each of these fields for each
+    trajectory. Each field in a field set has a name, a data type and
     associated information used for serialization to and from NetCDF files.
 
     A `TrajectoryStore` always contains the "base" field set, which holds the
@@ -133,7 +133,7 @@ class TrajectoryStore:
     The `TrajectoryStore` class supports three access modes: CREATE, READ and
     APPEND. In addition, it is possible to create additional associated NetCDF
     files associated with an existing `TrajectoryStore` using the
-    `create_associated` method.
+    `create_associated` class method.
 
     A `TrajectoryStore` may be:
      - created purely in-memory, or
@@ -153,7 +153,6 @@ class TrajectoryStore:
 
     TODO: Continue this and work out the best way to integrate it into the
     Sphinx docs. This could get quite long.
-
     """
 
     class FileMode(str, Enum):
@@ -165,22 +164,49 @@ class TrajectoryStore:
     class NcFiles:
         """Internal class used to store information about NetCDF files
         associated with field sets in a TrajectoryStore.
-
         """
 
         path: list[Path]
+        """Paths to NetCDF files: multiple to support merged stores."""
+
         fieldsets: set[str]
+        """Field sets stored in the NetCDF files."""
+
         dataset: list[Dataset]
+        """Netcdf4 Dataset objects for the files: multiple to support merged
+        stores."""
+
         traj_dim: list[Dimension]
+        """Trajectory dimension objects for the files: multiple to support
+        merged stores."""
+
         groups: dict[str, list[Group]]
+        """Mapping from field set names to NetCDF groups in the files: groups
+        are multiple for each field set name to support merged stores."""
+
         size_index: list[int] | None
+        """Cumulative trajectory count through the NetCDF files represented
+        here: not used for single NetCDF stores, but for merged stored, used to
+        find the underlying NetCDF file containing a given trajectory index."""
+
         title: str | None = None
+        """Title global attribute value."""
+
         comment: str | None = None
+        """Comment global attribute value."""
+
         history: str | None = None
+        """History global attribute value."""
+
         source: str | None = None
+        """Source global attribute value."""
+
         created: datetime | None = None
+        """Creation time global attribute value."""
 
     active_in_thread: int | None = None
+    """Thread ID of active TrajectoryStore instance, if any. Multi-threaded
+    access is not allowed. This attribute is used to check for this."""
 
     # Allowed constructor arguments by mode:
     #
@@ -193,14 +219,14 @@ class TrajectoryStore:
     #  X ? X  base_file
     #  X X X  mode
     #  ?      override
-    #  ? ? ?  *associated_files: must be str for APPEND and READ (field sets
-    #           in each file are fixed already) and must be tuple[str,
-    #           list[str]] for CREATE (allotment of field sets to associated
-    #           files must be specified).
+    #  ? ? ?  *associated_files: must be list[str] for APPEND and READ (field
+    #         sets in each file are fixed already) and must be list[tuple[str,
+    #         list[str]]] for CREATE (allotment of field sets to associated
+    #         files must be specified).
     def __init__(
         self,
         *,
-        base_file: str | None = None,
+        base_file: PathType | None = None,
         mode: FileMode = FileMode.READ,
         override: bool | None = None,
         force_fieldset_matches: bool | None = None,
@@ -219,16 +245,15 @@ class TrajectoryStore:
             Path to the base NetCDF file. Required in READ and APPEND modes.
         mode : TrajectoryStore.FileMode, optional
             File access mode. One of:
-            - READ: Open an existing NetCDF file for read-only access.
-            - CREATE: Create a new NetCDF file for writing.
-            - APPEND: Open an existing NetCDF file for appending new
-                trajectories.
+            - READ: Open an existing store for read-only access.
+            - CREATE: Create a new store for writing.
+            - APPEND: Open an existing store for appending new trajectories.
             Default is READ.
         override : bool | None, optional
-            If True in READ mode, FieldSets from associated files will override
-            any FieldSets of the same name in the base file. Default is False.
+            If true in READ mode, `FieldSet`s from associated files will override
+            any `FieldSet`s of the same name in the base file. Default is False.
         force_fieldset_matches : bool | None, optional
-            If True in READ mode, FieldSets from NetCDF files that do not match
+            If True in READ mode, `FieldSet`s from NetCDF files that do not match
             the corresponding FieldSet in the registry will be accepted with a
             warning. Default is False. There are no guarantees that things will
             work if this is set to True!
@@ -236,7 +261,7 @@ class TrajectoryStore:
             Paths to associated NetCDF files containing additional data or
             metadata fields. Each associated file may be specified as a string
             path or as a tuple of the form (path, [fieldset_names]) where
-            fieldset_names is a list of names of FieldSets to load from the
+            fieldset_names is a list of names of `FieldSet`s to load from the
             associated file.
         title : str | None, optional
             Title for the base NetCDF file. (Global NetCDF attribute.)
@@ -271,9 +296,9 @@ class TrajectoryStore:
         # Indexable trajectory stores have trajectories that have a numeric
         # flight ID from the mission database. For now, we don't know whether
         # that's the case: when we open a store, we'll probe a trajectory to
-        # see if it has a flight ID anbd set this accordingly; similarly, if
-        # we're creating creating a new store, we'll decide on indexability
-        # when we see the first trajectory added to the store.
+        # see if it has a flight ID and set this accordingly; similarly, if
+        # we're creating a new store, we'll decide on indexability when we see
+        # the first trajectory added to the store.
         #
         # The index information is stored in a special NetCDF group that we
         # access separately from the main NcFiles mechanism.
@@ -286,83 +311,18 @@ class TrajectoryStore:
         # or close.
         self.index_stale = False
 
-        # Check input arguments based on file mode.
-        global_attributes_ok = mode == self.FileMode.CREATE
-        if not global_attributes_ok and (
-            title is not None
-            or comment is not None
-            or history is not None
-            or source is not None
-        ):
-            raise ValueError(
-                'global attributes (title, comment, history, '
-                'source) may only be specified in CREATE mode'
-            )
-        self.global_attributes = {}
-        if title is not None:
-            self.global_attributes['title'] = title
-        if comment is not None:
-            self.global_attributes['comment'] = comment
-        if history is not None:
-            self.global_attributes['history'] = history
-        if source is not None:
-            self.global_attributes['source'] = source
-
-        # Setting base_file=None in CREATE mode creates an empty TrajectoryStore.
-        # We can switch to a file-backed store later using the save method, but
-        # in the meantime, the trajectory cache is limited in size and cannot
-        # evict any items. Adding too many trajectories to an in-memory
-        # TrajectoryStore will result in a TrajectoryCache.EvictionOccurred
-        # exception.
-        base_file_req = mode != self.FileMode.CREATE
-        if base_file is None and base_file_req:
-            raise ValueError(f'base_file required in file mode {mode}')
-        self.base_file = base_file
-        check_paths: list[PathType] = []
-        if base_file is not None:
-            check_paths.append(base_file)
-
-        override_ok = mode == self.FileMode.READ
-        if override is not None and not override_ok:
-            raise ValueError('override may only be specified in READ mode')
-        self.override = override if override is not None else False
-
-        force_fieldset_matches_ok = mode == self.FileMode.READ
-        if force_fieldset_matches is not None and not force_fieldset_matches_ok:
-            raise ValueError(
-                'force_fieldset_matches may only be specified in READ mode'
-            )
-        self.force_fieldset_matches = (
-            force_fieldset_matches if force_fieldset_matches is not None else False
+        # Check that all constructor arguments are consistent.
+        self._check_constructor_arguments(
+            mode,
+            base_file,
+            override,
+            force_fieldset_matches,
+            associated_files,
+            title,
+            comment,
+            history,
+            source,
         )
-
-        if associated_files is None:
-            associated_files = []
-        if mode in (self.FileMode.APPEND, self.FileMode.READ):
-            if any(not isinstance(f, PathType) for f in associated_files):
-                raise ValueError(
-                    'associated_files must be paths in APPEND and READ modes'
-                )
-            for f in associated_files:
-                assert isinstance(f, PathType)
-                check_paths.append(f)
-        if mode == self.FileMode.CREATE:
-            if any(not valid_associated_file_tuple(f) for f in associated_files):
-                raise ValueError(
-                    'associated_files must be tuple[PathType, list[str]] in CREATE mode'
-                )
-            for f in associated_files:
-                assert isinstance(f, tuple)
-                assert isinstance(f[0], PathType)
-                check_paths.append(f[0])
-        self.associated_files = associated_files
-        self.associated_fieldsets: set[str] = set()
-        if mode == self.FileMode.CREATE:
-            self._calc_associated_fieldsets()
-
-        # Check that file paths exist (for reading) or do not exist (for
-        # creation).
-        self._check_file_paths(check_paths, mode)
 
         # Trajectories are stored as an LRU cache indexed by the index of the
         # trajectory. (This is done to handle cases where the trajectory store
@@ -409,24 +369,43 @@ class TrajectoryStore:
 
         # Open an existing file or files.
         if mode in (self.FileMode.READ, self.FileMode.APPEND):
-            if self.merged_store:
-                self._open_merged()
-            else:
-                self._open()
+            try:
+                if self.merged_store:
+                    self._open_merged()
+                else:
+                    self._open()
+            except Exception:
+                self.close()
+                raise
 
     @classmethod
     def create(cls, *args, **kwargs) -> 'TrajectoryStore':
-        """Create a new TrajectoryStore."""
+        """Create a new TrajectoryStore.
+
+        This class method is the preferred way to create a new trajectory
+        store. Call this method in preference to calling the class constructor
+        directly.
+        """
         return cls(mode=TrajectoryStore.FileMode.CREATE, *args, **kwargs)
 
     @classmethod
     def open(cls, *args, **kwargs) -> 'TrajectoryStore':
-        """Open an existing TrajectoryStore read-only."""
+        """Open an existing TrajectoryStore read-only.
+
+        This class method is the preferred way to open an existing trajectory
+        store for reading. Call this method in preference to calling the class
+        constructor directly.
+        """
         return cls(mode=TrajectoryStore.FileMode.READ, *args, **kwargs)
 
     @classmethod
     def append(cls, *args, **kwargs) -> 'TrajectoryStore':
-        """Open an existing TrajectoryStore for appending."""
+        """Open an existing TrajectoryStore for appending.
+
+        This class method is the preferred way to open an existing trajectory
+        store for appending. Call this method in preference to calling the
+        class constructor directly.
+        """
         return cls(mode=TrajectoryStore.FileMode.APPEND, *args, **kwargs)
 
     @property
@@ -438,21 +417,15 @@ class TrajectoryStore:
         """
         return self._nc_files
 
-    def _calc_associated_fieldsets(self) -> None:
-        # This is slightly unwieldy because of Python's restrictions on
-        # using isinstance with parameterized generics.
-        assert isinstance(self.associated_files, list)
-        self.associated_fieldsets = set()
-        for t in self.associated_files:
-            assert isinstance(t, tuple)
-            for f in t[1]:
-                self.associated_fieldsets.add(f)
-
     def save(
         self, base_file: PathType, associated_files: AssociatedFiles | None = None
     ):
         """Create NetCDF files for a TrajectoryStore currently not linked to
         one.
+
+        This method is used when an in-memory `TrajectoryStore` needs to be
+        persisted to disk. This method can *only* be called on a
+        `TrajectoryStore` created in CREATE mode with `base_file=None`.
         """
         if self.nc_linked:
             raise RuntimeError(
@@ -465,17 +438,8 @@ class TrajectoryStore:
 
         # If associated files are provided, check them in the same way as in
         # the constructor.
-        if associated_files is None:
-            associated_files = []
-        if any(not valid_associated_file_tuple(f) for f in associated_files):
-            raise ValueError(
-                'associated_files must be tuple[PathType, list[str]] in save'
-            )
-        for f in associated_files:
-            assert isinstance(f, tuple)
-            assert isinstance(f[0], PathType)
-            check_paths.append(f[0])
-        self.associated_files = associated_files
+        self.associated_files = associated_files if associated_files is not None else []
+        check_paths += self._check_associated_files('save')
         self._calc_associated_fieldsets()
 
         # Check that file paths do not already exist.
@@ -546,7 +510,7 @@ class TrajectoryStore:
             # These are the only checks we're going to do here: the call to
             # _write_data will fail if any of the fields from the field sets
             # are missing or of the wrong type.
-            if not hasattr(associated_data, 'FIELD_SETS'):
+            if not isinstance(associated_data, HasFieldSets):
                 raise ValueError(
                     'Result of mapping_function must implement HasFieldSets protocol'
                 )
@@ -580,13 +544,24 @@ class TrajectoryStore:
 
     def close(self):
         """Close any open NetCDF files associated with the trajectory store."""
+
+        # If we have an index and it's stale, reindex before closing to ensure
+        # consistency.
         if self.indexable and self.index_stale:
             self._reindex()
+
+        # Close each NetCDF4 Dataset associated with each of the open stores
+        # (there will be multiple Datasets if we're using a merged store).
         for nc in self._nc_files:
             for ds in nc.dataset:
                 ds.close()
+
+        # If there is a separate index Dataset (also for merged stores), close
+        # it too.
         if self.index_dataset is not None:
             self.index_dataset.close()
+
+        # Clear out everything to do with NetCDF4 Datasets we had open.
         self._nc.clear()
         self._nc_files.clear()
         self.index_dataset = None
@@ -601,39 +576,21 @@ class TrajectoryStore:
         """
         if not self._write_enabled:
             raise RuntimeError('Cannot sync TrajectoryStore not opened in write mode')
+
+        # If we have an index and it's stale, reindex as part of the sync.
         if self.indexable and self.index_stale:
             self._reindex()
+
+        # Sync each NetCDF4 Dataset associated with each of the open stores
+        # (there will be multiple Datasets if we're using a merged store).
         for nc in self._nc_files:
-            nc.dataset[0].sync()
+            for ds in nc.dataset:
+                ds.sync()
+
+        # If there is a separate index Dataset (also for merged stores), sync
+        # it too.
         if self.index_dataset is not None:
             self.index_dataset.sync()
-
-    def __len__(self):
-        """Count number of trajectories in store."""
-        if self.nc_linked:
-            # Normally, use the base field set for length calculations.
-            # Sometimes we need the length of a store that doesn't contain the
-            # base field set (this happens when merging associated files, for
-            # example), so we pick another field set that we do have.
-            check_fs = BASE_FIELDSET_NAME
-            if check_fs not in self._nc:
-                check_fs = next(iter(self._nc))
-            return sum(len(d) for d in self._nc[check_fs].traj_dim)
-        return len(self._trajectories)
-
-    def __getitem__(self, idx) -> Trajectory:
-        """Retrieve a trajectory by numeric index (in order of addition)."""
-        if idx in self._trajectories:
-            return self._trajectories[idx]
-        if self.nc_linked:
-            self._load_trajectory(idx)
-        if idx not in self._trajectories:
-            raise IndexError('Trajectory index out of range')
-        return self._trajectories[idx]
-
-    def __iter__(self) -> Iterator[Trajectory]:
-        """Iterator over trajectories in store in index order."""
-        return _TrajectoryStoreIterator(self)
 
     def add(self, trajectory: Trajectory) -> int:
         """Add a trajectory to the store and return its index."""
@@ -641,15 +598,19 @@ class TrajectoryStore:
             raise RuntimeError(
                 'Cannot add trajectory to TrajectoryStore not opened in write mode'
             )
+
+        # As soon as we've added one trajectory to the store, we have fixed the
+        # data schema, which we check for each new trajectory.
         if len(self._trajectories) > 0:
             proto = next(iter(self._trajectories.values()))
-            if hash(trajectory.data_dictionary) != hash(proto.data_dictionary):
+            if hash(trajectory) != hash(proto):
                 raise ValueError(
                     'All trajectories in a TrajectoryStore must have the same '
                     'data fields'
                 )
 
-        # Decide on whether or not we can index the store.
+        # Decide on whether or not we can index the store, checking consistency
+        # on this decision with each trajectory we add.
         has_flight_id = (
             hasattr(trajectory, 'flight_id') and trajectory.flight_id is not None
         )
@@ -675,6 +636,10 @@ class TrajectoryStore:
         # Write the trajectory data to the output NetCDF file.
         self._write_trajectory(saved_index)
 
+        # Whenever we add a trajectory, the trajectory index is no longer up to
+        # date. For efficiency, we do not reindex immediately, deferring either
+        # to close or sync of the store, or to when an index lookup is
+        # requested.
         if self.indexable:
             self.index_stale = True
 
@@ -691,38 +656,14 @@ class TrajectoryStore:
         history: str | None = None,
         source: str | None = None,
     ) -> None:
-        # Parameter checks and normalization.
-        if input_stores is not None and input_stores_pattern is not None:
-            raise ValueError(
-                'Specify either input_stores or input_stores_pattern, not both'
-            )
-        if input_stores_pattern is not None and input_stores_index_range is None:
-            raise ValueError(
-                'When specifying input_stores_pattern, '
-                'input_stores_index_range must also be specified'
-            )
-        if input_stores_pattern is not None:
-            assert input_stores_index_range is not None
-            input_stores = [
-                Path(str(input_stores_pattern).format(index=i))
-                for i in range(
-                    input_stores_index_range[0], input_stores_index_range[1] + 1
-                )
-            ]
-        assert input_stores is not None
-        for p in input_stores:
-            if not Path(p).exists():
-                raise ValueError(f'Input TrajectoryStore file "{p}" does not exist')
-            if Path(p).suffix != '.nc':
-                raise ValueError(f'Merge input "{p}" is not a NetCDF file')
-        if not str(output_store).endswith('.aeic-store'):
-            raise ValueError(
-                'Output TrajectoryStore file must have ".aeic-store" extension'
-            )
-        if Path(output_store).exists():
-            raise ValueError(
-                f'Output TrajectoryStore file "{output_store}" already exists'
-            )
+        """Merge multiple `TrajectoryStore` files into a single merged store.
+
+        TODO: Finish this docstring."""
+
+        # Check parameters and normalize input stores list.
+        input_stores = TrajectoryStore._check_merge_arguments(
+            output_store, input_stores, input_stores_pattern, input_stores_index_range
+        )
 
         # Create output directory.
         os.mkdir(output_store)
@@ -756,30 +697,7 @@ class TrajectoryStore:
 
         # Create merged index.
         if indexable:
-            index_dataset = Dataset(
-                Path(output_store) / '_index.nc', 'w', keepweakref=True
-            )
-            index_dataset.createDimension('trajectory', None)
-            index_group = index_dataset.createGroup('_index')
-            index_group.createVariable('flight_id', np.int64, ('trajectory',))
-            index_group.createVariable('trajectory_index', np.int64, ('trajectory',))
-            flight_ids = []
-            trajectory_indexes = []
-            index_offset = 0
-            for input_store in input_stores:
-                ts = TrajectoryStore.open(
-                    base_file=Path(output_store) / Path(input_store).name
-                )
-                assert ts.index_group is not None
-                vs = ts.index_group.variables
-                flight_ids += list(vs['flight_id'][:])
-                trajectory_indexes += [
-                    idx + index_offset for idx in vs['trajectory_index'][:]
-                ]
-                index_offset += len(ts)
-            id_pairs = sorted(zip(trajectory_indexes, flight_ids), key=lambda x: x[1])
-            index_group.variables['flight_id'][:] = [id for _, id in id_pairs]
-            index_group.variables['trajectory_index'][:] = [idx for idx, _ in id_pairs]
+            TrajectoryStore._create_merged_store_index(output_store, input_stores)
 
         # Write metadata JSON file to output directory.
         data = dict(stores=store_data, created=datetime.now(tz=UTC).isoformat())
@@ -794,118 +712,282 @@ class TrajectoryStore:
         with open(Path(output_store) / 'metadata.json', 'w') as f:
             json.dump(data, f)
 
-    def _load_trajectory(self, index: int) -> None:
-        """Load a trajectory at the given index from the NetCDF file(s)."""
-        data = {}
-        npoints: int | None = None
+    def get_flight(self, flight_id: int) -> Trajectory | None:
+        """Lookup a trajectory by flight ID."""
+        if not self.indexable:
+            raise RuntimeError('Cannot lookup by flight_id in non-indexable store')
 
-        # Handle field sets one by one.
-        for fs_name in self._nc:
-            # Look up the field set in the field set registry.
-            fs = FieldSet.from_registry(fs_name)
+        # Reindex lazily if needed.
+        if self.index_stale:
+            self._reindex()
 
-            # File information for the field set and the NetCDF group for
-            # variables in the field set.
-            nc_files = self._nc[fs_name]
-            file_index = 0
-            group_index = index
-            if nc_files.size_index is not None:
-                file_index = bisect.bisect_left(nc_files.size_index, index + 1)
-                if file_index >= len(nc_files.size_index):
-                    return
-                group_index = index - nc_files.size_index[file_index]
-            group = nc_files.groups[fs_name][file_index]
+        # The flight IDs and trajectory indexes are stored in parallel in the
+        # index group.
+        assert self.index_group is not None
+        flight_ids = self.index_group.variables['flight_id'][:]
+        traj_idxs = self.index_group.variables['trajectory_index'][:]
 
-            # Write per-point data as variable-length arrays.
-            for name, field in fs.items():
-                if name not in group.variables:
-                    raise ValueError(
-                        f'Data field "{name}" does not exist in NetCDF file'
-                    )
-                data[name] = group.variables[name][group_index]
-                if not field.metadata and npoints is None:
-                    npoints = len(data[name])
+        # Binary search in the flight IDs.
+        idx = bisect.bisect_left(flight_ids, flight_id)
 
-        # Construct the return trajectory.
-        assert npoints is not None
-        traj = Trajectory(npoints=npoints)
-        for fs_name in self._nc:
-            if fs_name != BASE_FIELDSET_NAME:
-                traj.add_fields(FieldSet.from_registry(fs_name))
-        for k, v in data.items():
-            setattr(traj, k, v)
+        # Check that we really found the flight ID.
+        if idx >= len(flight_ids) or flight_ids[idx] != flight_id:
+            return None
 
-        self._trajectories[index] = traj
+        # Look up the trajectory index in the same position as the flight ID we
+        # found and return the trajectory in that position.
+        return self[traj_idxs[idx]]
 
-    def _write_trajectory(self, index: int) -> None:
-        """Write a trajectory at the given index to the NetCDF file(s)."""
+    def __enter__(self):
+        return self
 
-        # Look up the trajectory to write and write to files.
-        self._write_data(traj=self._trajectories[index], index=index)
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        # Returning False propagates exceptions.
+        return False
 
-    def _write_data(
+    def __len__(self):
+        """Count number of trajectories in store."""
+        if self.nc_linked:
+            # Normally, use the base field set for length calculations.
+            # Sometimes we need the length of a store that doesn't contain the
+            # base field set (this happens when merging associated files, for
+            # example), so we pick another field set that we do have.
+            check_fs = BASE_FIELDSET_NAME
+            if check_fs not in self._nc:
+                check_fs = next(iter(self._nc))
+
+            # Return the sum of the trajectory dimension lengths in all of the
+            # NetCDF4 Datasets associated with the field set we're using to
+            # measure the length. (There will be multiple Datasets if we're
+            # using a merged store.)
+            return sum(len(d) for d in self._nc[check_fs].traj_dim)
+        return len(self._trajectories)
+
+    def __getitem__(self, idx) -> Trajectory:
+        """Retrieve a trajectory by numeric index (in order of addition)."""
+
+        # If the requested index is in the LRU trajectory cache, return it
+        # immediately.
+        if idx in self._trajectories:
+            return self._trajectories[idx]
+
+        # Otherwise, if the store is linked to external NetCDF files, attempt
+        # to load the requested trajectory into the cache.
+        if self.nc_linked:
+            self._load_trajectory(idx)
+
+        # Load failed or the index is unknown.
+        if idx not in self._trajectories:
+            raise IndexError('Trajectory index out of range')
+
+        # Return the trajectory from the cache.
+        return self._trajectories[idx]
+
+    def __iter__(self) -> Iterator[Trajectory]:
+        """Iterator over trajectories in store in index order."""
+        return _TrajectoryStoreIterator(self)
+
+    def _create(self):
+        """Create a new NetCDF file (or files) for writing trajectories.
+
+        There is one NetCDF group per field set, and more than one field set
+        may be stored in each NetCDF file.
+
+        This function is only called once the first trajectory is added to the
+        store because we need to know what field sets are being stored.
+        """
+
+        # We cannot create the NetCDF file until we know what field sets are
+        # involved. For that we need at least one trajectory.
+        assert len(self._trajectories) > 0
+
+        # Get a prototype trajectory: all trajectories in the store must have
+        # the same field sets, so it doesn't matter which one we take.
+        proto = next(iter(self._trajectories.values()))
+
+        # Determine the field sets stored in the base NetCDF file (those not in
+        # associated files).
+        base_nc_fieldsets = proto.X_fieldsets - self.associated_fieldsets
+
+        # Create the base NetCDF file.
+        assert self.base_file is not None
+        self._create_nc_file(self.base_file, base_nc_fieldsets)
+
+        # Create the associated NetCDF files. The `associated_name` and
+        # `associated_hash` arguments are used to record the link between the
+        # associated files and the base file.
+        base_nc_file = self._nc[BASE_FIELDSET_NAME]
+        for associated_file in self.associated_files:
+            # Another case of clumsy typing due to Python's restrictions on
+            # isinstance.
+            assert isinstance(associated_file, tuple)
+            nc_file, fieldsets = associated_file
+            self._create_nc_file(
+                nc_file,
+                set(fieldsets),
+                associated_name=base_nc_file.path[0],
+                associated_hash=base_nc_file.dataset[0].id_hash,
+            )
+
+    def _create_nc_file(
         self,
-        *,
-        index: int,
-        traj: Trajectory | None = None,
-        data: Any | None = None,
-        single_nc_file: 'TrajectoryStore.NcFiles | None' = None,
-        fieldsets: list[str] | None = None,
-    ) -> None:
-        """Write a trajectory at the given index to the NetCDF file(s)."""
+        nc_file: str | Path,
+        fieldsets: set[str],
+        associated_name: Path | None = None,
+        associated_hash: str | None = None,
+        save: bool = True,
+    ) -> 'TrajectoryStore.NcFiles':
+        # Ensure output directory exists.
+        nc_file = Path(nc_file).resolve()
+        if not nc_file.parent.exists():
+            raise ValueError(f'Output directory {nc_file.parent} does not exist')
 
-        # NOTE: I thought about implementing some sort of batching here, but I
-        # think we might be able to rely on the internal caching that the
-        # NetCDF4 library does.
+        # Ensure file does not already exist.
+        if nc_file.exists():
+            raise ValueError(f'Output file {nc_file} already exists')
 
-        # Check: should be one or the other.
-        if traj is None and data is None:
-            raise ValueError('Either traj or data must be provided')
+        # Create NetCDF4 file in write mode.
+        dataset = Dataset(nc_file, mode='w', format='NETCDF4', keepweakref=True)
 
-        # In the normal case, we handle all the field sets in the store. When
-        # creating an associated NetCDF file, we only handle the specified
-        # field set.
-        if fieldsets is None:
-            fieldsets = list(self._nc.keys())
+        # The only dimension we need is the trajectory. All per-point data is
+        # stored using NetCDF4 variable-length arrays.
+        traj_dim = dataset.createDimension('trajectory', None)
 
-        # Handle field sets one by one.
+        # Set up basic global attributes.
+        if len(self.global_attributes) > 0:
+            if 'title' in self.global_attributes:
+                dataset.title = self.global_attributes['title']
+            if 'comment' in self.global_attributes:
+                dataset.comment = self.global_attributes['comment']
+            if 'history' in self.global_attributes:
+                dataset.history = self.global_attributes['history']
+            if 'source' in self.global_attributes:
+                dataset.source = self.global_attributes['source']
+
+        # Set up creation time global attribute.
+        if save and 'created' not in self.global_attributes:
+            t = datetime.now(UTC).astimezone().isoformat()
+            self.global_attributes['created'] = t
+            dataset.created = self.global_attributes['created']
+
+        # Set up global attribute containing field set names. (We mess with the
+        # sort order here to make sure that the "base" field set comes first.)
+        fs_names = sorted(
+            list(fieldsets), key=lambda s: '0000' + s if s == 'base' else s
+        )
+        dataset.fieldset_names = fs_names
+
+        # Set up global attribute containing hex digest hashes of field sets.
+        # These are used for making the overall ID hash for the store, which is
+        # used for linking from associated files.
+        fs_hashes = [FieldSet.from_registry(name).digest for name in fs_names]
+        dataset.fieldset_hashes = fs_hashes
+
+        #  Calculate and set id_hash attribute from hashes of field sets.
+        m = hashlib.md5()
+        for h in fs_hashes:
+            m.update(h.encode('utf-8'))
+        dataset.id_hash = m.hexdigest()
+
+        # Set up associated file attributes, if applicable.
+        if associated_name is not None:
+            dataset.associated_name = str(associated_name)
+        if associated_hash is not None:
+            dataset.associated_hash = associated_hash
+
+        # Each named field set gets its own group in the NetCDF file.
+        groups = {}
+
+        # Variable length types for floating point and integer per-point data.
+        # (NetCDF4 handles variable-length strings natively so we add Python's
+        # string type here.)
+        vl_types: dict[type, VLType | type] = {str: str}
         for fs_name in fieldsets:
-            # File information for the field set and the NetCDF group for
-            # variables in the field set.
             fs = FieldSet.from_registry(fs_name)
-            nc_file = single_nc_file or self._nc[fs_name]
-            group = nc_file.groups[fs_name][0]
+            for field in fs.values():
+                if not field.metadata and field.field_type not in vl_types:
+                    try:
+                        vl_types[field.field_type] = dataset.createVLType(
+                            field.field_type, f'{field.field_type.__name__}_vlen'
+                        )
+                    except TypeError:
+                        raise ValueError(
+                            f'Unsupported field type {field.field_type} '
+                            f'for variable-length array in field set "{fs_name}"'
+                        )
 
-            # Write per-point data as variable-length arrays.
-            for name in group.variables:
-                field = fs[name]
-                if not field.metadata:
-                    val = None
-                    if traj is not None:
-                        val = traj.data[name]
-                        if val is None and hasattr(traj, name):
-                            val = getattr(traj, name)
-                    if data is not None:
-                        val = getattr(data, name)
-                    if val is None:
+        # Iterate over provided field set names.
+        for fs_name in fieldsets:
+            # Look up the field set in the field set registry. By the time we
+            # reach here, the field sets should have already been created,
+            # which stores them in the registry.
+            fs = FieldSet.from_registry(fs_name)
+
+            # Create the field set's group. (We need a list of groups here for
+            # the merged store case.)
+            g = dataset.createGroup(fs_name)
+            groups[fs_name] = [g]
+
+            # For each variable (per-point or per-trajectory) in the field set,
+            for field_name, metadata in fs.items():
+                if not metadata.metadata:
+                    # if it's a per-point variable, create a variable-length
+                    # array of the apprropriate scalar type, indexed by the
+                    # trajectory dimension.
+                    vl_type = vl_types.get(metadata.field_type, None)
+                    if vl_type is None:
                         raise ValueError(
-                            f'Per-point data field "{name}" is None at index {index}'
+                            f'Unsupported field type {metadata.field_type} '
+                            f'for variable "{field_name}" in field set "{fs_name}"'
                         )
-                    group.variables[name][index] = val
+                    v = g.createVariable(field_name, vl_type, ('trajectory',))
                 else:
-                    val = None
-                    if traj is not None:
-                        val = traj.metadata[name]
-                        if val is None and hasattr(traj, name):
-                            val = getattr(traj, name)
-                    if data is not None:
-                        val = getattr(data, name)
-                    if val is None and field.required:
-                        raise ValueError(
-                            f'Metadata field "{name}" is None at index {index}'
-                        )
-                    if val is not None:
-                        group.variables[name][index] = val
+                    # if it's a per-trajectory metadata variable, create a
+                    # simple variable with a normal NetCDF type, indexed by the
+                    # trajectory dimension.
+                    v = g.createVariable(
+                        field_name, metadata.field_type, ('trajectory',)
+                    )
+
+                # Add metadata to variable.
+                v.description = metadata.description
+                v.units = metadata.units
+                v.required = 'true' if metadata.required else 'false'
+                if metadata.default is not None:
+                    v.default = metadata.default
+
+                # The variable `v` doesn't need to be saved anywhere special
+                # now; it can be accessed via its group.
+
+        # If we're indexing, we need to create the index group and variables.
+        if self.indexable and self.index_group is None:
+            self.index_group = dataset.createGroup('_index')
+            self.index_group.createVariable('flight_id', np.int64, ('trajectory',))
+            self.index_group.createVariable(
+                'trajectory_index', np.int64, ('trajectory',)
+            )
+
+        # Save information about file for lookup by field set name. This is how
+        # we find the file and group for a given field set later on.
+        #
+        # To get from a variable (attribute) name to its field set, we look it
+        # up in the trajectory's data dictionary, getting a FieldSet: the name
+        # of the FieldSet is the name of the NetCDF group where we find the
+        # variable.
+        file_info = self.NcFiles(
+            path=[nc_file],
+            fieldsets=fieldsets,
+            dataset=[dataset],
+            traj_dim=[traj_dim],
+            size_index=None,
+            groups=groups,
+        )
+        if save:
+            self._nc_files.append(file_info)
+            for fs_name in fieldsets:
+                self._nc[fs_name] = file_info
+        return file_info
 
     def _open(self):
         """Open an existing NetCDF file (or files) for reading/appending
@@ -918,46 +1000,7 @@ class TrajectoryStore:
         # Open the NetCDF4 dataset from base file.
         assert self.base_file is not None
         base_nc_file = self._open_nc_file(self.base_file)
-        self.global_attributes = {}
-        if base_nc_file.title is not None:
-            self.global_attributes['title'] = base_nc_file.title
-        if base_nc_file.comment is not None:
-            self.global_attributes['comment'] = base_nc_file.comment
-        if base_nc_file.history is not None:
-            self.global_attributes['history'] = base_nc_file.history
-        if base_nc_file.source is not None:
-            self.global_attributes['source'] = base_nc_file.source
-        self.global_attributes['created'] = base_nc_file.created
-
-        # Check that the field sets in the base NetCDF file exist in the field
-        # set registry. There is a 1-to-1 relation between NetCDF groups and
-        # field sets.
-        for fs_name in base_nc_file.fieldsets:
-            if not FieldSet.known(fs_name):
-                raise ValueError(
-                    f'FieldSet with name "{fs_name}" found in base NetCDF file '
-                    f'not found in FieldSet registry'
-                )
-
-            # Field set from registry.
-            fs = FieldSet.from_registry(fs_name)
-
-            # Field set constructed from NetCDF group for comparison.
-            netcdf_fs = FieldSet.from_netcdf_group(base_nc_file.groups[fs_name][0])
-
-            # Now we can check that the fields in the field set exist in the
-            # relevant NetCDF group and that they have the right types and
-            # shapes.
-            if hash(fs) != hash(netcdf_fs):
-                raise ValueError(
-                    f'FieldSet with name "{fs_name}" in base NetCDF file is '
-                    f'incompatible with FieldSet in registry'
-                )
-
-        # Save file information under fieldset names in _nc dictionary.
-        self._nc_files.append(base_nc_file)
-        for fs_name in base_nc_file.fieldsets:
-            self._nc[fs_name] = base_nc_file
+        self._base_open_checks(base_nc_file)
 
         # Set the next trajectory index for APPEND mode.
         if self.mode == self.FileMode.APPEND:
@@ -971,17 +1014,127 @@ class TrajectoryStore:
         # Open any associated NetCDF files.
         for name in self.associated_files:
             assert isinstance(name, PathType)
-            assocated_file = self._open_nc_file(name, check_associated=base_nc_file)
-            self._nc_files.append(assocated_file)
-            for fs_name in assocated_file.fieldsets:
-                if fs_name not in self._nc or self.override:
-                    self._nc[fs_name] = assocated_file
-                else:
-                    warnings.warn(
-                        f'FieldSet with name "{fs_name}" found in associated '
-                        f'NetCDF file "{name}" already exists in base file',
-                        RuntimeWarning,
+            associated_file = self._open_nc_file(name, check_associated=base_nc_file)
+            self._associated_open_checks(name, associated_file)
+
+    def _open_nc_file(
+        self,
+        nc_file: PathType,
+        check_associated: 'TrajectoryStore.NcFiles | None' = None,
+    ) -> 'TrajectoryStore.NcFiles':
+        """Open a single NetCDF file.
+
+        This method opens a single NetCDF file that is either a base file or an
+        associated file. It performs consistency checks on the contents of the
+        file and returns a `NcFiles` object with information about the file."""
+
+        # Ensure input file exists.
+        nc_file = Path(nc_file).resolve()
+        if not nc_file.exists():
+            raise ValueError(f'Input file {nc_file} does not exist')
+
+        # Open NetCDF4 dataset in read or append mode.
+        dataset = Dataset(
+            nc_file,
+            mode='r' if self.mode == self.FileMode.READ else 'a',
+            keepweakref=True,
+        )
+
+        # Retrieve trajectory dimension.
+        traj_dim = dataset.dimensions['trajectory']
+
+        # Retrieve global attributes.
+        title = getattr(dataset, 'title', None)
+        comment = getattr(dataset, 'comment', None)
+        history = getattr(dataset, 'history', None)
+        source = getattr(dataset, 'source', None)
+        created_str = getattr(dataset, 'created', None)
+        created = None
+        if created_str is not None:
+            created = datetime.fromisoformat(created_str)
+
+        # Retrieve additional global attributes for consistency checking.
+        fieldset_names = dataset.fieldset_names
+        if isinstance(fieldset_names, str):
+            fieldset_names = [fieldset_names]
+        fieldset_hashes = dataset.fieldset_hashes
+        if isinstance(fieldset_hashes, str):
+            fieldset_hashes = [fieldset_hashes]
+        id_hash = dataset.id_hash
+        associated_name = getattr(dataset, 'associated_name', None)
+        associated_hash = getattr(dataset, 'associated_hash', None)
+
+        # Retrieve groups for each field set. Group names with a leading
+        # underscore are reserved for internal use, in particular for the
+        # flight ID index.
+        groups = {k: [g] for k, g in dataset.groups.items() if not k[0] == '_'}
+
+        # Check consistency.
+
+        # The groups in the file should match the field sets we're claiming are
+        # in the file.
+        if set(groups.keys()) != set(fieldset_names):
+            raise ValueError(
+                f'Field set names in global attribute do not match NetCDF groups '
+                f'in file {nc_file}'
+            )
+
+        # The field sets in the file should match the definitions in the
+        # registry.
+        for fs_name, fs_hash in zip(fieldset_names, fieldset_hashes):
+            fs = FieldSet.from_registry(fs_name)
+            if fs.digest != fs_hash:
+                if not self.force_fieldset_matches:
+                    raise ValueError(
+                        f'Field set hash for field set "{fs_name}" in file {nc_file} '
+                        f'does not match hash of FieldSet in registry'
                     )
+                warnings.warn(
+                    f'Field set hash for field set "{fs_name}" in file {nc_file} '
+                    f'does not match hash of FieldSet in registry, but '
+                    f'force_fieldset_matches is True so continuing anyway',
+                    RuntimeWarning,
+                )
+
+        # The ID hash is made up of all the field set hashes in the file.
+        m = hashlib.md5()
+        for h in fieldset_hashes:
+            m.update(h.encode('utf-8'))
+        if id_hash != m.hexdigest():
+            raise ValueError(
+                f'id_hash in NetCDF file {nc_file} does not match calculated '
+                f'hash from field set hashes'
+            )
+
+        # For an associated file, check that the base file it's associated with
+        # matches what we expect.
+        if check_associated is not None:
+            if associated_name is None or associated_hash is None:
+                raise ValueError(
+                    f'Associated file attributes missing from NetCDF file {nc_file}'
+                )
+            if associated_hash != check_associated.dataset[0].id_hash:
+                raise ValueError(
+                    f'Associated file hash in NetCDF file {nc_file} does not match '
+                    f'hash of base file {check_associated.path}'
+                )
+
+        # Here, the `path`, `dataset`, `traj_dim` and `size_index` fields are
+        # lists to support merged stores. In this case, we have a single file,
+        # so we put the values into singleton lists.
+        return TrajectoryStore.NcFiles(
+            path=[nc_file],
+            fieldsets=set(fieldset_names),
+            dataset=[dataset],
+            traj_dim=[traj_dim],
+            groups=groups,
+            size_index=[len(traj_dim)],
+            title=title,
+            comment=comment,
+            history=history,
+            source=source,
+            created=created,
+        )
 
     def _open_merged(self):
         """Open an existing merged store file for reading trajectories."""
@@ -989,6 +1142,161 @@ class TrajectoryStore:
         # Open the NetCDF4 dataset from base file.
         assert self.base_file is not None
         base_nc_file = self._open_merged_store(self.base_file)
+        self._base_open_checks(base_nc_file)
+
+        # Set the next trajectory index for APPEND mode.
+        if self.mode == self.FileMode.APPEND:
+            # Shouldn't happen.
+            raise RuntimeError(
+                'Appending to merged TrajectoryStore files is not supported'
+            )
+
+        # Open index file.
+        index_file = Path(self.base_file) / '_index.nc'
+        if index_file.exists():
+            self.index_dataset = Dataset(index_file, mode='r', keepweakref=True)
+            self.index_group = self.index_dataset.groups['_index']
+            self.indexable = True
+
+        # Open any associated NetCDF files.
+        for name in self.associated_files:
+            assert isinstance(name, PathType)
+            associated_file = self._open_merged_store(
+                name, check_associated=base_nc_file
+            )
+            self._associated_open_checks(name, associated_file)
+
+    def _open_merged_store(
+        self,
+        store_dir: PathType,
+        check_associated: 'TrajectoryStore.NcFiles | None' = None,
+    ) -> 'TrajectoryStore.NcFiles':
+        """Open a merged store.
+
+        This method opens multiple NetCDF files in a merged store directory
+        that are either a base store or an associated store. It performs
+        consistency checks on the contents of the store and returns a `NcFiles`
+        object with information about the files.
+        """
+
+        # Ensure input file exists.
+        store_dir = Path(store_dir).resolve()
+        if not store_dir.exists():
+            raise ValueError(f'Input store {store_dir} does not exist')
+
+        # Read metadata file. This contains information about the files
+        # composing the merged store, as well as store level global attribute
+        # metadata values.
+        metadata_file = store_dir / 'metadata.json'
+        if not metadata_file.exists():
+            raise ValueError(f'Metadata file missing from merged store {store_dir}')
+        with open(metadata_file) as f:
+            metadata = json.load(f)
+
+        # Get paths to NetCDF files.
+        nc_files = [store_dir / s[0] for s in metadata.get('stores', [])]
+        if len(nc_files) == 0:
+            raise ValueError(f'No stores listed in metadata file {metadata_file}')
+
+        # Open NetCDF4 datasets in read mode for each NetCDF file.
+        dataset = [Dataset(nc_file, mode='r', keepweakref=True) for nc_file in nc_files]
+
+        # Retrieve trajectory dimensions.
+        traj_dim = [ds.dimensions['trajectory'] for ds in dataset]
+
+        # Retrieve global attributes from JSON data (created when merged store
+        # is created).
+        title = metadata.get('title', None)
+        comment = metadata.get('comment', None)
+        history = metadata.get('history', None)
+        source = metadata.get('source', None)
+        created_str = metadata.get('created', None)
+        created = None
+        if created_str is not None:
+            created = datetime.fromisoformat(created_str)
+
+        # Retrieve additional global attributes for consistency checking.
+        def get_list(ds: Dataset, attr: str) -> list[str]:
+            val = getattr(ds, attr, None)
+            if isinstance(val, str):
+                return [val]
+            assert isinstance(val, list)
+            return val
+
+        fieldset_names = get_list(dataset[0], 'fieldset_names')
+        fieldset_hashes = get_list(dataset[0], 'fieldset_hashes')
+        id_hash = dataset[0].id_hash
+        associated_name = getattr(dataset[0], 'associated_name', None)
+        associated_hash = getattr(dataset[0], 'associated_hash', None)
+
+        # Check consistency.
+        for ds in dataset:
+            check_groups = {}
+            for k in ds.groups.keys():
+                if k[0] != '_':
+                    check_groups[k] = [ds.groups[k] for ds in dataset]
+            if set(check_groups.keys()) != set(fieldset_names):
+                raise ValueError(
+                    f'Field set names in global attribute do not match NetCDF groups '
+                    f'in store {store_dir}'
+                )
+        for fs_name, fs_hash in zip(fieldset_names, fieldset_hashes):
+            fs = FieldSet.from_registry(fs_name)
+            if fs.digest != fs_hash:
+                if not self.force_fieldset_matches:
+                    raise ValueError(
+                        f'Field set hash for field set "{fs_name}" '
+                        f'in store {store_dir} does not match '
+                        'hash of FieldSet in registry'
+                    )
+                warnings.warn(
+                    f'Field set hash for field set "{fs_name}" in '
+                    f'store {store_dir} does not match hash of '
+                    'FieldSet in registry, but '
+                    'force_fieldset_matches is True so continuing anyway',
+                    RuntimeWarning,
+                )
+        m = hashlib.md5()
+        for h in fieldset_hashes:
+            m.update(h.encode('utf-8'))
+        if id_hash != m.hexdigest():
+            raise ValueError(
+                f'id_hash in store {store_dir} does not match calculated '
+                f'hash from field set hashes'
+            )
+        if check_associated is not None:
+            if associated_name is None or associated_hash is None:
+                raise ValueError(
+                    f'Associated file attributes missing from store {store_dir}'
+                )
+            if associated_hash != check_associated.dataset[0].id_hash:
+                raise ValueError(
+                    f'Associated file hash in NetCDF store {store_dir} does '
+                    f'not match hash of base file {check_associated.path}'
+                )
+
+        # Retrieve groups for each field set: take from first dataset, since
+        # we've checked consistency across all datasets already.
+        groups = {}
+        for k in dataset[0].groups.keys():
+            if k[0] != '_':
+                groups[k] = [ds.groups[k] for ds in dataset]
+
+        return TrajectoryStore.NcFiles(
+            path=nc_files,
+            fieldsets=set(fieldset_names),
+            dataset=dataset,
+            traj_dim=traj_dim,
+            groups=groups,
+            size_index=list(itertools.accumulate([len(td) for td in traj_dim])),
+            title=title,
+            comment=comment,
+            history=history,
+            source=source,
+            created=created,
+        )
+
+    def _base_open_checks(self, base_nc_file: NcFiles):
         self.global_attributes = {}
         if base_nc_file.title is not None:
             self.global_attributes['title'] = base_nc_file.title
@@ -1017,9 +1325,9 @@ class TrajectoryStore:
                 # Field set constructed from NetCDF group for comparison.
                 netcdf_fs = FieldSet.from_netcdf_group(g)
 
-                # Now we can check that the fields in the field set exist in
-                # the relevant NetCDF group and that they have the right types
-                # and shapes.
+                # Now we can check that the fields in the field set exist in the
+                # relevant NetCDF group and that they have the right types and
+                # shapes.
                 if hash(fs) != hash(netcdf_fs):
                     raise ValueError(
                         f'FieldSet with name "{fs_name}" in base NetCDF file is '
@@ -1031,69 +1339,187 @@ class TrajectoryStore:
         for fs_name in base_nc_file.fieldsets:
             self._nc[fs_name] = base_nc_file
 
-        # Set the next trajectory index for APPEND mode.
-        if self.mode == self.FileMode.APPEND:
-            # Shouldn't happen.
-            raise RuntimeError(
-                'Appending to merged TrajectoryStore files is not supported'
-            )
+    def _associated_open_checks(self, name: PathType, associated_file: NcFiles):
+        self._nc_files.append(associated_file)
+        for fs_name in associated_file.fieldsets:
+            if fs_name not in self._nc or self.override:
+                self._nc[fs_name] = associated_file
+            else:
+                warnings.warn(
+                    f'FieldSet with name "{fs_name}" found in associated '
+                    f'NetCDF file "{name}" already exists in base file',
+                    RuntimeWarning,
+                )
 
-        # Open any associated NetCDF files.
-        for name in self.associated_files:
-            assert isinstance(name, PathType)
-            assocated_file = self._open_merged_store(
-                name, check_associated=base_nc_file
+    def _reindex(self):
+        """Regenerate flight ID index."""
+
+        # NOTE: Takes about 1.5s on a store with 1 million trajectories.
+
+        if not self.indexable or not self.index_stale:
+            return
+
+        # Get the NetCDF4 groups for the base field set.
+        gs = self._nc[BASE_FIELDSET_NAME].groups[BASE_FIELDSET_NAME]
+
+        # Extract flight IDs from all trajectories in the order of the files in
+        # the store (for a merged store, there may be more than one file).
+        flight_ids = []
+        for g in gs:
+            flight_ids += list(g.variables['flight_id'][:])
+
+        # Pair up the flight IDs with the indexes of the trajectories in the
+        # store and sort the pairs into flight ID order so that we can binary
+        # search the index.
+        id_pairs = sorted(enumerate(flight_ids), key=lambda x: x[1])
+
+        # Save the index information into the index group.
+        assert self.index_group is not None
+        self.index_group.variables['flight_id'][:] = [id for _, id in id_pairs]
+        self.index_group.variables['trajectory_index'][:] = [idx for idx, _ in id_pairs]
+
+        # We've just remade the index, so it's definitely not stale.
+        self.index_stale = False
+
+    @staticmethod
+    def _create_merged_store_index(
+        output_store: PathType, input_stores: list[PathType]
+    ):
+        index_dataset = Dataset(Path(output_store) / '_index.nc', 'w', keepweakref=True)
+        index_dataset.createDimension('trajectory', None)
+        index_group = index_dataset.createGroup('_index')
+        index_group.createVariable('flight_id', np.int64, ('trajectory',))
+        index_group.createVariable('trajectory_index', np.int64, ('trajectory',))
+        flight_ids = []
+        trajectory_indexes = []
+        index_offset = 0
+        for input_store in input_stores:
+            ts = TrajectoryStore.open(
+                base_file=Path(output_store) / Path(input_store).name
             )
-            self._nc_files.append(assocated_file)
-            for fs_name in assocated_file.fieldsets:
-                if fs_name not in self._nc or self.override:
-                    self._nc[fs_name] = assocated_file
-                else:
-                    warnings.warn(
-                        f'FieldSet with name "{fs_name}" found in associated '
-                        f'NetCDF file "{name}" already exists in base file',
-                        RuntimeWarning,
+            assert ts.index_group is not None
+            vs = ts.index_group.variables
+            flight_ids += list(vs['flight_id'][:])
+            trajectory_indexes += [
+                idx + index_offset for idx in vs['trajectory_index'][:]
+            ]
+            index_offset += len(ts)
+        id_pairs = sorted(zip(trajectory_indexes, flight_ids), key=lambda x: x[1])
+        index_group.variables['flight_id'][:] = [id for _, id in id_pairs]
+        index_group.variables['trajectory_index'][:] = [idx for idx, _ in id_pairs]
+
+    def _load_trajectory(self, index: int) -> None:
+        """Load a trajectory at the given index from the NetCDF file(s)."""
+        data = {}
+        npoints: int | None = None
+
+        # Handle field sets one by one.
+        for fs_name in self._nc:
+            # Look up the field set in the field set registry.
+            fs = FieldSet.from_registry(fs_name)
+
+            # File information for the field set and the NetCDF group for
+            # variables in the field set.
+            nc_files = self._nc[fs_name]
+            file_index = 0
+            group_index = index
+
+            # If this is a merged store, find the right file and index into the
+            # right group in that file.
+            if nc_files.size_index is not None:
+                file_index = bisect.bisect_left(nc_files.size_index, index + 1)
+                if file_index >= len(nc_files.size_index):
+                    return
+                group_index = index - nc_files.size_index[file_index]
+            group = nc_files.groups[fs_name][file_index]
+
+            # Write per-point data as variable-length arrays.
+            for name, field in fs.items():
+                if name not in group.variables:
+                    raise ValueError(
+                        f'Data field "{name}" does not exist in NetCDF file'
                     )
+                data[name] = group.variables[name][group_index]
+                if not field.metadata and npoints is None:
+                    npoints = len(data[name])
 
-    def _create(self):
-        """Create a new NetCDF file (or files) for writing trajectories.
+        # Construct the return trajectory.
+        assert npoints is not None
+        traj = Trajectory(npoints=npoints)
+        for fs_name in self._nc:
+            if fs_name != BASE_FIELDSET_NAME:
+                traj.add_fields(FieldSet.from_registry(fs_name))
+        for k, v in data.items():
+            setattr(traj, k, v)
 
-        There is one NetCDF group per field set, and more than one field set
-        may be stored in each NetCDF file.
+        # Save the trajectory we've just loaded into the cache.
+        self._trajectories[index] = traj
 
-        This function is only called once the first trajectory is added to the
-        store because we need to know what field sets are being stored.
-        """
+    def _write_trajectory(self, index: int) -> None:
+        """Write a trajectory at the given index to the NetCDF file(s)."""
 
-        # We cannot create the NetCDF file until we know what field sets are
-        # involved. For that we need at least one trajectory.
-        assert len(self._trajectories) > 0
+        # Look up the trajectory to write and write to files. We use a
+        # `_write_data` helper function so that we can also use `_write_data`
+        # for creating associated files.
+        self._write_data(traj=self._trajectories[index], index=index)
 
-        # Get a prototype trajectory: all trajectories in the store must have
-        # the same field sets, so it doesn't matter which one we take.
-        proto = next(iter(self._trajectories.values()))
+    def _write_data(
+        self,
+        *,
+        index: int,
+        traj: Trajectory | None = None,
+        data: Any | None = None,
+        single_nc_file: 'TrajectoryStore.NcFiles | None' = None,
+        fieldsets: list[str] | None = None,
+    ) -> None:
+        """Write a trajectory at the given index to the NetCDF file(s)."""
 
-        # Determine the field sets stored in the base NetCDF file (those not in
-        # associated files).
-        base_nc_fieldsets = proto.fieldsets - self.associated_fieldsets
+        # Check: should be one or the other. We're either saving a real
+        # trajectory (called from `_write_trajectory`) or writing data to an
+        # associated file (called from `create_associated`).
+        if traj is None and data is None:
+            raise ValueError('Either traj or data must be provided')
 
-        # Create the base NetCDF file.
-        assert self.base_file is not None
-        self._create_nc_file(self.base_file, base_nc_fieldsets)
+        # In the normal case, we handle all the field sets in the store. When
+        # creating an associated NetCDF file, we only handle the specified
+        # field set.
+        if fieldsets is None:
+            fieldsets = list(self._nc.keys())
 
-        # Create the associated NetCDF files.
-        base_nc_file = self._nc[BASE_FIELDSET_NAME]
-        for associated_file in self.associated_files:
-            # Another case of clumsy typing due to Python's restrictions on
-            # isinstance.
-            assert isinstance(associated_file, tuple)
-            nc_file, fieldsets = associated_file
-            self._create_nc_file(
-                nc_file,
-                set(fieldsets),
-                associated_name=base_nc_file.path[0],
-                associated_hash=base_nc_file.dataset[0].id_hash,
-            )
+        # Handle field sets one by one.
+        for fs_name in fieldsets:
+            # File information for the field set and the NetCDF group for
+            # variables in the field set.
+            fs = FieldSet.from_registry(fs_name)
+            nc_file = single_nc_file or self._nc[fs_name]
+            group = nc_file.groups[fs_name][0]
+
+            # Write per-point data as variable-length arrays.
+            for name in group.variables:
+                field = fs[name]
+
+                # Get data either from the trajectory or the "associated data"
+                # we've been passed.
+                val = None
+                if traj is not None:
+                    val = getattr(traj, name)
+                elif data is not None:
+                    val = getattr(data, name)
+
+                # Save the data to the correct NetCDF4 group.
+                if not field.metadata:
+                    if val is None:
+                        raise ValueError(
+                            f'Per-point data field "{name}" is None at index {index}'
+                        )
+                    group.variables[name][index] = val
+                else:
+                    if val is None and field.required:
+                        raise ValueError(
+                            f'Metadata field "{name}" is None at index {index}'
+                        )
+                    if val is not None:
+                        group.variables[name][index] = val
 
     def _check_file_paths(self, paths: list[PathType], mode: FileMode) -> None:
         # Ensure all input paths are distinct.
@@ -1155,413 +1581,176 @@ class TrajectoryStore:
                             'the same number of NetCDF files'
                         )
 
-    def _open_nc_file(
+    def _check_constructor_arguments(
         self,
-        nc_file: PathType,
-        check_associated: 'TrajectoryStore.NcFiles | None' = None,
-    ) -> 'TrajectoryStore.NcFiles':
-        # Ensure input file exists.
-        nc_file = Path(nc_file).resolve()
-        if not nc_file.exists():
-            raise ValueError(f'Input file {nc_file} does not exist')
+        mode: FileMode,
+        base_file: PathType | None = None,
+        override: bool | None = None,
+        force_fieldset_matches: bool | None = None,
+        associated_files: AssociatedFiles | None = None,
+        title: str | None = None,
+        comment: str | None = None,
+        history: str | None = None,
+        source: str | None = None,
+    ):
+        """Check constructor input arguments based on file mode."""
 
-        # Open NetCDF4 dataset in read or append mode.
-        dataset = Dataset(
-            nc_file,
-            mode='r' if self.mode == self.FileMode.READ else 'a',
-            keepweakref=True,
+        global_attributes_ok = mode == self.FileMode.CREATE
+        if not global_attributes_ok and (
+            title is not None
+            or comment is not None
+            or history is not None
+            or source is not None
+        ):
+            raise ValueError(
+                'global attributes (title, comment, history, '
+                'source) may only be specified in CREATE mode'
+            )
+        self.global_attributes = {}
+        if title is not None:
+            self.global_attributes['title'] = title
+        if comment is not None:
+            self.global_attributes['comment'] = comment
+        if history is not None:
+            self.global_attributes['history'] = history
+        if source is not None:
+            self.global_attributes['source'] = source
+
+        # Setting base_file=None in CREATE mode creates an empty TrajectoryStore.
+        # We can switch to a file-backed store later using the save method, but
+        # in the meantime, the trajectory cache is limited in size and cannot
+        # evict any items. Adding too many trajectories to an in-memory
+        # TrajectoryStore will result in a TrajectoryCache.EvictionOccurred
+        # exception.
+        base_file_req = mode != self.FileMode.CREATE
+        if base_file is None and base_file_req:
+            raise ValueError(f'base_file required in file mode {mode}')
+        self.base_file = base_file
+        check_paths: list[PathType] = []
+        if base_file is not None:
+            check_paths.append(base_file)
+
+        override_ok = mode == self.FileMode.READ
+        if override is not None and not override_ok:
+            raise ValueError('override may only be specified in READ mode')
+        self.override = override if override is not None else False
+
+        force_fieldset_matches_ok = mode == self.FileMode.READ
+        if force_fieldset_matches is not None and not force_fieldset_matches_ok:
+            raise ValueError(
+                'force_fieldset_matches may only be specified in READ mode'
+            )
+        self.force_fieldset_matches = (
+            force_fieldset_matches if force_fieldset_matches is not None else False
         )
 
-        # Retrieve trajectory dimension.
-        traj_dim = dataset.dimensions['trajectory']
-
-        # Retrieve global attributes.
-        title = getattr(dataset, 'title', None)
-        comment = getattr(dataset, 'comment', None)
-        history = getattr(dataset, 'history', None)
-        source = getattr(dataset, 'source', None)
-        created_str = getattr(dataset, 'created', None)
-        created = None
-        if created_str is not None:
-            created = datetime.fromisoformat(created_str)
-
-        # Retrieve additional global attributes for consistency checking.
-        fieldset_names = dataset.fieldset_names
-        if isinstance(fieldset_names, str):
-            fieldset_names = [fieldset_names]
-        fieldset_hashes = dataset.fieldset_hashes
-        if isinstance(fieldset_hashes, str):
-            fieldset_hashes = [fieldset_hashes]
-        id_hash = dataset.id_hash
-        associated_name = getattr(dataset, 'associated_name', None)
-        associated_hash = getattr(dataset, 'associated_hash', None)
-
-        # Retrieve groups for each field set.
-        groups = {k: [g] for k, g in dataset.groups.items() if not k[0] == '_'}
-
-        # Check consistency.
-        if set(groups.keys()) != set(fieldset_names):
-            raise ValueError(
-                f'Field set names in global attribute do not match NetCDF groups '
-                f'in file {nc_file}'
-            )
-        for fs_name, fs_hash in zip(fieldset_names, fieldset_hashes):
-            fs = FieldSet.from_registry(fs_name)
-            if fs.digest != fs_hash:
-                if not self.force_fieldset_matches:
-                    raise ValueError(
-                        f'Field set hash for field set "{fs_name}" in file {nc_file} '
-                        f'does not match hash of FieldSet in registry'
-                    )
-                warnings.warn(
-                    f'Field set hash for field set "{fs_name}" in file {nc_file} '
-                    f'does not match hash of FieldSet in registry, but '
-                    f'force_fieldset_matches is True so continuing anyway',
-                    RuntimeWarning,
-                )
-        m = hashlib.md5()
-        for h in fieldset_hashes:
-            m.update(h.encode('utf-8'))
-        if id_hash != m.hexdigest():
-            raise ValueError(
-                f'id_hash in NetCDF file {nc_file} does not match calculated '
-                f'hash from field set hashes'
-            )
-        if check_associated is not None:
-            if associated_name is None or associated_hash is None:
+        self.associated_files = associated_files if associated_files is not None else []
+        if mode in (self.FileMode.APPEND, self.FileMode.READ):
+            if any(not isinstance(f, PathType) for f in self.associated_files):
                 raise ValueError(
-                    f'Associated file attributes missing from NetCDF file {nc_file}'
+                    'associated_files must be paths in APPEND and READ modes'
                 )
-            if associated_hash != check_associated.dataset[0].id_hash:
+            for f in self.associated_files:
+                assert isinstance(f, PathType)
+                check_paths.append(f)
+        if mode == self.FileMode.CREATE:
+            if base_file is None and len(self.associated_files) > 0:
                 raise ValueError(
-                    f'Associated file hash in NetCDF file {nc_file} does not match '
-                    f'hash of base file {check_associated.path}'
+                    'associated_files may only be specified in CREATE mode '
+                    'if base_file is also specified'
                 )
+            check_paths += self._check_associated_files('CREATE mode')
+        self.associated_fieldsets: set[str] = set()
+        if mode == self.FileMode.CREATE:
+            self._calc_associated_fieldsets()
 
-        return TrajectoryStore.NcFiles(
-            path=[nc_file],
-            fieldsets=set(fieldset_names),
-            dataset=[dataset],
-            traj_dim=[traj_dim],
-            groups=groups,
-            size_index=[len(traj_dim)],
-            title=title,
-            comment=comment,
-            history=history,
-            source=source,
-            created=created,
-        )
+        # Check that file paths exist (for reading) or do not exist (for
+        # creation).
+        self._check_file_paths(check_paths, mode)
 
-    def _reindex(self):
-        if not self.indexable or not self.index_stale:
-            return
-        gs = self._nc[BASE_FIELDSET_NAME].groups[BASE_FIELDSET_NAME]
-        flight_ids = []
-        for g in gs:
-            flight_ids += list(g.variables['flight_id'][:])
-        id_pairs = sorted(enumerate(flight_ids), key=lambda x: x[1])
-        assert self.index_group is not None
-        self.index_group.variables['flight_id'][:] = [id for _, id in id_pairs]
-        self.index_group.variables['trajectory_index'][:] = [idx for idx, _ in id_pairs]
-        self.index_stale = False
+    @staticmethod
+    def _check_merge_arguments(
+        output_store: PathType,
+        input_stores: list[PathType] | None = None,
+        input_stores_pattern: PathType | None = None,
+        input_stores_index_range: tuple[int, int] | None = None,
+    ) -> list[PathType]:
+        # Parameter checks and normalization.
+        if input_stores is not None and input_stores_pattern is not None:
+            raise ValueError(
+                'Specify either input_stores or input_stores_pattern, not both'
+            )
+        if input_stores_pattern is not None and input_stores_index_range is None:
+            raise ValueError(
+                'When specifying input_stores_pattern, '
+                'input_stores_index_range must also be specified'
+            )
+        if input_stores_pattern is not None:
+            assert input_stores_index_range is not None
+            input_stores = [
+                Path(str(input_stores_pattern).format(index=i))
+                for i in range(
+                    input_stores_index_range[0], input_stores_index_range[1] + 1
+                )
+            ]
+        assert input_stores is not None
+        for p in input_stores:
+            if not Path(p).exists():
+                raise ValueError(f'Input TrajectoryStore file "{p}" does not exist')
+            if Path(p).suffix != '.nc':
+                raise ValueError(f'Merge input "{p}" is not a NetCDF file')
+        if not str(output_store).endswith('.aeic-store'):
+            raise ValueError(
+                'Output TrajectoryStore file must have ".aeic-store" extension'
+            )
+        if Path(output_store).exists():
+            raise ValueError(
+                f'Output TrajectoryStore file "{output_store}" already exists'
+            )
+        return input_stores
 
-    def lookup(self, flight_id: int) -> Trajectory | None:
-        """Lookup a trajectory by flight ID."""
-        if not self.indexable:
-            raise RuntimeError('Cannot lookup by flight_id in non-indexable store')
+    @staticmethod
+    def _valid_associated_file_tuple(t) -> bool:
+        """Check if t is a tuple[str, list[str]]."""
+        if not isinstance(t, tuple) or len(t) != 2:
+            return False
+        if not isinstance(t[0], PathType) or not isinstance(t[1], list):
+            return False
+        if any(not isinstance(name, str) for name in t[1]):
+            return False
+        return True
 
-        # Reindex lazily if needed.
-        if self.index_stale:
-            self._reindex()
+    def _calc_associated_fieldsets(self) -> None:
+        """Determine field sets in associated files."""
 
-        assert self.index_group is not None
-        flight_ids = self.index_group.variables['flight_id'][:]
-        traj_idxs = self.index_group.variables['trajectory_index'][:]
-        idx = np.searchsorted(flight_ids, flight_id)
-        if idx >= len(flight_ids) or flight_ids[idx] != flight_id:
-            return None
-        return self[traj_idxs[idx]]
+        # This is slightly unwieldy because of Python's restrictions on
+        # using isinstance with parameterized generics.
+        assert isinstance(self.associated_files, list)
+        self.associated_fieldsets = set()
+        for t in self.associated_files:
+            assert isinstance(t, tuple)
+            for f in t[1]:
+                self.associated_fieldsets.add(f)
 
-    def _open_merged_store(
+    def _check_associated_files(
         self,
-        store_dir: PathType,
-        check_associated: 'TrajectoryStore.NcFiles | None' = None,
-    ) -> 'TrajectoryStore.NcFiles':
-        # Ensure input file exists.
-        store_dir = Path(store_dir).resolve()
-        if not store_dir.exists():
-            raise ValueError(f'Input store {store_dir} does not exist')
+        label: str,
+    ) -> list[PathType]:
+        """Check associated files data for correctness, returning a list of
+        paths to check."""
 
-        # Read metadata file.
-        metadata_file = store_dir / 'metadata.json'
-        if not metadata_file.exists():
-            raise ValueError(f'Metadata file missing from merged store {store_dir}')
-        with open(metadata_file) as f:
-            metadata = json.load(f)
-
-        # Get paths to NetCDF files.
-        nc_files = [store_dir / s[0] for s in metadata.get('stores', [])]
-        if len(nc_files) == 0:
-            raise ValueError(f'No stores listed in metadata file {metadata_file}')
-
-        # Open NetCDF4 dataset in read or append mode.
-        dataset = [Dataset(nc_file, mode='r', keepweakref=True) for nc_file in nc_files]
-
-        # Retrieve trajectory dimension.
-        traj_dim = [ds.dimensions['trajectory'] for ds in dataset]
-
-        # Retrieve global attributes.
-        title = metadata.get('title', None)
-        comment = metadata.get('comment', None)
-        history = metadata.get('history', None)
-        source = metadata.get('source', None)
-        created_str = metadata.get('created', None)
-        created = None
-        if created_str is not None:
-            created = datetime.fromisoformat(created_str)
-
-        # Retrieve additional global attributes for consistency checking.
-        def get_list(ds: Dataset, attr: str) -> list[str]:
-            val = getattr(ds, attr, None)
-            if isinstance(val, str):
-                return [val]
-            assert isinstance(val, list)
-            return val
-
-        fieldset_names = get_list(dataset[0], 'fieldset_names')
-        fieldset_hashes = get_list(dataset[0], 'fieldset_hashes')
-        id_hash = dataset[0].id_hash
-        associated_name = getattr(dataset[0], 'associated_name', None)
-        associated_hash = getattr(dataset[0], 'associated_hash', None)
-
-        # Retrieve groups for each field set.
-        groups = {}
-        for k in dataset[0].groups.keys():
-            if k[0] != '_':
-                groups[k] = [ds.groups[k] for ds in dataset]
-
-        # Check consistency.
-        # TODO: Abstract this stuff, share with _open and check for all files.
-        if set(groups.keys()) != set(fieldset_names):
+        if self.associated_files is None:
+            return []
+        if any(
+            not TrajectoryStore._valid_associated_file_tuple(f)
+            for f in self.associated_files
+        ):
             raise ValueError(
-                f'Field set names in global attribute do not match NetCDF groups '
-                f'in store {store_dir}'
+                f'associated_files must be tuple[PathType, list[str]] in {label}'
             )
-        for fs_name, fs_hash in zip(fieldset_names, fieldset_hashes):
-            fs = FieldSet.from_registry(fs_name)
-            if fs.digest != fs_hash:
-                if not self.force_fieldset_matches:
-                    raise ValueError(
-                        f'Field set hash for field set "{fs_name}" '
-                        f'in store {store_dir} does not match '
-                        'hash of FieldSet in registry'
-                    )
-                warnings.warn(
-                    f'Field set hash for field set "{fs_name}" in '
-                    f'store {store_dir} does not match hash of '
-                    'FieldSet in registry, but '
-                    'force_fieldset_matches is True so continuing anyway',
-                    RuntimeWarning,
-                )
-        m = hashlib.md5()
-        for h in fieldset_hashes:
-            m.update(h.encode('utf-8'))
-        if id_hash != m.hexdigest():
-            raise ValueError(
-                f'id_hash in store {store_dir} does not match calculated '
-                f'hash from field set hashes'
-            )
-        if check_associated is not None:
-            if associated_name is None or associated_hash is None:
-                raise ValueError(
-                    f'Associated file attributes missing from store {store_dir}'
-                )
-            if associated_hash != check_associated.dataset[0].id_hash:
-                raise ValueError(
-                    f'Associated file hash in NetCDF store {store_dir} does '
-                    f'not match hash of base file {check_associated.path}'
-                )
-
-        # Open index file.
-        index_file = store_dir / '_index.nc'
-        if index_file.exists():
-            index_dataset = Dataset(index_file, mode='r', keepweakref=True)
-            self.index_group = index_dataset.groups['_index']
-            self.indexable = True
-
-        return TrajectoryStore.NcFiles(
-            path=nc_files,
-            fieldsets=set(fieldset_names),
-            dataset=dataset,
-            traj_dim=traj_dim,
-            groups=groups,
-            size_index=list(itertools.accumulate([len(td) for td in traj_dim])),
-            title=title,
-            comment=comment,
-            history=history,
-            source=source,
-            created=created,
-        )
-
-    def _create_nc_file(
-        self,
-        nc_file: str | Path,
-        fieldsets: set[str],
-        associated_name: Path | None = None,
-        associated_hash: str | None = None,
-        save: bool = True,
-    ) -> 'TrajectoryStore.NcFiles':
-        # Ensure output directory exists.
-        nc_file = Path(nc_file).resolve()
-        if not nc_file.parent.exists():
-            raise ValueError(f'Output directory {nc_file.parent} does not exist')
-
-        # Ensure file does not already exist.
-        if nc_file.exists():
-            raise ValueError(f'Output file {nc_file} already exists')
-
-        # Create NetCDF4 file in write mode.
-        dataset = Dataset(nc_file, mode='w', format='NETCDF4', keepweakref=True)
-
-        # The only dimension we need is the trajectory. All per-point data is
-        # stored using NetCDF4 variable-length arrays.
-        traj_dim = dataset.createDimension('trajectory', None)
-
-        # Set up basic global attributes.
-        if len(self.global_attributes) > 0:
-            if 'title' in self.global_attributes:
-                dataset.title = self.global_attributes['title']
-            if 'comment' in self.global_attributes:
-                dataset.comment = self.global_attributes['comment']
-            if 'history' in self.global_attributes:
-                dataset.history = self.global_attributes['history']
-            if 'source' in self.global_attributes:
-                dataset.source = self.global_attributes['source']
-
-        # Set up creation time global attribute.
-        if save and 'created' not in self.global_attributes:
-            t = datetime.now(UTC).astimezone().isoformat()
-            self.global_attributes['created'] = t
-            dataset.created = self.global_attributes['created']
-
-        # Set up global attribute containing field set names.
-        fs_names = sorted(
-            list(fieldsets), key=lambda s: '0000' + s if s == 'base' else s
-        )
-        dataset.fieldset_names = fs_names
-
-        # Set up global attribute containing hex digest hashes of field sets.
-        fs_hashes = [FieldSet.from_registry(name).digest for name in fs_names]
-        dataset.fieldset_hashes = fs_hashes
-
-        #  Calculate and set id_hash attribute from hashes of field sets.
-        m = hashlib.md5()
-        for h in fs_hashes:
-            m.update(h.encode('utf-8'))
-        dataset.id_hash = m.hexdigest()
-
-        # Set up associated file attributes, if applicable.
-        if associated_name is not None:
-            dataset.associated_name = str(associated_name)
-        if associated_hash is not None:
-            dataset.associated_hash = associated_hash
-
-        # Each named field set gets its own group in the NetCDF file.
-        groups = {}
-
-        # Variable length types for floating point and integer per-point data.
-        # (NetCDF4 handles variable-length strings natively so we add Python's
-        # string type here.)
-        vl_types: dict[type, VLType | type] = {str: str}
-        for fs_name in fieldsets:
-            fs = FieldSet.from_registry(fs_name)
-            for field in fs.values():
-                if not field.metadata and field.field_type not in vl_types:
-                    try:
-                        vl_types[field.field_type] = dataset.createVLType(
-                            field.field_type, f'{field.field_type.__name__}_vlen'
-                        )
-                    except TypeError:
-                        raise ValueError(
-                            f'Unsupported field type {field.field_type} '
-                            f'for variable-length array in field set "{fs_name}"'
-                        )
-
-        # Iterate over provided field set names.
-        for fs_name in fieldsets:
-            # Look up the field set in the field set registry. By the time we
-            # reach here, the field sets should have already been created,
-            # which stores them in the registry.
-            fs = FieldSet.from_registry(fs_name)
-
-            # Create the field set's group.
-            g = dataset.createGroup(fs_name)
-            groups[fs_name] = [g]
-
-            # For each variable (per-point or per-trajectory) in the field set,
-            for field_name, metadata in fs.items():
-                if not metadata.metadata:
-                    # if it's a per-point variable, create a variable-length
-                    # array of the apprropriate scalar type, indexed by the
-                    # trajectory dimension.
-                    vl_type = vl_types.get(metadata.field_type, None)
-                    if vl_type is None:
-                        raise ValueError(
-                            f'Unsupported field type {metadata.field_type} '
-                            f'for variable "{field_name}" in field set "{fs_name}"'
-                        )
-                    v = g.createVariable(field_name, vl_type, ('trajectory',))
-                else:
-                    # if it's a per-trajectory variable, create a simple
-                    # variable with a normal NetCDF type, indexed by the
-                    # trajectory dimension.
-                    v = g.createVariable(
-                        field_name, metadata.field_type, ('trajectory',)
-                    )
-
-                # Add metadata to variable.
-                v.description = metadata.description
-                v.units = metadata.units
-                v.required = 'true' if metadata.required else 'false'
-
-                # The variable `v` doesn't need to be saved anywhere special
-                # now; it can be accessed from its group.
-
-        if self.indexable and self.index_group is None:
-            self.index_group = dataset.createGroup('_index')
-            self.index_group.createVariable('flight_id', np.int64, ('trajectory',))
-            self.index_group.createVariable(
-                'trajectory_index', np.int64, ('trajectory',)
-            )
-
-        # Save information about file for lookup by field set name. This is how
-        # we find the file and group for a given field set later on.
-        #
-        # To get from a variable (attribute) name to its field set, we look it
-        # up in the trajectory's data dictionary, getting a FieldSet: the name
-        # of the FieldSet is the name of the NetCDF group where we find the
-        # variable.
-        file_info = self.NcFiles(
-            path=[nc_file],
-            fieldsets=fieldsets,
-            dataset=[dataset],
-            traj_dim=[traj_dim],
-            size_index=None,
-            groups=groups,
-        )
-        if save:
-            self._nc_files.append(file_info)
-            for fs_name in fieldsets:
-                self._nc[fs_name] = file_info
-        return file_info
-
-
-def valid_associated_file_tuple(t) -> bool:
-    """Check if t is a tuple[str, list[str]]."""
-    if not isinstance(t, tuple) or len(t) != 2:
-        return False
-    if not isinstance(t[0], PathType) or not isinstance(t[1], list):
-        return False
-    if any(not isinstance(name, str) for name in t[1]):
-        return False
-    return True
+        check_paths: list[PathType] = []
+        for f in self.associated_files:
+            assert isinstance(f, tuple)
+            assert isinstance(f[0], PathType)
+            check_paths.append(f[0])
+        return check_paths

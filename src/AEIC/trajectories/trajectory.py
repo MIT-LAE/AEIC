@@ -4,6 +4,7 @@ from typing import Any
 import numpy as np
 
 from .field_sets import FieldMetadata, FieldSet, HasFieldSets
+from .phase import PHASE_FIELDS
 
 BASE_FIELDSET_NAME = 'base'
 
@@ -30,6 +31,22 @@ BASE_FIELDS = FieldSet(
     ),
     # Trajectory metadata fields and their metadata. Each of these fields has a
     # single value per trajectory.
+    starting_mass=FieldMetadata(
+        metadata=True, description='Aircraft mass at start of trajectory', units='kg'
+    ),
+    total_fuel_mass=FieldMetadata(
+        metadata=True, description='Total fuel mass used during trajectory', units='kg'
+    ),
+    # Trajectory point counts for the different flight phases. (The "type:
+    # ignore" is needed because PyRight cannot prove to itself that the
+    # computed field names here don't include "registered", which is a possible
+    # argument to the `FieldSet` constructor. That makes PyRight very unhappy
+    # so we need to appease it a little, just to let it know that we're paying
+    # attention.)
+    **PHASE_FIELDS,  # type: ignore[call-overload]
+    # Special optional metadata fields: `flight_id` is used to make the
+    # connection to entries in missions databases, and `name` is an optional
+    # textual name for the trajectory.
     flight_id=FieldMetadata(
         metadata=True,
         field_type=np.int64,
@@ -41,30 +58,6 @@ BASE_FIELDS = FieldSet(
         field_type=str,
         description='Trajectory name',
         required=False,
-    ),
-    starting_mass=FieldMetadata(
-        metadata=True, description='Aircraft mass at start of trajectory', units='kg'
-    ),
-    total_fuel_mass=FieldMetadata(
-        metadata=True, description='Total fuel mass used during trajectory', units='kg'
-    ),
-    NClm=FieldMetadata(
-        metadata=True,
-        field_type=np.int32,
-        description='Number of climb points in trajectory',
-        units='count',
-    ),
-    NCrz=FieldMetadata(
-        metadata=True,
-        field_type=np.int32,
-        description='Number of cruise points in trajectory',
-        units='count',
-    ),
-    NDes=FieldMetadata(
-        metadata=True,
-        field_type=np.int32,
-        description='Number of descent points in trajectory',
-        units='count',
     ),
 )
 
@@ -80,8 +73,20 @@ class Trajectory:
     """
 
     # The fixed set of attributes used for implementation of the flexible field
-    # interface.
-    FIXED_FIELDS = set(['data_dictionary', 'fieldsets', 'data', 'metadata', 'npoints'])
+    # interface. Obscure names are used here to reduce the chance of conflicts
+    # with data and metadata field names because we cannot have fields with the
+    # same names as these fixed infrastructure attributes.
+    #
+    # (Unfortunately, because of the flexible field definition approach we're
+    # using here, we can't make these into Python double-underscore private
+    # fields. Using obscure names is the best we can do.)
+    FIXED_FIELDS = {
+        'X_data_dictionary',
+        'X_fieldsets',
+        'X_data',
+        'X_metadata',
+        'X_npoints',
+    }
 
     def __init__(
         self, npoints: int, name: str | None = None, fieldsets: list[str] | None = None
@@ -100,42 +105,40 @@ class Trajectory:
         # A trajectory has a fixed number of points, known in advance.
         # TODO: Lift this restriction? How could we make it so that you can add
         # points incrementally, in a nice way?
-        self.npoints = npoints
+        self.X_npoints = npoints
 
         # A trajectory has a set of per-point data fields and per-trajectory
         # metadata fields. Both are defined by a FieldSet, and the total sets
         # of all fields are stored in a data dictionary.
-        self.data_dictionary: FieldSet = BASE_FIELDS
+        self.X_data_dictionary: FieldSet = BASE_FIELDS
 
         # Keep track of the FieldSets that contributed to this trajectory.
-        self.fieldsets = set([BASE_FIELDS.fieldset_name])
+        self.X_fieldsets = {BASE_FIELDS.fieldset_name}
 
         # Data fields.
-        self.data: dict[str, np.ndarray[tuple[int], Any]] = {
+        self.X_data: dict[str, np.ndarray[tuple[int], Any]] = {
             n: np.zeros((npoints,), dtype=f.field_type)
-            for n, f in self.data_dictionary.items()
+            for n, f in self.X_data_dictionary.items()
             if not f.metadata
         }
 
         # Metadata fields.
-        self.metadata: dict[str, Any] = {
-            n: None for n, f in self.data_dictionary.items() if f.metadata
+        self.X_metadata: dict[str, Any] = {
+            n: f.default for n, f in self.X_data_dictionary.items() if f.metadata
         }
 
         # A trajectory has an optional name.
         if name is not None:
-            self.metadata['name'] = name
+            self.X_metadata['name'] = name
 
         # Add any extra field sets named in the constructor.
         if fieldsets is not None:
             for fs_name in set(fieldsets) - {BASE_FIELDSET_NAME}:
-                if fs_name not in FieldSet.REGISTRY:
-                    raise ValueError(f'Unknown FieldSet name: {fs_name}')
-                self.add_fields(FieldSet.REGISTRY[fs_name])
+                self.add_fields(FieldSet.from_registry(fs_name))
 
     def __len__(self):
         """The total number of points in the trajectory."""
-        return self.npoints
+        return self.X_npoints
 
     @property
     def nbytes(self) -> int:
@@ -145,14 +148,18 @@ class Trajectory:
         the `TrajectoryStore` LRU cache.)
         """
         size = 0
-        for array in self.data.values():
+        for array in self.X_data.values():
             size += array.nbytes
-        for value in self.metadata.values():
+        for value in self.X_metadata.values():
             if isinstance(value, np.ndarray):
                 size += value.nbytes
             else:
                 size += sys.getsizeof(value)
         return size
+
+    def __hash__(self):
+        """The hash of a trajectory is based on its data dictionary."""
+        return hash(self.X_data_dictionary)
 
     def __getattr__(self, name: str) -> np.ndarray[tuple[int], Any] | Any:
         """Override attribute retrieval to access data and metadata fields."""
@@ -162,10 +169,10 @@ class Trajectory:
         if name in self.FIXED_FIELDS:
             return super().__getattribute__(name)
 
-        if name in self.data:
-            return self.data[name]
-        elif name in self.metadata:
-            return self.metadata[name]
+        if name in self.X_data:
+            return self.X_data[name]
+        elif name in self.X_metadata:
+            return self.X_metadata[name]
         else:
             raise AttributeError(f"'Trajectory' object has no attribute '{name}'")
 
@@ -188,47 +195,35 @@ class Trajectory:
             return super().__setattr__(name, value)
 
         # Assignment for data or metadata fields.
-        if name in self.data:
+        if name in self.X_data:
             # The number of points in a trajectory is currently fixed at
             # creation time.
-            if len(value) != self.npoints:
+            if len(value) != self.X_npoints:
                 raise ValueError('Assigned length does not match number of points')
 
             # Check that the type of the assigned value can be safely cast to
             # the field type and cast and assign the value if OK.
-            self.data[name] = _convert_types(
-                self.data_dictionary[name].field_type, value, 'data', name
+            self.X_data[name] = _convert_types(
+                self.X_data_dictionary[name].field_type, value, 'data', name
             )
-        elif name in self.metadata:
+        elif name in self.X_metadata:
             # Check that the type of the assigned value can be safely cast to
             # the field type and cast and assign the value if OK.
-            self.metadata[name] = _convert_types(
-                self.data_dictionary[name].field_type, value, 'metadata', name
+            self.X_metadata[name] = _convert_types(
+                self.X_data_dictionary[name].field_type, value, 'metadata', name
             )
         else:
             raise ValueError(f"'Trajectory' object has no attribute '{name}'")
 
     def copy_point(self, from_idx: int, to_idx: int):
         """Copy data from one point to another within the trajectory."""
-        if from_idx < 0 or from_idx >= self.npoints:
+        if from_idx < 0 or from_idx >= self.X_npoints:
             raise IndexError('from_idx out of range')
-        if to_idx < 0 or to_idx >= self.npoints:
+        if to_idx < 0 or to_idx >= self.X_npoints:
             raise IndexError('to_idx out of range')
-        for name, field in self.data_dictionary.items():
+        for name, field in self.X_data_dictionary.items():
             if not field.metadata:
-                self.data[name][to_idx] = self.data[name][from_idx]
-
-    def _check_fieldset(self, fieldset: FieldSet):
-        # Fields may not overlap with fixed implementatin fields.
-        if any(name in self.FIXED_FIELDS for name in fieldset):
-            raise ValueError('Field name conflicts with Trajectory fixed attribute')
-
-        # Field sets can only be added once.
-        if fieldset.fieldset_name in self.fieldsets:
-            raise ValueError(
-                f'FieldSet with name "{fieldset.fieldset_name}" '
-                'already added to Trajectory'
-            )
+                self.X_data[name][to_idx] = self.X_data[name][from_idx]
 
     def add_fields(self, fieldset: FieldSet | HasFieldSets):
         """Add fields from a FieldSet to the trajectory.
@@ -257,8 +252,8 @@ class Trajectory:
         # Adjust the trajectory to include the new fields.
         for fs in fss:
             assert isinstance(fs, FieldSet)
-            self.fieldsets.add(fs.fieldset_name)
-            self.data_dictionary = self.data_dictionary.merge(fs)
+            self.X_fieldsets.add(fs.fieldset_name)
+            self.X_data_dictionary = self.X_data_dictionary.merge(fs)
 
         # Add data and metadata fields and set values from the `HasFieldSet`
         # object if there is one.
@@ -266,41 +261,51 @@ class Trajectory:
             assert isinstance(fs, FieldSet)
             for name, metadata in fs.items():
                 if metadata.metadata:
-                    if try_data:
-                        if hasattr(fieldset, name):
-                            # Check that the type of the assigned value can be
-                            # safely cast to the field type and cast and assign
-                            # the value if OK.
-                            self.metadata[name] = _convert_types(
-                                metadata.field_type,
-                                getattr(fieldset, name),
-                                'metadata',
-                                name,
-                            )
-                            continue
-                    self.metadata[name] = None
+                    if try_data and hasattr(fieldset, name):
+                        # Check that the type of the assigned value can be
+                        # safely cast to the field type and cast and assign
+                        # the value if OK.
+                        self.X_metadata[name] = _convert_types(
+                            metadata.field_type,
+                            getattr(fieldset, name),
+                            'metadata',
+                            name,
+                        )
+                        continue
+                    self.X_metadata[name] = None
                 else:
-                    if try_data:
-                        if hasattr(fieldset, name):
-                            value = getattr(fieldset, name)
+                    if try_data and hasattr(fieldset, name):
+                        value = getattr(fieldset, name)
 
-                            # The number of points in a trajectory is currently
-                            # fixed at creation time.
-                            if len(value) != self.npoints:
-                                raise ValueError(
-                                    'Assigned length does not match number of points'
-                                )
-
-                            # Check that the type of the assigned value can be
-                            # safely cast to the field type and cast and assign
-                            # the value if OK.
-                            self.data[name] = _convert_types(
-                                metadata.field_type, value, 'data', name
+                        # The number of points in a trajectory is currently
+                        # fixed at creation time.
+                        if len(value) != self.X_npoints:
+                            raise ValueError(
+                                'Assigned length does not match number of points'
                             )
-                            continue
-                    self.data[name] = np.zeros(
-                        (self.npoints,), dtype=metadata.field_type
+
+                        # Check that the type of the assigned value can be
+                        # safely cast to the field type and cast and assign
+                        # the value if OK.
+                        self.X_data[name] = _convert_types(
+                            metadata.field_type, value, 'data', name
+                        )
+                        continue
+                    self.X_data[name] = np.zeros(
+                        (self.X_npoints,), dtype=metadata.field_type
                     )
+
+    def _check_fieldset(self, fieldset: FieldSet):
+        # Fields may not overlap with fixed implementatin fields.
+        if any(name in self.FIXED_FIELDS for name in fieldset):
+            raise ValueError('Field name conflicts with Trajectory fixed attribute')
+
+        # Field sets can only be added once.
+        if fieldset.fieldset_name in self.X_fieldsets:
+            raise ValueError(
+                f'FieldSet with name "{fieldset.fieldset_name}" '
+                'already added to Trajectory'
+            )
 
 
 def _convert_types(expected_type: type, value: Any, label: str, name: str) -> Any:

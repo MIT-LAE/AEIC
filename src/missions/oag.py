@@ -7,7 +7,7 @@ from datetime import date
 from tqdm import tqdm
 
 from missions.writable_database import WritableDatabase
-from utils.custom_types import DayOfWeek, TimeOfDay
+from utils.types import DayOfWeek, TimeOfDay
 from utils.units import STATUTE_MILES_TO_KM
 
 logger = logging.getLogger(__name__)

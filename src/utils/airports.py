@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 
 from utils import data_file_path, download
+from utils.types import Position
 from utils.units import FEET_TO_METERS
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,14 @@ class Airport:
     elevation: float | None
     country: str
     municipality: str | None
+
+    @property
+    def position(self) -> Position:
+        return Position(
+            longitude=self.longitude,
+            latitude=self.latitude,
+            altitude=self.elevation or 0.0,
+        )
 
 
 class AirportsData:

@@ -120,9 +120,9 @@ def test_total_emissions_sum():
 
 def test_trajectory_dimensions():
     """Test that trajectory dimensions are consistent"""
-    assert em.Ntot == len(em.fuel_burn_per_segment)
-    assert em.Ntot == len(traj)
-    assert em.NClm + em.NCrz + em.NDes == em.Ntot
+    assert em.n_total == len(em.fuel_burn_per_segment)
+    assert em.n_total == len(traj)
+    assert em.n_climb + em.n_cruise + em.n_descent == em.n_total
 
 
 def test_fuel_burn_first_segment():
@@ -297,9 +297,9 @@ def test_different_pmnvol_modes(pmnvol_mode):
 
 def test_array_shapes_consistency():
     """Test that all arrays have consistent shapes"""
-    n_traj = em.Ntot
+    n_traj = em.n_total
 
-    # Trajectory arrays should match Ntot
+    # Trajectory arrays should match n_total
     assert em.emission_indices['CO2'].shape == (n_traj,), (
         "Emission indices shape mismatch"
     )

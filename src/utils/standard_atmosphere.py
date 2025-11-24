@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .consts import T0, R_air, beta_tropo, g0, h_p_tropo, p0
-from .custom_types import FloatOrNDArray
+from .types import FloatOrNDArray
 
 
 def temperature_at_altitude_isa_bada4(altitude: FloatOrNDArray) -> NDArray:

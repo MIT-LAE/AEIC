@@ -6,7 +6,7 @@ import pandas as pd
 from numpy.typing import NDArray
 
 from . import GEOD
-from .custom_types import FloatOrNDArray
+from .types import FloatOrNDArray
 
 
 def great_circle_distance(

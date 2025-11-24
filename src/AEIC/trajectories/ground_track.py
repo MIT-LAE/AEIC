@@ -1,11 +1,10 @@
+import itertools
 from bisect import bisect_left
 from dataclasses import dataclass
 from typing import Self
 
-import numpy as np
-
 from utils import GEOD
-from utils.custom_types import Location
+from utils.types import Location
 
 
 class GroundTrack:
@@ -44,7 +43,7 @@ class GroundTrack:
         lons = [wp.longitude for wp in waypoints]
         lats = [wp.latitude for wp in waypoints]
         self.azimuths, _, distances = GEOD.inv(lons[:-1], lats[:-1], lons[1:], lats[1:])
-        self.index = np.cumsum([0] + distances).tolist()
+        self.index: list[int] = list(itertools.accumulate([0] + distances))
 
     @classmethod
     def great_circle(cls, start_loc: Location, end_loc: Location) -> Self:
@@ -85,7 +84,9 @@ class GroundTrack:
     def location(self, distance: float) -> 'GroundTrack.Point':
         """Calculate location at a given distance from start of ground track."""
 
-        # Find waypoints to interpolate between.
+        # Find waypoints to interpolate between. This throws an exception if
+        # the distance is out of range, so we don't need to check for any index
+        # out of bounds conditions below.
         pos = self.lookup_waypoint(distance)
 
         # Boundary cases.

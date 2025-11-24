@@ -4,7 +4,7 @@ from AEIC.performance_model import PerformanceModel
 from missions import Mission
 
 from .. import Trajectory
-from . import Builder, Context, Options
+from .base import Builder, Context, Options
 
 
 @dataclass
@@ -17,7 +17,7 @@ class DymosContext(Context):
         builder: 'DymosBuilder',
         ac_performance: PerformanceModel,
         mission: Mission,
-        starting_mass: float,
+        starting_mass: float | None,
     ):
         raise NotImplementedError('DymosContext is not yet implemented.')
 

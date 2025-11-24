@@ -1,8 +1,11 @@
+import tomllib
+
 import numpy as np
 
 import AEIC.trajectories.builders as tb
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories import FieldMetadata, FieldSet, TrajectoryStore
+from missions import Mission
 from utils import file_location
 
 test_fields = FieldSet(
@@ -18,13 +21,17 @@ test_fields = FieldSet(
 
 def test_trajectory_simulation_1(tmp_path):
     fname = tmp_path / 'test_trajectories.nc'
-
     performance_model_file = file_location('IO/default_config.toml')
+    missions_file = file_location('missions/sample_missions_10.toml')
+
     perf = PerformanceModel(performance_model_file)
     builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
     ts = TrajectoryStore.create(base_file=fname)
+    with open(missions_file, 'rb') as fp:
+        d = tomllib.load(fp)
+        missions = Mission.from_toml(d)
 
-    for mis in perf.missions:
+    for mis in missions:
         traj = builder.fly(perf, mis)
         traj.add_fields(test_fields)
         traj.test_field1 = np.random.rand(len(traj))
