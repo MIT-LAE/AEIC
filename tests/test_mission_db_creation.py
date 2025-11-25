@@ -33,24 +33,24 @@ def test_dow_mask():
 
 
 def test_airport_handling(tmp_path):
-    db = WritableDatabase(tmp_path / 'test.sqlite')
-    cur = db._conn.cursor()
+    with WritableDatabase(tmp_path / 'test.sqlite') as db:
+        cur = db._conn.cursor()
 
-    ap = airports.airport('LHR')
-    assert ap is not None
-    tz = db._lookup_timezone(ap)
-    assert tz == 'Europe/London'
+        ap = airports.airport('LHR')
+        assert ap is not None
+        tz = db._lookup_timezone(ap)
+        assert tz == 'Europe/London'
 
-    # Real airport.
-    airport_info = db._get_or_add_airport(cur, 1234, 'CDG')
-    print(airport_info)
-    assert airport_info is not None
-    assert airport_info.airport.iata_code == 'CDG'
-    assert airport_info.airport.country == 'FR'
-    assert airport_info.airport.municipality is not None
-    assert airport_info.airport.municipality.startswith('Paris')
-    assert int(airport_info.airport.latitude) == 49
-    assert airport_info.timezone == 'Europe/Paris'
+        # Real airport.
+        airport_info = db._get_or_add_airport(cur, 1234, 'CDG')
+        print(airport_info)
+        assert airport_info is not None
+        assert airport_info.airport.iata_code == 'CDG'
+        assert airport_info.airport.country == 'FR'
+        assert airport_info.airport.municipality is not None
+        assert airport_info.airport.municipality.startswith('Paris')
+        assert int(airport_info.airport.latitude) == 49
+        assert airport_info.timezone == 'Europe/Paris'
 
-    # Not a real airport.
-    assert db._get_or_add_airport(cur, 1235, 'QPX') is None
+        # Not a real airport.
+        assert db._get_or_add_airport(cur, 1235, 'QPX') is None

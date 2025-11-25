@@ -166,87 +166,86 @@ def test_query_result():
     # These queries were all tested manually in the SQLite shell to determine
     # the correct results using this exact test database.
     test_db = os.path.join(os.path.dirname(__file__), 'oag-2019-test-subset.sqlite')
-    db = Database(test_db)
+    with Database(test_db) as db:
+        # All scheduled flights in the test database.
+        result = db(Query())
+        assert isinstance(result, Generator)
+        nflights = len(list(result))
+        assert nflights == 1589
 
-    # All scheduled flights in the test database.
-    result = db(Query())
-    assert isinstance(result, Generator)
-    nflights = len(list(result))
-    assert nflights == 1589
+        # Simple distance filter.
+        nflights = 0
+        result = db(Query(Filter(min_distance=3000)))
+        assert isinstance(result, Generator)
+        for flight in result:
+            assert flight.distance >= 3000
+            nflights += 1
+        assert nflights == 165
 
-    # Simple distance filter.
-    nflights = 0
-    result = db(Query(Filter(min_distance=3000)))
-    assert isinstance(result, Generator)
-    for flight in result:
-        assert flight.distance >= 3000
-        nflights += 1
-    assert nflights == 165
+        # Country filter: either origin or destination in the given country.
+        nflights = 0
+        result = db(Query(Filter(country='IT')))
+        assert isinstance(result, Generator)
+        for flight in result:
+            assert flight.origin_country == 'IT' or flight.destination_country == 'IT'
+            nflights += 1
+        assert nflights == 64
 
-    # Country filter: either origin or destination in the given country.
-    nflights = 0
-    result = db(Query(Filter(country='IT')))
-    assert isinstance(result, Generator)
-    for flight in result:
-        assert flight.origin_country == 'IT' or flight.destination_country == 'IT'
-        nflights += 1
-    assert nflights == 64
+        # Combined filter.
+        nflights = 0
+        q = Query(Filter(max_distance=3000, country=['US', 'CA']))
+        result = db(q)
+        assert isinstance(result, Generator)
+        for flight in result:
+            assert flight.distance <= 3000
+            assert flight.origin_country in (
+                'US',
+                'CA',
+            ) or flight.destination_country in ('US', 'CA')
+            nflights += 1
+        assert nflights == 353
 
-    # Combined filter.
-    nflights = 0
-    q = Query(Filter(max_distance=3000, country=['US', 'CA']))
-    result = db(q)
-    assert isinstance(result, Generator)
-    for flight in result:
-        assert flight.distance <= 3000
-        assert flight.origin_country in ('US', 'CA') or flight.destination_country in (
-            'US',
-            'CA',
-        )
-        nflights += 1
-    assert nflights == 353
+        # Sampling.
+        q2 = q
+        q2.sample = 0.1
+        nflights = 0
+        result = db(q2)
+        assert isinstance(result, Generator)
+        for flight in result:
+            assert flight.distance <= 3000
+            assert flight.origin_country in (
+                'US',
+                'CA',
+            ) or flight.destination_country in ('US', 'CA')
+            nflights += 1
+        # With a 10% sample, we should get between 40 and 90 flights but for
+        # testing it's too dodgy to assert that. All we can say with complete
+        # certainty is that there should be less than the full 523 flights.
+        assert nflights < 353
 
-    # Sampling.
-    q2 = q
-    q2.sample = 0.1
-    nflights = 0
-    result = db(q2)
-    assert isinstance(result, Generator)
-    for flight in result:
-        assert flight.distance <= 3000
-        assert flight.origin_country in ('US', 'CA') or flight.destination_country in (
-            'US',
-            'CA',
-        )
-        nflights += 1
-    # With a 10% sample, we should get between 40 and 90 flights but for
-    # testing it's too dodgy to assert that. All we can say with complete
-    # certainty is that there should be less than the full 523 flights.
-    assert nflights < 353
+        # "Every nth day" filtering.
+        q3 = q
+        q3.every_nth = 5
+        nflights = 0
+        last_day = -1
+        result = db(q3)
+        assert isinstance(result, Generator)
+        for flight in result:
+            assert flight.distance <= 3000
+            assert flight.origin_country in (
+                'US',
+                'CA',
+            ) or flight.destination_country in ('US', 'CA')
+            day = flight.departure.dayofyear
+            if last_day > 0:
+                assert (day - last_day) % 5 == 0
+            last_day = day
+            nflights += 1
+        assert nflights < 353
 
-    # "Every nth day" filtering.
-    q3 = q
-    q3.every_nth = 5
-    nflights = 0
-    last_day = -1
-    result = db(q3)
-    assert isinstance(result, Generator)
-    for flight in result:
-        assert flight.distance <= 3000
-        assert flight.origin_country in ('US', 'CA') or flight.destination_country in (
-            'US',
-            'CA',
-        )
-        day = flight.departure.dayofyear
-        if last_day > 0:
-            assert (day - last_day) % 5 == 0
-        last_day = day
-        nflights += 1
-    assert nflights < 353
-
-    # Frequent flight query.
-    result = db(FrequentFlightQuery(Filter(airport='DTW')))
-    assert isinstance(result, Generator)
-    results = list(result)
-    assert results[0].airport1 == 'DTW' or results[0].airport2 == 'DTW'
-    assert sum(r.number_of_flights for r in results) == 41
+        # Frequent flight query.
+        result = db(FrequentFlightQuery(Filter(airport='DTW')))
+        assert isinstance(result, Generator)
+        results = list(result)
+        assert results[0].airport1 == 'DTW' or results[0].airport2 == 'DTW'
+        assert sum(r.number_of_flights for r in results) == 41

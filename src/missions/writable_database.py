@@ -34,8 +34,8 @@ class AirportInfo:
     airport: airports.Airport
     """Airport data."""
 
-    timezone: str | None = None
-    """Timezone string for the airport, if known."""
+    timezone: str
+    """Timezone string for the airport."""
 
 
 @dataclass
@@ -51,15 +51,18 @@ class Warning:
 
     def __str__(self) -> str:
         details = ''
+        data = self.data
+        if data is None:
+            data = {}
         match self.warn_type:
             case Warning.Type.UNKNOWN_AIRPORT:
-                details = self.data['unknown_airport']
+                details = data['unknown_airport']
             case Warning.Type.TIME_MISORDERING:
-                origin = self.data['origin']
-                destination = self.data['destination']
-                departure_time = self.data['departure_time']
-                arrival_time = self.data['arrival_time']
-                arrival_day_offset = self.data['arrival_day_offset']
+                origin = data['origin']
+                destination = data['destination']
+                departure_time = data['departure_time']
+                arrival_time = data['arrival_time']
+                arrival_day_offset = data['arrival_day_offset']
                 details = (
                     f'{origin.airport.iata_code} @ {departure_time} '
                     f'({origin.timezone}) => '
@@ -68,10 +71,10 @@ class Warning:
                     f'(+{arrival_day_offset})'
                 )
             case Warning.Type.SUSPICIOUS_DISTANCE:
-                origin = self.data['origin']
-                destination = self.data['destination']
-                given = self.data['given_distance_km']
-                calculated = self.data['calculated_distance_km']
+                origin = data['origin']
+                destination = data['destination']
+                given = data['given_distance_km']
+                calculated = data['calculated_distance_km']
                 delta = 100 * (given - calculated) / calculated
                 details = (
                     f'{origin.airport.iata_code} => '
@@ -81,13 +84,11 @@ class Warning:
                     f'delta = {delta:.1f}%)'
                 )
             case Warning.Type.ZERO_DISTANCE:
-                origin = self.data['origin']
-                destination = self.data['destination']
+                origin = data['origin']
+                destination = data['destination']
                 details = (
                     f'{origin.airport.iata_code} => {destination.airport.iata_code}'
                 )
-            case _:
-                return 'unknown warning type'
         return f'{self.warn_type.value} - {details}'
 
 
@@ -184,7 +185,6 @@ class WritableDatabase(Database):
     def _add_flight(
         self,
         cur: sqlite3.Cursor,
-        line: int,
         carrier: str,
         flight_number: int,
         origin: AirportInfo,
@@ -276,8 +276,8 @@ class WritableDatabase(Database):
         flight_id: int,
         origin: AirportInfo,
         destination: AirportInfo,
-        effective_from: date,
-        effective_to: date,
+        effective_from: date | None,
+        effective_to: date | None,
         days: set[DayOfWeek],
         departure_time: TimeOfDay,
         arrival_time: TimeOfDay,
@@ -452,7 +452,7 @@ class WritableDatabase(Database):
         self._airport_cache[airport.iata_code] = AirportInfo(airport_id, airport, tz)
         return self._airport_cache[airport.iata_code]
 
-    def _lookup_timezone(self, airport: airports.Airport) -> str | None:
+    def _lookup_timezone(self, airport: airports.Airport) -> str:
         """Look up the time zone for an airport."""
 
         # Lazy setup of timezonefinder instance.
@@ -465,9 +465,14 @@ class WritableDatabase(Database):
         # reliable, so any errors here are almost certainly due to bad airport
         # data.
         assert self._timezonefinder is not None
-        return self._timezonefinder.certain_timezone_at(
+        tz = self._timezonefinder.certain_timezone_at(
             lat=airport.latitude, lng=airport.longitude
         )
+        if tz is None:
+            raise ValueError(
+                f'Could not determine timezone for airport {airport.iata_code}'
+            )
+        return tz
 
     def _get_or_add_country(self, cur: sqlite3.Cursor, code: str) -> str:
         """Retrieve or add a country entry."""

@@ -1,6 +1,7 @@
 import logging
 import os
 import sqlite3
+import weakref
 from collections.abc import Generator
 from typing import TypeVar
 
@@ -34,11 +35,26 @@ class Database:
         # class.
         self._check_path(db_path)
 
+        # Create connection and ensure it gets closed when the object is
+        # collected. (Better to use explicit close or a context manager if
+        # possible!)
         self._conn = sqlite3.connect(db_path)
+        self._finalizer = weakref.finalize(self, self.close)
 
         # Foreign key constraints are enabled at the connection level, so this
         # needs to be done every time we connect to the database.
         self._conn.cursor().execute("PRAGMA foreign_keys = ON")
+
+    def close(self):
+        """Close the database connection."""
+        if self._finalizer.alive:
+            self._finalizer()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     def _check_path(self, db_path: str):
         """Check that the database file exists."""

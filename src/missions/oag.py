@@ -89,10 +89,10 @@ class CSVEntry:
     seats: int
     """Seat capacity."""
 
-    efffrom: date
+    efffrom: date | None
     """Effective from date."""
 
-    effto: date
+    effto: date | None
     """Effective to date."""
 
     stops: int
@@ -165,7 +165,7 @@ class CSVEntry:
             def optional(t: str) -> str | None:
                 return t if t else None
 
-            def convert_arrday(t: str) -> int | None:
+            def convert_arrday(t: str) -> int:
                 match t:
                     case 'P':
                         return -1
@@ -175,7 +175,9 @@ class CSVEntry:
                         return int(t)
 
             fltno = row.get('fltno')
-            if fltno is not None and fltno != '':
+            if fltno is None or fltno == '':
+                fltno = 0
+            else:
                 fltno = int(fltno)
 
             return cls(
@@ -183,9 +185,9 @@ class CSVEntry:
                 carrier=row['carrier'],
                 fltno=fltno,
                 depapt=row['depapt'],
-                depctry=optional(row.get('depctry')),
+                depctry=optional(row.get('depctry', '')),
                 arrapt=row['arrapt'],
-                arrctry=optional(row.get('arrctry')),
+                arrctry=optional(row.get('arrctry', '')),
                 deptim=make_time(row['deptim']),
                 arrtim=make_time(row['arrtim']),
                 arrday=convert_arrday(row['arrday']),
@@ -269,7 +271,6 @@ class OAGDatabase(WritableDatabase):
         # Add flight entry (number of flights to be computed from schedule).
         flight_id = self._add_flight(
             cur,
-            e.line,
             e.carrier,
             e.fltno,
             origin,
@@ -311,27 +312,26 @@ class OAGDatabase(WritableDatabase):
 def convert_oag_data(
     in_file: str, year: int, db_file: str, warnings_file: str | None = None
 ) -> None:
-    db = OAGDatabase(db_file, year)
+    with OAGDatabase(db_file, year) as db:
+        logger.info('Counting entries in input file...')
+        nlines = 0
+        with open(in_file) as fp:
+            for row in csv.DictReader(fp):
+                if CSVEntry.is_row_valid(row):
+                    nlines += 1
 
-    logger.info('Counting entries in input file...')
-    nlines = 0
-    with open(in_file) as fp:
-        for row in csv.DictReader(fp):
-            if CSVEntry.is_row_valid(row):
-                nlines += 1
+        nentries = 0
+        for entry in tqdm(CSVEntry.read(in_file), total=nlines):
+            # Skip invalid entries.
+            if entry is None:
+                continue
 
-    nentries = 0
-    for entry in tqdm(CSVEntry.read(in_file), total=nlines):
-        # Skip invalid entries.
-        if entry is None:
-            continue
+            # Add entries to database in batches of 10,000.
+            db.add(entry, commit=False)
+            nentries += 1
+            if nentries % 10000 == 0:
+                db.commit()
 
-        # Add entries to database in batches of 10,000.
-        db.add(entry, commit=False)
-        nentries += 1
-        if nentries % 10000 == 0:
-            db.commit()
-
-    db.commit()
-    db.index()
-    db.report(nentries, warnings_file)
+        db.commit()
+        db.index()
+        db.report(nentries, warnings_file)
