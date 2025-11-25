@@ -1407,6 +1407,7 @@ class TrajectoryStore:
         id_pairs = sorted(zip(trajectory_indexes, flight_ids), key=lambda x: x[1])
         index_group.variables['flight_id'][:] = [id for _, id in id_pairs]
         index_group.variables['trajectory_index'][:] = [idx for idx, _ in id_pairs]
+        index_dataset.close()
 
     def _load_trajectory(self, index: int) -> None:
         """Load a trajectory at the given index from the NetCDF file(s)."""

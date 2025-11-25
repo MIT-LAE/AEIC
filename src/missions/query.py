@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import ClassVar, Generic, TypeVar
+from typing import ClassVar, TypeVar
 
 import pandas as pd
 
@@ -14,7 +14,7 @@ T = TypeVar('T')
 
 
 @dataclass
-class QueryBase(ABC, Generic[T]):
+class QueryBase[T](ABC):
     """Abstract base class for queries against the mission database."""
 
     filter: Filter | None = None
@@ -122,6 +122,9 @@ class QueryResult:
     seat_capacity: int
     """Seat capacity."""
 
+    id: int
+    """Unique flight instance ID."""
+
     flight_id: int
     """Unique flight ID."""
 
@@ -132,18 +135,19 @@ class QueryResult:
         return cls(
             departure=pd.Timestamp.utcfromtimestamp(row[0]),
             arrival=pd.Timestamp.utcfromtimestamp(row[1]),
-            carrier=row[3],
-            flight_number=row[4],
-            origin=row[5],
-            origin_country=row[6],
-            destination=row[7],
-            destination_country=row[8],
-            service_type=row[9],
-            aircraft_type=row[10],
-            engine_type=row[11],
-            distance=row[12],
-            seat_capacity=row[13],
-            flight_id=row[2],
+            carrier=row[4],
+            flight_number=row[5],
+            origin=row[6],
+            origin_country=row[7],
+            destination=row[8],
+            destination_country=row[9],
+            service_type=row[10],
+            aircraft_type=row[11],
+            engine_type=row[12],
+            distance=row[13],
+            seat_capacity=row[14],
+            flight_id=row[3],
+            id=row[2],
         )
 
 
@@ -157,6 +161,12 @@ class Query(QueryBase[QueryResult]):
     sample: float | None = None
     """Randomly sample a fraction of the results (0.0 < sample <= 1.0)."""
 
+    limit: int | None = None
+    """Maximum number of results to return."""
+
+    offset: int | None = None
+    """Number of results to skip before returning results."""
+
     RESULT_TYPE = QueryResult
     """Result type returned by this query class."""
 
@@ -168,6 +178,12 @@ class Query(QueryBase[QueryResult]):
             raise ValueError('sample frequency must be between 0.0 and 1.0.')
         if self.every_nth is not None and self.every_nth < 1:
             raise ValueError('every_nth must be at least 1.')
+        if self.limit is not None and self.limit < 1:
+            raise ValueError('result limit must be greater than zero.')
+        if self.offset is not None and self.offset < 0:
+            raise ValueError('result offset cannot be negative.')
+        if self.offset is not None and self.limit is None:
+            raise ValueError('offset cannot be used without a limit.')
 
         # Handle filter and date conditions.
         self._common_conditions()
@@ -196,7 +212,7 @@ class Query(QueryBase[QueryResult]):
 
         sql = (
             'SELECT s.departure_timestamp, s.arrival_timestamp, '
-            'f.id as flight_id, f.carrier, f.flight_number, '
+            's.id as id, f.id as flight_id, f.carrier, f.flight_number, '
             'ao.iata_code AS origin, ao.country AS origin_country, '
             'ad.iata_code AS destination, ad.country AS destination_country, '
             'f.service_type, f.aircraft_type, f.engine_type, '
@@ -208,6 +224,11 @@ class Query(QueryBase[QueryResult]):
             f'{self._where_clause()}'
             ' ORDER BY s.departure_timestamp'
         )
+
+        if self.limit is not None:
+            sql += f' LIMIT {self.limit}'
+            if self.offset is not None:
+                sql += f' OFFSET {self.offset}'
 
         return sql, self._params
 

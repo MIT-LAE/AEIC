@@ -182,6 +182,7 @@ cython_debug/
 
 # Jupyter Notebooks
 *.ipynb
+!notebooks/*.ipynb
 
 # SQLite databases (ignore for now).
 *.sqlite
@@ -192,3 +193,6 @@ cython_debug/
 data/airports/*.csv
 !data/airports/airports-patch.csv
 /test_trajectories.nc
+
+# Merged AEIC trajectory stores
+*.aeic-store

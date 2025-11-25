@@ -112,7 +112,7 @@ def test_query():
     sql, params = Query().to_sql()
     assert sql == (
         'SELECT s.departure_timestamp, s.arrival_timestamp, '
-        'f.id as flight_id, f.carrier, f.flight_number, '
+        's.id as id, f.id as flight_id, f.carrier, f.flight_number, '
         'ao.iata_code AS origin, ao.country AS origin_country, '
         'ad.iata_code AS destination, ad.country AS destination_country, '
         'f.service_type, f.aircraft_type, f.engine_type, '

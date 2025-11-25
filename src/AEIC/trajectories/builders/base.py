@@ -245,6 +245,8 @@ class Builder(ABC):
             # setting up metadata variables before we do.
             traj.starting_mass = self.starting_mass
             traj.total_fuel_mass = self.total_fuel_mass
+            if mission.flight_id is not None:
+                traj.flight_id = mission.flight_id
             # TODO: This doesn't seem right. Flying the trajectory should
             # result in a trajectory with the right numbers of points in each
             # phase! You shouldn't need to set these things here.

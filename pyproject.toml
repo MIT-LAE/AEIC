@@ -15,7 +15,7 @@ readme = "README.md"
 
 license = "MIT"
 
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 
 dependencies = [
     "click",
@@ -29,6 +29,7 @@ dependencies = [
     "timezonefinder>=8.0.0",
     "netcdf4>=1.7.3",
     "cachetools>=6.2.1",
+    "matplotlib>=3.10.7",
 ]
 
 [dependency-groups]
