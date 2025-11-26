@@ -1,4 +1,5 @@
 import bisect
+import gc
 import hashlib
 import itertools
 import json
@@ -311,6 +312,10 @@ class TrajectoryStore:
         # or close.
         self.index_stale = False
 
+        # Default values for other attributes.
+        self.global_attributes = {}
+        self.merged_store = False
+
         # Check that all constructor arguments are consistent.
         self._check_constructor_arguments(
             mode,
@@ -550,22 +555,25 @@ class TrajectoryStore:
         if self.indexable and self.index_stale:
             self._reindex()
 
+        # If there is a separate index Dataset (also for merged stores), close
+        # it too.
+        self.index_group = None
+        if self.index_dataset is not None:
+            self.index_dataset.close()
+            self.index_dataset = None
+
         # Close each NetCDF4 Dataset associated with each of the open stores
         # (there will be multiple Datasets if we're using a merged store).
         for nc in self._nc_files:
             for ds in nc.dataset:
                 ds.close()
 
-        # If there is a separate index Dataset (also for merged stores), close
-        # it too.
-        if self.index_dataset is not None:
-            self.index_dataset.close()
-
         # Clear out everything to do with NetCDF4 Datasets we had open.
         self._nc.clear()
         self._nc_files.clear()
-        self.index_dataset = None
-        self.index_group = None
+
+        # Try to force finalization of NetCDF4 objects.
+        gc.collect()
 
     def sync(self):
         """Synchronize any pending writes to the NetCDF file or files.
@@ -672,6 +680,7 @@ class TrajectoryStore:
         store_data = []
         fieldset_names: set[str] | None = None
         index_groups = []
+        assert input_stores is not None
         for input_store in input_stores:
             p = Path(input_store)
             ts = TrajectoryStore.open(base_file=p)
