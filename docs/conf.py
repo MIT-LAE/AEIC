@@ -30,6 +30,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.napoleon',
     'myst_parser',
+    'enum_tools.autoenum',
 ]
 myst_enable_extensions = [
     "dollarmath",

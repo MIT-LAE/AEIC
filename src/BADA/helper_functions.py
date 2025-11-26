@@ -1,5 +1,4 @@
 import os
-from typing import dict
 
 from .aircraft_parameters import Bada3AircraftParameters
 from .model import Bada3FuelBurnModel

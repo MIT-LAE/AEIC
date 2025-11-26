@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 from scipy.interpolate import RegularGridInterpolator
 
-from utils import GEOD
+from utils.spatial import GEOD
 from utils.units import FEET_TO_METERS
 
 

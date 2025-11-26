@@ -6,7 +6,7 @@ import AEIC.trajectories.builders as tb
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories import FieldMetadata, FieldSet, TrajectoryStore
 from missions import Mission
-from utils import file_location
+from utils.files import file_location
 
 test_fields = FieldSet(
     'test_fields',

@@ -1,10 +1,10 @@
 """Definitions for field metadata and collections of fields ("field sets").
 
 This module defines classes to represent metadata for individual fields and
-collections of such fields, known as `FieldSet`s. `FieldSet`s can be registered
+collections of such fields, known as field sets. Field sets can be registered
 for reuse and support merging while ensuring unique field names.
 
-`FieldSet`s are used to represent the data and metadata fields associated with
+Field sets are used to represent the data and metadata fields associated with
 aircraft trajectories, including emissions data.
 """
 
@@ -86,7 +86,7 @@ class FieldSet(Mapping):
     """
 
     REGISTRY: dict[str, 'FieldSet'] = {}
-    """Registry of named `FieldSet`s for reuse."""
+    """Registry of named field sets for reuse."""
 
     def __init__(
         self, fieldset_name: str, *, registered: bool = True, **fields: FieldMetadata
@@ -114,8 +114,8 @@ class FieldSet(Mapping):
         # Save the fields.
         self._fields = dict(fields)
 
-        # Add the `FieldSet` to the registry. "Normal" `FieldSet`s will be
-        # added, but when we merge two `FieldSet`s, we do not add the merge
+        # Add the `FieldSet` to the registry. "Normal" field sets will be
+        # added, but when we merge two field sets, we do not add the merge
         # result to the registry because there is no reasonable name to give it
         # and it's private to whatever code called the `merge` method.
         if registered:
@@ -162,7 +162,7 @@ class FieldSet(Mapping):
             fields[f] = metadata
 
         # Use the fields in the main `FieldMetadata` constructor. We do not add
-        # the `FieldSet` to the registry: only "normal" `FieldSet`s created
+        # the `FieldSet` to the registry: only "normal" field sets created
         # directly using the `FieldSet` constructor are registered.
         return cls(group.name, registered=False, **fields)
 
@@ -195,10 +195,11 @@ class FieldSet(Mapping):
     def digest(self):
         """Generate persistent hash for `FieldSet`.
 
-        This MD5-based hash is used for identifying `FieldSet`s within NetCDF
+        This MD5-based hash is used for identifying field sets within NetCDF
         files and is used to check the integrity of the link between associated
         NetCDF files and base trajectory NetCDF files in the `TrajectoryStore`
-        class."""
+        class.
+        """
         m = hashlib.md5()
         m.update(self.fieldset_name.encode('utf-8'))
         m.update(b':')
@@ -211,7 +212,7 @@ class FieldSet(Mapping):
         return MappingProxyType(self._fields)
 
     def merge(self, other):
-        """Combine `FieldSet`s, ensuring unique field names."""
+        """Combine field sets, ensuring unique field names."""
         overlap = self._fields.keys() & other._fields.keys()
         if overlap:
             raise ValueError(f'Overlapping field names: {overlap}')
@@ -229,6 +230,6 @@ class FieldSet(Mapping):
 
 @runtime_checkable
 class HasFieldSets(Protocol):
-    """Protocol for objects that have associated `FieldSet`s."""
+    """Protocol for objects that have associated field sets."""
 
     FIELD_SETS = ClassVar[list[FieldSet]]

@@ -1,9 +1,15 @@
+"""Ground tracks are used to represent the path of an aircraft over the Earth's
+surface, defined by a series of waypoints. They support interpolation along
+great circle paths between waypoints. Trajectory builders can use ground tracks
+to determine the aircraft's position as they simulate flight along its route.
+"""
+
 import itertools
 from bisect import bisect_left
 from dataclasses import dataclass
 from typing import Self
 
-from utils import GEOD
+from utils.spatial import GEOD
 from utils.types import Location
 
 

@@ -13,7 +13,7 @@ from emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
 from emissions.EI_SOx import EI_SOx
 from emissions.emission import Emission
 from missions import Mission
-from utils import file_location
+from utils.files import file_location
 from utils.helpers import iso_to_timestamp
 
 # Path to a real fuel TOML file in your repo

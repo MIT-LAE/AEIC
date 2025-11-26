@@ -60,10 +60,11 @@ BASE_FIELDS = FieldSet(
         required=False,
     ),
 )
+"""Base field set included in every trajectory."""
 
 
 class Trajectory:
-    """Class representing a 1D trajectory with various data fields and
+    """Class representing a 1-D trajectory with various data fields and
     metadata.
 
     The "various fields" include a base set of trajectory fields, one value per

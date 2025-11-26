@@ -5,8 +5,8 @@ import numpy as np
 
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories import Trajectory
-from utils import file_location
 from utils.consts import R_air, kappa
+from utils.files import file_location
 from utils.standard_atmosphere import (
     pressure_at_altitude_isa_bada4,
     temperature_at_altitude_isa_bada4,

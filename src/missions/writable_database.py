@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 import utils.airports as airports
-from utils.helpers import great_circle_distance
+from utils.spatial import great_circle_distance
 from utils.types import DayOfWeek, TimeOfDay
 
 from .database import Database

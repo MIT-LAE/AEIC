@@ -4,7 +4,8 @@ from functools import cached_property
 import pandas as pd
 
 from utils.airports import airport
-from utils.helpers import great_circle_distance, iso_to_timestamp
+from utils.helpers import iso_to_timestamp
+from utils.spatial import great_circle_distance
 from utils.types import Position
 
 from .query import QueryResult
@@ -13,12 +14,25 @@ from .query import QueryResult
 @dataclass
 class Mission:
     origin: str
+    """IATA code of origin airport."""
+
     destination: str
+    """IATA code of destination airport."""
+
     departure: pd.Timestamp
+    """Departure time (UTC)."""
+
     arrival: pd.Timestamp
+    """Arrival time (UTC)."""
+
     load_factor: float
+    """Load factor (between 0 and 1)."""
+
     aircraft_type: str
+    """Aircraft type (ICAO code)."""
+
     flight_id: int | None = None
+    """Unique flight identifier from mission database (if available)."""
 
     @staticmethod
     def _airport_position(code: str) -> Position:
@@ -29,10 +43,12 @@ class Mission:
 
     @cached_property
     def origin_position(self) -> Position:
+        """Spatial position (3-D) of origin airport."""
         return self._airport_position(self.origin)
 
     @cached_property
     def destination_position(self) -> Position:
+        """Spatial position (3-D) of destination airport."""
         return self._airport_position(self.destination)
 
     @cached_property
@@ -48,6 +64,10 @@ class Mission:
 
     @classmethod
     def from_toml(cls, data: dict) -> list['Mission']:
+        """Create a list of `Mission` instances from a TOML-like dictionary.
+
+        This is used for parsing sample mission data.
+        """
         result = []
         for f in data['flight']:
             result.append(
@@ -64,6 +84,10 @@ class Mission:
 
     @classmethod
     def from_query_result(cls, qr: QueryResult, load_factor: float = 1.0) -> 'Mission':
+        """Create a `Mission` instance from a `QueryResult` instance.
+
+        This is used for generating missions from mission database queries.
+        """
         return cls(
             origin=qr.origin,
             destination=qr.destination,

@@ -40,6 +40,8 @@ dev = [
     "myst-parser",
     "pytest-cov>=6.2.1",
     "ipykernel>=6.30.1",
+    "enum-tools>=0.13.0",
+    "sphinx-toolbox>=4.0.0",
 ]
 
 [build-system]

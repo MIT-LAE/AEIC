@@ -5,7 +5,7 @@ import AEIC.trajectories.builders as tb
 from AEIC.performance_model import PerformanceModel
 from emissions.emission import Emission
 from missions import Mission
-from utils import file_location
+from utils.files import file_location
 from utils.helpers import iso_to_timestamp
 
 # Path to a real fuel TOML file in your repo

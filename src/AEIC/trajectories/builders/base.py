@@ -68,7 +68,7 @@ class Context:
 
 class Builder(ABC):
     """Abstract parent class for all AEIC trajectory builders. Contains overall
-     `fly` logic.
+    `fly` logic.
 
     Attributes:
         options (Options): Options for trajectory building.

@@ -3,7 +3,7 @@ import logging
 import os
 from dataclasses import dataclass
 
-from utils import data_file_path, download
+from utils.files import data_file_path, download
 from utils.types import Position
 from utils.units import FEET_TO_METERS
 
@@ -15,8 +15,13 @@ class Country:
     """Country data, including ISO 3166-1 alpha-2 code, name, and continent."""
 
     code: str
+    """ISO 3166-1 alpha-2 country code."""
+
     name: str
+    """Country name."""
+
     continent: str
+    """Continent code (e.g., 'EU' for Europe)."""
 
 
 class CountriesData:
@@ -38,18 +43,33 @@ class CountriesData:
 
 @dataclass
 class Airport:
-    """Airport data, including IATA code, name, and location information."""
+    """Airport data."""
 
     iata_code: str
+    """IATA airport code."""
+
     name: str
+    """Airport name."""
+
     latitude: float
+    """Latitude in decimal degrees."""
+
     longitude: float
+    """Longitude in decimal degrees."""
+
     elevation: float | None
+    """Elevation in meters above sea level, or None if not available."""
+
     country: str
+    """ISO 3166-1 alpha-2 country code."""
+
     municipality: str | None
+    """Municipality (city) where the airport is located, or None if not
+    available."""
 
     @property
     def position(self) -> Position:
+        """Get the geographic position of the airport."""
         return Position(
             longitude=self.longitude,
             latitude=self.latitude,
@@ -114,6 +134,7 @@ _airports: AirportsData | None = None
 
 
 def country(code: str) -> Country | None:
+    """Retrieve country data by ISO 3166-1 alpha-2 code."""
     global _countries
     if _countries is None:
         _countries = CountriesData()
@@ -121,6 +142,7 @@ def country(code: str) -> Country | None:
 
 
 def airport(code: str) -> Airport | None:
+    """Retrieve airport data by IATA code."""
     global _airports
     if _airports is None:
         _airports = AirportsData()

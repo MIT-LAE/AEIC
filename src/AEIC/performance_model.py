@@ -11,7 +11,7 @@ from BADA.model import Bada3JetEngineModel
 from missions import Mission
 from parsers.LTO_reader import parseLTO
 from parsers.OPF_reader import parse_OPF
-from utils import file_location
+from utils.files import file_location
 
 
 class PerformanceModel:

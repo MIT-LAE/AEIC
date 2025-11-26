@@ -1,12 +1,15 @@
-"""Flight phase definitions and metadata for AEIC trajectory datasets.
-
-Trajectories are divided into a sequence of "phases" (e.g., climb, cruise,
+"""Trajectories are divided into a sequence of "phases" (e.g., climb, cruise,
 descent). Each phase has a corresponding field in the `Trajectory` class that
 records the number of points in that phase for each trajectory.
 
 Some phases are expected to be simulated by all performance models (climb,
 cruise, descent) while others are optional (taxi, takeoff, approach, idle) and
-may only be simulated by more detailed models.
+may only be simulated by more detailed models or may be populated from
+time-in-mode values. For uniformity of representation, these optional phases
+are included as "normal" points in the trajectory.
+
+Each `Trajectory` records the number of points in each phase using fields with
+names prefixed by `n_` (e.g., `n_climb`, `n_cruise`, `n_descent`).
 """
 
 from enum import Enum, auto
@@ -77,4 +80,6 @@ PHASE_FIELDS = {
 }
 """Convenience dictionary of field metadata for all flight phases.
 
-This is used in the "base" field set for trajectory datasets."""
+This is used in the "base" field set for trajectory datasets to add the phase
+point count metadata variables to every trajectory.
+"""

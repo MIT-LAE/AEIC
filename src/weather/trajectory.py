@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils import GEOD
+from utils.spatial import GEOD
 
 
 def get_mission_points(mission):

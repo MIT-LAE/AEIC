@@ -110,9 +110,11 @@ class TrajectoryStore:
     The intention here is to support a number of different use cases for
     storing trajectory and associated (normally emissions) data.
 
-    **Trajectory stores are *not* thread-safe. A program may create and use
+    **Trajectory stores are not thread-safe. A program may create and use
     TrajectoryStore values from a single thread only. This single-threaded
     restriction applies both to read-only access and mutation of stores.**
+
+    **Field sets**
 
     Data stored in a `TrajectoryStore` is divided into "field sets"
     (represented by the `FieldSet` class from the
@@ -131,12 +133,23 @@ class TrajectoryStore:
     `AEIC.trajectories.trajectory` package). Additional field sets can be
     stored in a `TrajectoryStore` as needed.
 
+    The set of field sets contained in a `TrajectoryStore` is determined when
+    the first trajectory is added to the store. All subsequent trajectories
+    added must have the same field sets.
+
+    **Access modes and NetCDF files**
+
     The `TrajectoryStore` class supports three access modes: CREATE, READ and
-    APPEND. In addition, it is possible to create additional associated NetCDF
-    files associated with an existing `TrajectoryStore` using the
-    `create_associated` class method.
+    APPEND, accessed using the `create`, `open` and `append` class methods. In
+    addition, it is possible to create additional associated NetCDF files
+    associated with an existing `TrajectoryStore` using the `create_associated`
+    class method. In general, `TrajectoryStore` instances should be managed
+    using a `with` context manager to ensure that files are closed properly
+    when no longer needed. This is particularly important because of the tricky
+    finalization semantics of the underlying NetCDF and HDF5 libraries.
 
     A `TrajectoryStore` may be:
+
      - created purely in-memory, or
      - it may be connected to a single NetCDF file (in which data from all
        field sets will be stored), or
@@ -152,8 +165,71 @@ class TrajectoryStore:
     trajectories overflow the cache size, requiring an eviction, a
     `TrajectoryCache.EvictionOccurred` exception is raised.
 
-    TODO: Continue this and work out the best way to integrate it into the
-    Sphinx docs. This could get quite long.
+    **Base and associated files**
+
+    Every `TrajectoryStore` has a "base" NetCDF file (or files, for a merged
+    store) that contains the base field set and possibly additional field sets.
+    Additional field sets may be stored in separate "associated" NetCDF files.
+    Each associated file may contain one or more field sets.
+
+    When opening a `TrajectoryStore` in READ or APPEND mode, a list of
+    associated files may be provided along with the base file. Trajectories
+    retrieved from the resulting store will have data from all field sets
+    stored in the base and associated files.
+
+    When creating a new `TrajectoryStore` in CREATE mode, a list of associated
+    files may be provided along with the base file. In this case, the list
+    must specify which field sets are to be stored in each associated file.
+    When the first trajectory is added to the store, the base and associated
+    files are created and the field sets are distributed among them as
+    specified.
+
+    Associated files may be created from an existing `TrajectoryStore` using
+    the `create_associated` class method. This is essentially a mapping
+    operation, taking each trajectory in the store, applying a user-supplied
+    function to generate new data values, and storing the resulting data in a
+    new associated NetCDF file. The intended use case here is for the
+    calculation of data like emissions that are associated with trajectories
+    but are not part of the trajectory data itself, and so may be calculated
+    separately.
+
+    When an associated file is created, metadata is stored within the file to
+    link it to the base file from which it was created. This linkage is checked
+    when opening a `TrajectoryStore` with associated files to ensure that the
+    associated files correspond to the base file.
+
+    **Merged stores**
+
+    To simplify management of large trajectory data sets that may be split
+    across multiple NetCDF files, the `TrajectoryStore` class supports "merged"
+    stores. A merged store is stored as a directory containing multiple NetCDF
+    files, each of which contains a subset of the trajectories in the store,
+    along with a JSON metadata file and possible a separate NetCDF file for the
+    store's flight ID index.
+
+    A merged store is created using the `merge` class method, which takes as
+    input a list of existing NetCDF files and the name of a directory in which
+    to create the merged store. The resulting merged store may then be opened
+    in READ mode like any other `TrajectoryStore`. Merged stores must have
+    extension ".aeic-store".
+
+    Merged stores may be created from both base files and associated files.
+
+    **Trajectory access and mission database indexing**
+
+    Trajectories can be retrieved from a trajectory store simply by indexing
+    the store with the integer index of the trajectory within the store.
+    Indexes are assigned in order from zero in the order of insertion of
+    trajectories. Indexes into merged stores run consecutively from zero across
+    all the constituent NetCDF files composing the merged store.
+
+    In addition, if all trajectories in the store have a `flight_id` field
+    (representing the mission database flight ID for the trajectory), the store
+    can be indexed by flight ID as well. In this case, the store is said to be
+    "indexable". If a store is indexable, the `flight_id` field of each
+    trajectory must be unique within the store. A trajectory can be retrieved
+    by flight ID using the `get_flight` method.
+
     """
 
     class FileMode(str, Enum):
@@ -251,10 +327,10 @@ class TrajectoryStore:
             - APPEND: Open an existing store for appending new trajectories.
             Default is READ.
         override : bool | None, optional
-            If true in READ mode, `FieldSet`s from associated files will override
-            any `FieldSet`s of the same name in the base file. Default is False.
+            If true in READ mode, field sets from associated files will override
+            any field sets of the same name in the base file. Default is False.
         force_fieldset_matches : bool | None, optional
-            If True in READ mode, `FieldSet`s from NetCDF files that do not match
+            If True in READ mode, field sets from NetCDF files that do not match
             the corresponding FieldSet in the registry will be accepted with a
             warning. Default is False. There are no guarantees that things will
             work if this is set to True!
@@ -262,7 +338,7 @@ class TrajectoryStore:
             Paths to associated NetCDF files containing additional data or
             metadata fields. Each associated file may be specified as a string
             path or as a tuple of the form (path, [fieldset_names]) where
-            fieldset_names is a list of names of `FieldSet`s to load from the
+            fieldset_names is a list of names of field sets to load from the
             associated file.
         title : str | None, optional
             Title for the base NetCDF file. (Global NetCDF attribute.)

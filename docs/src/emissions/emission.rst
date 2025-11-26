@@ -1,5 +1,5 @@
 Emissions Module
-=========
+================
 
 The ``Emission`` class encapsulates the full calculation of aircraft emissions for a mission:
 
