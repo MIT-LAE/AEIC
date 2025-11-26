@@ -17,10 +17,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python 3.13
+    - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
-        python-version: "3.13"
+        python-version: "3.11"
 
     - name: Install Ruff
       run: |
@@ -51,10 +51,10 @@ jobs:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
 
-    - name: Set up Python 3.13
+    - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
-        python-version: "3.13"
+        python-version: "3.11"
 
     - name: Install project & dependencies
       run: uv sync --locked --all-extras --dev
