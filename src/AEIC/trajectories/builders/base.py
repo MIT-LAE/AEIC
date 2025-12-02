@@ -205,9 +205,7 @@ class Builder(ABC):
             )
 
             # Allow user to specify starting mass if desired, but otherwise let
-            # the trajectory builder calculate it. (Using -1.0 as a sentinel
-            # value here is a little ugly, but it allows us to keep the type of
-            # starting_mass in the context as float, rather than float | None.)
+            # the trajectory builder calculate it.
             if self.starting_mass is None:
                 self.starting_mass = self.calc_starting_mass(**kwargs)
             assert self.starting_mass is not None
