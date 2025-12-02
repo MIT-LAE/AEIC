@@ -231,8 +231,8 @@ class PerformanceModel:
             mass (float): Mass value of interest.
 
         Returns:
-            (list[int]) List containing the indices of the TAS values in performance
-                data that bound the given TAS.
+            (list[int]) List containing the indices of the mass values in performance
+                data that bound the given mass.
         """
 
         mass_ind_high = np.searchsorted(self.performance_table_cols[-1], mass)
