@@ -2,11 +2,11 @@ import numpy as np
 import pytest
 
 import AEIC.trajectories.builders as tb
+from AEIC.emissions.emission import Emission
+from AEIC.missions import Mission
 from AEIC.performance_model import PerformanceModel
-from emissions.emission import Emission
-from missions import Mission
-from utils.files import file_location
-from utils.helpers import iso_to_timestamp
+from AEIC.utils.files import file_location
+from AEIC.utils.helpers import iso_to_timestamp
 
 # Path to a real fuel TOML file in your repo
 performance_model_file = file_location("IO/default_config.toml")

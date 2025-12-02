@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
+from AEIC.missions import Mission
 from AEIC.performance_model import PerformanceModel
-from missions import Mission
 
 from .. import Trajectory
 from .base import Builder, Context, Options

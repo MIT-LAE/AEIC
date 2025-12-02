@@ -4,17 +4,17 @@ import numpy as np
 import pytest
 
 import AEIC.trajectories.builders as tb
+from AEIC.emissions.APU_emissions import get_APU_emissions
+from AEIC.emissions.EI_CO2 import EI_CO2
+from AEIC.emissions.EI_H2O import EI_H2O
+from AEIC.emissions.EI_HCCO import EI_HCCO
+from AEIC.emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
+from AEIC.emissions.EI_SOx import EI_SOx
+from AEIC.emissions.emission import Emission
+from AEIC.missions import Mission
 from AEIC.performance_model import PerformanceModel
-from emissions.APU_emissions import get_APU_emissions
-from emissions.EI_CO2 import EI_CO2
-from emissions.EI_H2O import EI_H2O
-from emissions.EI_HCCO import EI_HCCO
-from emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
-from emissions.EI_SOx import EI_SOx
-from emissions.emission import Emission
-from missions import Mission
-from utils.files import file_location
-from utils.helpers import iso_to_timestamp
+from AEIC.utils.files import file_location
+from AEIC.utils.helpers import iso_to_timestamp
 
 # Path to a real fuel TOML file in your repo
 performance_model_file = file_location("IO/default_config.toml")
@@ -283,7 +283,7 @@ class TestBFFM2_EINOx:
         # NOx EI should be different
         assert not np.allclose(results_no_cruise[0], results_with_cruise[0])
 
-    @patch('utils.standard_fuel.get_thrust_cat')
+    @patch('AEIC.utils.standard_fuel.get_thrust_cat')
     def test_thrust_categorization(self, mock_get_thrust_cat):
         """Test thrust categorization functionality"""
         # Mock thrust categories

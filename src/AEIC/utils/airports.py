@@ -3,9 +3,9 @@ import logging
 import os
 from dataclasses import dataclass
 
-from utils.files import data_file_path, download
-from utils.types import Position
-from utils.units import FEET_TO_METERS
+from AEIC.utils.files import data_file_path, download
+from AEIC.utils.types import Position
+from AEIC.utils.units import FEET_TO_METERS
 
 logger = logging.getLogger(__name__)
 

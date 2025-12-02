@@ -3,17 +3,17 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from AEIC.missions import Mission
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories import FlightPhase, GroundTrack, Trajectory
-from missions import Mission
-from utils.helpers import filter_order_duplicates
-from utils.units import (
+from AEIC.utils.helpers import filter_order_duplicates
+from AEIC.utils.units import (
     FEET_TO_METERS,
     FL_TO_METERS,
     METERS_TO_FL,
     NAUTICAL_MILES_TO_METERS,
 )
-from utils.weather_utils import compute_ground_speed
+from AEIC.utils.weather_utils import compute_ground_speed
 
 from .base import Builder, Context, Options
 

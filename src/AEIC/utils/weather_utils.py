@@ -2,8 +2,8 @@ import numpy as np
 import xarray as xr
 from scipy.interpolate import RegularGridInterpolator
 
-from utils.spatial import GEOD
-from utils.units import FEET_TO_METERS
+from .spatial import GEOD
+from .units import FEET_TO_METERS
 
 
 def altitude_to_pressure_hpa(alt_m):

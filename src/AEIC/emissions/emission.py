@@ -5,13 +5,13 @@ import numpy as np
 
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories import Trajectory
-from utils.consts import R_air, kappa
-from utils.files import file_location
-from utils.standard_atmosphere import (
+from AEIC.utils.consts import R_air, kappa
+from AEIC.utils.files import file_location
+from AEIC.utils.standard_atmosphere import (
     pressure_at_altitude_isa_bada4,
     temperature_at_altitude_isa_bada4,
 )
-from utils.standard_fuel import get_SLS_equivalent_fuel_flow, get_thrust_cat
+from AEIC.utils.standard_fuel import get_SLS_equivalent_fuel_flow, get_thrust_cat
 
 from .APU_emissions import get_APU_emissions
 from .EI_CO2 import EI_CO2

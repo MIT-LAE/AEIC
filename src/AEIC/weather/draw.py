@@ -2,7 +2,7 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
 
-from utils.spatial import GEOD
+from AEIC.utils.spatial import GEOD
 
 
 def plot_flight_arc(mission):

@@ -1,6 +1,6 @@
-import utils.airports as airports
-from missions.writable_database import WritableDatabase
-from utils.types import DayOfWeek
+import AEIC.utils.airports as airports
+from AEIC.missions.writable_database import WritableDatabase
+from AEIC.utils.types import DayOfWeek
 
 
 def test_dow_mask():

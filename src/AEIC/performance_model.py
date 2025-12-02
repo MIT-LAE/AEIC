@@ -4,14 +4,14 @@ import tomllib
 
 import numpy as np
 
-from BADA.aircraft_parameters import Bada3AircraftParameters
-from BADA.model import Bada3JetEngineModel
+from AEIC.BADA.aircraft_parameters import Bada3AircraftParameters
+from AEIC.BADA.model import Bada3JetEngineModel
 
 # from src.missions.OAG_filter import filter_OAG_schedule
-from missions import Mission
-from parsers.LTO_reader import parseLTO
-from parsers.OPF_reader import parse_OPF
-from utils.files import file_location
+from AEIC.missions import Mission
+from AEIC.parsers.LTO_reader import parseLTO
+from AEIC.parsers.OPF_reader import parse_OPF
+from AEIC.utils.files import file_location
 
 
 class PerformanceModel:

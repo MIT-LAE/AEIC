@@ -3,7 +3,7 @@ import os
 
 import click
 
-from missions.oag import convert_oag_data
+from AEIC.missions.oag import convert_oag_data
 
 logger = logging.getLogger(__name__)
 

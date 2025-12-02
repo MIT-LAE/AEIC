@@ -6,7 +6,7 @@ from typing import ClassVar, TypeVar
 
 import pandas as pd
 
-from utils.helpers import date_to_timestamp
+from AEIC.utils.helpers import date_to_timestamp
 
 from .filter import Filter
 

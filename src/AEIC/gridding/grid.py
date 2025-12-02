@@ -6,9 +6,9 @@ import pandas as pd
 from numpy.typing import NDArray
 from shapely.geometry import Polygon
 
-from utils.helpers import calculate_line_parameters, crosses_dateline
-from utils.spatial import great_circle_distance
-from utils.units import METERS_TO_FEET
+from AEIC.utils.helpers import calculate_line_parameters, crosses_dateline
+from AEIC.utils.spatial import great_circle_distance
+from AEIC.utils.units import METERS_TO_FEET
 
 
 @dataclass

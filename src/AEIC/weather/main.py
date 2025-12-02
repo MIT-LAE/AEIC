@@ -1,9 +1,8 @@
 import json
 
-import trajectory as traj
-
-import utils as util
-from utils.units import FEET_TO_METERS
+import AEIC.trajectories.trajectory as traj
+import AEIC.utils as util
+from AEIC.utils.units import FEET_TO_METERS
 
 mission_path = "../missions/sample_missions_10.json"
 weather_data = "ERA5/sample.grib"

@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils.consts import T0, kappa, p0
+from AEIC.utils.consts import T0, kappa, p0
 
 
 def PMnvol_MEEM(

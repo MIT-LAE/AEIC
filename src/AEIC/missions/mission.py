@@ -3,10 +3,10 @@ from functools import cached_property
 
 import pandas as pd
 
-from utils.airports import airport
-from utils.helpers import iso_to_timestamp
-from utils.spatial import great_circle_distance
-from utils.types import Position
+from AEIC.utils.airports import airport
+from AEIC.utils.helpers import iso_to_timestamp
+from AEIC.utils.spatial import great_circle_distance
+from AEIC.utils.types import Position
 
 from .query import QueryResult
 

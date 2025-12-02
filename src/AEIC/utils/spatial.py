@@ -1,6 +1,6 @@
 from pyproj import Geod
 
-from utils.types import FloatOrNDArray
+from AEIC.utils.types import FloatOrNDArray
 
 GEOD = Geod(ellps="WGS84")
 """WGS84 ellipsoid geodetic calculator."""

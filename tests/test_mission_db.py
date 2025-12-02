@@ -2,8 +2,8 @@ import os
 from collections.abc import Generator
 from datetime import date
 
-from missions import BoundingBox, Database, Filter, FrequentFlightQuery, Query
-from utils.helpers import date_to_timestamp
+from AEIC.missions import BoundingBox, Database, Filter, FrequentFlightQuery, Query
+from AEIC.utils.helpers import date_to_timestamp
 
 
 def test_filter():

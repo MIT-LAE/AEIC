@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 
-from utils.standard_fuel import get_thrust_cat
+from AEIC.utils.standard_fuel import get_thrust_cat
 
 
 def BFFM2_EINOx(

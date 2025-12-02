@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from AEIC.missions import Mission
 from AEIC.performance_model import PerformanceModel
-from missions import Mission
 
 from ..ground_track import GroundTrack
 from ..phase import FlightPhase

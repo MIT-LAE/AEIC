@@ -9,8 +9,8 @@ from bisect import bisect_left
 from dataclasses import dataclass
 from typing import Self
 
-from utils.spatial import GEOD
-from utils.types import Location
+from AEIC.utils.spatial import GEOD
+from AEIC.utils.types import Location
 
 
 class GroundTrack:

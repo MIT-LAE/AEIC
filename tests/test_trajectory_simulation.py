@@ -3,10 +3,10 @@ import tomllib
 import numpy as np
 
 import AEIC.trajectories.builders as tb
+from AEIC.missions import Mission
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories import FieldMetadata, FieldSet, TrajectoryStore
-from missions import Mission
-from utils.files import file_location
+from AEIC.utils.files import file_location
 
 test_fields = FieldSet(
     'test_fields',
