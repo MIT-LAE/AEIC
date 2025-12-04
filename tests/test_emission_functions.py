@@ -4,16 +4,16 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from emissions.APU_emissions import get_APU_emissions
-from emissions.EI_CO2 import EI_CO2, CO2EmissionResult
-from emissions.EI_H2O import EI_H2O
-from emissions.EI_HCCO import EI_HCCO
-from emissions.EI_NOx import BFFM2_EINOx, BFFM2EINOxResult, NOx_speciation
-from emissions.EI_PMnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
-from emissions.EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
-from emissions.EI_SOx import EI_SOx, SOxEmissionResult
-from emissions.lifecycle_CO2 import lifecycle_CO2
-from utils import file_location
+from AEIC.emissions.APU_emissions import get_APU_emissions
+from AEIC.emissions.EI_CO2 import EI_CO2, CO2EmissionResult
+from AEIC.emissions.EI_H2O import EI_H2O
+from AEIC.emissions.EI_HCCO import EI_HCCO
+from AEIC.emissions.EI_NOx import BFFM2_EINOx, BFFM2EINOxResult, NOx_speciation
+from AEIC.emissions.EI_PMnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
+from AEIC.emissions.EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
+from AEIC.emissions.EI_SOx import EI_SOx, SOxEmissionResult
+from AEIC.emissions.lifecycle_CO2 import lifecycle_CO2
+from AEIC.utils.files import file_location
 
 
 class TestEI_CO2:

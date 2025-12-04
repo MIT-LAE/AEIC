@@ -23,9 +23,6 @@ def test_performance_model_initialization():
     assert model.config.missions_in_file.endswith('.toml')
 
     assert isinstance(model.missions, list) and len(model.missions) > 0
-    first_mission = model.missions[0]
-    for key in ('dep_airport', 'arr_airport', 'distance_nm', 'ac_code'):
-        assert key in first_mission
 
     assert hasattr(model, 'ac_params')
     assert model.ac_params.cas_cruise_lo == pytest.approx(

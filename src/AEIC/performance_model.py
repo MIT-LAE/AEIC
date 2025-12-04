@@ -8,11 +8,13 @@ from typing import Any
 
 import numpy as np
 
-from BADA.aircraft_parameters import Bada3AircraftParameters
-from BADA.model import Bada3JetEngineModel
-from parsers.LTO_reader import parseLTO
-from parsers.OPF_reader import parse_OPF
-from utils import file_location, inspect_inputs
+from AEIC.BADA.aircraft_parameters import Bada3AircraftParameters
+from AEIC.BADA.model import Bada3JetEngineModel
+from AEIC.missions import Mission
+from AEIC.parsers.LTO_reader import parseLTO
+from AEIC.parsers.OPF_reader import parse_OPF
+from AEIC.utils.files import file_location
+from AEIC.utils.inspect_inputs import require_str
 
 
 class PerformanceInputMode(Enum):
@@ -69,12 +71,12 @@ class PerformanceConfig:
         if not emissions:
             raise ValueError("Missing [Emissions] section in configuration file.")
         return cls(
-            missions_folder=inspect_inputs.require_str(missions, 'missions_folder'),
-            missions_in_file=inspect_inputs.require_str(missions, 'missions_in_file'),
+            missions_folder=require_str(missions, 'missions_folder'),
+            missions_in_file=require_str(missions, 'missions_in_file'),
             performance_model_input=PerformanceInputMode.from_value(
                 general.get('performance_model_input')
             ),
-            performance_model_input_file=inspect_inputs.require_str(
+            performance_model_input_file=require_str(
                 general, 'performance_model_input_file'
             ),
             emissions=emissions,
