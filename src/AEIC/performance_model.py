@@ -8,9 +8,9 @@ import numpy as np
 
 from AEIC.BADA.aircraft_parameters import Bada3AircraftParameters
 from AEIC.BADA.model import Bada3JetEngineModel
+from AEIC.config import config
 from AEIC.parsers.LTO_reader import parseLTO
 from AEIC.parsers.OPF_reader import parse_OPF
-from AEIC.utils.files import file_location
 from AEIC.utils.inspect_inputs import require_str
 from AEIC.utils.read_EDB_data import get_EDB_data_for_engine
 
@@ -114,7 +114,7 @@ class PerformanceModel:
     def __init__(self, config_file="IO/default_config.toml"):
         '''Initializes the performance model by reading the configuration,
         loading mission data, and setting up performance and engine models.'''
-        config_file_loc = file_location(config_file)
+        config_file_loc = config.file_location(config_file)
         with open(config_file_loc, 'rb') as f:
             config_data = tomllib.load(f)
         self.config = PerformanceConfig.from_mapping(config_data)
@@ -131,7 +131,7 @@ class PerformanceModel:
         # If OPF data input
         if input_mode is PerformanceInputMode.OPF:
             opf_params = parse_OPF(
-                file_location(self.config.performance_model_input_file)
+                config.file_location(self.config.performance_model_input_file)
             )
             for key in opf_params:
                 setattr(self.ac_params, key, opf_params[key])
@@ -159,14 +159,14 @@ class PerformanceModel:
                     "LTO_input_file must be provided when"
                     "using LTO_input_mode='input_file'."
                 )
-            self.LTO_data = parseLTO(file_location(lto_input_file))
+            self.LTO_data = parseLTO(config.file_location(lto_input_file))
 
     def read_performance_data(self):
         '''Parses the TOML input file containing flight and LTO performance data.
         Separates model metadata and prepares the data for table generation.'''
 
         # Read and load TOML data
-        with open(file_location(self.config.performance_model_input_file), "rb") as f:
+        with open(config.file_location(self.config.performance_model_input_file), "rb") as f:
             data = tomllib.load(f)
 
         self.LTO_data = data['LTO_performance']
@@ -184,7 +184,7 @@ class PerformanceModel:
 
         # Read APU data
         apu_name = data['General_Information']['APU_name']
-        with open(file_location("engines/APU_data.toml"), "rb") as f:
+        with open(config.file_location("engines/APU_data.toml"), "rb") as f:
             APU_data = tomllib.load(f)
 
         for apu in APU_data.get("APU", []):

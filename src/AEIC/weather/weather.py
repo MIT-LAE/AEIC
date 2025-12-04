@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from AEIC.config import config
 from AEIC.trajectories.ground_track import GroundTrack
-from AEIC.utils.files import file_location
 
 
 class Weather:
@@ -37,7 +37,7 @@ class Weather:
 
     def _nc_path(self, time: pd.Timestamp) -> Path:
         fname = time.strftime('%Y%m%d.nc')
-        return Path(file_location(str(self.data_dir / fname)))
+        return Path(config.file_location(str(self.data_dir / fname)))
 
     def _require_main_ds(self, time: pd.Timestamp):
         # If we already have the main Dataset for this date, return.

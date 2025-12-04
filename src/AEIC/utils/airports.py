@@ -3,7 +3,8 @@ import logging
 import os
 from dataclasses import dataclass
 
-from AEIC.utils.files import data_file_path, download
+from AEIC.config import config
+from AEIC.utils.files import download
 from AEIC.utils.types import Position
 from AEIC.utils.units import FEET_TO_METERS
 
@@ -86,7 +87,7 @@ class AirportsData:
         # Some historical airports are missing from the main data file, so add
         # them here from a supplemental CSV file.
         self._airports.update(
-            self._read_file(data_file_path('airports/airports-patch.csv'))
+            self._read_file(config.data_file_location('airports/airports-patch.csv'))
         )
 
     def _read_file(self, f: str) -> dict[str, Airport]:
@@ -120,7 +121,7 @@ def _data_file(f: str) -> str:
     """Lazy download of OurAirports data."""
 
     base_url = 'https://davidmegginson.github.io/ourairports-data'
-    data_file = data_file_path(f'airports/{f}.csv')
+    data_file = config.data_file_location(f'airports/{f}.csv')
     if not os.path.exists(data_file):
         logger.info('Downloading %s data file', f)
         download(f'{base_url}/{f}.csv', data_file)

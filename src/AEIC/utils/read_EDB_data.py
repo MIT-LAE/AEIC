@@ -2,7 +2,7 @@ import gc
 
 import pandas as pd
 
-from AEIC.utils.files import file_location
+from AEIC.config import config
 
 
 def get_EDB_data_for_engine(edb_path: str, uid: str) -> dict:
@@ -11,7 +11,7 @@ def get_EDB_data_for_engine(edb_path: str, uid: str) -> dict:
     EDB engine data for UID given,
     combining data from the "Gaseous Emissions and Smoke" and "nvPM Emissions" sheets.
     """
-    edb_file = file_location(edb_path)
+    edb_file = config.file_location(edb_path)
 
     try:
         xls = pd.ExcelFile(edb_file)

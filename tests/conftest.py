@@ -3,11 +3,9 @@ from pathlib import Path
 
 import pytest
 
-os.environ['AEIC_DATA_DIR'] = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../data')
+os.environ['AEIC_PATH'] = str(
+    (Path(__file__).parent.parent / 'data').resolve()
 )
-
-print(os.environ['AEIC_DATA_DIR'])
 
 
 @pytest.fixture(scope='session')

@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+import AEIC.trajectories.builders as tb
+from AEIC.config import config
 from AEIC.emissions.EI_HCCO import EI_HCCO
 from AEIC.emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
 from AEIC.emissions.EI_PMnvol import calculate_PMnvolEI_scope11
@@ -16,7 +18,25 @@ from AEIC.emissions.emission import (
     PMnvolMethod,
     PMvolMethod,
 )
+from AEIC.missions import Mission
+from AEIC.performance_model import PerformanceModel
+from AEIC.utils.helpers import iso_to_timestamp
 from AEIC.utils.standard_fuel import get_thrust_cat
+
+# Path to a real fuel TOML file in your repo
+performance_model_file = config.file_location("IO/default_config.toml")
+
+# Path to a real fuel TOML file in your repo
+perf = PerformanceModel(performance_model_file)
+
+sample_mission = Mission(
+    origin="BOS",
+    destination="LAX",
+    aircraft_type="738",
+    departure=iso_to_timestamp('2019-01-01 12:00:00'),
+    arrival=iso_to_timestamp('2019-01-01 18:00:00'),
+    load_factor=1.0,
+)
 
 _BASE_EMISSIONS = {
     'Fuel': 'conventional_jetA',

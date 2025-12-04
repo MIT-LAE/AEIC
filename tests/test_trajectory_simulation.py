@@ -4,16 +4,16 @@ import numpy as np
 import pytest
 
 import AEIC.trajectories.builders as tb
+from AEIC.config import config
 from AEIC.missions import Mission
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories import FieldMetadata, FieldSet, TrajectoryStore
-from AEIC.utils.files import file_location
 from AEIC.utils.helpers import iso_to_timestamp
 
 
 @pytest.fixture(scope='session')
 def sample_missions():
-    missions_file = file_location('missions/sample_missions_10.toml')
+    missions_file = config.file_location('missions/sample_missions_10.toml')
     with open(missions_file, 'rb') as f:
         mission_dict = tomllib.load(f)
     return Mission.from_toml(mission_dict)
@@ -50,7 +50,7 @@ def iteration_params():
 
 @pytest.fixture(scope='session')
 def performance_model(test_data_dir):
-    perf = PerformanceModel(file_location('IO/default_config.toml'))
+    perf = PerformanceModel(config.file_location('IO/default_config.toml'))
     perf.config.weather_data_dir = test_data_dir / 'weather'
     return perf
 

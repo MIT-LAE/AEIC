@@ -9,10 +9,10 @@ from typing import Any
 
 import numpy as np
 
+from AEIC.config import config
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories.trajectory import Trajectory
 from AEIC.utils.consts import R_air, kappa
-from AEIC.utils.files import file_location
 from AEIC.utils.inspect_inputs import as_bool, require_str
 from AEIC.utils.standard_atmosphere import (
     pressure_at_altitude_isa_bada4,
@@ -302,7 +302,7 @@ class Emission:
         )
         self._scope11_cache = None
 
-        with open(file_location(self.conf.fuel_file), 'rb') as f:
+        with open(config.file_location(self.conf.fuel_file), 'rb') as f:
             self.fuel = tomllib.load(f)
 
         self._reset_run_state()

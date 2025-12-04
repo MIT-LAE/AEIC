@@ -4,6 +4,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from AEIC.config import config
 from AEIC.emissions.APU_emissions import get_APU_emissions
 from AEIC.emissions.EI_CO2 import EI_CO2, CO2EmissionResult
 from AEIC.emissions.EI_H2O import EI_H2O
@@ -13,7 +14,6 @@ from AEIC.emissions.EI_PMnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
 from AEIC.emissions.EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from AEIC.emissions.EI_SOx import EI_SOx, SOxEmissionResult
 from AEIC.emissions.lifecycle_CO2 import lifecycle_CO2
-from AEIC.utils.files import file_location
 
 
 class TestEI_CO2:
@@ -21,7 +21,7 @@ class TestEI_CO2:
 
     def test_returns_documented_jet_a_values(self):
         """Jet-A reference EI and carbon fraction should match documentation"""
-        with open(file_location("fuels/conventional_jetA.toml"), 'rb') as f:
+        with open(config.file_location("fuels/conventional_jetA.toml"), 'rb') as f:
             fuel = tomllib.load(f)
         result = EI_CO2(fuel)
 
@@ -31,7 +31,7 @@ class TestEI_CO2:
 
     def test_distinguishes_saf_inputs(self):
         """Different fuels propagate their specific EI metadata."""
-        with open(file_location("fuels/SAF.toml"), 'rb') as f:
+        with open(config.file_location("fuels/SAF.toml"), 'rb') as f:
             fuel = tomllib.load(f)
         result = EI_CO2(fuel)
 
@@ -54,13 +54,13 @@ class TestEI_H2O:
 
     def test_returns_documented_jet_a_values(self):
         """Jet-A water EI should match the nominal property sheet."""
-        with open(file_location("fuels/conventional_jetA.toml"), 'rb') as f:
+        with open(config.file_location("fuels/conventional_jetA.toml"), 'rb') as f:
             fuel = tomllib.load(f)
         assert EI_H2O(fuel) == pytest.approx(1233.3865)
 
     def test_distinguishes_saf_inputs(self):
         """SAF water EI is different and should be propagated verbatim."""
-        with open(file_location("fuels/SAF.toml"), 'rb') as f:
+        with open(config.file_location("fuels/SAF.toml"), 'rb') as f:
             fuel = tomllib.load(f)
         assert EI_H2O(fuel) == pytest.approx(1356.72515)
 

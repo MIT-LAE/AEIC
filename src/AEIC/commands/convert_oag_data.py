@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
     help='Output SQLite database file.',
 )
 def run(warnings_file, year, in_file, db_file):
-    if os.environ.get('AEIC_DATA_DIR') is None:
-        raise RuntimeError('AEIC_DATA_DIR environment variable is not set.')
+    if os.environ.get('AEIC_PATH') is None:
+        raise RuntimeError('AEIC_PATH environment variable is not set.')
     if os.path.exists(db_file):
         raise RuntimeError(f'Database file {db_file} already exists.')
 
