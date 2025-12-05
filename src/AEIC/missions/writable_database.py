@@ -5,7 +5,7 @@ import sqlite3
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from enum import Enum
 from zoneinfo import ZoneInfo
 
@@ -18,6 +18,9 @@ from AEIC.utils.types import DayOfWeek, TimeOfDay
 from .database import Database
 
 logger = logging.getLogger(__name__)
+
+
+EPOCH = pd.Timestamp('1970-01-01T00:00:00Z')
 
 
 @dataclass
@@ -290,7 +293,7 @@ class WritableDatabase(Database):
         data = []
 
         # Run over the (inclusive) effective date range.
-        for flight_date in pd.date_range(effective_from, effective_to):
+        for flight_date in pd.date_range(effective_from, effective_to, tz='UTC'):
             # Skip days not in the day-of-week set for this flight.
             if DayOfWeek.from_pandas(flight_date) not in days:
                 continue
@@ -344,7 +347,7 @@ class WritableDatabase(Database):
 
             # Calculate day number since Unix epoch (1970-01-01). This is used
             # for "every N days" sampling.
-            day = (flight_date - datetime(1970, 1, 1)).days
+            day = int((dep_time - EPOCH).days)
 
             data.append((dep_timestamp, arr_timestamp, day, flight_id))
 

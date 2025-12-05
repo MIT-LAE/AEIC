@@ -2,6 +2,8 @@ import os
 from collections.abc import Generator
 from datetime import date
 
+import pandas as pd
+
 from AEIC.missions import BoundingBox, Database, Filter, FrequentFlightQuery, Query
 from AEIC.utils.helpers import date_to_timestamp
 
@@ -171,7 +173,7 @@ def test_query_result():
         result = db(Query())
         assert isinstance(result, Generator)
         nflights = len(list(result))
-        assert nflights == 1589
+        assert nflights == 1197
 
         # Simple distance filter.
         nflights = 0
@@ -180,7 +182,7 @@ def test_query_result():
         for flight in result:
             assert flight.distance >= 3000
             nflights += 1
-        assert nflights == 165
+        assert nflights == 99
 
         # Country filter: either origin or destination in the given country.
         nflights = 0
@@ -189,12 +191,12 @@ def test_query_result():
         for flight in result:
             assert flight.origin_country == 'IT' or flight.destination_country == 'IT'
             nflights += 1
-        assert nflights == 64
+        assert nflights == 36
 
         # Combined filter.
         nflights = 0
-        q = Query(Filter(max_distance=3000, country=['US', 'CA']))
-        result = db(q)
+        q1 = Query(Filter(max_distance=3000, country=['US', 'CA']))
+        result = db(q1)
         assert isinstance(result, Generator)
         for flight in result:
             assert flight.distance <= 3000
@@ -203,10 +205,10 @@ def test_query_result():
                 'CA',
             ) or flight.destination_country in ('US', 'CA')
             nflights += 1
-        assert nflights == 353
+        assert nflights == 307
 
         # Sampling.
-        q2 = q
+        q2 = Query(Filter(max_distance=3000, country=['US', 'CA']))
         q2.sample = 0.1
         nflights = 0
         result = db(q2)
@@ -221,10 +223,15 @@ def test_query_result():
         # With a 10% sample, we should get between 40 and 90 flights but for
         # testing it's too dodgy to assert that. All we can say with complete
         # certainty is that there should be less than the full 523 flights.
-        assert nflights < 353
+        assert nflights < 307
 
         # "Every nth day" filtering.
-        q3 = q
+        EPOCH = pd.Timestamp('1970-01-01T00:00:00Z')
+
+        def days_since_epoch(t: pd.Timestamp) -> int:
+            return int((t - EPOCH).days)
+
+        q3 = Query(Filter(max_distance=3000, country=['US', 'CA']))
         q3.every_nth = 5
         nflights = 0
         last_day = -1
@@ -236,16 +243,16 @@ def test_query_result():
                 'US',
                 'CA',
             ) or flight.destination_country in ('US', 'CA')
-            day = flight.departure.dayofyear
+            day = days_since_epoch(flight.departure)
             if last_day > 0:
                 assert (day - last_day) % 5 == 0
             last_day = day
             nflights += 1
-        assert nflights < 353
+        assert nflights < 307
 
         # Frequent flight query.
         result = db(FrequentFlightQuery(Filter(airport='DTW')))
         assert isinstance(result, Generator)
         results = list(result)
         assert results[0].airport1 == 'DTW' or results[0].airport2 == 'DTW'
-        assert sum(r.number_of_flights for r in results) == 41
+        assert sum(r.number_of_flights for r in results) == 13

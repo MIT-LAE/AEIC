@@ -55,7 +55,7 @@ required-environments = [
 ]
 
 [project.scripts]
-convert-oag-data = "commands.convert_oag_data:run"
+convert-oag-data = "AEIC.commands.convert_oag_data:run"
 
 [tool.ruff]
 # Use Black-compatible defaults
