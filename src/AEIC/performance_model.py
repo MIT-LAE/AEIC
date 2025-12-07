@@ -56,12 +56,15 @@ class PerformanceConfig:
     performance_model_input: PerformanceInputMode
     performance_model_input_file: str
     emissions: Mapping[str, Any]
+    use_weather: bool
+    weather_data_dir: str
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> "PerformanceConfig":
         missions = mapping.get('Missions', {})
         general = mapping.get('General Information', {})
         emissions = mapping.get('Emissions', {})
+        weather = mapping.get('Weather', {})
         if not missions:
             raise ValueError("Missing [Missions] section in configuration file.")
         if not general:
@@ -80,6 +83,8 @@ class PerformanceConfig:
                 general, 'performance_model_input_file'
             ),
             emissions=emissions,
+            use_weather=bool(weather.get('use_weather', '') or False),
+            weather_data_dir=str(weather.get('weather_data_dir', '') or ''),
         )
 
     def emission_option(self, key: str, default: Any = None) -> Any:

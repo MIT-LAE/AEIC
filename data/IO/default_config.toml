@@ -26,6 +26,13 @@ reference_schedule = ""         # File name for existing schedule
 sample_schedule = false         # Sample schedule distribution to get smaller collection
 sample_number = 1000            # If sample_schedule: how many flights for the sample
 
+["Weather"]
+use_weather = true                  # Use loaded weather to calculate wind vectors
+weather_data_type = "ERA5_PRESSURE" # ERA5_PRESSURE, ERA5_MODEL
+weather_data_dir = "weather"
+                                    # Location on weather data
+                                    # files should be in YYYYMMDD.nc format
+
 ["Emissions"]
 Fuel = "conventional_jetA"  # Fuel files stored in data/fuels/
                             # Current options include:
