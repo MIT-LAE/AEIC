@@ -81,13 +81,6 @@ module.
     :members:
 ```
 
-## Weather-related utility functions
-
-```{eval-rst}
-.. automodule:: utils.weather_utils
-    :members:
-```
-
 ## Standard atmosphere
 
 ```{eval-rst}
