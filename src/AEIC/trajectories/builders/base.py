@@ -22,6 +22,9 @@ class Options:
     """Flag controlling whether starting mass is iterated on such that the
     remaining fuel (non-reserve) is close to 0 at the arrival airport."""
 
+    use_weather: bool = False
+    """Whether to use wind data for ground-speed calculations."""
+
     max_mass_iters: int = 5
     """Maximum number of mass iterations (if used). Defaults to 5."""
 
