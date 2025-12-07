@@ -557,6 +557,7 @@ class Weather:
         # Plot
         plt.figure(figsize=(15, 8))
         im = plt.pcolormesh(distances, fls, values, cmap=cmap, shading='nearest')
+        plt.xlim(left=max(0.0, distances.min()), right=distances.max())
         plt.xlabel('Distance Along Arc (NM)', fontsize=14)
         plt.ylabel('Flight Level', fontsize=14)
 
