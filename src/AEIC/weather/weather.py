@@ -29,6 +29,9 @@ class Weather:
         Maximum flight level for regridding (default: 518)
     fl_spacing : int, optional
         Flight level spacing for regridding (default: 1)
+    points_between_waypoints : int, optional
+        Number of evenly spaced intermediate samples to insert on each
+        ground-track leg between waypoints (default: 0, i.e., endpoints only).
     """
 
     def __init__(
@@ -38,11 +41,13 @@ class Weather:
         ground_track: GroundTrack,
         fl_min: int = 4,
         fl_max: int = 518,
-        fl_spacing: int = 1,
+        fl_spacing: int = 10,
+        points_between_waypoints: int = 0,
     ):
         self.fl_min = fl_min
         self.fl_max = fl_max
         self.fl_spacing = fl_spacing
+        self.points_between_waypoints = max(0, int(points_between_waypoints))
 
         self.valid_time_index = self._mission_hour(mission)
 
@@ -107,8 +112,32 @@ class Weather:
         return ds
 
     def _build_arc_info(self, ground_track: GroundTrack) -> dict[str, np.ndarray]:
-        """Sample the ground track to build distance, lat/lon, and heading arrays."""
-        distances_m = np.asarray(ground_track.index, dtype=float)
+        """
+        Sample the ground track to build distance, lat/lon, and heading arrays.
+
+        If ``points_between_waypoints`` is greater than zero, each leg between
+        waypoints is subdivided into that many evenly spaced intermediate
+        samples (plus its endpoints).
+        """
+        base_distances_m = np.asarray(ground_track.index, dtype=float)
+
+        if self.points_between_waypoints > 0 and len(base_distances_m) > 1:
+            segments: list[np.ndarray] = []
+            for i in range(len(base_distances_m) - 1):
+                start = base_distances_m[i]
+                end = base_distances_m[i + 1]
+                # +2 to include both endpoints; drop the first point of each
+                # subsequent leg to avoid duplicates at waypoint boundaries.
+                leg = np.linspace(
+                    start, end, num=self.points_between_waypoints + 2, dtype=float
+                )
+                if i > 0:
+                    leg = leg[1:]
+                segments.append(leg)
+            distances_m = np.concatenate(segments)
+        else:
+            distances_m = base_distances_m
+
         distances_nm = distances_m / NAUTICAL_MILES_TO_METERS
 
         lats: list[float] = []
@@ -120,7 +149,9 @@ class Weather:
             lats.append(pt.location.latitude)
             lons.append(pt.location.longitude)
             headings.append(pt.azimuth % 360.0)
-
+        print(f"distances_nm are {distances_nm}")
+        print(f"lats are {lats}")
+        print(f"lons are {lons}")
         return {
             'lats': np.asarray(lats),
             'lons': np.asarray(lons),
