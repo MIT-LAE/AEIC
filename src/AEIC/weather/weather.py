@@ -133,22 +133,22 @@ class Weather:
         Generate all regridded weather maps during initialization.
 
         """
-        print('Initializing weather slice maps...')
+        # print('Initializing weather slice maps...')
 
         # 2. Generate regridded maps for t, pressure_level, u, v (without special logic)
-        print('  - Processing temperature (t)...')
+        # print('  - Processing temperature (t)...')
         self.t_regridded = self._create_basic_regridded_map('t')
 
-        print('  - Processing pressure (pressure_level)...')
+        # print('  - Processing pressure (pressure_level)...')
         self.p_regridded = self._create_basic_regridded_map('pressure_level')
 
-        print('  - Processing u-wind component...')
+        # print('  - Processing u-wind component...')
         self.u_regridded = self._create_basic_regridded_map('u')
 
-        print('  - Processing v-wind component...')
+        # print('  - Processing v-wind component...')
         self.v_regridded = self._create_basic_regridded_map('v')
 
-        print('Initialization complete!')
+        # print('Initialization complete!')
 
     def _create_basic_regridded_map(self, var_name: str) -> pd.DataFrame:
         """
