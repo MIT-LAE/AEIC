@@ -6,14 +6,14 @@ from numpy.typing import NDArray
 from AEIC.missions import Mission
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories import FlightPhase, GroundTrack, Trajectory
+from AEIC.utils.files import file_location
 from AEIC.utils.helpers import filter_order_duplicates
 from AEIC.utils.units import (
     FEET_TO_METERS,
-    FL_TO_METERS,
     METERS_TO_FL,
     NAUTICAL_MILES_TO_METERS,
 )
-from AEIC.utils.weather_utils import compute_ground_speed
+from AEIC.weather.weather import Weather
 
 from .base import Builder, Context, Options
 
@@ -48,6 +48,7 @@ class LegacyContext(Context):
     ):
         # The context constructor calculates all of the fixed information used
         # throughout the simulation by the trajectory builder.
+        self.options = builder.options
 
         # Number of points in different flight phases.
         n_climb = int(1 / builder.pct_step_clm + 1)
@@ -112,6 +113,26 @@ class LegacyContext(Context):
 
         # Get the indices for 0-ROC performance.
         self.__get_zero_roc_index(ac_performance)
+
+        # Initialize weather regridding when requested.
+        self.weather: Weather | None = None
+        if self.options.use_weather:
+            fl_min = int(np.floor(min(self.clm_FL, self.end_FL)))
+            fl_max = int(np.ceil(max(self.des_FL, self.crz_FL)))
+            if fl_max <= fl_min:
+                fl_max = fl_min + 1
+
+            mission_date = mission.departure.strftime('%Y%m%d')
+            weather_path = file_location(
+                f"{ac_performance.config.weather_data_dir}/{mission_date}.nc"
+            )
+            self.weather = Weather(
+                ds=weather_path,
+                mission=mission,
+                ground_track=ground_track,
+                fl_min=fl_min,
+                fl_max=fl_max,
+            )
 
         # Pass information to base context class constructor.
         super().__init__(
@@ -354,14 +375,18 @@ class LegacyBuilder(Builder):
             # Get time to complete alititude change segment and total fuel burned
             segment_time = (traj.altitude[i + 1] - traj.altitude[i]) / roc
             segment_fuel = ff * segment_time
-            traj.ground_speed[i], traj.heading[i], u, v = compute_ground_speed(
-                lon=traj.latitude[i],
-                lat=traj.latitude[i],
-                az=traj.azimuth[i],
-                alt_m=FL * FL_TO_METERS,
-                tas_ms=fwd_tas,
-                weather_data=None,
-            )
+            if self.weather is not None:
+                gs, heading_deg, _, _ = self.weather.compute_ground_speed(
+                    ground_distance_m=traj.ground_distance[i],
+                    altitude_m=traj.altitude[i],
+                    tas_ms=fwd_tas,
+                    track_deg=traj.azimuth[i],
+                )
+                traj.ground_speed[i] = gs
+                traj.heading[i] = heading_deg
+            else:
+                traj.ground_speed[i] = fwd_tas
+                traj.heading[i] = traj.azimuth[i]
 
             # Calculate distance along route travelled
             dist = traj.ground_speed[i] * segment_time
@@ -455,14 +480,18 @@ class LegacyBuilder(Builder):
 
         # Get fuel flow, ground speed, etc. for cruise segments
         for i in range(self.n_climb, self.n_climb + self.n_cruise - 1):
-            traj.ground_speed[i], traj.heading[i], _, _ = compute_ground_speed(
-                lon=traj.latitude[i],
-                lat=traj.latitude[i],
-                az=traj.azimuth[i],
-                alt_m=self.crz_FL * FL_TO_METERS,
-                tas_ms=traj.true_airspeed[i],
-                weather_data=None,
-            )
+            if self.weather is not None:
+                gs, heading_deg, _, _ = self.weather.compute_ground_speed(
+                    ground_distance_m=traj.ground_distance[i],
+                    altitude_m=traj.altitude[i],
+                    tas_ms=traj.true_airspeed[i],
+                    track_deg=traj.azimuth[i],
+                )
+                traj.ground_speed[i] = gs
+                traj.heading[i] = heading_deg
+            else:
+                traj.ground_speed[i] = traj.true_airspeed[i]
+                traj.heading[i] = traj.azimuth[i]
 
             # Calculate time required to fly the segment
             segment_time = dGD / traj.ground_speed[i]
@@ -560,14 +589,18 @@ class LegacyBuilder(Builder):
             segment_time = (traj.altitude[i + 1] - traj.altitude[i]) / roc
             segment_fuel = ff * segment_time
 
-            traj.ground_speed[i], traj.heading[i], _, _ = compute_ground_speed(
-                lon=traj.latitude[i],
-                lat=traj.latitude[i],
-                az=traj.azimuth[i],
-                alt_m=traj.altitude[i],
-                tas_ms=fwd_tas,
-                weather_data=None,
-            )
+            if self.weather is not None:
+                gs, heading_deg, _, _ = self.weather.compute_ground_speed(
+                    ground_distance_m=traj.ground_distance[i],
+                    altitude_m=traj.altitude[i],
+                    tas_ms=fwd_tas,
+                    track_deg=traj.azimuth[i],
+                )
+                traj.ground_speed[i] = gs
+                traj.heading[i] = heading_deg
+            else:
+                traj.ground_speed[i] = fwd_tas
+                traj.heading[i] = traj.azimuth[i]
 
             # Calculate distance along route travelled
             dist = traj.ground_speed[i] * segment_time
