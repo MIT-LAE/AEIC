@@ -16,16 +16,6 @@ performance_model_input = "PerformanceModel"
 
 performance_model_input_file = "IO/sample_performance_model.toml"
 
-["Missions"]
-missions_folder = "missions"
-missions_in_file = "sample_missions_10.toml"
-airport_file = "airports.csv"
-stop_after_scheduling = true
-reference_schedule = ""         # File name for existing schedule
-                                # Empty string: Use OAG data and max range to get schedule
-sample_schedule = false         # Sample schedule distribution to get smaller collection
-sample_number = 1000            # If sample_schedule: how many flights for the sample
-
 ["Weather"]
 use_weather = true                  # Use loaded weather to calculate wind vectors
 weather_data_type = "ERA5_PRESSURE" # ERA5_PRESSURE, ERA5_MODEL

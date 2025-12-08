@@ -11,7 +11,7 @@ from AEIC.performance_model import (
 
 
 def test_performance_model_initialization():
-    """PerformanceModel builds config, missions, and performance tables."""
+    """PerformanceModel builds config, and performance tables."""
 
     model = PerformanceModel('IO/default_config.toml')
 
@@ -19,10 +19,6 @@ def test_performance_model_initialization():
     assert (
         model.config.performance_model_input is PerformanceInputMode.PERFORMANCE_MODEL
     )
-    assert model.config.missions_folder == 'missions'
-    assert model.config.missions_in_file.endswith('.toml')
-
-    assert isinstance(model.missions, list) and len(model.missions) > 0
 
     assert hasattr(model, 'ac_params')
     assert model.ac_params.cas_cruise_lo == pytest.approx(
@@ -43,7 +39,6 @@ def test_performance_model_initialization():
 
 def test_performance_config_from_mapping_requires_sections():
     base = {
-        'Missions': {'missions_folder': 'missions', 'missions_in_file': 'sample.toml'},
         'General Information': {
             'performance_model_input': 'opf',
             'performance_model_input_file': 'data/perf.toml',
@@ -58,7 +53,7 @@ def test_performance_config_from_mapping_requires_sections():
     assert config.performance_model_input_file == 'data/perf.toml'
     assert config.edb_input_file == 'engines/example.edb'
 
-    for missing_key in ('Missions', 'General Information', 'Emissions'):
+    for missing_key in ('General Information', 'Emissions'):
         incomplete = dict(base)
         incomplete.pop(missing_key)
         with pytest.raises(ValueError):

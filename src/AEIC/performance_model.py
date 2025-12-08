@@ -1,4 +1,3 @@
-import os
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -9,7 +8,6 @@ import numpy as np
 
 from AEIC.BADA.aircraft_parameters import Bada3AircraftParameters
 from AEIC.BADA.model import Bada3JetEngineModel
-from AEIC.missions import Mission
 from AEIC.parsers.LTO_reader import parseLTO
 from AEIC.parsers.OPF_reader import parse_OPF
 from AEIC.utils.files import file_location
@@ -42,8 +40,6 @@ class PerformanceConfig:
     `PerformanceModel`. Has convenience accessors for emission-specific options.
 
     Attributes:
-        missions_folder: Directory that holds the mission definition TOML files.
-        missions_in_file: Name of the missions list to load from `missions_folder`.
         performance_model_input: Selected `PerformanceInputMode` (OPF vs table data).
         performance_model_input_file: Path (relative or absolute) to the
                                         performance input.
@@ -51,8 +47,6 @@ class PerformanceConfig:
             `lto_input_mode`/`edb_input_file`.
     """
 
-    missions_folder: str
-    missions_in_file: str
     performance_model_input: PerformanceInputMode
     performance_model_input_file: str
     emissions: Mapping[str, Any]
@@ -61,12 +55,9 @@ class PerformanceConfig:
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> "PerformanceConfig":
-        missions = mapping.get('Missions', {})
         general = mapping.get('General Information', {})
         emissions = mapping.get('Emissions', {})
         weather = mapping.get('Weather', {})
-        if not missions:
-            raise ValueError("Missing [Missions] section in configuration file.")
         if not general:
             raise ValueError(
                 "Missing [General Information] section in configuration file."
@@ -74,8 +65,6 @@ class PerformanceConfig:
         if not emissions:
             raise ValueError("Missing [Emissions] section in configuration file.")
         return cls(
-            missions_folder=require_str(missions, 'missions_folder'),
-            missions_in_file=require_str(missions, 'missions_in_file'),
             performance_model_input=PerformanceInputMode.from_value(
                 general.get('performance_model_input')
             ),
@@ -129,15 +118,6 @@ class PerformanceModel:
         with open(config_file_loc, 'rb') as f:
             config_data = tomllib.load(f)
         self.config = PerformanceConfig.from_mapping(config_data)
-
-        # Get mission data
-        # self.filter_OAG_schedule = filter_OAG_schedule
-        mission_file = file_location(
-            os.path.join(self.config.missions_folder, self.config.missions_in_file)
-        )
-        with open(mission_file, 'rb') as f:
-            self.missions = Mission.from_toml(tomllib.load(f))
-        # self.schedule = filter_OAG_schedule()
 
         # Process input performance data
         self.initialize_performance()
