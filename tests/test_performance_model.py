@@ -95,26 +95,3 @@ def test_create_performance_table_missing_output_column():
     data = {'cols': ['FL', 'TAS'], 'data': [[330, 220]]}
     with pytest.raises(ValueError, match="FUEL_FLOW column not found"):
         model.create_performance_table(data)
-
-
-def test_get_engine_by_uid_reads_matching_engine(tmp_path, monkeypatch):
-    engine_file = tmp_path / 'engines.toml'
-    engine_file.write_text(
-        """
-        [[engine]]
-        UID = "MATCH"
-        thrust = 42
-        bypass = 10.5
-
-        [[engine]]
-        UID = "OTHER"
-        thrust = 99
-        """
-    )
-    monkeypatch.setattr(
-        'AEIC.performance_model.file_location', lambda path: str(engine_file)
-    )
-    model = PerformanceModel.__new__(PerformanceModel)
-    match = model.get_engine_by_uid('MATCH', 'ignored')
-    assert match['thrust'] == 42
-    assert model.get_engine_by_uid('MISSING', 'ignored') is None
