@@ -33,7 +33,7 @@ mode. For example:
 You should now be able to import ``AEIC`` as you would with any standard library.
 
 uv
---
+^^
 If you prefer, you can also use ``uv`` to maintain dependencies and a virtual environment while developing ``AEIC``.
 
 First install_ ``uv``. Run ``uv sync`` in the top-level directory, a virtual environment will be created, all of the dependencies
@@ -45,7 +45,7 @@ development.
 .. _install: https://docs.astral.sh/uv/getting-started/installation/
 
 pre-commit
-----------
+^^^^^^^^^^
 The ``pre-commit`` tool helps to manage Git hooks, in particular, it lets you set up scripts for checking whether changes you're tracking in
 Git are OK, before you commit them. This lets you catch things like large file commits before they get into the repository history. It also
 means fewer "Ruff fixes" commits, since you can include running ``Ruff`` as a pre-commit hook, so that you never end up committing code
