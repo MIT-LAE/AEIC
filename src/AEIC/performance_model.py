@@ -1,4 +1,3 @@
-import gc
 import os
 import tomllib
 from collections.abc import Mapping
@@ -15,6 +14,7 @@ from AEIC.parsers.LTO_reader import parseLTO
 from AEIC.parsers.OPF_reader import parse_OPF
 from AEIC.utils.files import file_location
 from AEIC.utils.inspect_inputs import require_str
+from AEIC.utils.read_EDB_data import get_EDB_data_for_engine
 
 
 class PerformanceInputMode(Enum):
@@ -189,11 +189,13 @@ class PerformanceModel:
             # Read UID
             UID = data['LTO_performance']['ICAO_UID']
             # Read EDB file and get engine
-            engine_info = self.get_engine_by_uid(UID, self.config.edb_input_file)
+            engine_info = get_EDB_data_for_engine(self.config.edb_input_file, UID)
             if engine_info is not None:
                 self.EDB_data = engine_info
             else:
                 ValueError(f"No engine with UID={UID} found.")
+        elif self.config.lto_input_mode.strip().lower() == "performance_model":
+            self.EDB_data = data['LTO_performance']
 
         # Read APU data
         apu_name = data['General_Information']['APU_name']
@@ -279,47 +281,6 @@ class PerformanceModel:
         self.performance_table = fuel_flow_array
         self.performance_table_cols = [input_values[col] for col in input_col_names]
         self.performance_table_colnames = input_col_names  # Save for external reference
-
-    def get_engine_by_uid(self, uid: str, toml_path: str) -> dict:
-        """
-        Reads a TOML file containing multiple [[engine]] tables, finds and returns
-        the engine dict whose 'UID' field matches the given uid. After locating
-        the matching table, the entire TOML parse tree is deleted to free memory.
-
-        Parameters
-        ----------
-        uid : str
-            The UID string to search for (e.g. "1RR021").
-        toml_path : str
-            Path to the TOML file to read.
-
-        Returns
-        -------
-        dict or None
-            The dict corresponding to the matching [[engine]] table if found;
-            otherwise, None.
-        """
-        # Open and parse the TOML file
-        edb_file_loc = file_location(toml_path)
-        with open(edb_file_loc, 'rb') as f:
-            data = tomllib.load(f)
-
-        # data["engine"] is a list of dicts (one per [[engine]] table)
-        engines = data.get("engine", [])
-
-        # Search for the matching UID
-        match = None
-        for engine in engines:
-            if engine.get("UID") == uid:
-                match = engine
-                break
-
-        # Remove the parsed data from memory
-        del data
-        del engines
-        gc.collect()
-
-        return match
 
     def search_mass_ind(self, mass: float) -> list[int]:
         """Searches the valid mass values in the performance model for the indices

@@ -89,8 +89,8 @@ contains:
 - :attr:`PerformanceModel.LTO_data`: modal thrust settings, fuel flows, and
   emission indices pulled from the performance file (when ``LTO_input_mode =
   "performance_model"``) or parsed via :func:`parsers.LTO_reader.parseLTO`.
-- :attr:`PerformanceModel.EDB_data`: ICAO engine databank entry loaded by
-  :meth:`PerformanceModel.get_engine_by_uid` when ``LTO_input_mode = "edb"``.
+- :attr:`PerformanceModel.EDB_data`: ICAO engine databank entry loaded when
+  ``LTO_input_mode = "EDB"``.
 - :attr:`PerformanceModel.APU_data`: auxiliary-power-unit properties resolved
   from ``engines/APU_data.toml`` using the ``APU_name`` specified in the
   performance file.
@@ -108,4 +108,4 @@ API Reference
    :members:
 
 .. autoclass:: AEIC.performance_model.PerformanceModel
-   :members: __init__, initialize_performance, read_performance_data, create_performance_table, get_engine_by_uid
+   :members: __init__, initialize_performance, read_performance_data, create_performance_table
