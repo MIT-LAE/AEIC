@@ -65,7 +65,7 @@ EI_PMnvol_method = "MEEM"   # Options include
 
 LTO_input_mode = "EDB"  # "performance_model" : LTO data provided in PerformanceModel file
                         # "EDB" : Use EDB data to get LTO performance
-EDB_input_file = "engines/EDB_data_06_2025.toml"
+EDB_input_file = "engines/sample_edb.xlsx"
 
 climb_descent_usage = true  # true: emissions calculated for entire trajectory (takeoff, climb, cruise, descent)
                             # false: emissions only calculated for cruise, LTO data used for takeoff, climb, approach
