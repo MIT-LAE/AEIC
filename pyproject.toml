@@ -30,6 +30,7 @@ dependencies = [
     "netcdf4>=1.7.3",
     "cachetools>=6.2.1",
     "matplotlib>=3.10.7",
+    "openpyxl>=3.1.5",
 ]
 
 [dependency-groups]
