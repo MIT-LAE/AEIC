@@ -2,8 +2,7 @@
 
 Getting Started
 ===============
-Currently, the workflow in ``AEIC`` is limited to a modeling process based on the ``MATLAB`` implementation, but more functionality will be
-added over time. We outline the basics of setup here.
+
 
 Installation
 ------------
