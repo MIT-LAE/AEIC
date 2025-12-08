@@ -2,7 +2,10 @@
 
 Getting Started
 ===============
-
+Aviation Emissions Inventory Code (AEIC) is used to estimate aviation emissions using an aircraft performance
+model and a set of missions. It produces inventories that can be sliced by aircraft type, time period, or
+operating scenario to support analysis and reporting. Core modules cover mission definitions, trajectories,
+performance models, emissions estimation, gridding, and weather.
 
 Installation
 ------------
