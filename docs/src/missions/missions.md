@@ -7,6 +7,6 @@ cannot represent "as-flown" trajectories from ADS-B data or other sources.
 
 
 ```{eval-rst}
-.. autoclass:: missions.Mission
+.. autoclass:: AEIC.missions.Mission
     :members:
 ```

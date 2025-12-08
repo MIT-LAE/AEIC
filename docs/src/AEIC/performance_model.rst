@@ -34,7 +34,7 @@ Usage Example
    print("Fuel-flow grid shape:", table.shape)
 
    # Pass to trajectory or emissions builders
-   from emissions.emission import Emission
+   from AEIC.emissions.emission import Emission
    emitter = Emission(perf)
 
 Configuration Schema
@@ -66,7 +66,7 @@ with well-defined fields. Key sections include:
    * - ``[Emissions]``
      - ✓
      - Stored as :attr:`PerformanceConfig.emissions` and forwarded to
-       :class:`emissions.emission.EmissionsConfig` for validation of LTO/fuel
+       :class:`AEIC.emissions.emission.EmissionsConfig` for validation of LTO/fuel
        choices (see :ref:`Emissions Module <emissions-module>`).
 
 Data Products
@@ -77,9 +77,9 @@ contains:
 
 - :attr:`PerformanceModel.missions`: list of mission dictionaries read from the
   ``missions_in_file``.
-- :attr:`PerformanceModel.ac_params`: populated :class:`BADA.aircraft_parameters.Bada3AircraftParameters`
+- :attr:`PerformanceModel.ac_params`: populated :class:`AEIC.BADA.aircraft_parameters.Bada3AircraftParameters`
   reflecting either OPF inputs or the performance table metadata.
-- :attr:`PerformanceModel.engine_model`: a :class:`BADA.model.Bada3JetEngineModel`
+- :attr:`PerformanceModel.engine_model`: a :class:`AEIC.BADA.model.Bada3JetEngineModel`
   initialised with ``ac_params`` for thrust and fuel-flow calculations.
 - :attr:`PerformanceModel.performance_table`: the multidimensional NumPy array
   mapping (flight level, TAS, ROCD, mass, …) onto fuel flow (kg/s).
@@ -88,9 +88,9 @@ contains:
   names that describe each dimension of ``performance_table``.
 - :attr:`PerformanceModel.LTO_data`: modal thrust settings, fuel flows, and
   emission indices pulled from the performance file (when ``LTO_input_mode =
-  "performance_model"``) or parsed via :func:`parsers.LTO_reader.parseLTO`.
-- :attr:`PerformanceModel.EDB_data`: ICAO engine databank entry loaded when
-  ``LTO_input_mode = "EDB"``.
+  "performance_model"``) or parsed via :func:`AEIC.parsers.LTO_reader.parseLTO`.
+- :attr:`PerformanceModel.EDB_data`: ICAO engine databank entry loaded by
+  :meth:`PerformanceModel.get_engine_by_uid` when ``LTO_input_mode = "edb"``.
 - :attr:`PerformanceModel.APU_data`: auxiliary-power-unit properties resolved
   from ``engines/APU_data.toml`` using the ``APU_name`` specified in the
   performance file.

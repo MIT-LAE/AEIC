@@ -6,22 +6,22 @@ Small custom types are used to represent "locations" (2-D) and "positions"
 (3-D) and some time values.
 
 ```{eval-rst}
-.. autoclass:: utils.types.Location
+.. autoclass:: AEIC.utils.types.Location
     :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: utils.types.Position
+.. autoclass:: AEIC.utils.types.Position
     :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: utils.types.DayOfWeek
+.. autoclass:: AEIC.utils.types.DayOfWeek
     :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: utils.types.TimeOfDay
+.. autoclass:: AEIC.utils.types.TimeOfDay
     :members:
 ```
 
@@ -33,7 +33,7 @@ added from a supplemental CSV file. The canonical way to use this module is as
 follows:
 
 ```python
-import utils.airports as airports
+from AEIC.utils import airports
 
 ...
 
@@ -42,7 +42,7 @@ print(f'{ap.name} @ {ap.elevation} MSL')
 ```
 
 ```{eval-rst}
-.. automodule:: utils.airports
+.. automodule:: AEIC.utils.airports
     :members:
     :exclude-members: CountriesData, AirportsData
 ```
@@ -59,7 +59,7 @@ Unit conversions are done with simple multiplying factors with a common
 ```
 
 ```{eval-rst}
-.. automodule:: utils.units
+.. automodule:: AEIC.utils.units
     :members:
 ```
 
@@ -70,34 +70,34 @@ These can all be done using the single `pyproj.Geod` instance defined in this
 module.
 
 ```{eval-rst}
-.. automodule:: utils.spatial
+.. automodule:: AEIC.utils.spatial
     :members:
 ```
 
 ## File handling functions
 
 ```{eval-rst}
-.. automodule:: utils.files
+.. automodule:: AEIC.utils.files
     :members:
 ```
 
 ## Standard atmosphere
 
 ```{eval-rst}
-.. automodule:: utils.standard_atmosphere
+.. automodule:: AEIC.utils.standard_atmosphere
     :members:
 ```
 
 ## Standard fuel
 
 ```{eval-rst}
-.. automodule:: utils.standard_fuel
+.. automodule:: AEIC.utils.standard_fuel
     :members:
 ```
 
 ## Miscellaneous utility functions
 
 ```{eval-rst}
-.. automodule:: utils.helpers
+.. automodule:: AEIC.utils.helpers
     :members:
 ```

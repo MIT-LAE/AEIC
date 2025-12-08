@@ -1,6 +1,6 @@
 # Mission database
 
-The `Database`, `Query` and `Filter` classes in the `missions` package give
+The `Database`, `Query` and `Filter` classes in the `AEIC.missions` package give
 access to flight schedule data for mission planning. Currently this is
 primarily intended for use with OAG data converted from CSV files. The
 database files use a schema optimized for the query patterns used in AEIC.
@@ -23,7 +23,7 @@ make querying the schedule of flights more efficient.
 Here's a basic usage example to give an idea of how the API works:
 
 ```python
-import missions
+from AEIC import missions
 
 # Open the database.
 db = missions.Database('oag-2019.sqlite')
@@ -65,7 +65,7 @@ The main classes of interest in the API are:
 
 ### Database class
 
-The `missions.Database` class is a wrapper around a connection to an SQLite
+The `AEIC.missions.Database` class is a wrapper around a connection to an SQLite
 database file (using the Python standard library's
 [`sqlite3`](https://docs.python.org/3/library/sqlite3.html) package). The
 `Database` class hides the details of both the database structure and the
@@ -81,7 +81,7 @@ The normal workflow for querying the mission database is to create a
 constructor:
 
 ```python
-db = missions.Database('oag-2019.sqlite')
+db = AEIC.missions.Database('oag-2019.sqlite')
 ```
 
 The `Database` object is callable, and when you call it with query objects
@@ -90,7 +90,7 @@ The `Database` object is callable, and when you call it with query objects
 you can iterate over to get individual results:
 
 ```python
-for flight in db(missions.Query()):
+for flight in db(AEIC.missions.Query()):
     print(flight.carrier + flight.flight_id)
 ```
 
@@ -99,19 +99,19 @@ instance** in the database in departure time order. An empty `Query` selects
 all **flight instances**.)
 
 ```{eval-rst}
-.. autoclass:: missions.Database
+.. autoclass:: AEIC.missions.Database
    :special-members: __init__, __call__
 ```
 
 ### Queries
 
 Database queries come in three flavors. **Flight instance** queries,
-represented by the `missions.Query` class, return **flight instances** in
+represented by the `AEIC.missions.Query` class, return **flight instances** in
 departure time order, filtered by various criteria. Frequent flight queries,
-represented by the `missions.FrequentFlightQuery` class, return pairs of
+represented by the `AEIC.missions.FrequentFlightQuery` class, return pairs of
 origin and destination airports that have the most flights between them, again
 filtered by various criteria. Count queries, represented by the
-`missions.CountQuery` class, count the number of **flight instances** that
+`AEIC.missions.CountQuery` class, count the number of **flight instances** that
 match given conditions.
 
 The filtering criteria for the different query types share some features in
@@ -122,51 +122,51 @@ results returned when you run one of these queries.
 #### Base query class
 
 The base query class includes filter parameters for the **flight instance**
-start and end dates to consider, as well as an `missions.Filter` value that
+start and end dates to consider, as well as an `AEIC.missions.Filter` value that
 filters on **flight** characteristics (like origin and destination, distance,
 etc.).
 
 ```{eval-rst}
-.. autoclass:: missions.query.QueryBase
+.. autoclass:: AEIC.missions.query.QueryBase
    :inherited-members: filter, start_date, end_date
    :exclude-members: to_sql
 ```
 
 #### Scheduled flight queries
 
-The `missions.Query` class returns individual **flight instances** in
+The `AEIC.missions.Query` class returns individual **flight instances** in
 departure time order, corresponding to a given set of filter conditions. This
 query type supports **flight** characteristics filtering (using
-`missions.Filter`), start and end date filtering (from `missions.QueryBase`)
+`AEIC.missions.Filter`), start and end date filtering (from `AEIC.missions.QueryBase`)
 and random and "every nth day" sub-sampling (using the `sample` and
 `every_nth` parameters).
 
-These queries return results as a generator of `missions.query.QueryResult`
+These queries return results as a generator of `AEIC.missions.query.QueryResult`
 values, each of which basically contains all of the known information about
 the **flight instances**.
 
-The following examples illustrate some uses of `missions.Query`.
+The following examples illustrate some uses of `AEIC.missions.Query`.
 
 Return all **flight instances** for all **flights** with a distance between
 1000 and 5000 kilometers:
 
 ```python
-q = missions.Query(filter=missions.Filter(min_distance=1000, max_distance=5000))
+q = AEIC.missions.Query(filter=AEIC.missions.Filter(min_distance=1000, max_distance=5000))
 ```
 
 Return a random 5% sample of **flight instances** for all flights between
 France and China:
 
 ```python
-q = missions.Query(filter=missions.Filter(country=['FR', 'CN']), sample=0.05)
+q = AEIC.missions.Query(filter=AEIC.missions.Filter(country=['FR', 'CN']), sample=0.05)
 ```
 
 Return all 787 **flight instances** from France to China departing every 8th
 day starting on March 1 2019:
 
 ```python
-q = missions.Query(
-    filter=missions.Filter(
+q = AEIC.missions.Query(
+    filter=AEIC.missions.Filter(
         origin_country='FR',
         destination_country='CN',
         aircraft_type='787'
@@ -177,34 +177,34 @@ q = missions.Query(
 ```
 
 ```{eval-rst}
-.. autoclass:: missions.Query
+.. autoclass:: AEIC.missions.Query
    :members: every_nth, sample, limit, offset, RESULT_TYPE
    :exclude-members: to_sql
 ```
 
 ```{eval-rst}
-.. autoclass:: missions.query.QueryResult
+.. autoclass:: AEIC.missions.query.QueryResult
    :members:
    :exclude-members: from_row
 ```
 
 #### Frequent flights queries
 
-The `missions.FrequentFlightQuery` class returns airport pairs (discounting the
+The `AEIC.missions.FrequentFlightQuery` class returns airport pairs (discounting the
 direction, i.e., BOS → LHR is the same as LHR → BOS) and counts of flights
 between them matching a given filter condition. The filter conditions
 supported are the same as for **flight instance** queries, i.e. represented by
-an `missions.Filter` instance. Results are returned as a generator of
-`missions.query.FrequentFlightQueryResult` values, which contain the airport codes
+an `AEIC.missions.Filter` instance. Results are returned as a generator of
+`AEIC.missions.query.FrequentFlightQueryResult` values, which contain the airport codes
 and a count of the number of **flight instances**.
 
 For example, if we want to find the ten most common routes flown by 787s, we
 can do:
 
 ```python
->>> import missions
->>> db = missions.Database('oag-2019.sqlite')
->>> q = missions.FrequentFlightQuery(filter=missions.Filter(aircraft_type='787'), limit=10)
+>>> from AEIC import missions
+>>> db = AEIC.missions.Database('oag-2019.sqlite')
+>>> q = AEIC.missions.FrequentFlightQuery(filter=AEIC.missions.Filter(aircraft_type='787'), limit=10)
 >>> for f in db(q):
 >>>     print(f.airport1, f.airport2, f.number_of_flights)
 ```
@@ -225,13 +225,13 @@ DPS MEL 1082
 ```
 
 ```{eval-rst}
-.. autoclass:: missions.FrequentFlightQuery
+.. autoclass:: AEIC.missions.FrequentFlightQuery
    :members: limit, RESULT_TYPE
    :exclude-members: to_sql
 ```
 
 ```{eval-rst}
-.. autoclass:: missions.query.FrequentFlightQueryResult
+.. autoclass:: AEIC.missions.query.FrequentFlightQueryResult
    :members:
    :exclude-members: from_row
 ```
@@ -241,21 +241,21 @@ DPS MEL 1082
 Sometimes we just want a count of the number of **flight instances** matching
 a filter. For example, before running some long computation on each **flight
 instance**, it's useful to know if there are millions of them... Running an
-`missions.CountQuery` query returns a single integer count value, i.e., there is no
+`AEIC.missions.CountQuery` query returns a single integer count value, i.e., there is no
 generator involved.
 
 For example, if we want to count the total number of 777 **flight instances**
 in the database, we can do:
 
 ```python
->>> import missions
->>> db = missions.Database('oag-2019.sqlite')
->>> db(missions.CountQuery(filter=missions.Filter(aircraft_type='777')))
+>>> from AEIC import missions
+>>> db = AEIC.missions.Database('oag-2019.sqlite')
+>>> db(AEIC.missions.CountQuery(filter=AEIC.missions.Filter(aircraft_type='777')))
 108906
 ```
 
 ```{eval-rst}
-.. autoclass:: missions.CountQuery
+.. autoclass:: AEIC.missions.CountQuery
    :members: RESULT_TYPE
    :exclude-members: to_sql
 ```
@@ -263,7 +263,7 @@ in the database, we can do:
 ### Filters
 
 ```{eval-rst}
-.. autoclass:: missions.Filter
+.. autoclass:: AEIC.missions.Filter
    :members:
    :exclude-members: to_sql
 ```
@@ -273,4 +273,4 @@ in the database, we can do:
 The database schema for the mission database is described [on the GitHub
 wiki](https://github.com/MIT-LAE/AEIC/wiki/OAG-database) for AEIC. (The wiki
 page is slightly outdated: the definitive documentation for the database
-schema is `_ensure_schema` method of the `missions.WritableDatabase` class.)
+schema is `_ensure_schema` method of the `AEIC.missions.WritableDatabase` class.)

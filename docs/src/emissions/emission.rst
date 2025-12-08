@@ -3,7 +3,7 @@
 Emissions Module
 ================
 
-``emissions.emission.Emission`` is the module that uses
+``AEIC.emissions.emission.Emission`` is the module that uses
 :class:`AEIC.performance_model.PerformanceModel` and a flown
 :class:`AEIC.trajectories.trajectory.Trajectory` to compute emissions for the
 entire mission. It layers multiple methods for emission calculations
@@ -72,7 +72,7 @@ Usage Example
 
    from AEIC.performance_model import PerformanceModel
    from AEIC.trajectories.trajectory import Trajectory
-   from emissions.emission import Emission
+   from AEIC.emissions.emission import Emission
 
    perf = PerformanceModel("IO/default_config.toml")
    mission = perf.missions[0]
@@ -131,7 +131,7 @@ The ``Emission`` object is instanced once per performance model:
 5. :meth:`Emission.get_LTO_emissions` builds the ICAO style landing and take off emissions using either
    databank values (``LTO_input_mode = "edb"``) or the per-mode inputs embedded in
    the performance file.
-6. :func:`emissions.APU_emissions.get_APU_emissions` and
+6. :func:`AEIC.emissions.APU_emissions.get_APU_emissions` and
    :meth:`Emission.get_GSE_emissions` contributions are added if enabled.
 7. :meth:`Emission.sum_total_emissions` aggregates each pollutant into
    ``self.summed_emission_g`` and, when requested, life-cycle :math:`\mathrm{CO_2}` is appended via
@@ -153,52 +153,52 @@ which fields are populated; disabled species stay as ``0``, making it easy to fi
 API Reference
 -------------
 
-.. autoclass:: emissions.emission.EmissionsConfig
+.. autoclass:: AEIC.emissions.emission.EmissionsConfig
    :members:
 
-.. autoclass:: emissions.emission.EmissionSettings
+.. autoclass:: AEIC.emissions.emission.EmissionSettings
    :members:
 
-.. autoclass:: emissions.emission.Emission
+.. autoclass:: AEIC.emissions.emission.Emission
    :members: __init__, emit, emit_trajectory, emit_lto, emit_apu, emit_gse
    :show-inheritance:
 
-.. autoclass:: emissions.emission.EmissionSlice
+.. autoclass:: AEIC.emissions.emission.EmissionSlice
    :members:
 
-.. autoclass:: emissions.emission.TrajectoryEmissionSlice
+.. autoclass:: AEIC.emissions.emission.TrajectoryEmissionSlice
    :members:
 
-.. autoclass:: emissions.emission.EmissionsOutput
+.. autoclass:: AEIC.emissions.emission.EmissionsOutput
    :members:
 
 Helper Functions
 ------------------
 
-.. automodule:: emissions.APU_emissions
+.. automodule:: AEIC.emissions.APU_emissions
    :members:
    :undoc-members:
 
-.. automodule:: emissions.EI_CO2
+.. automodule:: AEIC.emissions.EI_CO2
    :members:
 
-.. automodule:: emissions.EI_H2O
+.. automodule:: AEIC.emissions.EI_H2O
    :members:
 
-.. automodule:: emissions.EI_SOx
+.. automodule:: AEIC.emissions.EI_SOx
    :members:
 
-.. automodule:: emissions.EI_HCCO
+.. automodule:: AEIC.emissions.EI_HCCO
    :members:
 
-.. automodule:: emissions.EI_NOx
+.. automodule:: AEIC.emissions.EI_NOx
    :members:
 
-.. automodule:: emissions.EI_PMnvol
+.. automodule:: AEIC.emissions.EI_PMnvol
    :members:
 
-.. automodule:: emissions.EI_PMvol
+.. automodule:: AEIC.emissions.EI_PMvol
    :members:
 
-.. automodule:: emissions.lifecycle_CO2
+.. automodule:: AEIC.emissions.lifecycle_CO2
    :members:
