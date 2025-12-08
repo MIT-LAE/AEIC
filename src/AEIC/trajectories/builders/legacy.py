@@ -132,7 +132,6 @@ class LegacyContext(Context):
                 ground_track=ground_track,
                 fl_min=fl_min,
                 fl_max=fl_max,
-                points_between_waypoints=100,
             )
 
         # Pass information to base context class constructor.
