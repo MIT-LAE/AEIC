@@ -53,7 +53,7 @@ Git are OK, before you commit them. This lets you catch things like large file c
 means fewer "Ruff fixes" commits, since you can include running ``Ruff`` as a pre-commit hook, so that you never end up committing code
 that ``Ruff`` doesn't like.
 
-**How to use this**
+**Usage instructions**
 
 1. Run ``pip install --user pre-commit`` or ``uv run pip install --user pre-commit`` (this installs the ``pre-commit`` executable in
    ``~/.local/bin``, so make sure you have that on your path).
