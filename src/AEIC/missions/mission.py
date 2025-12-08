@@ -1,9 +1,11 @@
+import tomllib
 from dataclasses import dataclass
 from functools import cached_property
 
 import pandas as pd
 
 from AEIC.utils.airports import airport
+from AEIC.utils.files import file_location
 from AEIC.utils.helpers import iso_to_timestamp
 from AEIC.utils.spatial import great_circle_distance
 from AEIC.utils.types import Position
@@ -63,11 +65,17 @@ class Mission:
         )
 
     @classmethod
-    def from_toml(cls, data: dict) -> list['Mission']:
-        """Create a list of `Mission` instances from a TOML-like dictionary.
+    def from_toml(cls, missions_file: str) -> list['Mission']:
+        """Create a list of `Mission` instances from a TOML file.
 
         This is used for parsing sample mission data.
         """
+
+        # Load mission toml into dict
+        mission_file = file_location(missions_file)
+        with open(mission_file, 'rb') as f:
+            data = tomllib.load(f)
+
         result = []
         for f in data['flight']:
             result.append(

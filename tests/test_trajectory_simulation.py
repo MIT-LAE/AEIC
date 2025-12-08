@@ -1,5 +1,3 @@
-import tomllib
-
 import numpy as np
 
 import AEIC.trajectories.builders as tb
@@ -27,9 +25,7 @@ def test_trajectory_simulation_1(tmp_path):
     perf = PerformanceModel(performance_model_file)
     builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
     ts = TrajectoryStore.create(base_file=fname)
-    with open(missions_file, 'rb') as fp:
-        d = tomllib.load(fp)
-        missions = Mission.from_toml(d)
+    missions = Mission.from_toml(missions_file)
 
     for mis in missions:
         traj = builder.fly(perf, mis)
