@@ -1,5 +1,7 @@
 import numpy as np
+import pandas as pd
 import pytest
+import xarray as xr
 
 from AEIC.missions import Mission
 from AEIC.trajectories.ground_track import GroundTrack
@@ -118,6 +120,159 @@ def test_compute_ground_speed(sample_weather):
     assert heading == pytest.approx(232.54310919606212, rel=1e-6)
     assert wind_u == pytest.approx(16.924026519286894, rel=1e-6)
     assert wind_v == pytest.approx(0.0, rel=1e-6)
+
+
+def test_selects_valid_time_and_converts_pressure(ground_track):
+    mission = Mission(
+        origin='BOS',
+        destination='ATL',
+        aircraft_type='738',
+        departure='2020-01-01T05:30:00',
+        arrival='2020-01-01T07:30:00',
+        load_factor=1.0,
+    )
+
+    valid_times = pd.date_range('2020-01-01', periods=3, freq='h')
+    pressure_levels = np.array([1000.0, 900.0])
+    lat = np.array([42.0, 41.5])
+    lon = np.array([-71.0, -70.0])
+    data = np.stack(
+        [
+            np.full(
+                (len(pressure_levels), len(lat), len(lon)), fill_value=i, dtype=float
+            )
+            for i in range(len(valid_times))
+        ]
+    )
+
+    ds = xr.Dataset(
+        data_vars={
+            't': (('valid_time', 'pressure_level', 'lat', 'lon'), data),
+            'u': (('valid_time', 'pressure_level', 'lat', 'lon'), data),
+            'v': (('valid_time', 'pressure_level', 'lat', 'lon'), -data),
+        },
+        coords={
+            'valid_time': valid_times,
+            'pressure_level': pressure_levels,
+            'lat': lat,
+            'lon': lon,
+        },
+    )
+
+    weather = Weather(
+        ds=ds,
+        mission=mission,
+        ground_track=ground_track,
+        fl_min=0,
+        fl_max=20,
+        fl_spacing=10,
+    )
+
+    assert weather.valid_time_index == 5
+    assert weather.ds['t'].values.mean() == pytest.approx(2.0)
+    assert weather._pressure_coord_name() == 'pressure_level'
+
+    pressure_values = weather.p_regridded.filter(like='NM_').to_numpy()
+    assert pressure_values.min() > 90000.0
+    assert pressure_values.max() < 110000.0
+
+
+def test_time_dimension_and_lat_lon_fallback(ground_track):
+    mission = Mission(
+        origin='BOS',
+        destination='ATL',
+        aircraft_type='738',
+        departure=iso_to_timestamp('2020-01-01 03:00:00'),
+        arrival=iso_to_timestamp('2020-01-01 05:00:00'),
+        load_factor=1.0,
+    )
+
+    times = pd.date_range('2020-01-01', periods=2, freq='h')
+    level = np.array([950.0, 850.0])
+    y = np.array([45.0, 44.5])
+    x = np.array([-71.0, -70.5])
+
+    first_slice = np.full((len(level), len(y), len(x)), 5.0)
+    second_slice = np.full((len(level), len(y), len(x)), 8.0)
+    data = np.stack([first_slice, second_slice])
+
+    ds = xr.Dataset(
+        data_vars={
+            't': (('time', 'level', 'y', 'x'), data),
+            'u': (('time', 'level', 'y', 'x'), data + 1),
+            'v': (('time', 'level', 'y', 'x'), data + 2),
+        },
+        coords={'time': times, 'level': level, 'y': y, 'x': x},
+    )
+
+    weather = Weather(
+        ds=ds,
+        mission=mission,
+        ground_track=ground_track,
+        fl_min=0,
+        fl_max=20,
+        fl_spacing=10,
+    )
+
+    assert weather.valid_time_index == 3
+    assert weather.ds['t'].values.mean() == pytest.approx(second_slice.mean())
+    assert weather._lat_lon_names() == ('y', 'x')
+    assert weather._pressure_coord_name() == 'level'
+
+
+def test_validate_altitudes_and_supported_range(sample_weather):
+    clipped = sample_weather._validate_altitudes(
+        np.array([500.0, 40000.0]), context='unit-test'
+    )
+    assert clipped[0] == sample_weather.fl_min
+    assert clipped[1] == sample_weather.fl_max
+    assert sample_weather.get_supported_altitude_range_ft() == (
+        sample_weather.fl_min * 100,
+        sample_weather.fl_max * 100,
+    )
+
+
+def test_nearest_indices_and_interpolation_bounds(sample_weather):
+    ascending = np.array([0.0, 10.0, 20.0])
+    targets = np.array([1.0, 9.9, 20.0])
+    assert sample_weather._nearest_indices_1d(ascending, targets).tolist() == [
+        0,
+        1,
+        2,
+    ]
+
+    descending = ascending[::-1]
+    assert sample_weather._nearest_indices_1d(descending, targets).tolist() == [
+        2,
+        1,
+        0,
+    ]
+
+    min_val = sample_weather._interpolate_value(sample_weather.u_regridded, -5.0, 0)
+    edge_min = sample_weather._interpolate_value(
+        sample_weather.u_regridded, 0.0, sample_weather.fl_min
+    )
+    assert min_val == pytest.approx(edge_min)
+
+    high_nm = sample_weather.total_nm + 50.0
+    max_val = sample_weather._interpolate_value(
+        sample_weather.u_regridded, high_nm, sample_weather.fl_max + 100
+    )
+    edge_max = sample_weather._interpolate_value(
+        sample_weather.u_regridded, sample_weather.total_nm, sample_weather.fl_max
+    )
+    assert max_val == pytest.approx(edge_max)
+
+
+def test_plot_variable_map_saves_file(sample_weather, tmp_path):
+    import matplotlib
+
+    matplotlib.use('Agg')
+
+    out_file = tmp_path / 'u_plot.png'
+    sample_weather.plot_variable_map('u', save_path=out_file, title='test plot')
+    assert out_file.exists()
+    assert out_file.stat().st_size > 0
 
 
 if __name__ == "__main__":
