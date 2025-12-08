@@ -32,6 +32,33 @@ mode. For example:
 
 You should now be able to import ``AEIC`` as you would with any standard library.
 
+uv
+--
+If you prefer, you can also use ``uv`` to maintain dependencies and a virtual environment while developing ``AEIC``.
+
+First install_ ``uv``. Run ``uv sync`` in the top-level directory, a virtual environment will be created, all of the dependencies
+will be installed and the Python version will be pinned at something that corresponds to what is in the ``requires-python`` field in the
+``pyproject.toml`` (this is a mandatory field if you're using ``uv``). In addition to installing dependencies, ``uv`` also automatically
+does an editable install of the local package (just like you had done ``pip install -e .``), which is almost always what you want for local
+development.
+
+.. _install: https://docs.astral.sh/uv/getting-started/installation/
+
+pre-commit
+----------
+The ``pre-commit`` tool helps to manage Git hooks, in particular, it lets you set up scripts for checking whether changes you're tracking in
+Git are OK, before you commit them. This lets you catch things like large file commits before they get into the repository history. It also
+means fewer "Ruff fixes" commits, since you can include running ``Ruff`` as a pre-commit hook, so that you never end up committing code
+that ``Ruff`` doesn't like.
+
+**How to use this**
+
+1. Run ``pip install --user pre-commit`` or ``uv run pip install --user pre-commit`` (this installs the ``pre-commit`` executable in
+   ``~/.local/bin``, so make sure you have that on your path).
+2. Run ``pre-commit install`` at the top of your working copy of the repository. This sets up the necessary Git hooks to run the
+   ``pre-commit`` tool.
+3. The ``pre-commit`` hooks will run and will prevent you from committing until you make your changes "nice".
+
 Units and Non-Dimensionals
 --------------------------
 ``AEIC`` works in SI units. The only exception is the pressure altitude, which has both SI and imperial flight level representations. All
