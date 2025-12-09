@@ -100,10 +100,6 @@ class GroundTrack:
             return GroundTrack.Point(self.waypoints[0], self.azimuths[0])
         if distance >= self.index[-1]:
             return GroundTrack.Point(self.waypoints[-1], self.azimuths[-1])
-        if distance == self.index[pos] and pos < len(self.azimuths):
-            # Exactly at an intermediate waypoint: use that waypoint with the
-            # azimuth of the next leg.
-            return GroundTrack.Point(self.waypoints[pos], self.azimuths[pos])
 
         # Interpolate along a great circle from the first point in the adjacent
         # pair of waypoints we found containing the required distance.
