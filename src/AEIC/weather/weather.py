@@ -3,6 +3,7 @@ import xarray as xr
 
 from AEIC.missions import Mission
 from AEIC.trajectories.ground_track import GroundTrack
+from AEIC.utils.files import file_location
 
 
 class Weather:
@@ -28,7 +29,7 @@ class Weather:
     ):
         self.ground_track = ground_track
         # Read weather file
-        weather_ds = xr.open_dataset(weather_data_path)
+        weather_ds = xr.open_dataset(file_location(weather_data_path))
 
         # If valid_hour exists, slice weather to get hour of departure
         if 'valid_time' in weather_ds.dims:
