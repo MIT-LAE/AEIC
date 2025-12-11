@@ -764,8 +764,3 @@ class TestIntegration:
         assert np.allclose(
             result.NOxEI, np.array([27.11460822, 14.28251747, 11.92937893])
         )
-
-
-if __name__ == "__main__":
-    # Run the tests
-    pytest.main([__file__, "-v"])

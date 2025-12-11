@@ -1,7 +1,10 @@
+import gc
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
 import xarray as xr
 
-from AEIC.missions import Mission
 from AEIC.trajectories.ground_track import GroundTrack
 from AEIC.utils.files import file_location
 
@@ -13,44 +16,82 @@ class Weather:
 
     Parameters
     ----------
-    weather_data_path : str
-        Path to ERA5 Weather data NetCDF file
+    data_dir : str | Path
+        Path to directory containing ERA5 weather data NetCDF files.
+        The files should have names of the form 'YYYYMMDD.nc', one per day.
         File should contain variables: 't', 'u', 'v'
         with coordinates 'pressure_level', 'latitude', 'longitude',
         'valid_time' (optional)
-    mission : Mission
-        Mission object with origin, destination location
-                as well as missions start time
-    ground_track : GroundTrack object with waypoints along mission
     """
 
-    def __init__(
-        self, weather_data_path: str, mission: Mission, ground_track: GroundTrack
-    ):
-        self.ground_track = ground_track
-        # Read weather file
-        weather_ds = xr.open_dataset(file_location(weather_data_path))
+    def __init__(self, data_dir: str | Path):
+        self.data_dir = data_dir if isinstance(data_dir, Path) else Path(data_dir)
+        if not self.data_dir.is_dir():
+            raise FileNotFoundError(
+                f'Weather data directory not found: {self.data_dir}'
+            )
+        self._main_ds: xr.Dataset | None = None
+        self._ds_date: pd.Timestamp | None = None
+        self._ds: xr.Dataset | None = None
+        self._ds_time_idx: int | None = None
 
-        # If valid_hour exists, slice weather to get hour of departure
-        if 'valid_time' in weather_ds.dims:
-            weather_ds = weather_ds.isel(valid_time=mission.departure.hour)
+    def _nc_path(self, time: pd.Timestamp) -> Path:
+        fname = time.strftime('%Y%m%d.nc')
+        return Path(file_location(str(self.data_dir / fname)))
 
-        self.weather_ds = weather_ds
+    def _require_main_ds(self, time: pd.Timestamp):
+        # If we already have the main Dataset for this date, return.
+        if self._main_ds is not None and self._ds_date == time:
+            return
+
+        # If we're reading a new dataset, we will need to slice it.
+        self._ds = None
+        self._ds_time_idx = None
+
+        # If we already have a weather dataset open, close it and force the
+        # garbage collector to close the underlying NetCDF file.
+        if self._main_ds is not None:
+            self._main_ds.close()
+            self._main_ds = None
+            gc.collect()
+
+        # Read weather file into main Dataset.
+        self._main_ds = xr.open_dataset(self._nc_path(time))
+        self._ds_date = time
+
+    def _require_data(self, time: pd.Timestamp):
+        # Make sure we have the main Dataset for this date.
+        self._require_main_ds(time)
+
+        # If we already have the sliced Dataset for this time, return.
+        if self._ds is not None and self._ds_time_idx == time.hour:
+            return
+
+        # If valid_hour exists, slice weather to get hour of departure.
+        assert self._main_ds is not None
+        self._ds = self._main_ds
+        self._ds_time_idx = None
+        if 'valid_time' in self._main_ds.dims:
+            self._ds = self._main_ds.isel(valid_time=time.hour)
+            self._ds_time_idx = time.hour
 
     def get_ground_speed(
         self,
-        ground_distance: float,
+        time: pd.Timestamp,
+        gt_point: GroundTrack.Point,
         altitude: float,
         true_airspeed: float,
-        azimuth: float = None,
+        azimuth: float | None = None,
     ) -> float:
         """
         Compute ground speed at a point along the mission.
 
         Parameters
         ----------
-        ground_distance : float
-            Distance flown along the ground track from the origin [meters].
+        time: pd.Timestamp
+            Time at the ground track point [UTC].
+        gt_point : GroundTrack.Point
+            Spatial point along the ground track from the origin.
         altitude : float
             Altitude above sea level [meters].
         true_airspeed : float
@@ -64,16 +105,18 @@ class Weather:
         ground_speed: float
             Ground speed [m/s]
         """
-        gt_point = self.ground_track.location(ground_distance)
 
-        wind_u = self.weather_ds['u'].interp(
-            pressure_level=self._altitude_to_pressure_level_hPa(altitude),
+        self._require_data(time)
+        assert self._ds is not None
+
+        wind_u = self._ds['u'].interp(
+            pressure_level=_altitude_to_pressure_level_hPa(altitude),
             latitude=gt_point.location.latitude,
             longitude=gt_point.location.longitude,
         )
 
-        wind_v = self.weather_ds['v'].interp(
-            pressure_level=self._altitude_to_pressure_level_hPa(altitude),
+        wind_v = self._ds['v'].interp(
+            pressure_level=_altitude_to_pressure_level_hPa(altitude),
             latitude=gt_point.location.latitude,
             longitude=gt_point.location.longitude,
         )
@@ -86,10 +129,9 @@ class Weather:
         u_air = true_airspeed * np.cos(heading_rad)
         v_air = true_airspeed * np.sin(heading_rad)
 
-        ground_speed = float(np.hypot(u_air + wind_u, v_air + wind_v))
-        return ground_speed
+        return float(np.hypot(u_air + wind_u, v_air + wind_v))
 
-    def _altitude_to_pressure_level_hPa(self, altitude: float) -> float:
-        """Convert altitude to pressure level."""
-        pressure_hPa = 1013.25 * (1.0 - altitude / 44330.0) ** 5.255
-        return pressure_hPa
+
+def _altitude_to_pressure_level_hPa(altitude: float) -> float:
+    """Convert altitude to pressure level."""
+    return 1013.25 * (1.0 - altitude / 44330.0) ** 5.255

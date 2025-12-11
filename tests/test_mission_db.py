@@ -1,4 +1,3 @@
-import os
 from collections.abc import Generator
 from datetime import date
 
@@ -164,10 +163,10 @@ def test_query():
     assert 'GROUP BY od_pair' in sql
 
 
-def test_query_result():
+def test_query_result(test_data_dir):
     # These queries were all tested manually in the SQLite shell to determine
     # the correct results using this exact test database.
-    test_db = os.path.join(os.path.dirname(__file__), 'oag-2019-test-subset.sqlite')
+    test_db = test_data_dir / 'missions/oag-2019-test-subset.sqlite'
     with Database(test_db) as db:
         # All scheduled flights in the test database.
         result = db(Query())

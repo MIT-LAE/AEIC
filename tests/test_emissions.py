@@ -660,8 +660,3 @@ def test_emission_dtype_consistency(sample_perf_model, trajectory):
     assert set(emission.APU_emissions_g.dtype.names) == dtype_names
     assert set(emission.GSE_emissions_g.dtype.names) == dtype_names
     assert set(emission.summed_emission_g.dtype.names) == dtype_names
-
-
-if __name__ == "__main__":
-    # Run the tests
-    pytest.main([__file__, "-v"])

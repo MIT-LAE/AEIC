@@ -186,7 +186,7 @@ cython_debug/
 
 # SQLite databases (ignore for now).
 *.sqlite
-!tests/oag-2019-test-subset.sqlite
+!tests/data/missions/oag-2019-test-subset.sqlite
 *.sqlite-journal
 
 # Lazily downloaded data files
