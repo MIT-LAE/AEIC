@@ -34,9 +34,9 @@ class PerformanceInputMode(Enum):
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class PerformanceConfig:
-    """Immutable, validated view of the performance configuration consumed by
+    """(Ideally) immutable, validated view of the performance configuration consumed by
     `PerformanceModel`. Has convenience accessors for emission-specific options.
 
     Attributes:

@@ -114,12 +114,13 @@ class Weather:
             latitude=gt_point.location.latitude,
             longitude=gt_point.location.longitude,
         )
-
         wind_v = self._ds['v'].interp(
             pressure_level=_altitude_to_pressure_level_hPa(altitude),
             latitude=gt_point.location.latitude,
             longitude=gt_point.location.longitude,
         )
+        if wind_u.isnull().values.any() or wind_v.isnull().values.any():
+            raise ValueError('ground track point is outside weather data domain')
 
         if azimuth is None:
             heading_rad = np.deg2rad(gt_point.azimuth)
