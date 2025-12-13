@@ -3,8 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import AEIC.trajectories.builders as tb
-from AEIC.config import config
+from AEIC.config import LTOInputMode
 from AEIC.emissions.EI_HCCO import EI_HCCO
 from AEIC.emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
 from AEIC.emissions.EI_PMnvol import calculate_PMnvolEI_scope11
@@ -14,20 +13,18 @@ from AEIC.emissions.emission import (
     EINOxMethod,
     Emission,
     EmissionsConfig,
-    LTOInputMode,
     PMnvolMethod,
     PMvolMethod,
 )
 from AEIC.missions import Mission
-from AEIC.performance_model import PerformanceModel
 from AEIC.utils.helpers import iso_to_timestamp
 from AEIC.utils.standard_fuel import get_thrust_cat
 
 # Path to a real fuel TOML file in your repo
-performance_model_file = config.file_location("IO/default_config.toml")
+# performance_model_file = config.file_location("IO/default_config.toml")
 
 # Path to a real fuel TOML file in your repo
-perf = PerformanceModel(performance_model_file)
+# perf = PerformanceModel(performance_model_file)
 
 sample_mission = Mission(
     origin="BOS",
@@ -42,14 +39,14 @@ _BASE_EMISSIONS = {
     'Fuel': 'conventional_jetA',
     'EDB_input_file': 'engines/example.edb',
     'LTO_input_mode': 'EDB',
-    'EI_NOx_method': 'BFFM2',
-    'EI_HC_method': 'BFFM2',
-    'EI_CO_method': 'BFFM2',
-    'EI_PMvol_method': 'fuel_flow',
-    'EI_PMnvol_method': 'scope11',
-    'CO2_calculation': True,
-    'H2O_calculation': True,
-    'SOx_calculation': True,
+    'NOx_method': 'BFFM2',
+    'HC_method': 'BFFM2',
+    'CO_method': 'BFFM2',
+    'PMvol_method': 'fuel_flow',
+    'PMnvol_method': 'scope11',
+    'CO2_enabled': True,
+    'H2O_enabled': True,
+    'SOx_enabled': True,
     'APU_calculation': True,
     'GSE_calculation': True,
     'LC_calculation': True,
@@ -293,16 +290,16 @@ def _expected_lto_nox_split(emission):
 
 
 def test_emissions_config_parses_string_flags():
-    cfg = EmissionsConfig.from_mapping(
+    cfg = EmissionsConfig.model_validate(
         {
             'Fuel': 'synthetic_jet',
             'EDB_input_file': 'engines/custom.edb',
             'LTO_input_mode': 'EDB',
-            'EI_NOx_method': 'none',
-            'EI_HC_method': 'BFFM2',
-            'EI_CO_method': 'BFFM2',
-            'EI_PMvol_method': 'FOA3',
-            'EI_PMnvol_method': 'scope11',
+            'NOx_method': 'none',
+            'HC_method': 'BFFM2',
+            'CO_method': 'BFFM2',
+            'PMvol_method': 'FOA3',
+            'PMnvol_method': 'scope11',
             'APU_calculation': 'no',
             'GSE_calculation': 'Yes',
             'LC_calculation': '0',

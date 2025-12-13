@@ -11,7 +11,7 @@ from AEIC.trajectories import FieldMetadata, FieldSet, TrajectoryStore
 from AEIC.utils.helpers import iso_to_timestamp
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def sample_missions():
     missions_file = config.file_location('missions/sample_missions_10.toml')
     with open(missions_file, 'rb') as f:
@@ -19,7 +19,7 @@ def sample_missions():
     return Mission.from_toml(mission_dict)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def example_mission():
     return Mission(
         origin='BOS',
@@ -31,7 +31,7 @@ def example_mission():
     )
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def example_mission_with_weather():
     return Mission(
         origin='BOS',
@@ -43,16 +43,14 @@ def example_mission_with_weather():
     )
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def iteration_params():
     return dict(test_reltol=1e-6, test_maxiters=1000)
 
 
-@pytest.fixture(scope='session')
-def performance_model(test_data_dir):
-    perf = PerformanceModel(config.file_location('IO/default_config.toml'))
-    perf.config.weather_data_dir = test_data_dir / 'weather'
-    return perf
+@pytest.fixture
+def performance_model():
+    return PerformanceModel(config.file_location('IO/sample_performance_model.toml'))
 
 
 test_fields = FieldSet(

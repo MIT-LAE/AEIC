@@ -1,19 +1,17 @@
-# Emissions class
+# TODO: Remove this when we migrate to Python 3.14.
 from __future__ import annotations
 
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any
 
 import numpy as np
 
-from AEIC.config import config
+from AEIC.config import LTOInputMode, config
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories.trajectory import Trajectory
 from AEIC.utils.consts import R_air, kappa
-from AEIC.utils.inspect_inputs import as_bool, require_str
 from AEIC.utils.standard_atmosphere import (
     pressure_at_altitude_isa_bada4,
     temperature_at_altitude_isa_bada4,
@@ -21,6 +19,12 @@ from AEIC.utils.standard_atmosphere import (
 from AEIC.utils.standard_fuel import get_SLS_equivalent_fuel_flow, get_thrust_cat
 
 from .APU_emissions import get_APU_emissions
+from .config import (
+    EINOxMethod,
+    EmissionsConfig,
+    PMnvolMethod,
+    PMvolMethod,
+)
 from .EI_CO2 import EI_CO2
 from .EI_H2O import EI_H2O
 from .EI_HCCO import EI_HCCO
@@ -28,181 +32,6 @@ from .EI_NOx import BFFM2_EINOx, NOx_speciation
 from .EI_PMnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
 from .EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from .EI_SOx import EI_SOx
-
-
-########################
-# INPUT CONFIG CLASSES #
-########################
-class LTOInputMode(Enum):
-    """Config for selecting input modes for LTO emissions"""
-
-    # LTO INPUT OPTIONS
-    PERFORMANCE_MODEL = "performance_model"
-    EDB = "edb"
-
-    @property
-    def requires_edb_file(self) -> bool:
-        """EDB mode needs an engine databank file path."""
-        return self is LTOInputMode.EDB
-
-    @classmethod
-    def from_value(cls, value: str | None) -> LTOInputMode:
-        normalized = (value or cls.EDB.value).strip().lower()
-        compact = normalized.replace("_", "")
-        if compact == "performancemodel":
-            return cls.PERFORMANCE_MODEL
-        if compact == "edb":
-            return cls.EDB
-        raise ValueError(
-            f"LTO_input_mode must be 'performance_model' or 'EDB'; received {value!r}."
-        )
-
-
-class EINOxMethod(Enum):
-    """Config for selecting input modes for NOx emissions"""
-
-    # NOx emission method options
-    BFFM2 = "bffm2"
-    P3T3 = "p3t3"
-    NONE = "none"
-
-    @classmethod
-    def from_value(cls, value: str | None, *, default: EINOxMethod) -> EINOxMethod:
-        if value is None:
-            return default
-        normalized = value.strip().lower()
-        for method in cls:
-            if method.value == normalized:
-                return method
-        raise ValueError(
-            f"Emission method '{value}' is invalid. "
-            f"Valid options: {[m.value for m in cls]}"
-        )
-
-
-class PMvolMethod(Enum):
-    """Config for selecting input modes for PMvol emissions"""
-
-    # PMvol emission method options
-    FUEL_FLOW = "fuel_flow"
-    FOA3 = "foa3"
-    NONE = "none"
-
-    @classmethod
-    def from_value(cls, value: str | None, *, default: PMvolMethod) -> PMvolMethod:
-        normalized = (value or default.value).strip().lower()
-        for method in cls:
-            if method.value == normalized:
-                return method
-        raise ValueError(
-            f"EI_PMvol_method '{value}' is invalid. "
-            f"Valid options: {[m.value for m in cls]}"
-        )
-
-
-class PMnvolMethod(Enum):
-    """Config for selecting input modes for PMnvol emissions"""
-
-    # PMnvol emission method options
-    MEEM = "meem"
-    SCOPE11 = "scope11"
-    FOA3 = "foa3"
-    NONE = "none"
-
-    @classmethod
-    def from_value(
-        cls,
-        value: str | None,
-        *,
-        default: PMnvolMethod,
-    ) -> PMnvolMethod:
-        normalized = (value or default.value).strip().lower()
-        for method in cls:
-            if method.value == normalized:
-                return method
-        raise ValueError(
-            f"EI_PMnvol_method '{value}' is invalid. "
-            f"Valid options: {[m.value for m in cls]}"
-        )
-
-
-##########################
-# Emissions Config Class #
-##########################
-@dataclass(frozen=True)
-class EmissionsConfig:
-    """Validated user-configurable inputs for emissions modeling.
-
-    Wraps the raw performance-model config/TOML, enforces defaults, and keeps
-    every param needed to build emission settings (fuel selection, method
-    choices, LTO input mode, and optional components like APU/GSE/lifecycle)."""
-
-    # Fuel Info
-    fuel_name: str  # Fuel used (conventional Jet-A, SAF, etc)
-    fuel_file: str  # Location of fuel data toml file
-    # Trajectory emissions config
-    climb_descent_usage: bool
-    # Emission calculation flags for only fuel dependent emission calculations
-    co2_enabled: bool
-    h2o_enabled: bool
-    sox_enabled: bool
-    # Emission calculation method options for all other emmisions
-    nox_method: EINOxMethod
-    hc_method: EINOxMethod
-    co_method: EINOxMethod
-    pmvol_method: PMvolMethod
-    pmnvol_method: PMnvolMethod
-    # LTO emission config
-    lto_input_mode: LTOInputMode
-    edb_input_file: str
-    # Non trajectory emission calculation flags
-    apu_calculation: bool
-    gse_calculation: bool
-    lc_calculation: bool
-
-    @classmethod
-    def from_mapping(cls, mapping: Mapping[str, Any]) -> EmissionsConfig:
-        fuel_name = mapping.get('Fuel', 'conventional_jetA')
-        if not isinstance(fuel_name, str) or not fuel_name.strip():
-            raise ValueError("Emissions.Fuel must be a non-empty string.")
-        default_method = EINOxMethod.BFFM2
-        lto_mode = LTOInputMode.from_value(mapping.get('LTO_input_mode'))
-        # If LTO input = EDB, needs a user-specified engine databank file path.
-        if lto_mode.requires_edb_file:
-            edb_input_file = require_str(mapping, 'EDB_input_file')
-        else:
-            raw_file = mapping.get('EDB_input_file')
-            edb_input_file = raw_file.strip() if isinstance(raw_file, str) else ""
-        return cls(
-            fuel_name=fuel_name,
-            fuel_file=f"fuels/{fuel_name}.toml",
-            co2_enabled=as_bool(mapping.get('CO2_calculation'), default=True),
-            h2o_enabled=as_bool(mapping.get('H2O_calculation'), default=True),
-            sox_enabled=as_bool(mapping.get('SOx_calculation'), default=True),
-            nox_method=EINOxMethod.from_value(
-                mapping.get('EI_NOx_method'), default=default_method
-            ),
-            hc_method=EINOxMethod.from_value(
-                mapping.get('EI_HC_method'), default=default_method
-            ),
-            co_method=EINOxMethod.from_value(
-                mapping.get('EI_CO_method'), default=default_method
-            ),
-            pmvol_method=PMvolMethod.from_value(
-                mapping.get('EI_PMvol_method'), default=PMvolMethod.FUEL_FLOW
-            ),
-            pmnvol_method=PMnvolMethod.from_value(
-                mapping.get('EI_PMnvol_method'), default=PMnvolMethod.MEEM
-            ),
-            lto_input_mode=lto_mode,
-            edb_input_file=edb_input_file,
-            climb_descent_usage=as_bool(
-                mapping.get('climb_descent_usage'), default=True
-            ),
-            apu_calculation=as_bool(mapping.get('APU_calculation'), default=True),
-            gse_calculation=as_bool(mapping.get('GSE_calculation'), default=True),
-            lc_calculation=as_bool(mapping.get('LC_calculation'), default=True),
-        )
 
 
 @dataclass(frozen=True)
@@ -701,7 +530,7 @@ class Emission:
         if isinstance(config_data, EmissionsConfig):
             config = config_data
         else:
-            config = EmissionsConfig.from_mapping(config_data)
+            config = EmissionsConfig.model_validate(config_data)
 
         metric_flags = {
             'CO2': config.co2_enabled,
@@ -769,8 +598,7 @@ class Emission:
 
     def _extract_lto_inputs(self):
         """Return ordered fuel-flow and EI arrays for either EDB or user LTO data."""
-        mode = LTOInputMode.from_value(self.performance_model.config.lto_input_mode)
-        if mode is LTOInputMode.EDB:
+        if config.lto_input_mode is LTOInputMode.EDB:
             edb = self.performance_model.EDB_data
             fuel_flow = np.asarray(edb['fuelflow_KGperS'], dtype=float)
             nox_ei = np.asarray(edb['NOX_EI_matrix'], dtype=float)

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from AEIC.config import config
 from AEIC.missions import Mission
 from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories import FlightPhase, GroundTrack, Trajectory
@@ -115,7 +116,7 @@ class LegacyContext(Context):
         # Initialize weather regridding when requested.
         self.weather: Weather | None = None
         if builder.options.use_weather:
-            self.weather = Weather(data_dir=ac_performance.config.weather_data_dir)
+            self.weather = Weather(data_dir=config.weather.weather_data_dir)
 
         # Pass information to base context class constructor.
         super().__init__(

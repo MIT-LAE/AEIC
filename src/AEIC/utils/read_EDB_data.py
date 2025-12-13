@@ -5,18 +5,18 @@ import pandas as pd
 from AEIC.config import config
 
 
-def get_EDB_data_for_engine(edb_path: str, uid: str) -> dict:
+def get_EDB_data_for_engine(uid: str) -> dict:
     """
     Reads the EDB Excel workbook and returns dict with
     EDB engine data for UID given,
     combining data from the "Gaseous Emissions and Smoke" and "nvPM Emissions" sheets.
     """
-    edb_file = config.file_location(edb_path)
-
     try:
-        xls = pd.ExcelFile(edb_file)
+        xls = pd.ExcelFile(config.edb_input_file)
     except Exception as exc:
-        raise ValueError(f"Unable to open EDB workbook at {edb_file}: {exc}") from exc
+        raise ValueError(
+            f"Unable to open EDB workbook at {config.edb_input_file}: {exc}"
+        ) from exc
 
     gaseous_sheet = 'Gaseous Emissions and Smoke'
     nvpm_sheet = 'nvPM Emissions'

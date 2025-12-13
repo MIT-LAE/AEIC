@@ -16,7 +16,7 @@ sample_mission = Mission(
 )
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def ground_track():
     return GroundTrack.great_circle(
         sample_mission.origin_position.location,
@@ -24,7 +24,7 @@ def ground_track():
     )
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def sample_weather(test_data_dir):
     return Weather(data_dir=test_data_dir / 'weather')
 

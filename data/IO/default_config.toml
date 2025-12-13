@@ -1,77 +1,58 @@
-["General Information"]
-ac_name = "B738"
-engine = "CFM56-7B"
-year = 2019                     # Required year (YYYY)
-time_frequency = 'Y'            # Y/M/D/H
+performance_model = "IO/sample_performance_model.toml"
 
-AC_class = "NarrowbodyShortHaul"   # 1. NarrowbodyShorthaul
-                                # 2. WidebodyLonghaul
-                                # OR ICAO code list: ['736', '737', '738']
+lto_input_mode = "EDB"  # "performance_model" : LTO data provided in PerformanceModel file
+                        # "EDB" : Use EDB data to get LTO performance
+edb_input_file = "engines/sample_edb.xlsx"
 
-max_range_nm = 2940.0           # 2940 for CFM56-7B and LEAP-1B, 7800 for GE90-115B
 
-performance_model_input = "PerformanceModel"
-                                # "OPF" : Input as BADA type OPF file (FUNCTIONAL INPUT)
-                                # "PerformanceModel" : JSON file with state variables - fuel_flow = f(h, V, gamma, m_fuel) (TABULAR INPUT)
-
-performance_model_input_file = "IO/sample_performance_model.toml"
-
-["Weather"]
+[weather]
 use_weather = true                  # Use loaded weather to calculate wind vectors
-weather_data_type = "ERA5_PRESSURE" # ERA5_PRESSURE, ERA5_MODEL
 weather_data_dir = "weather"
                                     # Location on weather data
                                     # files should be in YYYYMMDD.nc format
 
-["Emissions"]
-Fuel = "conventional_jetA"  # Fuel files stored in data/fuels/
+[emissions]
+fuel = "conventional_jetA"  # Fuel files stored in data/fuels/
                             # Current options include:
                             # conventional_jetA
 
-CO2_calculation = true      # Compute CO2 emissions with EI in fuels file
+co2_enabled = true          # Compute CO2 emissions with EI in fuels file
 
-H2O_calculation = true      # Compute H2O emissions with EI in fuels file
+h2o_enabled = true          # Compute H2O emissions with EI in fuels file
 
-SOx_calculation = true      # Compute SOx emissions with EI in fuels file
+sox_enabled = true          # Compute SOx emissions with EI in fuels file
 
-EI_NOx_method = "BFFM2"     # Options include
+nox_method = "BFFM2"        # Options include
                             # P3T3: Pt3, Tt3 method
                             # BFFM2: Boeing Fuel flow method 2
                             # None: Do not compute NOx emissions
 
-EI_HC_method = "BFFM2"      # Options include
+hc_method = "BFFM2"         # Options include
                             # BFFM2: Boeing Fuel flow method 2
                             # None: Do not compute HC emissions
 
-EI_CO_method = "BFFM2"      # Options include
+co_method = "BFFM2"         # Options include
                             # BFFM2: Boeing Fuel flow method 2
                             # None: Do not compute CO emissions
 
-EI_PMvol_method = "fuel_flow"
+pmvol_method = "fuel_flow"
                             # Options include
                             # fuel_flow: Calculate EI(PMvolo) and OCicEI based on fuel flow
                             # FOA3: Using the FOA3.0 method (Wayson et al., 2009)
                             # None: Do not compute PMvol emissions
 
-EI_PMnvol_method = "MEEM"   # Options include
+pmnvol_method = "MEEM"      # Options include
                             # MEEM: Mission Emissions Estimation Methodology (MEEM)
                             #        based on Ahrens et al. (2022),
                             #        SCOPE11, and the methodology of Peck et al. (2013).
                             # SCOPE11: SCOPE11 methodology
                             # None: Do not compute PMnvol emissions
 
-LTO_input_mode = "EDB"  # "performance_model" : LTO data provided in PerformanceModel file
-                        # "EDB" : Use EDB data to get LTO performance
-EDB_input_file = "engines/sample_edb.xlsx"
-
 climb_descent_usage = true  # true: emissions calculated for entire trajectory (takeoff, climb, cruise, descent)
                             # false: emissions only calculated for cruise, LTO data used for takeoff, climb, approach
 
-APU_calculation = true      # Compute emissions from APU
+apu_calculation = true      # Compute emissions from APU
 
-GSE_calculation = true      # Compute emissions from GSE
+gse_calculation = true      # Compute emissions from GSE
 
-LC_calculation = true       # Compute lifecycle emissions
-
-["OUTPUT"]
-output_folder = "Emission_Files"
+lc_calculation = true       # Compute lifecycle emissions
