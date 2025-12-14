@@ -8,7 +8,7 @@ from AEIC.BADA.model import Bada3JetEngineModel
 from AEIC.config import LTOInputMode, PerformanceInputMode, config
 from AEIC.parsers.LTO_reader import parseLTO
 from AEIC.parsers.OPF_reader import parse_OPF
-from AEIC.utils.read_EDB_data import get_EDB_data_for_engine
+from AEIC.utils.edb import get_EDB_data_for_engine
 
 
 class PerformanceModel:

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from AEIC.utils.read_EDB_data import get_EDB_data_for_engine
+from AEIC.utils.edb import get_EDB_data_for_engine
 
 
 class DummyExcelFile:
@@ -28,7 +28,7 @@ def test_get_EDB_data_for_engine_raises_when_uid_absent(tmp_path, monkeypatch):
     dummy_path.touch()
 
     monkeypatch.setattr(
-        "AEIC.utils.read_EDB_data.pd.ExcelFile",
+        "AEIC.utils.edb.pd.ExcelFile",
         lambda _: DummyExcelFile(gaseous, nvpm),
     )
 

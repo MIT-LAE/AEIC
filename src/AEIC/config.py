@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field, model_validator
 
 from AEIC.emissions.config import EmissionsConfig
 from AEIC.utils.helpers import deep_update
-from AEIC.utils.types import CIBaseModel, CIStrEnum
+from AEIC.utils.models import CIBaseModel, CIStrEnum
 from AEIC.weather.config import WeatherConfig
 
 
@@ -168,6 +168,16 @@ class Config(CIBaseModel):
         raise FileNotFoundError(f'File {f} not found in AEIC search path.')
 
     @classmethod
+    def get(cls) -> Config:
+        """Get the global configuration singleton.
+
+        Raises an error if the configuration has not yet been initialized."""
+        global _config
+        if _config is None:
+            raise ValueError('AEIC configuration is not set')
+        return _config
+
+    @classmethod
     def load(cls, config_file: str | Path | None = None, **kwargs) -> Config:
         """Load configuration from TOML files.
 
@@ -237,6 +247,12 @@ class ConfigProxy:
         if _config is None:
             raise ValueError('AEIC configuration is not set')
         return getattr(_config, name)
+
+    def __setattr__(self, name, value):
+        global _config
+        if _config is None:
+            raise ValueError('AEIC configuration is not set')
+        return setattr(_config, name, value)
 
 
 config = ConfigProxy()

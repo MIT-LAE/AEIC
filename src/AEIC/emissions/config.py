@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from AEIC.utils.types import CIBaseModel, CIStrEnum
+from AEIC.utils.models import CIBaseModel, CIStrEnum
 
 
 class EINOxMethod(CIStrEnum):

@@ -18,7 +18,9 @@ os.environ['AEIC_PATH'] = f'{TEST_DATA_DIR}:{DATA_DIR}'
 
 # Path to default configuration file: this is in the `src` directory to ensure
 # that it ends up in the built wheel.
-DEFAULT_CONFIG = (Path(__file__).parent.parent) / 'src' / 'AEIC' / 'default_config.toml'
+DEFAULT_CONFIG = (
+    Path(__file__).parent.parent / 'src' / 'AEIC' / 'default_config.toml'
+).resolve()
 
 
 # Read default configuration and modify weather data directory for tests.
@@ -39,6 +41,11 @@ def pytest_configure(config):
 @pytest.fixture
 def test_data_dir():
     return TEST_DATA_DIR
+
+
+@pytest.fixture
+def default_config_file():
+    return DEFAULT_CONFIG
 
 
 @pytest.fixture

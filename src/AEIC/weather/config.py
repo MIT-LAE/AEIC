@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import ConfigDict
 
-from AEIC.utils.types import CIBaseModel
+from AEIC.utils.models import CIBaseModel
 
 
 class WeatherConfig(CIBaseModel):

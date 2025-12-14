@@ -1,0 +1,9 @@
+lto_input_mode = "performance_model"
+
+[weather]
+use_weather = false
+
+[emissions]
+sox_enabled = false
+nox_method = "P3T3"
+apu_enabled = false
