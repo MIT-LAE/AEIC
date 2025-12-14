@@ -8,6 +8,7 @@ from pathlib import Path
 from pydantic import ConfigDict, Field, model_validator
 
 from AEIC.emissions.config import EmissionsConfig
+from AEIC.utils.helpers import deep_update
 from AEIC.utils.types import CIBaseModel, CIStrEnum
 from AEIC.weather.config import WeatherConfig
 
@@ -167,12 +168,32 @@ class Config(CIBaseModel):
         raise FileNotFoundError(f'File {f} not found in AEIC search path.')
 
     @classmethod
-    def load(cls, config_file: str | Path) -> Config:
-        """Load configuration from a TOML file."""
+    def load(cls, config_file: str | Path | None = None, **kwargs) -> Config:
+        """Load configuration from TOML files.
 
-        with open(config_file, 'rb') as fp:
-            data = tomllib.load(fp)
-        return cls.model_validate(data)
+        The `default_config.toml` file included with AEIC is loaded first, and
+        then the specified `config_file` is loaded and overlaid on top. This
+        allows users to only specify configuration options that differ from the
+        defaults."""
+
+        # Read default configuration data: this is in the top-level package
+        # source directory to ensure that it ends up in the wheel.
+        with open(Path(__file__).parent / 'default_config.toml', 'rb') as fp:
+            default_data = tomllib.load(fp)
+
+        # Overlay data can come either from a file or from keyword arguments.
+        overlay_data = {}
+
+        # Read overlay configuration data from TOML file.
+        if config_file is not None:
+            with open(config_file, 'rb') as fp:
+                overlay_data = tomllib.load(fp)
+
+        # Handle overlay data from keyword arguments.
+        overlay_data = deep_update(overlay_data, kwargs)
+
+        # Combine default and overlay data and validate.
+        return cls.model_validate(deep_update(default_data, overlay_data))
 
     @staticmethod
     def reset():

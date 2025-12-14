@@ -3,22 +3,14 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from AEIC.performance_model import (
-    PerformanceConfig,
-    PerformanceInputMode,
-    PerformanceModel,
-)
+from AEIC.config import config
+from AEIC.performance_model import PerformanceModel
 
 
 def test_performance_model_initialization():
     """PerformanceModel builds config, and performance tables."""
 
-    model = PerformanceModel('IO/default_config.toml')
-
-    assert isinstance(model.config, PerformanceConfig)
-    assert (
-        model.config.performance_model_input is PerformanceInputMode.PERFORMANCE_MODEL
-    )
+    model = PerformanceModel(config.file_location('IO/sample_performance_model.toml'))
 
     assert hasattr(model, 'ac_params')
     assert model.ac_params.cas_cruise_lo == pytest.approx(
@@ -35,29 +27,6 @@ def test_performance_model_initialization():
 
     dimension_lengths = tuple(len(col) for col in model.performance_table_cols)
     assert model.performance_table.shape == dimension_lengths
-
-
-def test_performance_config_from_mapping_requires_sections():
-    base = {
-        'General Information': {
-            'performance_model_input': 'opf',
-            'performance_model_input_file': 'data/perf.toml',
-        },
-        'Emissions': {
-            'EDB_input_file': 'engines/example.edb',
-            'LTO_input_mode': 'performance_model',
-        },
-    }
-    config = PerformanceConfig.from_mapping(base)
-    assert config.performance_model_input is PerformanceInputMode.OPF
-    assert config.performance_model_input_file == 'data/perf.toml'
-    assert config.edb_input_file == 'engines/example.edb'
-
-    for missing_key in ('General Information', 'Emissions'):
-        incomplete = dict(base)
-        incomplete.pop(missing_key)
-        with pytest.raises(ValueError):
-            PerformanceConfig.from_mapping(incomplete)
 
 
 def test_create_performance_table_maps_multi_dimensional_grid():

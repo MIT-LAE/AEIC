@@ -4,7 +4,6 @@ from __future__ import annotations
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 
@@ -21,7 +20,6 @@ from AEIC.utils.standard_fuel import get_SLS_equivalent_fuel_flow, get_thrust_ca
 from .APU_emissions import get_APU_emissions
 from .config import (
     EINOxMethod,
-    EmissionsConfig,
     PMnvolMethod,
     PMvolMethod,
 )
@@ -32,27 +30,6 @@ from .EI_NOx import BFFM2_EINOx, NOx_speciation
 from .EI_PMnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
 from .EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from .EI_SOx import EI_SOx
-
-
-@dataclass(frozen=True)
-class EmissionSettings:
-    """Flattened runtime settings consumed by class:Emission.
-
-    Holds the precomputed flags, resolved enums, and file references needed to
-    run emission computations without re-reading or re-validating the original
-    config, plus a compact `metric_flags` map for toggling individual outputs."""
-
-    fuel_file: str
-    traj_all: bool
-    apu_enabled: bool
-    gse_enabled: bool
-    lifecycle_enabled: bool
-    pmvol_method: PMvolMethod
-    pmnvol_method: PMnvolMethod
-    nox_method: EINOxMethod
-    hc_method: EINOxMethod
-    co_method: EINOxMethod
-    metric_flags: Mapping[str, bool]
 
 
 @dataclass(frozen=True)
@@ -122,16 +99,13 @@ class Emission:
         """
 
         self.performance_model = ac_performance
-        self.conf = self._parse_emission_settings(ac_performance.config.emissions)
 
-        self.metric_flags = dict(self.conf.metric_flags)
-
-        self._include_pmnvol_number = self.metric_flags['PMnvol'] and (
-            self.conf.pmnvol_method in (PMnvolMethod.SCOPE11, PMnvolMethod.MEEM)
+        self._include_pmnvol_number = config.emissions.pmnvol_enabled and (
+            config.emissions.pmnvol_method in (PMnvolMethod.SCOPE11, PMnvolMethod.MEEM)
         )
         self._scope11_cache = None
 
-        with open(config.file_location(self.conf.fuel_file), 'rb') as f:
+        with open(config.emissions.fuel_file, 'rb') as f:
             self.fuel = tomllib.load(f)
 
         self._reset_run_state()
@@ -141,7 +115,7 @@ class Emission:
         self._prepare_run_state(trajectory)
         self.compute_emissions()
         lifecycle_adjustment = None
-        if self.metric_flags.get('CO2') and self.conf.lifecycle_enabled:
+        if config.emissions.co2_enabled and config.emissions.lifecycle_enabled:
             lifecycle_adjustment = self.get_lifecycle_emissions(self.fuel, trajectory)
         return self._collect_emissions(lifecycle_adjustment)
 
@@ -171,7 +145,7 @@ class Emission:
         # Calculate LTO emissions for ground and approach/climb modes
         self.get_LTO_emissions()
 
-        if self.conf.apu_enabled:
+        if config.emissions.apu_enabled:
             (
                 self.APU_emission_indices,
                 self.APU_emissions_g,
@@ -185,12 +159,12 @@ class Emission:
                 self.LTO_no2Prop,
                 self.LTO_honoProp,
                 EI_H2O=EI_H2O(self.fuel),
-                nvpm_method=self.conf.pmnvol_method.value,
+                nvpm_method=config.emissions.pmnvol_method,
             )
             self.total_fuel_burn += apu_fuel_burn
 
         # Compute Ground Service Equipment (GSE) emissions based on WNSF type
-        if self.conf.gse_enabled:
+        if config.emissions.gse_enabled:
             self.get_GSE_emissions(
                 self.performance_model.model_info['General_Information'][
                     'aircraft_class'
@@ -208,9 +182,9 @@ class Emission:
         for field in self.summed_emission_g.dtype.names:
             total = np.sum(self.pointwise_emissions_g[field])
             total += np.sum(self.LTO_emissions_g[field])
-            if self.conf.apu_enabled:
+            if config.emissions.apu_enabled:
                 total += np.sum(self.APU_emissions_g[field])
-            if self.conf.gse_enabled:
+            if config.emissions.gse_enabled:
                 total += np.sum(self.GSE_emissions_g[field])
             self.summed_emission_g[field] = total
 
@@ -226,13 +200,14 @@ class Emission:
         fuel_flow = trajectory.fuel_flow[idx_slice]
         thrust_categories = get_thrust_cat(fuel_flow, lto_ff_array, cruiseCalc=True)
 
-        needs_hc = self.metric_flags['HC'] or (
-            self.metric_flags['PMvol'] and self.conf.pmvol_method is PMvolMethod.FOA3
+        needs_hc = config.emissions.hc_enabled or (
+            config.emissions.pmvol_enabled
+            and config.emissions.pmvol_method is PMvolMethod.FOA3
         )
-        needs_co = self.metric_flags['CO']
-        needs_nox = self.metric_flags['NOx']
-        needs_pmnvol_meem = self.metric_flags['PMnvol'] and (
-            self.conf.pmnvol_method == 'meem'
+        needs_co = config.emissions.co_enabled
+        needs_nox = config.emissions.nox_enabled
+        needs_pmnvol_meem = config.emissions.pmnvol_enabled and (
+            config.emissions.pmnvol_method == 'meem'
         )
         needs_atmos = needs_hc or needs_co or needs_nox or needs_pmnvol_meem
 
@@ -260,7 +235,7 @@ class Emission:
                 lto_ff_array,
                 atmos_state,
             )
-            if self.metric_flags['HC']:
+            if config.emissions.hc_enabled:
                 self.emission_indices['HC'][idx_slice] = hc_ei
 
         if needs_co:
@@ -274,7 +249,7 @@ class Emission:
 
         self._calculate_EI_PMvol(idx_slice, thrust_categories, fuel_flow, hc_ei)
 
-        if self.metric_flags['PMnvol']:
+        if config.emissions.pmnvol_enabled:
             self._calculate_EI_PMnvol(
                 idx_slice,
                 thrust_categories,
@@ -307,15 +282,15 @@ class Emission:
 
         self._get_LTO_nox(thrustCat, lto_inputs)
 
-        if self.metric_flags['HC']:
+        if config.emissions.hc_enabled:
             self.LTO_emission_indices['HC'] = lto_inputs['hc_ei']
-        if self.metric_flags['CO']:
+        if config.emissions.co_enabled:
             self.LTO_emission_indices['CO'] = lto_inputs['co_ei']
 
-        if self.metric_flags['PMvol']:
+        if config.emissions.pmvol_enabled:
             self._get_LTO_PMvol(fuel_flows_LTO, thrust_labels, lto_inputs)
 
-        if self.metric_flags['PMnvol']:
+        if config.emissions.pmnvol_enabled:
             self._get_LTO_PMnvol(ac_performance, fuel_flows_LTO)
         self.LTO_emission_indices['PMnvolGMD'] = np.zeros_like(fuel_flows_LTO)
 
@@ -323,7 +298,10 @@ class Emission:
         self.total_fuel_burn += np.sum(LTO_fuel_burn)
 
         for field in self.LTO_emission_indices.dtype.names:
-            if self.conf.traj_all and field in self.LTO_emission_indices.dtype.names:
+            if (
+                config.emissions.climb_descent_usage
+                and field in self.LTO_emission_indices.dtype.names
+            ):
                 self.LTO_emission_indices[field][1:-1] = 0.0
             self.LTO_emissions_g[field] = (
                 self.LTO_emission_indices[field] * LTO_fuel_burn
@@ -384,7 +362,7 @@ class Emission:
 
     def get_lifecycle_emissions(self, fuel, traj) -> float | None:
         """Apply lifecycle CO2 adjustments when requested by the config."""
-        if not self.metric_flags.get('CO2', True):
+        if not config.emissions.co2_enabled:
             return None
         fuel_mass = getattr(traj, 'fuel_mass', None)
         fuel_used = fuel_mass[-1] - fuel_mass[0]
@@ -404,7 +382,7 @@ class Emission:
         sls_equiv_fuel_flow,
     ):
         """Fill NOx-related EI arrays according to the selected method."""
-        method = self.conf.nox_method
+        method = config.emissions.nox_method
         if method is EINOxMethod.NONE:
             return
         if method is EINOxMethod.BFFM2:
@@ -431,7 +409,7 @@ class Emission:
             print("P3T3 method not implemented yet..")
         else:
             raise NotImplementedError(
-                f"EI_NOx_method '{self.conf.nox_method.value}' is not supported."
+                f"EI_NOx_method '{config.emissions.nox_method.value}' is not supported."
             )
 
     ###################
@@ -466,15 +444,14 @@ class Emission:
         self.NCrz = trajectory.n_cruise
         self.NDes = trajectory.n_descent
 
-        fill_value = -1.0
-        self.emission_indices = self._new_emission_array(self.Ntot, fill_value)
-        self.LTO_emission_indices = self._new_emission_array(4, fill_value)
-        self.LTO_emissions_g = self._new_emission_array(4, fill_value)
-        self.APU_emission_indices = self._new_emission_array(1, fill_value)
-        self.APU_emissions_g = self._new_emission_array(1, fill_value)
-        self.GSE_emissions_g = self._new_emission_array(1, fill_value)
-        self.pointwise_emissions_g = self._new_emission_array(self.Ntot, fill_value)
-        self.summed_emission_g = self._new_emission_array(1, fill_value)
+        self.emission_indices = self._new_emission_array(self.Ntot)
+        self.LTO_emission_indices = self._new_emission_array(4)
+        self.LTO_emissions_g = self._new_emission_array(4)
+        self.APU_emission_indices = self._new_emission_array(1)
+        self.APU_emissions_g = self._new_emission_array(1)
+        self.GSE_emissions_g = self._new_emission_array(1)
+        self.pointwise_emissions_g = self._new_emission_array(self.Ntot)
+        self.summed_emission_g = self._new_emission_array(1)
 
         self._initialize_field_controls()
 
@@ -505,12 +482,12 @@ class Emission:
                 indices=self.APU_emission_indices,
                 emissions_g=self.APU_emissions_g,
             )
-            if self.conf.apu_enabled
+            if config.emissions.apu_enabled
             else None
         )
         gse_slice = (
             EmissionSlice(indices=None, emissions_g=self.GSE_emissions_g)
-            if self.conf.gse_enabled
+            if config.emissions.gse_enabled
             else None
         )
         return EmissionsOutput(
@@ -522,78 +499,31 @@ class Emission:
             lifecycle_co2_g=lifecycle_adjustment,
         )
 
-    def _parse_emission_settings(
-        self, config_data: Mapping[str, Any] | EmissionsConfig
-    ) -> EmissionSettings:
-        """Flatten relevant config keys and derive boolean/method flags."""
-
-        if isinstance(config_data, EmissionsConfig):
-            config = config_data
-        else:
-            config = EmissionsConfig.model_validate(config_data)
-
-        metric_flags = {
-            'CO2': config.co2_enabled,
-            'H2O': config.h2o_enabled,
-            'SOx': config.sox_enabled,
-            'NOx': config.nox_method is not EINOxMethod.NONE,
-            'HC': config.hc_method is not EINOxMethod.NONE,
-            'CO': config.co_method is not EINOxMethod.NONE,
-            'PMvol': config.pmvol_method is not PMvolMethod.NONE,
-            'PMnvol': config.pmnvol_method is not PMnvolMethod.NONE,
-        }
-
-        return EmissionSettings(
-            fuel_file=config.fuel_file,
-            traj_all=config.climb_descent_usage,
-            apu_enabled=config.apu_calculation,
-            gse_enabled=config.gse_calculation,
-            lifecycle_enabled=config.lc_calculation,
-            pmvol_method=config.pmvol_method,
-            pmnvol_method=config.pmnvol_method,
-            nox_method=config.nox_method,
-            hc_method=config.hc_method,
-            co_method=config.co_method,
-            metric_flags=metric_flags,
-        )
-
     def _initialize_field_controls(self):
         """Map dtype fields to metric flags so we can zero disabled outputs."""
-        # TODO: This might be a little overboard, and there's
-        # got to be another way to solve this problem
-        field_groups = {
-            'CO2': 'CO2',
-            'H2O': 'H2O',
-            'HC': 'HC',
-            'CO': 'CO',
-            'NOx': 'NOx',
-            'NO': 'NOx',
-            'NO2': 'NOx',
-            'HONO': 'NOx',
-            'PMvol': 'PMvol',
-            'OCic': 'PMvol',
-            'PMnvol': 'PMnvol',
-            'PMnvolN': 'PMnvol',
-            'PMnvolGMD': 'PMnvol',
-            'SO2': 'SOx',
-            'SO4': 'SOx',
+        pmnvol_enabled = config.emissions.pmnvol_enabled and self._include_pmnvol_number
+        self._field_controls = {
+            'CO2': config.emissions.co2_enabled,
+            'H2O': config.emissions.h2o_enabled,
+            'HC': config.emissions.hc_enabled,
+            'CO': config.emissions.co_enabled,
+            'NOx': config.emissions.nox_enabled,
+            'NO': config.emissions.nox_enabled,
+            'NO2': config.emissions.nox_enabled,
+            'HONO': config.emissions.nox_enabled,
+            'PMvol': config.emissions.pmvol_enabled,
+            'OCic': config.emissions.pmvol_enabled,
+            'PMnvol': pmnvol_enabled,
+            'PMnvolN': pmnvol_enabled,
+            'PMnvolGMD': pmnvol_enabled,
+            'SO2': config.emissions.sox_enabled,
+            'SO4': config.emissions.sox_enabled,
         }
-        controls = {}
-        include_number = getattr(self, "_include_pmnvol_number", False)
 
-        for field in self.emission_indices.dtype.names:
-            group = field_groups.get(field)
-            if group is None:
-                controls[field] = True
-                continue
-            enabled = self.metric_flags.get(group, False)
-            if field == 'PMnvolN':
-                enabled = enabled and include_number
-            controls[field] = enabled
-
-        self._field_controls = controls
         self._active_fields = tuple(
-            field for field in self.emission_indices.dtype.names if controls[field]
+            field
+            for field in self.emission_indices.dtype.names
+            if self._field_controls[field]
         )
 
     def _extract_lto_inputs(self):
@@ -628,6 +558,7 @@ class Emission:
                 dtype=float,
             )
 
+        # TODO: Make this a dataclass.
         return {
             'fuel_flow': fuel_flow,
             'nox_ei': nox_ei,
@@ -638,6 +569,8 @@ class Emission:
 
     def _ordered_thrust_settings(self, settings):
         """Preserve canonical idle -> takeoff order for thrust setting dictionaries."""
+        # TODO: Make this a natural ordering on an Enum representing the thrust
+        # modes.
         if not isinstance(settings, dict):
             return list(settings)
         lower_lookup = {key.lower(): value for key, value in settings.items()}
@@ -664,9 +597,9 @@ class Emission:
         thrust_pct[thrust_categories == 3] = 30.0
         return thrust_pct
 
-    def _new_emission_array(self, length: int, fill_value: float = -1.0):
+    def _new_emission_array(self, length: int):
         """Create a structured emission array with a consistent dtype footprint."""
-        return np.full((), fill_value, dtype=self.__emission_dtype(length))
+        return np.full((), -1.0, dtype=self.__emission_dtype(length))
 
     def _assign_constant_indices(
         self, target_array, values: Mapping[str, float], idx_slice=slice(None)
@@ -679,18 +612,20 @@ class Emission:
 
     def _trajectory_slice(self):
         """Return the portion of the mission covered by trajectory emissions."""
-        end = self.Ntot if self.conf.traj_all else self.Ntot - self.NDes
+        end = (
+            self.Ntot if config.emissions.climb_descent_usage else self.Ntot - self.NDes
+        )
         return slice(0, end)
 
     def _constant_species_values(self):
         """Return constant EI values that do not depend on thrust or atmosphere."""
         constants = {}
-        if self.metric_flags.get('CO2'):
+        if config.emissions.co2_enabled:
             co2_result = EI_CO2(self.fuel)
             constants['CO2'] = co2_result.EI_CO2
-        if self.metric_flags.get('H2O'):
+        if config.emissions.h2o_enabled:
             constants['H2O'] = EI_H2O(self.fuel)
-        if self.metric_flags.get('SOx'):
+        if config.emissions.sox_enabled:
             sox_result = EI_SOx(self.fuel)
             constants['SO2'] = sox_result.EI_SO2
             constants['SO4'] = sox_result.EI_SO4
@@ -762,21 +697,22 @@ class Emission:
     ):
         """Populate PMvol/OCic trajectory indices according to the configured method."""
         if (
-            not self.metric_flags.get('PMvol')
-            or self.conf.pmvol_method is PMvolMethod.NONE
+            not config.emissions.pmvol_enabled
+            or config.emissions.pmvol_method is PMvolMethod.NONE
         ):
             return
-        if self.conf.pmvol_method is PMvolMethod.FUEL_FLOW:
+        if config.emissions.pmvol_method is PMvolMethod.FUEL_FLOW:
             thrust_labels = self._thrust_band_labels(thrust_categories)
             pmvol_ei, ocic_ei = EI_PMvol_FuelFlow(fuel_flow, thrust_labels)
-        elif self.conf.pmvol_method is PMvolMethod.FOA3:
+        elif config.emissions.pmvol_method is PMvolMethod.FOA3:
             if hc_ei is None:
                 raise RuntimeError("FOA3 PMvol calculation requires HC EIs.")
             thrust_pct = self._thrust_percentages_from_categories(thrust_categories)
             pmvol_ei, ocic_ei = EI_PMvol_FOA3(thrust_pct, hc_ei)
         else:
             raise NotImplementedError(
-                f"EI_PMvol_method '{self.conf.pmvol_method.value}' is not supported."
+                f"EI_PMvol_method '{config.emissions.pmvol_method.value}' "
+                "is not supported."
             )
         self.emission_indices['PMvol'][idx_slice] = pmvol_ei
         self.emission_indices['OCic'][idx_slice] = ocic_ei
@@ -790,7 +726,7 @@ class Emission:
         ac_performance: PerformanceModel,
     ):
         """Populate PMnvol indices for trajectory points."""
-        method = self.conf.pmnvol_method
+        method = config.emissions.pmnvol_method
         if method is PMnvolMethod.NONE:
             return
         if method is PMnvolMethod.MEEM:
@@ -837,7 +773,8 @@ class Emission:
             return
 
         raise NotImplementedError(
-            f"EI_PMnvol_method '{self.conf.pmnvol_method.value}' is not supported."
+            f"EI_PMnvol_method '{config.emissions.pmnvol_method.value}' "
+            "is not supported."
         )
 
     def _get_LTO_TIMs(self):
@@ -847,7 +784,7 @@ class Emission:
         TIM_Approach = 4.0 * 60
         TIM_Taxi = 26.0 * 60
         durations = np.array([TIM_Taxi, TIM_Approach, TIM_Climb, TIM_TakeOff])
-        if self.conf.traj_all:
+        if config.emissions.climb_descent_usage:
             durations[1:3] = 0.0
         return durations
 
@@ -855,13 +792,13 @@ class Emission:
         """Fill LTO NOx and species splits while keeping auxiliary arrays in sync."""
         fuel_flows_LTO = lto_inputs['fuel_flow']
         zeros = np.zeros_like(fuel_flows_LTO)
-        if not self.metric_flags.get('NOx'):
+        if not config.emissions.nox_enabled:
             self.LTO_noProp = zeros
             self.LTO_no2Prop = zeros
             self.LTO_honoProp = zeros
             return
 
-        if self.conf.nox_method is EINOxMethod.NONE:
+        if config.emissions.nox_method is EINOxMethod.NONE:
             self.LTO_noProp = zeros
             self.LTO_no2Prop = zeros
             self.LTO_honoProp = zeros
@@ -885,24 +822,25 @@ class Emission:
 
     def _get_LTO_PMvol(self, fuel_flows_LTO, thrust_labels, lto_inputs):
         """Set PMvol/OCic EIs for the LTO cycle."""
-        if self.conf.pmvol_method is PMvolMethod.FUEL_FLOW:
+        if config.emissions.pmvol_method is PMvolMethod.FUEL_FLOW:
             LTO_PMvol, LTO_OCic = EI_PMvol_FuelFlow(fuel_flows_LTO, thrust_labels)
-        elif self.conf.pmvol_method is PMvolMethod.FOA3:
+        elif config.emissions.pmvol_method is PMvolMethod.FOA3:
             LTO_PMvol, LTO_OCic = EI_PMvol_FOA3(
                 lto_inputs['thrust_pct'], lto_inputs['hc_ei']
             )
-        elif self.conf.pmvol_method is PMvolMethod.NONE:
+        elif config.emissions.pmvol_method is PMvolMethod.NONE:
             LTO_PMvol = LTO_OCic = np.zeros_like(fuel_flows_LTO)
         else:
             raise NotImplementedError(
-                f"EI_PMvol_method '{self.conf.pmvol_method.value}' is not supported."
+                f"EI_PMvol_method '{config.emissions.pmvol_method.value}' "
+                "is not supported."
             )
         self.LTO_emission_indices['PMvol'] = LTO_PMvol
         self.LTO_emission_indices['OCic'] = LTO_OCic
 
     def _get_LTO_PMnvol(self, ac_performance: PerformanceModel, fuel_flows_LTO):
         """Set PMnvol EIs for the four LTO thrust points."""
-        method = self.conf.pmnvol_method
+        method = config.emissions.pmnvol_method
         if method in (PMnvolMethod.FOA3, PMnvolMethod.MEEM):
             PMnvolEI = np.asarray(
                 ac_performance.EDB_data['PMnvolEI_best_ICAOthrust'], dtype=float
@@ -918,7 +856,7 @@ class Emission:
         else:
             raise ValueError(
                 f"""Re-define PMnvol estimation method:
-                pmnvolSwitch = {self.conf.pmnvol_method.value}"""
+                pmnvolSwitch = {config.emissions.pmnvol_method.value}"""
             )
 
         self.LTO_emission_indices['PMnvol'] = PMnvolEI
@@ -1000,7 +938,6 @@ class Emission:
             ('SO2', np.float64, n),
             ('SO4', np.float64, n),
         ]
-        include_number = getattr(self, "_include_pmnvol_number", False)
-        if include_number:
+        if self._include_pmnvol_number:
             fields.append(('PMnvolN', np.float64, n))
         return fields

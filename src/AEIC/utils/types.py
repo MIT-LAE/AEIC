@@ -33,6 +33,7 @@ class DayOfWeek(Enum):
 # ------------------------------------------------------------------------------
 #
 #  TODO: Decide on better places to put the following things.
+#  TODO: Write some tests for these.
 
 
 class CIStrEnum(StrEnum):

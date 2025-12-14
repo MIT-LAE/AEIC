@@ -20,11 +20,6 @@ class DummyExcelFile:
         raise ValueError(f"Unknown sheet requested: {sheet_name}")
 
 
-def test_get_EDB_data_for_engine_missing_file():
-    with pytest.raises(FileNotFoundError):
-        get_EDB_data_for_engine("does-not-exist.xlsx", "123")
-
-
 def test_get_EDB_data_for_engine_raises_when_uid_absent(tmp_path, monkeypatch):
     gaseous = pd.DataFrame({'UID No': ['100']})
     nvpm = pd.DataFrame({'UID No': ['200']})
@@ -40,13 +35,13 @@ def test_get_EDB_data_for_engine_raises_when_uid_absent(tmp_path, monkeypatch):
     with pytest.raises(
         ValueError, match="UID 300 not found in sheet 'Gaseous Emissions and Smoke'."
     ):
-        get_EDB_data_for_engine(str(dummy_path), uid="300")
+        get_EDB_data_for_engine(uid="300")
 
 
 def test_get_EDB_data_for_engine_returns_engine_data():
     UID = "01P11CM121"
 
-    engine_info = get_EDB_data_for_engine("engines/sample_edb.xlsx", UID)
+    engine_info = get_EDB_data_for_engine(UID)
 
     assert engine_info['ENGINE'] == "CFM56-7B27E"
     assert engine_info['UID'] == UID

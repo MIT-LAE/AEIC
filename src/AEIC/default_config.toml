@@ -51,8 +51,8 @@ pmnvol_method = "MEEM"      # Options include
 climb_descent_usage = true  # true: emissions calculated for entire trajectory (takeoff, climb, cruise, descent)
                             # false: emissions only calculated for cruise, LTO data used for takeoff, climb, approach
 
-apu_calculation = true      # Compute emissions from APU
+apu_enabled = true          # Compute emissions from APU
 
-gse_calculation = true      # Compute emissions from GSE
+gse_enabled = true          # Compute emissions from GSE
 
-lc_calculation = true       # Compute lifecycle emissions
+lifecycle_enabled = true    # Compute lifecycle emissions

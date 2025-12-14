@@ -62,9 +62,9 @@ class EmissionsConfig(CIBaseModel):
     pmnvol_method: PMnvolMethod = PMnvolMethod.MEEM
 
     # Non trajectory emission calculation flags
-    apu_calculation: bool = True
-    gse_calculation: bool = True
-    lc_calculation: bool = True
+    apu_enabled: bool = True
+    gse_enabled: bool = True
+    lifecycle_enabled: bool = True
 
     @property
     def fuel_file(self) -> str:
@@ -73,3 +73,23 @@ class EmissionsConfig(CIBaseModel):
         from AEIC.config import config
 
         return config.file_location(f'fuels/{self.fuel}.toml')
+
+    @property
+    def nox_enabled(self) -> bool:
+        return self.nox_method != EINOxMethod.NONE
+
+    @property
+    def hc_enabled(self) -> bool:
+        return self.hc_method != EINOxMethod.NONE
+
+    @property
+    def co_enabled(self) -> bool:
+        return self.co_method != EINOxMethod.NONE
+
+    @property
+    def pmvol_enabled(self) -> bool:
+        return self.pmvol_method != PMvolMethod.NONE
+
+    @property
+    def pmnvol_enabled(self) -> bool:
+        return self.pmnvol_method != PMnvolMethod.NONE

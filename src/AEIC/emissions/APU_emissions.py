@@ -1,5 +1,7 @@
 import numpy as np
 
+from AEIC.emissions.config import PMnvolMethod
+
 
 def get_APU_emissions(
     APU_emission_indices,
@@ -10,7 +12,7 @@ def get_APU_emissions(
     LTO_no2Prop,
     LTO_honoProp,
     EI_H2O,
-    nvpm_method=None,
+    nvpm_method: PMnvolMethod = PMnvolMethod.MEEM,
     apu_tim=900,
 ):
     """
@@ -57,8 +59,7 @@ def get_APU_emissions(
         APU_PM10 - APU_emission_indices['PMnvol']
     ).item()
 
-    nvpm_mode = (nvpm_method or '').lower()
-    if nvpm_mode in ('scope11', 'meem'):
+    if nvpm_method in (PMnvolMethod.SCOPE11, PMnvolMethod.MEEM):
         APU_emission_indices['PMnvolN'] = np.zeros_like(APU_emission_indices['PMvol'])
     APU_emission_indices['PMnvolGMD'] = np.zeros_like(APU_emission_indices['PMvol'])
     APU_emission_indices['OCic'] = np.zeros_like(APU_emission_indices['PMvol'])

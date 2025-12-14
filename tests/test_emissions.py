@@ -3,28 +3,35 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from AEIC.config import LTOInputMode
+from AEIC.config import config
 from AEIC.emissions.EI_HCCO import EI_HCCO
 from AEIC.emissions.EI_NOx import BFFM2_EINOx, NOx_speciation
 from AEIC.emissions.EI_PMnvol import calculate_PMnvolEI_scope11
-from AEIC.emissions.EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from AEIC.emissions.emission import (
     AtmosphericState,
-    EINOxMethod,
+    EI_PMvol_FOA3,
+    EI_PMvol_FuelFlow,
     Emission,
-    EmissionsConfig,
     PMnvolMethod,
     PMvolMethod,
 )
 from AEIC.missions import Mission
+from AEIC.performance_model import PerformanceModel
 from AEIC.utils.helpers import iso_to_timestamp
 from AEIC.utils.standard_fuel import get_thrust_cat
 
-# Path to a real fuel TOML file in your repo
-# performance_model_file = config.file_location("IO/default_config.toml")
 
-# Path to a real fuel TOML file in your repo
-# perf = PerformanceModel(performance_model_file)
+@pytest.fixture
+def performance_model_file():
+    # Path to a real fuel TOML file in your repo
+    return config.file_location("IO/sample_performance_model.toml")
+
+
+@pytest.fixture
+def performance_model(performance_model_file):
+    # Path to a real fuel TOML file in your repo
+    return PerformanceModel(performance_model_file)
+
 
 sample_mission = Mission(
     origin="BOS",
@@ -35,37 +42,9 @@ sample_mission = Mission(
     load_factor=1.0,
 )
 
-_BASE_EMISSIONS = {
-    'Fuel': 'conventional_jetA',
-    'EDB_input_file': 'engines/example.edb',
-    'LTO_input_mode': 'EDB',
-    'NOx_method': 'BFFM2',
-    'HC_method': 'BFFM2',
-    'CO_method': 'BFFM2',
-    'PMvol_method': 'fuel_flow',
-    'PMnvol_method': 'scope11',
-    'CO2_enabled': True,
-    'H2O_enabled': True,
-    'SOx_enabled': True,
-    'APU_calculation': True,
-    'GSE_calculation': True,
-    'LC_calculation': True,
-    'climb_descent_usage': True,
-}
-
-
-class DummyConfig:
-    def __init__(self, overrides: dict | None = None):
-        payload = dict(_BASE_EMISSIONS)
-        if overrides:
-            payload.update(overrides)
-        self.emissions = payload
-        self.lto_input_mode = payload.get('LTO_input_mode', 'EDB')
-
 
 class DummyPerformanceModel:
-    def __init__(self, config_overrides=None, edb_overrides=None, lto_settings=None):
-        self.config = DummyConfig(config_overrides)
+    def __init__(self, edb_overrides=None, lto_settings=None):
         base_edb = {
             'fuelflow_KGperS': np.array([0.25, 0.5, 0.9, 1.2], dtype=float),
             'NOX_EI_matrix': np.array([8.0, 12.0, 26.0, 32.0], dtype=float),
@@ -163,8 +142,8 @@ def trajectory():
 
 @pytest.fixture
 def sample_perf_model():
-    def _factory(config_overrides=None, edb_overrides=None, lto_settings=None):
-        return DummyPerformanceModel(config_overrides, edb_overrides, lto_settings)
+    def _factory(edb_overrides=None, lto_settings=None):
+        return DummyPerformanceModel(edb_overrides, lto_settings)
 
     return _factory
 
@@ -259,7 +238,7 @@ def _expected_trajectory_indices(emission, trajectory):
         cruiseCalc=True,
     )
 
-    if emission.conf.pmvol_method is PMvolMethod.FUEL_FLOW:
+    if config.emissions.pmvol_method is PMvolMethod.FUEL_FLOW:
         thrust_labels = np.full(thrust_categories.shape, 'H', dtype='<U1')
         thrust_labels[thrust_categories == 2] = 'L'
         pmvol, ocic = EI_PMvol_FuelFlow(fuel_flow, thrust_labels)
@@ -269,7 +248,7 @@ def _expected_trajectory_indices(emission, trajectory):
     expected['PMvol'] = pmvol
     expected['OCic'] = ocic
 
-    if emission.conf.pmnvol_method is PMnvolMethod.SCOPE11:
+    if config.emissions.pmnvol_method is PMnvolMethod.SCOPE11:
         mass, number = _expected_scope11_mapping(
             emission.performance_model, thrust_categories
         )
@@ -289,35 +268,7 @@ def _expected_lto_nox_split(emission):
     return NOx_speciation(thrust_categories)
 
 
-def test_emissions_config_parses_string_flags():
-    cfg = EmissionsConfig.model_validate(
-        {
-            'Fuel': 'synthetic_jet',
-            'EDB_input_file': 'engines/custom.edb',
-            'LTO_input_mode': 'EDB',
-            'NOx_method': 'none',
-            'HC_method': 'BFFM2',
-            'CO_method': 'BFFM2',
-            'PMvol_method': 'FOA3',
-            'PMnvol_method': 'scope11',
-            'APU_calculation': 'no',
-            'GSE_calculation': 'Yes',
-            'LC_calculation': '0',
-            'climb_descent_usage': 'n',
-        }
-    )
-    assert cfg.fuel_file == 'fuels/synthetic_jet.toml'
-    assert cfg.nox_method is EINOxMethod.NONE
-    assert cfg.apu_calculation is False
-    assert cfg.gse_calculation is True
-    assert cfg.lc_calculation is False
-    assert cfg.pmvol_method is PMvolMethod.FOA3
-    assert cfg.pmnvol_method is PMnvolMethod.SCOPE11
-    assert cfg.climb_descent_usage is False
-    assert cfg.lto_input_mode is LTOInputMode.EDB
-    assert cfg.edb_input_file == 'engines/custom.edb'
-
-
+@pytest.mark.config_updates(emissions__pmnvol_method='scope11')
 def test_emit_matches_expected_indices_and_pointwise(emission_with_run):
     emission, output, trajectory = emission_with_run
     expected, (no_prop, no2_prop, hono_prop) = _expected_trajectory_indices(
@@ -352,8 +303,11 @@ def test_emit_matches_expected_indices_and_pointwise(emission_with_run):
     assert output.lifecycle_co2_g is not None
 
 
+@pytest.mark.config_updates(
+    emissions__pmnvol_method='scope11', emissions__lifecycle_enabled=False
+)
 def test_sum_total_emissions_matches_components(sample_perf_model, trajectory):
-    perf = sample_perf_model({'LC_calculation': False})
+    perf = sample_perf_model()
     emission = Emission(perf)
     emission.emit(trajectory)
     for field in emission.summed_emission_g.dtype.names:
@@ -385,10 +339,15 @@ def test_scope11_profile_caching(sample_perf_model):
     )
 
 
-def test_get_lto_tims_respects_traj_flag(sample_perf_model):
-    emission_all = Emission(sample_perf_model({'climb_descent_usage': True}))
+@pytest.mark.config_updates(emissions__climb_descent_usage=True)
+def test_get_lto_tims_respects_traj_flag_true(sample_perf_model):
+    emission_all = Emission(sample_perf_model())
     assert np.allclose(emission_all._get_LTO_TIMs()[1:3], 0.0)
-    emission_partial = Emission(sample_perf_model({'climb_descent_usage': False}))
+
+
+@pytest.mark.config_updates(emissions__climb_descent_usage=False)
+def test_get_lto_tims_respects_traj_flag_false(sample_perf_model):
+    emission_partial = Emission(sample_perf_model())
     assert np.all(emission_partial._get_LTO_TIMs()[1:3] > 0.0)
 
 
@@ -409,6 +368,7 @@ def test_lto_nox_split_matches_speciation(emission_with_run):
     )
 
 
+@pytest.mark.config_updates(lto_input_mode='performance_model')
 def test_extract_lto_inputs_orders_performance_modes(sample_perf_model, trajectory):
     lto_settings = {
         'TakeOff': {
@@ -440,10 +400,7 @@ def test_extract_lto_inputs_orders_performance_modes(sample_perf_model, trajecto
             'THRUST_FRAC': 0.07,
         },
     }
-    perf = sample_perf_model(
-        {'LTO_input_mode': 'performance_model'},
-        lto_settings=lto_settings,
-    )
+    perf = sample_perf_model(lto_settings=lto_settings)
     emission = Emission(perf)
     emission._prepare_run_state(trajectory)
     lto_inputs = emission._extract_lto_inputs()
@@ -454,7 +411,9 @@ def test_extract_lto_inputs_orders_performance_modes(sample_perf_model, trajecto
     assert np.allclose(lto_inputs['thrust_pct'], [7.0, 30.0, 85.0, 100.0])
 
 
+@pytest.mark.config_updates(emissions__pmvol_method='foa3')
 def test_pmvol_foa3_uses_thrust_percentages(monkeypatch, sample_perf_model, trajectory):
+    print(config.emissions)
     perf = sample_perf_model({'EI_PMvol_method': 'foa3'})
     emission = Emission(perf)
     emission._prepare_run_state(trajectory)
@@ -489,6 +448,7 @@ def test_wnsf_index_mapping_and_errors(sample_perf_model, trajectory):
         emission._wnsf_index('unknown')
 
 
+@pytest.mark.config_updates(emissions__pmvol_method='foa3')
 def test_calculate_pmvol_requires_hc_for_foa3(sample_perf_model, trajectory):
     emission = Emission(sample_perf_model({'EI_PMvol_method': 'foa3'}))
     emission._prepare_run_state(trajectory)
@@ -499,6 +459,7 @@ def test_calculate_pmvol_requires_hc_for_foa3(sample_perf_model, trajectory):
         emission._calculate_EI_PMvol(idx_slice, thrust_categories, fuel_flow, None)
 
 
+@pytest.mark.config_updates(emissions__pmnvol_method='scope11')
 def test_calculate_pmnvol_scope11_populates_fields(sample_perf_model, trajectory):
     emission = Emission(sample_perf_model({'EI_PMnvol_method': 'scope11'}))
     emission._prepare_run_state(trajectory)
@@ -527,6 +488,7 @@ def test_calculate_pmnvol_scope11_populates_fields(sample_perf_model, trajectory
         )
 
 
+@pytest.mark.config_updates(emissions__pmnvol_method='meem')
 def test_calculate_pmnvol_meem_populates_fields(sample_perf_model, trajectory):
     emission = Emission(sample_perf_model({'EI_PMnvol_method': 'meem'}))
     emission._prepare_run_state(trajectory)

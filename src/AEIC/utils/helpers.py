@@ -1,5 +1,5 @@
 from datetime import UTC, date, datetime
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -59,3 +59,12 @@ def iso_to_timestamp(s: str) -> pd.Timestamp:
     if ts.tzinfo is None:
         ts = ts.tz_localize(UTC)
     return ts.tz_convert(UTC)
+
+
+def deep_update(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    for key, value in overlay.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            deep_update(base[key], value)
+        else:
+            base[key] = value
+    return base
