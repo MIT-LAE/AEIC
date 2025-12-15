@@ -30,15 +30,15 @@ updated trajectory dynamics, parallelization, and more.
    :maxdepth: 2
    :caption: AEIC Modules
 
-   src/AEIC/performance_model
-   src/AEIC/trajectories/trajectories.md
-   src/emissions/emission
-   src/BADA/bada
-   src/gridding/gridding
-   data/IO/io_formats
-   src/missions/missions.md
-   src/missions/mission_database.md
-   src/missions/oag.md
-   src/parsers/parsers
-   src/utils/utils.md
-   src/weather/weather
+   src/configuration.md
+   src/performance_model
+   src/trajectories/trajectories.md
+   src/emission
+   src/bada
+   src/gridding
+   src/missions.md
+   src/mission_database.md
+   src/oag.md
+   src/parsers
+   src/utilities.md
+   src/weather

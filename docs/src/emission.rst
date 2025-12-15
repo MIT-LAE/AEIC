@@ -13,8 +13,6 @@ Overview
 ----------
 
 - Computes trajectory, LTO, APU, GSE, and life-cycle :math:`\mathrm{CO_2}`.
-- Uses :class:`EmissionsConfig` / :class:`EmissionSettings` objects so
-  configuration defaults and switches are enforced before any computation begins.
 - Emits structured arrays (grams by species) plus convenience
   containers (``EmissionSlice`` and ``EmissionsOutput``) for downstream analysis.
 - Has helper methods such as :meth:`Emission.emit_trajectory` or
@@ -153,10 +151,7 @@ which fields are populated; disabled species stay as ``0``, making it easy to fi
 API Reference
 -------------
 
-.. autoclass:: AEIC.emissions.emission.EmissionsConfig
-   :members:
-
-.. autoclass:: AEIC.emissions.emission.EmissionSettings
+.. autoclass:: AEIC.emissions.config.EmissionsConfig
    :members:
 
 .. autoclass:: AEIC.emissions.emission.Emission

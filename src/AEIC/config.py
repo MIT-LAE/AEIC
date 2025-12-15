@@ -19,7 +19,7 @@ class PerformanceInputMode(CIStrEnum):
 
     # INPUT OPTIONS
     OPF = "opf"
-    PERFORMANCE_MODEL = "performancemodel"
+    PERFORMANCE_MODEL = "performance_model"
 
 
 class LTOInputMode(CIStrEnum):
@@ -38,12 +38,12 @@ class LTOInputMode(CIStrEnum):
 class Config(CIBaseModel):
     """Global AEIC configuration settings.
 
-    This is a singleton class; only one instance should be created. This
-    instance can then be accessed as `aeic.config.config` via the module-level
-    proxy. To use this, create an instance of `Config` at the start of your
-    program (probably using the `load` method), then anywhere else in the
-    codebase you can access the configuration simply by doing `from AEIC.config
-    import config`.
+    This is a singleton class; only one instance can be created. This instance
+    can then be accessed as `AEIC.config.config` via the module-level proxy. To
+    use this, create an instance of `Config` at the start of your program
+    (probably using the `load` method), then anywhere else in the codebase you
+    can access the configuration simply by doing `from AEIC.config import
+    config`.
 
     The intention here is to provide a single source of truth for configuration
     settings that can be accessed throughout AEIC without needing to pass
@@ -51,8 +51,8 @@ class Config(CIBaseModel):
     of the configuration class helps to avoid inconsistencies in settings during
     execution of code using AEIC."""
 
-    # Freeze model after initialization.
     model_config = ConfigDict(frozen=True)
+    """Configuration is frozen after creation."""
 
     path: list[Path] = Field(default_factory=list)
     """List of paths to search for data files. If not initialized explicitly,
@@ -183,9 +183,10 @@ class Config(CIBaseModel):
         """Load configuration from TOML files.
 
         The `default_config.toml` file included with AEIC is loaded first, and
-        then the specified `config_file` is loaded and overlaid on top. This
-        allows users to only specify configuration options that differ from the
-        defaults."""
+        then TOML data from any `config_file` provided is loaded and overlaid
+        on top. Additional keyword arguments are finally applied on top of the
+        resulting configuration data. This allows users to only specify
+        configuration options that differ from the defaults."""
 
         # Read default configuration data: this is in the top-level package
         # source directory to ensure that it ends up in the wheel.

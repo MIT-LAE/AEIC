@@ -23,8 +23,8 @@ class CIStrEnum(StrEnum):
 
 
 class CIBaseModel(BaseModel):
-    """Base model that recursively normalizes input keys to match lower-case
-    model field names."""
+    """Pydantic base model that recursively normalizes input keys to match
+    lower-case model field names."""
 
     @classmethod
     def _normalize_dict(cls, values: dict) -> dict:

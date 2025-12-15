@@ -10,25 +10,28 @@ altitude, rate of climb/descent, and true airspeed.
 Overview
 ----------
 
-- Loads project-wide TOML configuration and as :class:`PerformanceConfig`.
-- Supports two input modes via :class:`PerformanceInputMode`: reading BADA style OPF
-  files or ingesting the custom performance-model TOML tables.
+- Supports two input modes via :class:`AEIC.config.PerformanceInputMode`:
+  reading BADA style OPF files or ingesting the custom performance-model TOML
+  tables.
 - Automatically loads mission definitions, LTO data (either from the performance
   file or EDB databank), APU characteristics, and BADA3-based engine parameters.
-- Provides convenience accessors such as :attr:`PerformanceModel.missions`,
-  :attr:`PerformanceModel.performance_table`, and :attr:`PerformanceModel.model_info`
-  that later modules can consume without re-parsing TOML files.
+- Provides convenience accessors such as
+  :attr:`PerformanceModel.performance_table`, and
+  :attr:`PerformanceModel.model_info` that later modules can consume without
+  re-parsing TOML files.
 
 Usage Example
 -------------
 
 .. code-block:: python
 
+   from AEIC.config import Config
    from AEIC.performance_model import PerformanceModel
 
-   perf = PerformanceModel("IO/default_config.toml")
-   print("Loaded missions:", len(perf.missions))
+   # Load default AEIC configuration.
+   Config.load()
 
+   perf = PerformanceModel("IO/sample_performance_model.toml")
    table = perf.performance_table
    fl_grid, tas_grid, roc_grid, mass_grid = perf.performance_table_cols
    print("Fuel-flow grid shape:", table.shape)
@@ -37,46 +40,11 @@ Usage Example
    from AEIC.emissions.emission import Emission
    emitter = Emission(perf)
 
-Configuration Schema
---------------------
-
-``PerformanceConfig`` converts the nested TOML mapping into a frozen dataclass
-with well-defined fields. Key sections include:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 30 15 55
-
-   * - Section.Key
-     - Required
-     - Description
-   * - ``[Missions].missions_folder``
-     - ✓
-     - Directory containing the mission TOML files (relative to the repo root).
-   * - ``[Missions].missions_in_file``
-     - ✓
-     - File within ``missions_folder`` that lists available missions under ``[flight]``.
-   * - ``[General Information].performance_model_input``
-     - ✓
-     - Determines :class:`PerformanceInputMode`; accepts ``"opf"`` or ``"performancemodel"``.
-   * - ``[General Information].performance_model_input_file``
-     - ✓
-     - Path to the OPF file or the performance-model TOML containing
-       ``[flight_performance]`` and ``[LTO_performance]`` sections.
-   * - ``[Emissions]``
-     - ✓
-     - Stored as :attr:`PerformanceConfig.emissions` and forwarded to
-       :class:`AEIC.emissions.emission.EmissionsConfig` for validation of LTO/fuel
-       choices (see :ref:`Emissions Module <emissions-module>`).
-
 Data Products
 -------------
 
-After :meth:`PerformanceModel.initialize_performance` runs, the instance
-contains:
+After a :class:`PerformanceModel` instance is created, the instance contains:
 
-- :attr:`PerformanceModel.missions`: list of mission dictionaries read from the
-  ``missions_in_file``.
 - :attr:`PerformanceModel.ac_params`: populated :class:`AEIC.BADA.aircraft_parameters.Bada3AircraftParameters`
   reflecting either OPF inputs or the performance table metadata.
 - :attr:`PerformanceModel.engine_model`: a :class:`AEIC.BADA.model.Bada3JetEngineModel`
@@ -101,11 +69,8 @@ contains:
 API Reference
 -------------
 
-.. autoclass:: AEIC.performance_model.PerformanceInputMode
-   :members:
-
-.. autoclass:: AEIC.performance_model.PerformanceConfig
+.. autoenum:: AEIC.config.PerformanceInputMode
    :members:
 
 .. autoclass:: AEIC.performance_model.PerformanceModel
-   :members: __init__, initialize_performance, read_performance_data, create_performance_table
+   :members: __init__, read_performance_data, create_performance_table

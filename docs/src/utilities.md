@@ -101,3 +101,10 @@ module.
 .. automodule:: AEIC.utils.helpers
     :members:
 ```
+
+## Data modeling utility classes
+
+```{eval-rst}
+.. automodule:: AEIC.utils.models
+    :members:
+```

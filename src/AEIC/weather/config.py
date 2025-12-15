@@ -8,8 +8,8 @@ from AEIC.utils.models import CIBaseModel
 class WeatherConfig(CIBaseModel):
     """Configuration settings for weather module."""
 
-    # Freeze model after initialization.
     model_config = ConfigDict(frozen=True)
+    """Configuration is frozen after creation."""
 
     use_weather: bool = True
     """Whether to use weather data for emissions calculations."""
