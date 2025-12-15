@@ -59,8 +59,9 @@ required-environments = [
 ]
 
 [tool.uv.build-backend]
-include-package-data = true
 module-name = "AEIC"
+wheel-exclude = ["airports.csv"]
+source-exclude = ["airports.csv"]
 
 [project.scripts]
 convert-oag-data = "AEIC.commands.convert_oag_data:run"
