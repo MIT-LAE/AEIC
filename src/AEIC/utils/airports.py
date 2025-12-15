@@ -121,7 +121,7 @@ def _data_file(f: str) -> str:
     """Lazy download of OurAirports data."""
 
     base_url = 'https://davidmegginson.github.io/ourairports-data'
-    data_file = config.data_file_location(f'airports/{f}.csv')
+    data_file = config.default_data_file_location(f'airports/{f}.csv', missing_ok=True)
     if not os.path.exists(data_file):
         logger.info('Downloading %s data file', f)
         download(f'{base_url}/{f}.csv', data_file)

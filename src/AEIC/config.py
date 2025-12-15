@@ -150,6 +150,18 @@ class Config(CIBaseModel):
             return f.resolve()
         return self.data_file_location(f)
 
+    def default_data_file_location(
+        self, f: Path | str, missing_ok: bool = False
+    ) -> Path:
+        """Get the full path to a file within the default data directory."""
+
+        with as_file(files('AEIC') / 'data') as data_dir:
+            default_path = data_dir / f
+            if default_path.exists() or missing_ok:
+                return default_path.resolve()
+
+        raise FileNotFoundError(f'File {f} not found in AEIC default data directory.')
+
     def data_file_location(self, f: Path | str) -> Path:
         """Get the full path to a file within the configured paths."""
 
