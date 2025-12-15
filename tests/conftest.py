@@ -1,32 +1,15 @@
 import os
-import tomllib
-from copy import deepcopy
 from pathlib import Path
 
 import pytest
 
 from AEIC.config import Config
 
-# Path to main data directory.
-DATA_DIR = (Path(__file__).parent.parent / 'data').resolve()
-
 # Absolute path to test data directory.
 TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
 
-# Set the path to include the test and main data directories.
-os.environ['AEIC_PATH'] = f'{TEST_DATA_DIR}:{DATA_DIR}'
-
-# Path to default configuration file: this is in the `src` directory to ensure
-# that it ends up in the built wheel.
-DEFAULT_CONFIG = (
-    Path(__file__).parent.parent / 'src' / 'AEIC' / 'default_config.toml'
-).resolve()
-
-
-# Read default configuration and modify weather data directory for tests.
-with open(DEFAULT_CONFIG, 'rb') as fp:
-    DEFAULT_CONFIG_DATA = tomllib.load(fp)
-    DEFAULT_CONFIG_DATA['weather']['weather_data_dir'] = str(TEST_DATA_DIR / 'weather')
+# Set the path to include the test data directory.
+os.environ['AEIC_PATH'] = str(TEST_DATA_DIR)
 
 
 def pytest_configure(config):
@@ -43,23 +26,18 @@ def test_data_dir():
     return TEST_DATA_DIR
 
 
-@pytest.fixture
-def default_config_file():
-    return DEFAULT_CONFIG
-
-
-@pytest.fixture
-def default_config_data():
-    return deepcopy(DEFAULT_CONFIG_DATA)
-
-
 # Set up and tear down global configuration around each test.
 @pytest.fixture(autouse=True)
-def default_config(request, default_config_data):
-    config_data = default_config_data
+def default_config(request):
+    # Updates to the default configuration are pulled from the config_updates
+    # marker.
     data_marker = request.node.get_closest_marker('config_updates')
+
+    # By default, load the default configuration with no updates.
+    config_data = {}
+
     if data_marker is not None:
-        # Update config data with marker values.
+        # Build configuration data updates from values in marker.
         for key, value in data_marker.kwargs.items():
             if '__' not in key:
                 config_data[key] = value
@@ -69,6 +47,12 @@ def default_config(request, default_config_data):
                     config_data[section][param] = value
                 else:
                     config_data[section] = {param: value}
-    cfg = Config.model_validate(config_data)
-    yield cfg
+
+    # Load the default configuration with updates applied.
+    Config.load(**config_data)
+
+    # Test goes here...
+    yield
+
+    # Clear the configuration after the test.
     Config.reset()

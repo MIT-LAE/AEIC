@@ -24,7 +24,7 @@ from AEIC.utils.standard_fuel import get_thrust_cat
 @pytest.fixture
 def performance_model_file():
     # Path to a real fuel TOML file in your repo
-    return config.file_location("IO/sample_performance_model.toml")
+    return config.file_location("performance/sample_performance_model.toml")
 
 
 @pytest.fixture

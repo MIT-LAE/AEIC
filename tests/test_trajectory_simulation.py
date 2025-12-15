@@ -50,7 +50,9 @@ def iteration_params():
 
 @pytest.fixture
 def performance_model():
-    return PerformanceModel(config.file_location('IO/sample_performance_model.toml'))
+    return PerformanceModel(
+        config.file_location('performance/sample_performance_model.toml')
+    )
 
 
 test_fields = FieldSet(

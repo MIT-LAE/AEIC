@@ -10,7 +10,9 @@ from AEIC.performance_model import PerformanceModel
 def test_performance_model_initialization():
     """PerformanceModel builds config, and performance tables."""
 
-    model = PerformanceModel(config.file_location('IO/sample_performance_model.toml'))
+    model = PerformanceModel(
+        config.file_location('performance/sample_performance_model.toml')
+    )
 
     assert hasattr(model, 'ac_params')
     assert model.ac_params.cas_cruise_lo == pytest.approx(

@@ -190,8 +190,8 @@ cython_debug/
 *.sqlite-journal
 
 # Lazily downloaded data files
-data/airports/*.csv
-!data/airports/airports-patch.csv
+src/AEIC/data/airports/*.csv
+!src/AEIC/data/airports/airports-patch.csv
 /test_trajectories.nc
 
 # Merged AEIC trajectory stores

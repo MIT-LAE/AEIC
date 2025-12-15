@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import tomllib
+from importlib.resources import as_file, files
 from pathlib import Path
 
 from pydantic import ConfigDict, Field, model_validator
@@ -38,7 +39,7 @@ class Config(CIBaseModel):
     """Global AEIC configuration settings.
 
     This is a singleton class; only one instance should be created. This
-    instance can then be accessed as `AEIC.config.config` via the module-level
+    instance can then be accessed as `aeic.config.config` via the module-level
     proxy. To use this, create an instance of `Config` at the start of your
     program (probably using the `load` method), then anywhere else in the
     codebase you can access the configuration simply by doing `from AEIC.config
@@ -188,7 +189,7 @@ class Config(CIBaseModel):
 
         # Read default configuration data: this is in the top-level package
         # source directory to ensure that it ends up in the wheel.
-        with open(Path(__file__).parent / 'default_config.toml', 'rb') as fp:
+        with open(Path(__file__).parent / 'data/default_config.toml', 'rb') as fp:
             default_data = tomllib.load(fp)
 
         # Overlay data can come either from a file or from keyword arguments.
@@ -222,17 +223,17 @@ class Config(CIBaseModel):
             object.__setattr__(self, 'path', [Path(p).resolve() for p in self.path])
             return
 
-        # Otherwise initialize from the AEIC_PATH environment variable or a
-        # sensible default.
+        # Otherwise initialize from the AEIC_PATH environment variable.
         path_env = os.environ.get('AEIC_PATH', '')
         if path_env != '':
             # Path from AEIC_PATH environment variable.
             object.__setattr__(
                 self, 'path', [Path(p).resolve() for p in path_env.split(os.pathsep)]
             )
-        else:
-            # Default to current working directory.
-            object.__setattr__(self, 'path', [Path.cwd().resolve()])
+
+        # Add package data directory as a fallback.
+        with as_file(files('AEIC') / 'data') as data_dir:
+            object.__setattr__(self, 'path', self.path + [data_dir.resolve()])
 
 
 # Module property-like access to configuration via a proxy to allow late
