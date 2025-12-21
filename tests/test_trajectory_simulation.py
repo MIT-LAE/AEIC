@@ -6,7 +6,7 @@ import pytest
 import AEIC.trajectories.builders as tb
 from AEIC.config import config
 from AEIC.missions import Mission
-from AEIC.performance_model import PerformanceModel
+from AEIC.performance import PerformanceModel
 from AEIC.trajectories import FieldMetadata, FieldSet, TrajectoryStore
 from AEIC.utils.helpers import iso_to_timestamp
 
@@ -50,7 +50,7 @@ def iteration_params():
 
 @pytest.fixture
 def performance_model():
-    return PerformanceModel(
+    return PerformanceModel.load(
         config.file_location('performance/sample_performance_model.toml')
     )
 

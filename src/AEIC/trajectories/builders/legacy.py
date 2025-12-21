@@ -5,7 +5,7 @@ from numpy.typing import NDArray
 
 from AEIC.config import config
 from AEIC.missions import Mission
-from AEIC.performance_model import PerformanceModel
+from AEIC.performance import TablePerformanceModel
 from AEIC.trajectories import FlightPhase, GroundTrack, Trajectory
 from AEIC.utils.helpers import filter_order_duplicates
 from AEIC.utils.units import (
@@ -42,7 +42,7 @@ class LegacyContext(Context):
     def __init__(
         self,
         builder: 'LegacyBuilder',
-        ac_performance: PerformanceModel,
+        ac_performance: TablePerformanceModel,
         mission: Mission,
         starting_mass: float | None,
     ):
@@ -66,10 +66,7 @@ class LegacyContext(Context):
         )
 
         # Maximum altitude in meters.
-        max_alt: float = (
-            ac_performance.model_info['General_Information']['max_alt_ft']
-            * FEET_TO_METERS
-        )
+        max_alt: float = ac_performance.maximum_altitude_ft * FEET_TO_METERS
 
         # If starting altitude is above operating ceiling, set start altitude
         # to departure airport altitude.
@@ -133,17 +130,15 @@ class LegacyContext(Context):
             starting_mass=starting_mass,
         )
 
-    def __calc_crz_FLs(self, ac_performance: PerformanceModel) -> None:
+    def __calc_crz_FLs(self, ac_performance: TablePerformanceModel) -> None:
         """Get the bounding cruise flight levels (for which data exists)."""
 
         # Get the two flight levels in data closest to the cruise FL
         self.crz_FL_inds = ac_performance.search_flight_levels_ind(self.crz_FL)
-        self.crz_FLs = np.array(ac_performance.performance_table_cols[0])[
-            self.crz_FL_inds
-        ]
+        self.crz_FLs = np.array(ac_performance.bracketing_fls(self.crz_FL))
 
     def __get_zero_roc_index(
-        self, ac_performance: PerformanceModel, roc_zero_tol: float = 1e-6
+        self, ac_performance: TablePerformanceModel, roc_zero_tol: float = 1e-6
     ) -> None:
         """Get the index along the ROC axis of performance where ROC == 0.
 
@@ -197,11 +192,13 @@ class LegacyBuilder(Builder):
         # satisfy Python type checkers like Pyright. In this case, the first
         # and last arguments are converted from Python lists to Numpy arrays to
         # match the other arguments.
-        subset_performance = self.ac_performance.performance_table[
+        subset_performance = self.ac_performance.flight_performance._performance_table[
             np.ix_(
                 np.array(self.crz_FL_inds),
                 # axis 0: flight levels
-                np.arange(self.ac_performance.performance_table.shape[1]),
+                np.arange(
+                    self.ac_performance.flight_performance._performance_table.shape[1]
+                ),
                 # axis 1: all TAS's
                 np.where(self.zero_roc_mask)[0],
                 # axis 2: ROC ≈ 0
@@ -255,10 +252,7 @@ class LegacyBuilder(Builder):
         emptyMass = self.ac_performance.performance_table_cols[-1][0] / 1.2
 
         # Payload.
-        payloadMass = (
-            self.ac_performance.model_info['General_Information']['max_payload_kg']
-            * self.mission.load_factor
-        )
+        payloadMass = self.ac_performance.maximum_payload_kg * self.mission.load_factor
 
         # Fuel Needed (distance / velocity * fuel flow rate).
         approxTime = self.ground_track.total_distance / tas
@@ -295,8 +289,7 @@ class LegacyBuilder(Builder):
         BADA-3 formulas.
         """
 
-        dAlt = (self.crz_start_altitude - self.clm_start_altitude) / (self.n_climb - 1)
-        if dAlt < 0:
+        if self.crz_start_altitude < self.clm_start_altitude:
             raise ValueError(
                 "Departure airport + 3000ft should not be higher"
                 "than start of cruise point"
@@ -314,15 +307,21 @@ class LegacyBuilder(Builder):
         pos_rocs = np.array(self.ac_performance.performance_table_cols[2])[roc_inds]
 
         # Filter performance data to positive ROC
-        pos_roc_perf = self.ac_performance.performance_table[
+        pos_roc_perf = self.ac_performance.flight_performance._performance_table[
             np.ix_(
-                np.arange(self.ac_performance.performance_table.shape[0]),
+                np.arange(
+                    self.ac_performance.flight_performance._performance_table.shape[0]
+                ),
                 # axis 0: flight levels
-                np.arange(self.ac_performance.performance_table.shape[1]),
+                np.arange(
+                    self.ac_performance.flight_performance._performance_table.shape[1]
+                ),
                 # axis 1: all TAS's
                 np.where(pos_roc_mask)[0],
                 # axis 2: all positive ROC
-                np.arange(self.ac_performance.performance_table.shape[3]),
+                np.arange(
+                    self.ac_performance.flight_performance._performance_table.shape[3]
+                ),
                 # axis 3: mass value
             )
         ]
@@ -438,15 +437,19 @@ class LegacyBuilder(Builder):
         # Get distance step size.
         dGD = cruise_dist_approx / (self.n_cruise - 1)
 
-        subset_performance = self.ac_performance.performance_table[
+        subset_performance = self.ac_performance.flight_performance._performance_table[
             np.ix_(
                 np.array(self.crz_FL_inds),
                 # axis 0: flight levels
-                np.arange(self.ac_performance.performance_table.shape[1]),
+                np.arange(
+                    self.ac_performance.flight_performance._performance_table.shape[1]
+                ),
                 # axis 1: all TAS's
                 np.where(self.zero_roc_mask)[0],
                 # axis 2: ROC ≈ 0
-                np.arange(self.ac_performance.performance_table.shape[3]),
+                np.arange(
+                    self.ac_performance.flight_performance._performance_table.shape[3]
+                ),
                 # axis 3: all mass values
             )
         ]
@@ -512,8 +515,7 @@ class LegacyBuilder(Builder):
         # be replaced).
         traj.copy_point(self.n_climb + self.n_cruise - 1, self.n_climb + self.n_cruise)
 
-        dAlt = (self.des_end_altitude - self.des_start_altitude) / (self.n_descent)
-        if dAlt > 0:
+        if self.des_end_altitude > self.des_start_altitude:
             raise ValueError(
                 "Arrival airport + 3000ft should not be higher thanend of cruise point"
             )
@@ -533,15 +535,21 @@ class LegacyBuilder(Builder):
         # neg_rocs = np.array(self.ac_performance.performance_table_cols[2])[roc_inds]
 
         # Filter performance data to positive ROC
-        neg_roc_perf = self.ac_performance.performance_table[
+        neg_roc_perf = self.ac_performance.flight_performance._performance_table[
             np.ix_(
-                np.arange(self.ac_performance.performance_table.shape[0]),
+                np.arange(
+                    self.ac_performance.flight_performance._performance_table.shape[0]
+                ),
                 # axis 0: flight levels
-                np.arange(self.ac_performance.performance_table.shape[1]),
+                np.arange(
+                    self.ac_performance.flight_performance._performance_table.shape[1]
+                ),
                 # axis 1: all TAS's
                 np.where(neg_roc_mask)[0],
                 # axis 2: all positive ROC
-                np.arange(self.ac_performance.performance_table.shape[3]),
+                np.arange(
+                    self.ac_performance.flight_performance._performance_table.shape[3]
+                ),
                 # axis 3: mass value
             )
         ]
@@ -641,7 +649,7 @@ class LegacyBuilder(Builder):
 
         FL = alt * METERS_TO_FL
         FL_inds = self.ac_performance.search_flight_levels_ind(FL)
-        bounding_fls = np.array(self.ac_performance.performance_table_cols[0])[FL_inds]
+        bounding_fls = np.array(self.ac_performance.bracketing_fls(FL))
 
         # Construct interpolation weightings
         fl_weighting = (FL - bounding_fls[0]) / (bounding_fls[1] - bounding_fls[0])
@@ -764,13 +772,11 @@ class LegacyBuilder(Builder):
 
         # Get bounding flight levels
         FL_inds = self.ac_performance.search_flight_levels_ind(FL)
-        bounding_fls = np.array(self.ac_performance.performance_table_cols[0])[FL_inds]
+        bounding_fls = np.array(self.ac_performance.bracketing_fls(FL))
 
         # Get bounding mass values
         mass_inds = self.ac_performance.search_mass_ind(seg_start_mass)
-        bounding_mass = np.array(self.ac_performance.performance_table_cols[3])[
-            mass_inds
-        ]
+        bounding_mass = np.array(self.ac_performance.bracketing_mass(seg_start_mass))
 
         # Filter to bounding values
         pos_roc_reduced_perf = roc_perf[
@@ -826,10 +832,7 @@ class LegacyBuilder(Builder):
 
         # Get bounding mass values
         mass_inds = self.ac_performance.search_mass_ind(seg_start_mass)
-
-        bounding_mass = np.array(self.ac_performance.performance_table_cols[3])[
-            mass_inds
-        ]
+        bounding_mass = np.array(self.ac_performance.bracketing_mass(seg_start_mass))
 
         # Filter to bounding values
         crz_perf_reduced = crz_perf[

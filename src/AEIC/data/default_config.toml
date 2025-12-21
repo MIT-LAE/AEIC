@@ -1,10 +1,5 @@
 performance_model = "performance/sample_performance_model.toml"
 
-lto_input_mode = "EDB"  # "performance_model" : LTO data provided in PerformanceModel file
-                        # "EDB" : Use EDB data to get LTO performance
-edb_input_file = "engines/sample_edb.xlsx"
-
-
 [weather]
 use_weather = true                  # Use loaded weather to calculate wind vectors
 weather_data_dir = "weather"

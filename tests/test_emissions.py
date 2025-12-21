@@ -16,9 +16,11 @@ from AEIC.emissions.emission import (
     PMvolMethod,
 )
 from AEIC.missions import Mission
-from AEIC.performance_model import PerformanceModel
+from AEIC.performance import PerformanceModel
+from AEIC.performance.apu import APU
+from AEIC.performance.types import LTOModeData, LTOPerformance, LTOThrustMode
 from AEIC.utils.helpers import iso_to_timestamp
-from AEIC.utils.standard_fuel import get_thrust_cat
+from AEIC.utils.standard_fuel import get_thrust_cat_cruise, get_thrust_cat_lto
 
 
 @pytest.fixture
@@ -30,7 +32,7 @@ def performance_model_file():
 @pytest.fixture
 def performance_model(performance_model_file):
     # Path to a real fuel TOML file in your repo
-    return PerformanceModel(performance_model_file)
+    return PerformanceModel.load(performance_model_file)
 
 
 sample_mission = Mission(
@@ -45,9 +47,10 @@ sample_mission = Mission(
 
 class DummyPerformanceModel:
     def __init__(self, edb_overrides=None, lto_settings=None):
+        # TODO: Change to EDBEntry.
         base_edb = {
             'fuelflow_KGperS': np.array([0.25, 0.5, 0.9, 1.2], dtype=float),
-            'NOX_EI_matrix': np.array([8.0, 12.0, 26.0, 32.0], dtype=float),
+            'EI_NOx_matrix': np.array([8.0, 12.0, 26.0, 32.0], dtype=float),
             'HC_EI_matrix': np.array([4.0, 3.0, 2.0, 1.0], dtype=float),
             'CO_EI_matrix': np.array([20.0, 15.0, 10.0, 5.0], dtype=float),
             'PMnvolEI_best_ICAOthrust': np.array([0.05, 0.07, 0.09, 0.12], dtype=float),
@@ -71,50 +74,38 @@ class DummyPerformanceModel:
             base_edb.update(edb_overrides)
         self.EDB_data = base_edb
         default_lto_settings = {
-            'takeoff': {
-                'FUEL_KGs': 1.2,
-                'EI_NOx': 40.0,
-                'EI_HC': 1.0,
-                'EI_CO': 2.0,
-                'THRUST_FRAC': 1.0,
-            },
-            'climb': {
-                'FUEL_KGs': 0.9,
-                'EI_NOx': 32.0,
-                'EI_HC': 1.5,
-                'EI_CO': 3.0,
-                'THRUST_FRAC': 0.85,
-            },
-            'approach': {
-                'FUEL_KGs': 0.5,
-                'EI_NOx': 12.0,
-                'EI_HC': 3.0,
-                'EI_CO': 10.0,
-                'THRUST_FRAC': 0.30,
-            },
-            'idle': {
-                'FUEL_KGs': 0.25,
-                'EI_NOx': 8.0,
-                'EI_HC': 4.0,
-                'EI_CO': 20.0,
-                'THRUST_FRAC': 0.07,
-            },
+            LTOThrustMode.TAKEOFF: LTOModeData(
+                fuel_kgs=1.2, EI_NOx=40.0, EI_HC=1.0, EI_CO=2.0, thrust_frac=1.0
+            ),
+            LTOThrustMode.CLIMB: LTOModeData(
+                fuel_kgs=0.9, EI_NOx=32.0, EI_HC=1.5, EI_CO=3.0, thrust_frac=0.85
+            ),
+            LTOThrustMode.APPROACH: LTOModeData(
+                fuel_kgs=0.5, EI_NOx=12.0, EI_HC=3.0, EI_CO=10.0, thrust_frac=0.30
+            ),
+            LTOThrustMode.IDLE: LTOModeData(
+                fuel_kgs=0.25, EI_NOx=8.0, EI_HC=4.0, EI_CO=20.0, thrust_frac=0.07
+            ),
         }
-        self.LTO_data = {
-            'thrust_settings': lto_settings
+        self.lto_performance = LTOPerformance(
+            source='test',
+            ICAO_UID='TEST123',
+            Foo_kN=100.0,
+            mode_data=lto_settings
             if lto_settings is not None
-            else default_lto_settings
-        }
-        self.APU_data = {
-            'fuel_kg_per_s': 0.03,
-            'PM10_g_per_kg': 0.4,
-            'NOx_g_per_kg': 0.05,
-            'HC_g_per_kg': 0.02,
-            'CO_g_per_kg': 0.03,
-        }
-        self.model_info = {
-            'General_Information': {'aircraft_class': 'wide', 'n_eng': 2},
-        }
+            else default_lto_settings,
+        )
+        self.APU_data = APU(
+            name='Test APU',
+            defra='00000',
+            fuel_kg_per_s=0.03,
+            PM10_g_per_kg=0.4,
+            NOx_g_per_kg=0.05,
+            HC_g_per_kg=0.02,
+            CO_g_per_kg=0.03,
+        )
+        self.aircraft_class = 'wide'
+        self.number_of_engines = 2
 
 
 class DummyTrajectory:
@@ -190,9 +181,7 @@ def _expected_trajectory_indices(emission, trajectory):
     lto_inputs = emission._extract_lto_inputs()
 
     fuel_flow = trajectory.fuel_flow[idx_slice]
-    thrust_categories = get_thrust_cat(
-        fuel_flow, lto_inputs['fuel_flow'], cruiseCalc=True
-    )
+    thrust_categories = get_thrust_cat_cruise(fuel_flow, lto_inputs.fuel_flow)
 
     altitudes = trajectory.altitude[idx_slice]
     tas = trajectory.true_airspeed[idx_slice]
@@ -208,8 +197,8 @@ def _expected_trajectory_indices(emission, trajectory):
 
     nox_result = BFFM2_EINOx(
         sls_equiv_fuel_flow=sls_flow,
-        NOX_EI_matrix=lto_inputs['nox_ei'],
-        fuelflow_performance=lto_inputs['fuel_flow'],
+        EI_NOx_matrix=lto_inputs.EI_NOx,
+        fuelflow_performance=lto_inputs.fuel_flow,
         Tamb=atmos.temperature,
         Pamb=atmos.pressure,
     )
@@ -223,16 +212,16 @@ def _expected_trajectory_indices(emission, trajectory):
 
     expected['HC'] = EI_HCCO(
         sls_flow,
-        lto_inputs['hc_ei'],
-        lto_inputs['fuel_flow'],
+        lto_inputs.EI_HC,
+        lto_inputs.fuel_flow,
         Tamb=atmos.temperature,
         Pamb=atmos.pressure,
         cruiseCalc=True,
     )
     expected['CO'] = EI_HCCO(
         sls_flow,
-        lto_inputs['co_ei'],
-        lto_inputs['fuel_flow'],
+        lto_inputs.EI_CO,
+        lto_inputs.fuel_flow,
         Tamb=atmos.temperature,
         Pamb=atmos.pressure,
         cruiseCalc=True,
@@ -264,7 +253,7 @@ def _expected_trajectory_indices(emission, trajectory):
 
 def _expected_lto_nox_split(emission):
     lto_inputs = emission._extract_lto_inputs()
-    thrust_categories = get_thrust_cat(lto_inputs['fuel_flow'], None, cruiseCalc=False)
+    thrust_categories = get_thrust_cat_lto(lto_inputs.fuel_flow)
     return NOx_speciation(thrust_categories)
 
 
@@ -371,44 +360,28 @@ def test_lto_nox_split_matches_speciation(emission_with_run):
 @pytest.mark.config_updates(lto_input_mode='performance_model')
 def test_extract_lto_inputs_orders_performance_modes(sample_perf_model, trajectory):
     lto_settings = {
-        'TakeOff': {
-            'FUEL_KGs': 1.7,
-            'EI_NOx': 45.0,
-            'EI_HC': 1.1,
-            'EI_CO': 2.2,
-            'THRUST_FRAC': 1.0,
-        },
-        'Climb': {
-            'FUEL_KGs': 0.95,
-            'EI_NOx': 33.0,
-            'EI_HC': 1.4,
-            'EI_CO': 2.8,
-            'THRUST_FRAC': 0.85,
-        },
-        'Approach': {
-            'FUEL_KGs': 0.55,
-            'EI_NOx': 14.0,
-            'EI_HC': 2.8,
-            'EI_CO': 9.5,
-            'THRUST_FRAC': 0.30,
-        },
-        'Idle': {
-            'FUEL_KGs': 0.28,
-            'EI_NOx': 9.0,
-            'EI_HC': 3.5,
-            'EI_CO': 18.0,
-            'THRUST_FRAC': 0.07,
-        },
+        LTOThrustMode.TAKEOFF: LTOModeData(
+            fuel_kgs=1.7, EI_NOx=45.0, EI_HC=1.1, EI_CO=2.2, thrust_frac=1.0
+        ),
+        LTOThrustMode.CLIMB: LTOModeData(
+            fuel_kgs=0.95, EI_NOx=33.0, EI_HC=1.4, EI_CO=2.8, thrust_frac=0.85
+        ),
+        LTOThrustMode.APPROACH: LTOModeData(
+            fuel_kgs=0.55, EI_NOx=14.0, EI_HC=2.8, EI_CO=9.5, thrust_frac=0.30
+        ),
+        LTOThrustMode.IDLE: LTOModeData(
+            fuel_kgs=0.28, EI_NOx=9.0, EI_HC=3.5, EI_CO=18.0, thrust_frac=0.07
+        ),
     }
     perf = sample_perf_model(lto_settings=lto_settings)
     emission = Emission(perf)
     emission._prepare_run_state(trajectory)
     lto_inputs = emission._extract_lto_inputs()
-    assert np.allclose(lto_inputs['fuel_flow'], [0.28, 0.55, 0.95, 1.7])
-    assert np.allclose(lto_inputs['nox_ei'], [9.0, 14.0, 33.0, 45.0])
-    assert np.allclose(lto_inputs['hc_ei'], [3.5, 2.8, 1.4, 1.1])
-    assert np.allclose(lto_inputs['co_ei'], [18.0, 9.5, 2.8, 2.2])
-    assert np.allclose(lto_inputs['thrust_pct'], [7.0, 30.0, 85.0, 100.0])
+    assert np.allclose(lto_inputs.fuel_flow, [0.28, 0.55, 0.95, 1.7])
+    assert np.allclose(lto_inputs.EI_NOx, [9.0, 14.0, 33.0, 45.0])
+    assert np.allclose(lto_inputs.EI_HC, [3.5, 2.8, 1.4, 1.1])
+    assert np.allclose(lto_inputs.EI_CO, [18.0, 9.5, 2.8, 2.2])
+    assert np.allclose(lto_inputs.thrust_pct, [7.0, 30.0, 85.0, 100.0])
 
 
 @pytest.mark.config_updates(emissions__pmvol_method='foa3')

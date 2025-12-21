@@ -1,4 +1,5 @@
 from enum import StrEnum
+from inspect import isclass
 from typing import Any, get_args, get_origin
 
 from pydantic import BaseModel, model_validator
@@ -56,6 +57,7 @@ class CIBaseModel(BaseModel):
                 elif (
                     origin is list
                     and args
+                    and isclass(args[0])
                     and issubclass(args[0], BaseModel)
                     and isinstance(v, list)
                 ):

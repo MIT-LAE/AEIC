@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from AEIC.utils.standard_fuel import get_thrust_cat
+from AEIC.utils.standard_fuel import get_thrust_cat_cruise
 
 
 @dataclass(frozen=True)
@@ -21,29 +21,26 @@ class BFFM2EINOxResult:
 
 def BFFM2_EINOx(
     sls_equiv_fuel_flow: np.ndarray,
-    NOX_EI_matrix: np.ndarray,
+    EI_NOx_matrix: np.ndarray,
     fuelflow_performance: np.ndarray,
     Tamb: np.ndarray,
     Pamb: np.ndarray,
-    cruiseCalc: bool = True,
 ) -> BFFM2EINOxResult:
     """
     Calculate NOx, NO, NO2, and HONO emission indices
     All inputs are 1-dimensional arrays of equal length for calibration
-    (fuelflow_KGperS vs. NOX_EI_matrix)
+    (fuelflow_KGperS vs. EI_NOx_matrix)
     and 1-dimensional for SLS_equivalent_fuel_flow (multiple evaluation points).
 
     Parameters
     ----------
     fuelflow_trajectory : ndarray, shape (n_times,)
         Fuel flow at which to compute EI.
-    NOX_EI_matrix : ndarray, shape (n_cal,)
+    EI_NOx_matrix : ndarray, shape (n_cal,)
         Baseline NOx EI values [g NOx / kg fuel]
         corresponding to calibration fuel flows.
     fuelflow_performance : ndarray, shape (n_cal,)
-        Calibration fuel flow values [kg/s] for which NOX_EI_matrix is defined.
-    cruiseCalc : bool
-        If True, apply cruise ambient corrections (temperature and pressure) to NOx EI.
+        Calibration fuel flow values [kg/s] for which EI_NOx_matrix is defined.
     Tamb : float
         Ambient temperature [K].
     Pamb : float
@@ -59,7 +56,7 @@ def BFFM2_EINOx(
     # 1) Piece-wise log–log interpolation (Idle→App→Climb→TO)
     # ---------------------------------------------------------------------
     ff_cal = np.asarray(fuelflow_performance, dtype=float).copy()
-    ei_cal = np.asarray(NOX_EI_matrix, dtype=float).copy()
+    ei_cal = np.asarray(EI_NOx_matrix, dtype=float).copy()
     ff_eval = np.asarray(sls_equiv_fuel_flow, dtype=float).copy()
 
     ff_cal[ff_cal <= 0] = 1e-2
@@ -86,30 +83,27 @@ def BFFM2_EINOx(
 
     NOxEI_sl = 10.0**y_interp  # back to linear space  g/kg fuel
 
-    # 2) If cruiseCalc=True, apply the humidity/θ/δ correction (Eqs. 44–45)
-    if cruiseCalc:
-        theta_amb = Tamb / 288.15
-        delta_amb = Pamb / 101325.0
-        Pamb_psia = delta_amb * 14.696
+    # Apply the humidity/θ/δ correction (Eqs. 44–45) [for cruise conditions]
+    theta_amb = Tamb / 288.15
+    delta_amb = Pamb / 101325.0
+    Pamb_psia = delta_amb * 14.696
 
-        # Compute β (saturation vapor – Eq. 44)
-        beta = (
-            7.90298 * (1.0 - 373.16 / (Tamb + 0.01))
-            + 3.00571
-            + 5.02808 * np.log10(373.16 / (Tamb + 0.01))
-            + 1.3816e-7 * (1.0 - (10.0 ** (11.344 * (1.0 - ((Tamb + 0.01) / 373.16)))))
-            + 8.1328e-3 * ((10.0 ** (3.49149 * (1.0 - (373.16 / (Tamb + 0.01))))) - 1.0)
-        )
-        Pv = 0.014504 * (10.0**beta)  # [psia]
-        phi = 0.6  # 60% relative humidity
-        omega = (0.62198 * phi * Pv) / (Pamb_psia - (phi * Pv))
-        H = -19.0 * (omega - 0.0063)
+    # Compute β (saturation vapor – Eq. 44)
+    beta = (
+        7.90298 * (1.0 - 373.16 / (Tamb + 0.01))
+        + 3.00571
+        + 5.02808 * np.log10(373.16 / (Tamb + 0.01))
+        + 1.3816e-7 * (1.0 - (10.0 ** (11.344 * (1.0 - ((Tamb + 0.01) / 373.16)))))
+        + 8.1328e-3 * ((10.0 ** (3.49149 * (1.0 - (373.16 / (Tamb + 0.01))))) - 1.0)
+    )
+    Pv = 0.014504 * (10.0**beta)  # [psia]
+    phi = 0.6  # 60% relative humidity
+    omega = (0.62198 * phi * Pv) / (Pamb_psia - (phi * Pv))
+    H = -19.0 * (omega - 0.0063)
 
-        # Eq. (45) ambient correction:
-        correction = np.exp(H) * ((delta_amb**1.02) / (theta_amb**3.3)) ** 0.5
-        NOxEI = NOxEI_sl * correction
-    else:
-        NOxEI = NOxEI_sl
+    # Eq. (45) ambient correction:
+    correction = np.exp(H) * ((delta_amb**1.02) / (theta_amb**3.3)) ** 0.5
+    NOxEI = NOxEI_sl * correction
 
     # ---------------------------------------------------------------------
     # 3) Map each evaluation point to thrust category
@@ -117,7 +111,7 @@ def BFFM2_EINOx(
     #    Appr.: (Idle, Approach]  (NOx “A”)
     #    High : > Approach        (NOx “H”, includes Climb & TO)
     # ---------------------------------------------------------------------
-    thrustCat = get_thrust_cat(sls_equiv_fuel_flow, fuelflow_performance, cruiseCalc)
+    thrustCat = get_thrust_cat_cruise(sls_equiv_fuel_flow, fuelflow_performance)
 
     # 4) Speciation fractions (unchanged)
     noProp, no2Prop, honoProp = NOx_speciation(thrustCat)
@@ -181,7 +175,7 @@ def NOx_speciation(thrustCat):
 # TODO: add P3T3 method support
 # def EI_NOx(
 #         fuel_flow_trajectory: np.ndarray,
-#         NOX_EI_input: np.ndarray,
+#         EI_NOx_input: np.ndarray,
 #         fuel_flow_performance: np.ndarray,
 #         Tamb: np.ndarray,
 #         Pamb: np.ndarray,
@@ -198,7 +192,7 @@ def NOx_speciation(thrustCat):
 #     Parameters
 #     ----------
 #     fuelfactor : ndarray, shape (n_types, n_times)
-#     NOX_EI : ndarray, same shape as fuel_flow
+#     EI_NOx : ndarray, same shape as fuel_flow
 #     fuel_flow : ndarray, shape (n_types, n_times)
 #     cruiseCalc : bool, whether to apply cruise corrections
 #     Tamb : float, ambient temperature [K]
@@ -220,7 +214,7 @@ def NOx_speciation(thrustCat):
 #         NOxEI = np.exp(H)*(P3_kPa**0.4) * (a * np.exp(b * T3_K) + c * \
 # np.exp(d * T3_K) + e * np.exp(f * T3_K) + g * np.exp(h * T3_K) + i * np.exp(j * T3_K))
 #     elif mode == "BFFM2":
-#         return BFFM2_EINOx(fuel_flow_trajectory,NOX_EI_input,fuel_flow_performance,
+#         return BFFM2_EINOx(fuel_flow_trajectory,EI_NOx_input,fuel_flow_performance,
 # Tamb,Pamb,mach_number)
 #     else:
 #         raise Exception("Invalid mode input in EI NOx function (BFFM2, P3T3)")

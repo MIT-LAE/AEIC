@@ -4,10 +4,10 @@ Emissions Module
 ================
 
 ``AEIC.emissions.emission.Emission`` is the module that uses
-:class:`AEIC.performance_model.PerformanceModel` and a flown
+:class:`AEIC.performance.PerformanceModel` and a flown
 :class:`AEIC.trajectories.trajectory.Trajectory` to compute emissions for the
-entire mission. It layers multiple methods for emission calculations
-from user choices in the configuration file.
+entire mission. It layers multiple methods for emission calculations from user
+choices in the configuration file.
 
 Overview
 ----------
@@ -68,11 +68,11 @@ Usage Example
 
 .. code-block:: python
 
-   from AEIC.performance_model import PerformanceModel
+   from AEIC.performance import PerformanceModel
    from AEIC.trajectories.trajectory import Trajectory
    from AEIC.emissions.emission import Emission
 
-   perf = PerformanceModel("IO/default_config.toml")
+   perf = PerformanceModel.load("performance/sample_performance_model.toml")
    mission = perf.missions[0]
 
    traj = Trajectory(perf, mission, optimize_traj=True, iterate_mass=False)

@@ -1,11 +1,31 @@
-[General_Information]
+# Performance model type (one of: table, bada, tasopt, piano).
+model_type = "table"
+
+# ==============================================================================
+#
+#  COMMON FIELDS
+#
+
+# Fields common to all performance model types.
+
 aircraft_name = "B738"
 aircraft_class = "narrow" # wide, narrow, small, freight
 ISA_offset = 0
-max_alt_ft = 41000
-max_payload_kg = 22422
-n_eng = 2 # Number of engines
+maximum_altitude_ft = 41000
+maximum_payload_kg = 22422
+number_of_engines = 2 # Number of engines
 APU_name = "APU 131-9" # None: APU emissions not calculated
+
+
+# ==============================================================================
+#
+#  MODEL-TYPE SPECIFIC FIELDS
+#
+
+# ------------------------------------------------------------------------------
+#
+# Speed data
+#
 
 [speeds.climb]
 cas_lo = 128.611
@@ -22,33 +42,56 @@ cas_lo = 128.611
 cas_hi = 149.18876
 mach = 0.80
 
+# ------------------------------------------------------------------------------
+#
+# LTO data
+#
+
 [LTO_performance]
+source = "EDB"
 ICAO_UID = "01P11CM121" # Add UID for EDB data
 Foo_kN = 102.695
 
-[LTO_performance.thrust_settings.approach]
-THRUST_FRAC = 0.3
-FUEL_KGs    = 0.278
+[LTO_performance.mode_data.approach]
+thrust_frac = 0.3
+fuel_kgs    = 0.278
+EI_NOx      = 0.0
+EI_HC       = 0.0
+EI_CO       = 0.0
 
-[LTO_performance.thrust_settings.climb]
-THRUST_FRAC = 0.85
-FUEL_KGs    = 0.754
+[LTO_performance.mode_data.climb]
+thrust_frac = 0.85
+fuel_kgs    = 0.754
+EI_NOx      = 0.0
+EI_HC       = 0.0
+EI_CO       = 0.0
 
-[LTO_performance.thrust_settings.takeoff]
-THRUST_FRAC = 1.0
-FUEL_KGs    = 0.903
+[LTO_performance.mode_data.takeoff]
+thrust_frac = 1.0
+fuel_kgs    = 0.903
+EI_NOx      = 0.0
+EI_HC       = 0.0
+EI_CO       = 0.0
 
-[LTO_performance.thrust_settings.idle]
-THRUST_FRAC = 0.07
-FUEL_KGs    = 0.102
+[LTO_performance.mode_data.idle]
+thrust_frac = 0.07
+fuel_kgs    = 0.102
+EI_NOx      = 0.0
+EI_HC       = 0.0
+EI_CO       = 0.0
+
+# ------------------------------------------------------------------------------
+#
+# Performance table data.
+#
 
 [flight_performance]
 cols = [
-  "FUEL_FLOW",  # kg/s - REQUIRED; OUTPUT COLUMN
-  "FL",  # Flight levels
-  "TAS",  # m/s
-  "ROCD",  # m/s
-  "MASS"  # kg
+  "fuel_flow",  # kg/s - REQUIRED; OUTPUT COLUMN
+  "fl",  # Flight levels
+  "tas",  # m/s
+  "rocd",  # m/s
+  "mass"  # kg
 ]
 
 data = [

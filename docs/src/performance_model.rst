@@ -1,11 +1,11 @@
 Performance Model
 =================
 
-``AEIC.performance_model.PerformanceModel`` takes aircraft performance,
-missions, and emissions configuration data as input and produces the
-data structure needed by trajectory solvers and the emissions pipeline.
-It builds a fuel-flow performance table as a function of aircraft mass,
-altitude, rate of climb/descent, and true airspeed.
+``AEIC.PerformanceModel`` takes aircraft performance, missions, and emissions
+configuration data as input and produces the data structure needed by
+trajectory solvers and the emissions pipeline. It builds a fuel-flow
+performance table as a function of aircraft mass, altitude, rate of
+climb/descent, and true airspeed.
 
 Overview
 ----------
@@ -26,12 +26,12 @@ Usage Example
 .. code-block:: python
 
    from AEIC.config import Config
-   from AEIC.performance_model import PerformanceModel
+   from AEIC.performance import PerformanceModel
 
    # Load default AEIC configuration.
    Config.load()
 
-   perf = PerformanceModel("IO/sample_performance_model.toml")
+   perf = PerformanceModel.load("IO/sample_performance_model.toml")
    table = perf.performance_table
    fl_grid, tas_grid, roc_grid, mass_grid = perf.performance_table_cols
    print("Fuel-flow grid shape:", table.shape)
@@ -72,5 +72,5 @@ API Reference
 .. autoenum:: AEIC.config.PerformanceInputMode
    :members:
 
-.. autoclass:: AEIC.performance_model.PerformanceModel
+.. autoclass:: AEIC.performance.PerformanceModel
    :members: __init__, read_performance_data, create_performance_table

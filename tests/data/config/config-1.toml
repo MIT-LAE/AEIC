@@ -1,5 +1,3 @@
-lto_input_mode = "performance_model"
-
 [weather]
 use_weather = false
 
