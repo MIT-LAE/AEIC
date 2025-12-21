@@ -1,24 +1,29 @@
 Performance Model
 =================
 
-``AEIC.PerformanceModel`` takes aircraft performance, missions, and emissions
-configuration data as input and produces the data structure needed by
-trajectory solvers and the emissions pipeline. It builds a fuel-flow
+The classes in the :mod:`AEIC.performance` module take aircraft performance,
+missions, and emissions configuration data as input and produce data
+structures needed by trajectory solvers and the emissions pipeline. In
+particular, the :class:`TablePerformanceModel` class builds a fuel-flow
 performance table as a function of aircraft mass, altitude, rate of
 climb/descent, and true airspeed.
 
-Overview
-----------
+.. warning::
 
-- Supports two input modes via :class:`AEIC.config.PerformanceInputMode`:
-  reading BADA style OPF files or ingesting the custom performance-model TOML
-  tables.
-- Automatically loads mission definitions, LTO data (either from the performance
-  file or EDB databank), APU characteristics, and BADA3-based engine parameters.
-- Provides convenience accessors such as
-  :attr:`PerformanceModel.performance_table`, and
-  :attr:`PerformanceModel.model_info` that later modules can consume without
-  re-parsing TOML files.
+   This code is currently in development. The performance model API will
+   change significantly relatively soon.
+
+   This documentation describes performance models as currently implemented,
+   which include only a table-based model with all data read from a single
+   TOML file, based on the legacy Matlab code. This model claculates fuel flow
+   from aircraft state in a simple way, and can also return feasible ROC and
+   TAS values given aircraft state.
+
+   Future iterations of the performance model code will incorporate
+   mechanistic models based on BADA as well as more complex table-based models
+   that will take a more explicitly state-based approach based on "trajectory
+   rules".
+
 
 Usage Example
 -------------
@@ -31,8 +36,8 @@ Usage Example
    # Load default AEIC configuration.
    Config.load()
 
-   perf = PerformanceModel.load("IO/sample_performance_model.toml")
-   table = perf.performance_table
+   perf = PerformanceModel.load("performance/sample_performance_model.toml")
+   table = perf.flight_performance.performance_table
    fl_grid, tas_grid, roc_grid, mass_grid = perf.performance_table_cols
    print("Fuel-flow grid shape:", table.shape)
 
@@ -40,37 +45,89 @@ Usage Example
    from AEIC.emissions.emission import Emission
    emitter = Emission(perf)
 
-Data Products
--------------
 
-After a :class:`PerformanceModel` instance is created, the instance contains:
+Class Hierarchy
+---------------
 
-- :attr:`PerformanceModel.ac_params`: populated :class:`AEIC.BADA.aircraft_parameters.Bada3AircraftParameters`
-  reflecting either OPF inputs or the performance table metadata.
-- :attr:`PerformanceModel.engine_model`: a :class:`AEIC.BADA.model.Bada3JetEngineModel`
-  initialised with ``ac_params`` for thrust and fuel-flow calculations.
-- :attr:`PerformanceModel.performance_table`: the multidimensional NumPy array
-  mapping (flight level, TAS, ROCD, mass, …) onto fuel flow (kg/s).
-- :attr:`PerformanceModel.performance_table_cols` and
-  :attr:`PerformanceModel.performance_table_colnames`: the coordinate arrays and
-  names that describe each dimension of ``performance_table``.
-- :attr:`PerformanceModel.LTO_data`: modal thrust settings, fuel flows, and
-  emission indices pulled from the performance file (when ``LTO_input_mode =
-  "performance_model"``) or parsed via :func:`AEIC.parsers.LTO_reader.parseLTO`.
-- :attr:`PerformanceModel.EDB_data`: ICAO engine databank entry loaded by
-  :meth:`PerformanceModel.get_engine_by_uid` when ``LTO_input_mode = "edb"``.
-- :attr:`PerformanceModel.APU_data`: auxiliary-power-unit properties resolved
-  from ``engines/APU_data.toml`` using the ``APU_name`` specified in the
+Performance model classes are all Pydantic models derived from
+:class:`AEIC.performance.base.BasePerformanceModel`. This is an abstract base
+class that includes data common to all performance model types (aircraft name
+and class, maximum altitude and payload, number of engines, APU information
+and optional LTO and speed information) and that defines the performance model
+API. The legacy table-based performance model is represented by the
+:class:`AEIC.performance.table.TablePerformanceModel` class. This includes a
+performance table represented by the
+:class:`AEIC.performance.table.PerformanceTable` class which performs
+subsetting and interpolation within the input data.
+
+.. note::
+
+   At the moment, the trajectory builder code that uses the performance table
+   reaches directly into the performance model to access the performance
+   table, but I'm going to change that soon to modify the performance table
+   class to expose a sensible subsetting and interpolation API.
+
+
+Loading Performance Models
+--------------------------
+
+Performance models can be loaded from TOML files. A ``model_type`` field is
+used to distinguish between different types of performance model and a
+:class:`AEIC.performance.PerformanceModel` wrapper class is used to enable
+this: there is a :meth:`PerformanceModel.load` class method with a polymorphic
+return type, that takes a path to a TOML file containing a performance model
+definition and returns an instance of the correct performance model class
+based on the ``model_type`` field. For the current legacy-based performance
+models, use ``model_type = "table"``.
+
+
+Performance Model Members
+-------------------------
+
+After a :class:`PerformanceModel` instance is created (of any derived type),
+the instance contains:
+
+- Basic information about the performance model: aircraft name and class,
+  number of engines, maximum altitude and payload.
+- :attr:`lto_performance`: modal thrust settings, fuel flows, and emission
+  indices pulled from the performance file.
+- :attr:`apu`: auxiliary-power-unit properties resolved from
+  ``engines/APU_data.toml`` using the ``apu_name`` specified in the
   performance file.
-- :attr:`PerformanceModel.model_info`: the remaining metadata (e.g., cruise
-  speeds, aerodynamic coefficients) trimmed away from ``flight_performance`` after
-  the table is created.
+- :attr:`speeds`: cruise speed data.
+
+
+Table-based Performance Model Members
+-------------------------------------
+
+As well as the above common members, a :class:`TablePerformanceModel` also
+contains:
+
+- :attr:`performance_table`: the multidimensional NumPy array
+  mapping (flight level, TAS, ROCD, mass, …) onto fuel flow (kg/s).
+- :attr:`performance_table_cols` and
+  :attr:`performance_table_colnames`: the coordinate arrays and
+  names that describe each dimension of ``performance_table``.
+
+.. note::
+
+   These properties of :class:`TablePerformanceModel` forward to a separate
+   :class:`PerformanceTable` class. For the moment, this class is just a thin
+   wrapper around a Numpy array, but it will be modified to offer a coherent
+   subsetting and interpolation API.
+
 
 API Reference
 -------------
 
-.. autoenum:: AEIC.config.PerformanceInputMode
+.. autoclass:: AEIC.performance.BasePerformanceModel
    :members:
+   :exclude-members: apu_name, load_apu_data, model_config
+
+.. autoclass:: AEIC.performance.TablePerformanceModel
+   :members:
+   :exclude-members: model_config, model_type, validate_pm
 
 .. autoclass:: AEIC.performance.PerformanceModel
-   :members: __init__, read_performance_data, create_performance_table
+   :members:
+   :exclude-members: model_config

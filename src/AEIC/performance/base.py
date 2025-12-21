@@ -12,7 +12,7 @@ from .types import LTOPerformance, Speeds
 
 class BasePerformanceModel(CIBaseModel, ABC):
     aircraft_name: str
-    """Aircraft name ()."""
+    """Aircraft name."""
 
     aircraft_class: AircraftClass
     """Aircraft class (e.g., wide or narrow body)."""
@@ -60,5 +60,8 @@ class BasePerformanceModel(CIBaseModel, ABC):
 
     @property
     def apu(self) -> APU:
-        """APU data associated with the performance model."""
+        """APU data associated with the performance model.
+
+        This is loaded from the APU database based on the ``apu_name`` field
+        using the ``AEIC.performance.apu.find_apu`` function."""
         return self._apu

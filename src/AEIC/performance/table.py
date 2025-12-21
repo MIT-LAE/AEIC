@@ -199,7 +199,7 @@ class PerformanceTable(CIBaseModel):
         return self.search_indexes('fl', f'cruise altitude (FL {FL:.2f})', FL)
 
     def bracketing_fls(self, FL: float) -> tuple[float, float]:
-        """Find the bracketing flight levels for a given FL."""
+        """Find the bracketing flight levels for a given flight level."""
         ind_low, ind_high = self.search_flight_levels_ind(FL)
         return (self.columns['fl'][ind_low], self.columns['fl'][ind_high])
 
@@ -237,28 +237,52 @@ class TablePerformanceModel(BasePerformanceModel):
     def fuel_flow(
         self, altitude: float, mass: float, rocd: float, speed: float
     ) -> float:
+        """*Fuel flow API not yet implemented.*"""
         raise NotImplementedError(
             'TablePerformanceModel.fuel_flow not implemented yet.'
         )
 
     def search_mass_ind(self, mass: float) -> tuple[int, int]:
+        """Search flight levels for the indices bounding a given mass value.
+
+        (Forwards to performance table.)"""
         return self.flight_performance.search_indexes('mass', 'mass', mass)
 
     def search_flight_levels_ind(self, FL: float) -> tuple[int, int]:
+        """Search flight levels for the indices bounding a given FL value.
+
+        (Forwards to performance table.)"""
         return self.flight_performance.search_indexes(
             'fl', f'cruise altitude (FL {FL:.2f})', FL
         )
 
     def bracketing_fls(self, FL: float) -> tuple[float, float]:
+        """Find the bracketing flight levels for a given flight level.
+
+        (Forwards to performance table.)"""
         return self.flight_performance.bracketing_fls(FL)
 
     def bracketing_mass(self, mass: float) -> tuple[float, float]:
+        """Find the bracketing mass values for a given mass.
+
+        (Forwards to performance table.)"""
         return self.flight_performance.bracketing_mass(mass)
 
     @property
+    def performance_table(self) -> np.ndarray:
+        """Return performance table."""
+        return self.flight_performance.performance_table
+
+    @property
     def performance_table_cols(self) -> list[list[float]]:
+        """Return performance table columns.
+
+        (Forwards to performance table.)"""
         return self.flight_performance.performance_table_cols
 
     @property
     def performance_table_colnames(self) -> list[str]:
+        """Return performance table column names.
+
+        (Forwards to performance table.)"""
         return self.flight_performance.performance_table_colnames
