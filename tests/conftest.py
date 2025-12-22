@@ -1,9 +1,12 @@
 import os
+import tomllib
 from pathlib import Path
 
 import pytest
 
-from AEIC.config import Config
+from AEIC.config import Config, config
+from AEIC.missions import Mission
+from AEIC.performance import PerformanceModel
 
 # Absolute path to test data directory.
 TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
@@ -56,3 +59,18 @@ def default_config(request):
 
     # Clear the configuration after the test.
     Config.reset()
+
+
+@pytest.fixture
+def sample_missions():
+    missions_file = config.file_location('missions/sample_missions_10.toml')
+    with open(missions_file, 'rb') as f:
+        mission_dict = tomllib.load(f)
+    return Mission.from_toml(mission_dict)
+
+
+@pytest.fixture
+def performance_model():
+    return PerformanceModel.load(
+        config.file_location('performance/sample_performance_model.toml')
+    )

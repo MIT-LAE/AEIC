@@ -1,22 +1,10 @@
-import tomllib
-
 import numpy as np
 import pytest
 
 import AEIC.trajectories.builders as tb
-from AEIC.config import config
 from AEIC.missions import Mission
-from AEIC.performance import PerformanceModel
 from AEIC.trajectories import FieldMetadata, FieldSet, TrajectoryStore
 from AEIC.utils.helpers import iso_to_timestamp
-
-
-@pytest.fixture
-def sample_missions():
-    missions_file = config.file_location('missions/sample_missions_10.toml')
-    with open(missions_file, 'rb') as f:
-        mission_dict = tomllib.load(f)
-    return Mission.from_toml(mission_dict)
 
 
 @pytest.fixture
@@ -46,13 +34,6 @@ def example_mission_with_weather():
 @pytest.fixture
 def iteration_params():
     return dict(test_reltol=1e-6, test_maxiters=1000)
-
-
-@pytest.fixture
-def performance_model():
-    return PerformanceModel.load(
-        config.file_location('performance/sample_performance_model.toml')
-    )
 
 
 test_fields = FieldSet(

@@ -16,24 +16,10 @@ from AEIC.emissions.emission import (
     PMvolMethod,
 )
 from AEIC.missions import Mission
-from AEIC.performance import PerformanceModel
 from AEIC.performance.apu import APU
 from AEIC.performance.types import LTOModeData, LTOPerformance, LTOThrustMode
 from AEIC.utils.helpers import iso_to_timestamp
 from AEIC.utils.standard_fuel import get_thrust_cat_cruise, get_thrust_cat_lto
-
-
-@pytest.fixture
-def performance_model_file():
-    # Path to a real fuel TOML file in your repo
-    return config.file_location("performance/sample_performance_model.toml")
-
-
-@pytest.fixture
-def performance_model(performance_model_file):
-    # Path to a real fuel TOML file in your repo
-    return PerformanceModel.load(performance_model_file)
-
 
 sample_mission = Mission(
     origin="BOS",
