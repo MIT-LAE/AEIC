@@ -148,7 +148,7 @@ class LegacyContext(Context):
         """
 
         self.zero_roc_mask = (
-            np.abs(np.array(ac_performance.performance_table_cols[2])) < roc_zero_tol
+            np.abs(np.array(ac_performance.performance_table.rocd)) < roc_zero_tol
         )
 
 
@@ -186,19 +186,17 @@ class LegacyBuilder(Builder):
         Sets both starting mass and non-reserve/hold/divert fuel mass."""
 
         # Use the highest value of mass per AEIC v2 method.
-        mass_ind = [len(self.ac_performance.performance_table_cols[-1]) - 1]
+        mass_ind = [len(self.ac_performance.performance_table.mass) - 1]
 
         # NOTE: The types of all the arguments to np.ix_ need to be the same to
         # satisfy Python type checkers like Pyright. In this case, the first
         # and last arguments are converted from Python lists to Numpy arrays to
         # match the other arguments.
-        subset_performance = self.ac_performance.flight_performance._performance_table[
+        subset_performance = self.ac_performance.performance_table._old_table[
             np.ix_(
                 np.array(self.crz_FL_inds),
                 # axis 0: flight levels
-                np.arange(
-                    self.ac_performance.flight_performance._performance_table.shape[1]
-                ),
+                np.arange(self.ac_performance.performance_table._old_table.shape[1]),
                 # axis 1: all TAS's
                 np.where(self.zero_roc_mask)[0],
                 # axis 2: ROC ≈ 0
@@ -209,7 +207,7 @@ class LegacyBuilder(Builder):
 
         non_zero_mask = np.any(subset_performance != 0, axis=(0, 2, 3))
         non_zero_perf = subset_performance[:, non_zero_mask, :, :]
-        crz_tas = np.array(self.ac_performance.performance_table_cols[1])[non_zero_mask]
+        crz_tas = np.array(self.ac_performance.performance_table.tas)[non_zero_mask]
 
         # At this point, we should have a (2, 2, 1, 1)-shape matrix of
         # fuel flow in (FL, TAS, --, --)
@@ -249,7 +247,7 @@ class LegacyBuilder(Builder):
         #        = Take-off weight
 
         # Empty mass per BADA-3 (low mass / 1.2).
-        emptyMass = self.ac_performance.performance_table_cols[-1][0] / 1.2
+        emptyMass = self.ac_performance.performance_table.mass[0] / 1.2
 
         # Payload.
         payloadMass = self.ac_performance.maximum_payload_kg * self.mission.load_factor
@@ -274,8 +272,8 @@ class LegacyBuilder(Builder):
         )
 
         # Limit to MTOM if overweight.
-        if starting_mass > self.ac_performance.performance_table_cols[-1][-1]:
-            starting_mass = self.ac_performance.performance_table_cols[-1][-1]
+        if starting_mass > self.ac_performance.performance_table.mass[-1]:
+            starting_mass = self.ac_performance.performance_table.mass[-1]
 
         # Set fuel mass (for weight residual calculation).
         self.total_fuel_mass = fuelMass
@@ -300,28 +298,22 @@ class LegacyBuilder(Builder):
         )
 
         # Create a mask for ROC limiting to only positive values (climb)
-        pos_roc_mask = np.array(self.ac_performance.performance_table_cols[2]) > 0
+        pos_roc_mask = np.array(self.ac_performance.performance_table.rocd) > 0
 
         # Convert ROC mask to the indices of positive ROC
         roc_inds = np.where(pos_roc_mask)[0]
-        pos_rocs = np.array(self.ac_performance.performance_table_cols[2])[roc_inds]
+        pos_rocs = np.array(self.ac_performance.performance_table.rocd)[roc_inds]
 
         # Filter performance data to positive ROC
-        pos_roc_perf = self.ac_performance.flight_performance._performance_table[
+        pos_roc_perf = self.ac_performance.performance_table._old_table[
             np.ix_(
-                np.arange(
-                    self.ac_performance.flight_performance._performance_table.shape[0]
-                ),
+                np.arange(self.ac_performance.performance_table._old_table.shape[0]),
                 # axis 0: flight levels
-                np.arange(
-                    self.ac_performance.flight_performance._performance_table.shape[1]
-                ),
+                np.arange(self.ac_performance.performance_table._old_table.shape[1]),
                 # axis 1: all TAS's
                 np.where(pos_roc_mask)[0],
                 # axis 2: all positive ROC
-                np.arange(
-                    self.ac_performance.flight_performance._performance_table.shape[3]
-                ),
+                np.arange(self.ac_performance.performance_table._old_table.shape[3]),
                 # axis 3: mass value
             )
         ]
@@ -437,19 +429,15 @@ class LegacyBuilder(Builder):
         # Get distance step size.
         dGD = cruise_dist_approx / (self.n_cruise - 1)
 
-        subset_performance = self.ac_performance.flight_performance._performance_table[
+        subset_performance = self.ac_performance.performance_table._old_table[
             np.ix_(
                 np.array(self.crz_FL_inds),
                 # axis 0: flight levels
-                np.arange(
-                    self.ac_performance.flight_performance._performance_table.shape[1]
-                ),
+                np.arange(self.ac_performance.performance_table._old_table.shape[1]),
                 # axis 1: all TAS's
                 np.where(self.zero_roc_mask)[0],
                 # axis 2: ROC ≈ 0
-                np.arange(
-                    self.ac_performance.flight_performance._performance_table.shape[3]
-                ),
+                np.arange(self.ac_performance.performance_table._old_table.shape[3]),
                 # axis 3: all mass values
             )
         ]
@@ -528,28 +516,22 @@ class LegacyBuilder(Builder):
         traj.altitude[startN:endN] = alts
 
         # Create a mask for ROC limiting to only positive values (climb)
-        neg_roc_mask = np.array(self.ac_performance.performance_table_cols[2]) < 0
+        neg_roc_mask = np.array(self.ac_performance.performance_table.rocd) < 0
 
         # Convert ROC mask to the indices of positive ROC
         # roc_inds = np.where(neg_roc_mask)[0]
-        # neg_rocs = np.array(self.ac_performance.performance_table_cols[2])[roc_inds]
+        # neg_rocs = np.array(self.ac_performance.performance_table.rocd)[roc_inds]
 
         # Filter performance data to positive ROC
-        neg_roc_perf = self.ac_performance.flight_performance._performance_table[
+        neg_roc_perf = self.ac_performance.performance_table._old_table[
             np.ix_(
-                np.arange(
-                    self.ac_performance.flight_performance._performance_table.shape[0]
-                ),
+                np.arange(self.ac_performance.performance_table._old_table.shape[0]),
                 # axis 0: flight levels
-                np.arange(
-                    self.ac_performance.flight_performance._performance_table.shape[1]
-                ),
+                np.arange(self.ac_performance.performance_table._old_table.shape[1]),
                 # axis 1: all TAS's
                 np.where(neg_roc_mask)[0],
                 # axis 2: all positive ROC
-                np.arange(
-                    self.ac_performance.flight_performance._performance_table.shape[3]
-                ),
+                np.arange(self.ac_performance.performance_table._old_table.shape[3]),
                 # axis 3: mass value
             )
         ]
@@ -670,13 +652,13 @@ class LegacyBuilder(Builder):
         non_zero_ff_vals = pos_roc_fl_reduced_perf[non_zero_ff_inds]
 
         non_zero_tas_inds = non_zero_ff_inds[1]
-        non_zero_tas_vals = np.array(self.ac_performance.performance_table_cols[1])[
+        non_zero_tas_vals = np.array(self.ac_performance.performance_table.tas)[
             non_zero_tas_inds
         ]
 
         # ROC will only be valid in descent
         non_zero_roc_inds = non_zero_ff_inds[2]
-        non_zero_roc_vals = np.array(self.ac_performance.performance_table_cols[2])[
+        non_zero_roc_vals = np.array(self.ac_performance.performance_table.rocd)[
             non_zero_roc_inds
         ]
 
@@ -729,7 +711,7 @@ class LegacyBuilder(Builder):
         non_zero_ff_inds = np.nonzero(roc_perf)
 
         non_zero_tas_inds = non_zero_ff_inds[1]
-        non_zero_tas_vals = np.array(self.ac_performance.performance_table_cols[1])[
+        non_zero_tas_vals = np.array(self.ac_performance.performance_table.tas)[
             non_zero_tas_inds
         ]
 
