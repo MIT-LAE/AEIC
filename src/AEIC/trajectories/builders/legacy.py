@@ -22,14 +22,14 @@ from .base import Builder, Context, Options
 class LegacyOptions:
     """Additional options for the legacy trajectory builder."""
 
-    pct_step_clm: float = 0.01
-    """Climb step size as percentage of total climb altitude change."""
+    frac_step_clm: float = 0.01
+    """Climb step size as fraction of total climb altitude change."""
 
-    pct_step_crz: float = 0.01
-    """Cruise step size as percentage of total cruise ground distance."""
+    frac_step_crz: float = 0.01
+    """Cruise step size as fraction of total cruise ground distance."""
 
-    pct_step_des: float = 0.01
-    """Descent step size as percentage of total descent altitude change."""
+    frac_step_des: float = 0.01
+    """Descent step size as fraction of total descent altitude change."""
 
     fuel_LHV: float = 43.8e6
     """Lower heating value of the fuel used (J/kg)."""
@@ -48,10 +48,12 @@ class LegacyContext(Context):
         # The context constructor calculates all of the fixed information used
         # throughout the simulation by the trajectory builder.
 
-        # Number of points in different flight phases.
-        n_climb = int(1 / builder.pct_step_clm + 1)
-        n_cruise = int(1 / builder.pct_step_crz + 1)
-        n_descent = int(1 / builder.pct_step_des + 1)
+        # Number of points in different flight phases. Last point of climb is
+        # same as first point of cruise, last point of cruise is same as first
+        # point of descent.
+        n_climb = int(1 / builder.frac_step_clm)
+        n_cruise = int(1 / builder.frac_step_crz)
+        n_descent = int(1 / builder.frac_step_des + 1)
 
         # Generate great circle ground track between departure and arrival
         # locations.
@@ -152,9 +154,9 @@ class LegacyBuilder(Builder):
 
         # Define discretization of each phase in steps as a percent of
         # the overall distance/altitude change
-        self.pct_step_clm = legacy_options.pct_step_clm
-        self.pct_step_crz = legacy_options.pct_step_crz
-        self.pct_step_des = legacy_options.pct_step_des
+        self.frac_step_clm = legacy_options.frac_step_clm
+        self.frac_step_crz = legacy_options.frac_step_crz
+        self.frac_step_des = legacy_options.frac_step_des
 
         self.fuel_LHV = legacy_options.fuel_LHV
 
@@ -284,6 +286,8 @@ class LegacyBuilder(Builder):
 
             # No further processing needed for last point.
             if i == end_index:
+                traj.heading[i] = traj.heading[i - 1]
+                traj.ground_speed[i] = traj.ground_speed[i - 1]
                 break
 
             # Calculate the forward true airspeed (used for ground speed).
@@ -386,7 +390,7 @@ class LegacyBuilder(Builder):
         traj.rate_of_climb[self.n_climb] = 0
 
         # Get fuel flow, ground speed, etc. for cruise segments.
-        for i in range(self.n_climb, self.n_climb + self.n_cruise - 1):
+        for i in range(self.n_climb, self.n_climb + self.n_cruise):
             if self.weather is not None:
                 traj.ground_speed[i] = self.weather.get_ground_speed(
                     time=self.mission.departure,
