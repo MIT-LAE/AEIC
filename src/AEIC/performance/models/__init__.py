@@ -10,6 +10,7 @@ from .piano import PianoPerformanceModel
 from .table import TablePerformanceModel
 from .tasopt import TASOPTPerformanceModel
 
+# TODO: Document what's going on here.
 PerformanceModelUnion = Annotated[
     (
         BADAPerformanceModel
@@ -21,6 +22,7 @@ PerformanceModelUnion = Annotated[
 ]
 
 
+# TODO: Better docstrings.
 class PerformanceModel(RootModel[PerformanceModelUnion]):
     """Wrapper class to make the ``model_type`` field case-insensitive and to
     implement loading of performance models from TOML data."""

@@ -26,9 +26,6 @@ BASE_FIELDS = FieldSet(
     heading=FieldMetadata(description='Aircraft heading', units='degrees'),
     true_airspeed=FieldMetadata(description='True airspeed', units='m/s'),
     ground_speed=FieldMetadata(description='Ground speed', units='m/s'),
-    flight_level_weight=FieldMetadata(
-        description='Flight level weight factor', units='dimensionless'
-    ),
     # Trajectory metadata fields and their metadata. Each of these fields has a
     # single value per trajectory.
     starting_mass=FieldMetadata(

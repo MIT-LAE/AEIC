@@ -2,10 +2,52 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 
 from AEIC.utils.models import CIBaseModel, CIStrEnum
+
+
+@dataclass
+class AircraftState:
+    """Aircraft state container for performance model inputs."""
+
+    altitude: float
+    """Altitude in meters."""
+
+    true_airspeed: float
+    """True airspeed in meters per second."""
+
+    rate_of_climb: float
+    # TODO: Units?
+    """Rate of climb/descent in feet per minute."""
+
+    aircraft_mass: float | Literal['min', 'max']
+    """Aircraft total mass in kilograms."""
+
+
+# TODO: Better name for this?
+@dataclass
+class Performance:
+    """Aircraft performance outputs from performance model."""
+
+    true_airspeed: float
+    """True airspeed in meters per second."""
+
+    rate_of_climb: float
+    # TODO: Units?
+    """Rate of climb/descent in feet per minute."""
+
+    fuel_flow: float
+    # TODO: Units?
+    """Fuel flow in kilograms per hour."""
+
+
+class SimpleFlightRules(CIStrEnum):
+    CLIMB = 'climb'
+    CRUISE = 'cruise'
+    DESCEND = 'descend'
 
 
 class LTOThrustMode(CIStrEnum):

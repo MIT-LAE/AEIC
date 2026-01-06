@@ -31,7 +31,7 @@ Usage Example
 .. code-block:: python
 
    from AEIC.config import Config
-   from AEIC.performance import PerformanceModel
+   from AEIC.performance.models import PerformanceModel
 
    # Load default AEIC configuration.
    Config.load()

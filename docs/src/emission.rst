@@ -68,7 +68,7 @@ Usage Example
 
 .. code-block:: python
 
-   from AEIC.performance import PerformanceModel
+   from AEIC.performance.models import PerformanceModel
    from AEIC.trajectories.trajectory import Trajectory
    from AEIC.emissions.emission import Emission
 

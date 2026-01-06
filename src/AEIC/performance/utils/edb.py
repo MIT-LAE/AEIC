@@ -6,9 +6,8 @@ from pathlib import Path
 import pandas as pd
 
 from AEIC.config import config
+from AEIC.performance.types import LTOModeData, LTOPerformance, LTOThrustMode
 from AEIC.utils.models import CIBaseModel
-
-from .types import LTOModeData, LTOPerformance, LTOThrustMode
 
 ModeDict = dict[LTOThrustMode, float]
 

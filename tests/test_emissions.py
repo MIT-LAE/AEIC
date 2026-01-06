@@ -16,8 +16,8 @@ from AEIC.emissions.emission import (
     PMvolMethod,
 )
 from AEIC.missions import Mission
-from AEIC.performance.apu import APU
 from AEIC.performance.types import LTOModeData, LTOPerformance, LTOThrustMode
+from AEIC.performance.utils.apu import APU
 from AEIC.utils.helpers import iso_to_timestamp
 from AEIC.utils.standard_fuel import get_thrust_cat_cruise, get_thrust_cat_lto
 

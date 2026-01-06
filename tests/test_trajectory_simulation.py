@@ -47,6 +47,15 @@ test_fields = FieldSet(
 )
 
 
+def test_trajectory_simulation_single(sample_missions, performance_model):
+    builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+
+    mis = sample_missions[0]
+    traj = builder.fly(performance_model, mis)
+
+    assert len(traj) > 100
+
+
 def test_trajectory_simulation_basic(tmp_path, sample_missions, performance_model):
     fname = tmp_path / 'test_trajectories.nc'
 

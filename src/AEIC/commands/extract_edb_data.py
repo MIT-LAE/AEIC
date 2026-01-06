@@ -1,7 +1,7 @@
 import click
 import tomli_w
 
-from AEIC.performance.edb import EDBEntry
+from AEIC.performance.utils.edb import EDBEntry
 
 
 @click.option(

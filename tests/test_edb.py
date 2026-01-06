@@ -2,8 +2,8 @@ import pandas as pd
 import pytest
 
 from AEIC.config import config
-from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import LTOThrustMode
+from AEIC.performance.utils.edb import EDBEntry
 
 
 class DummyExcelFile:
@@ -30,7 +30,7 @@ def test_get_EDB_data_for_engine_raises_when_uid_absent(tmp_path, monkeypatch):
     dummy_path.touch()
 
     monkeypatch.setattr(
-        "AEIC.performance.edb.pd.ExcelFile",
+        "AEIC.performance.utils.edb.pd.ExcelFile",
         lambda _: DummyExcelFile(gaseous, nvpm),
     )
 

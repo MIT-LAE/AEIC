@@ -21,3 +21,6 @@ MPS_TO_KNOTS = 1 / KNOTS_TO_MPS
 
 NAUTICAL_MILES_TO_METERS = 1852
 """Unit conversion factor for nautical miles to meters."""
+
+MINUTES_TO_SECONDS = 60
+"""Unit conversion factor for minutes to seconds."""

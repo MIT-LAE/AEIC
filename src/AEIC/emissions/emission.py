@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from AEIC.config import config
-from AEIC.performance import TablePerformanceModel
+from AEIC.performance.models import PerformanceModel
 from AEIC.performance.types import LTOInputs
 from AEIC.trajectories.trajectory import Trajectory
 from AEIC.utils.consts import R_air, kappa
@@ -94,7 +94,7 @@ class Emission:
     trajectory to obtain an :class:`EmissionsOutput` data container.
     """
 
-    def __init__(self, ac_performance: TablePerformanceModel):
+    def __init__(self, ac_performance: PerformanceModel):
         """
         Parameters
         ----------
@@ -671,7 +671,7 @@ class Emission:
         thrust_categories: np.ndarray,
         altitudes: np.ndarray,
         atmos_state: AtmosphericState,
-        ac_performance: TablePerformanceModel,
+        ac_performance: PerformanceModel,
     ):
         """Populate PMnvol indices for trajectory points."""
         method = config.emissions.pmnvol_method
@@ -727,6 +727,7 @@ class Emission:
 
     def _get_LTO_TIMs(self):
         """Return the ICAO standard time-in-mode vector for Taxi → TO segments."""
+        # TODO: Units?
         TIM_TakeOff = 0.7 * 60
         TIM_Climb = 2.2 * 60
         TIM_Approach = 4.0 * 60
@@ -784,10 +785,11 @@ class Emission:
         self.LTO_emission_indices['PMvol'] = LTO_PMvol
         self.LTO_emission_indices['OCic'] = LTO_OCic
 
-    def _get_LTO_PMnvol(self, ac_performance: TablePerformanceModel, fuel_flows_LTO):
+    def _get_LTO_PMnvol(self, ac_performance: PerformanceModel, fuel_flows_LTO):
         """Set PMnvol EIs for the four LTO thrust points."""
         method = config.emissions.pmnvol_method
         if method in (PMnvolMethod.FOA3, PMnvolMethod.MEEM):
+            # TODO: FIX
             PMnvolEI = np.asarray(
                 ac_performance.EDB_data['PMnvolEI_best_ICAOthrust'], dtype=float
             )
@@ -835,6 +837,7 @@ class Emission:
 
     def _scope11_profile(self, ac_performance):
         """Cache SCOPE11 lookups so we do the work only once."""
+        # TODO: FIX
         if self._scope11_cache is None:
             edb = ac_performance.EDB_data
             mass = calculate_PMnvolEI_scope11(

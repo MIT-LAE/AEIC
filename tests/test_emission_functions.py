@@ -14,7 +14,7 @@ from AEIC.emissions.EI_PMnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
 from AEIC.emissions.EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from AEIC.emissions.EI_SOx import EI_SOx, SOxEmissionResult
 from AEIC.emissions.lifecycle_CO2 import lifecycle_CO2
-from AEIC.performance.apu import APU
+from AEIC.performance.utils.apu import APU
 
 
 class TestEI_CO2:

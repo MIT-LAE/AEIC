@@ -75,7 +75,6 @@ def make_test_trajectory(
     t.heading = np.random.rand(npoints) * 360
     t.true_airspeed = np.random.rand(npoints) * 300 + 200
     t.ground_speed = t.true_airspeed + np.random.randn(npoints) * 5
-    t.flight_level_weight = np.ones(npoints)
     t.starting_mass = t.aircraft_mass[0]
     t.total_fuel_mass = t.fuel_mass[0] - t.fuel_mass[-1]
     t.n_climb = npoints // 3

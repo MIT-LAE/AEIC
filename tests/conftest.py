@@ -6,7 +6,7 @@ import pytest
 
 from AEIC.config import Config, config
 from AEIC.missions import Mission
-from AEIC.performance import PerformanceModel
+from AEIC.performance.models import PerformanceModel
 
 # Absolute path to test data directory.
 TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
