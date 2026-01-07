@@ -4,7 +4,7 @@ import numpy as np
 
 from AEIC.config import config
 from AEIC.missions import Mission
-from AEIC.performance.models import TablePerformanceModel
+from AEIC.performance.models import LegacyPerformanceModel
 from AEIC.performance.types import AircraftState, SimpleFlightRules
 from AEIC.trajectories import FlightPhase, GroundTrack, Trajectory
 from AEIC.utils.units import (
@@ -41,7 +41,7 @@ class LegacyContext(Context):
     def __init__(
         self,
         builder: 'LegacyBuilder',
-        ac_performance: TablePerformanceModel,
+        ac_performance: LegacyPerformanceModel,
         mission: Mission,
         starting_mass: float | None,
     ):

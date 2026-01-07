@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from AEIC.missions import Mission
-from AEIC.performance.models import PerformanceModel
+from AEIC.performance.models import BasePerformanceModel
 
 from ..ground_track import GroundTrack
 from ..phase import FlightPhase
@@ -45,7 +45,7 @@ class Context:
     builder: 'Builder'
     """Trajectory builder instance being used for this simulation."""
 
-    ac_performance: PerformanceModel
+    ac_performance: BasePerformanceModel
     """Performance model used for trajectory simulation."""
 
     mission: Mission
@@ -163,7 +163,7 @@ class Builder(ABC):
 
     def fly(
         self,
-        ac_performance: PerformanceModel,
+        ac_performance: BasePerformanceModel,
         mission: Mission,
         starting_mass: float | None = None,
         **kwargs,
@@ -174,7 +174,7 @@ class Builder(ABC):
         builder-specific additional keyword arguments.
 
         Args:
-            ac_performance (PerformanceModel): Performance model used for
+            ac_performance (BasePerformanceModel): Performance model used for
                 trajectory simulation.
             mission (Mission): Data dictating the mission to be flown
                 (departure/arrival info, etc.).
@@ -183,6 +183,7 @@ class Builder(ABC):
 
         Returns:
             trajectory (Trajectory): Trajectory object.
+
         """
 
         # This is a wrapper method to ensure that the simulation context gets

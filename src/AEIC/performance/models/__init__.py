@@ -6,8 +6,8 @@ from pydantic import Field, RootModel, model_validator
 
 from .bada import BADAPerformanceModel
 from .base import BasePerformanceModel as BasePerformanceModel
+from .legacy import LegacyPerformanceModel
 from .piano import PianoPerformanceModel
-from .table import TablePerformanceModel
 from .tasopt import TASOPTPerformanceModel
 
 # TODO: Document what's going on here.
@@ -16,7 +16,7 @@ PerformanceModelUnion = Annotated[
         BADAPerformanceModel
         | TASOPTPerformanceModel
         | PianoPerformanceModel
-        | TablePerformanceModel
+        | LegacyPerformanceModel
     ),
     Field(discriminator='model_type'),
 ]

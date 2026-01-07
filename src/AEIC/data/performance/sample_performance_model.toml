@@ -1,5 +1,5 @@
-# Performance model type (one of: table, bada, tasopt, piano).
-model_type = "table"
+# Performance model type (one of: legacy, bada, tasopt, piano).
+model_type = "legacy"
 
 # ==============================================================================
 #

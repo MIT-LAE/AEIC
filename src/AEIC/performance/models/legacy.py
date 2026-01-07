@@ -1,23 +1,27 @@
+"""TODO: Docstring here!"""
+
 # TODO: Remove this when we move to Python 3.14+.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import ClassVar, Self
+from typing import ClassVar, Literal, Self
 
 import numpy as np
 import pandas as pd
-from pydantic import model_validator
+from pydantic import PrivateAttr, model_validator
 from scipy.interpolate import interpn
 
-from AEIC.performance.types import AircraftState, Performance
+from AEIC.performance.types import AircraftState, Performance, SimpleFlightRules
 from AEIC.utils.models import CIBaseModel
 from AEIC.utils.units import METERS_TO_FL
+
+from .base import BasePerformanceModel
 
 
 # TODO: Better docstrings.
 class PerformanceTableInput(CIBaseModel):
-    """Performance table data."""
+    """Performance table data from TOML file."""
 
     cols: list[str]
     """Performance table column labels."""
@@ -60,12 +64,14 @@ class ROCDFilter(Enum):
 
 
 class Interpolator:
+    """Grid-based interpolator for performance model data."""
+
     def __init__(self, df: pd.DataFrame):
         # Requirements:
         #  - Regular FL, regular mass ⇒ rectlinear grid;
         #  - Dense: unique (FL, mass); #rows = #FL × #mass
         #
-        # These conditions should be checked in LegacyPerformanceTable
+        # These conditions should be checked in the PerformanceTable
         # constructor, but we check them here for security and testing
         # purposes.
         if len(list(zip(df.fl.values, df.mass.values))) != len(df):
@@ -101,7 +107,8 @@ class Interpolator:
 
 @dataclass
 class PerformanceTable:
-    """Aircraft performance data table.
+    """Aircraft performance data table for legacy table-driven performance
+    model.
 
     This class implements performance data interpolation as done in the legacy
     AEIC code. This means that:
@@ -132,6 +139,57 @@ class PerformanceTable:
     _interpolators: dict[ROCDFilter, Interpolator] = field(default_factory=dict)
 
     ZERO_ROCD_TOL: ClassVar[float] = 1.0e-6
+
+    def __post_init__(self):
+        # Check that we have three mass values.
+        if len(self.mass) != 3:
+            raise ValueError(
+                'Legacy performance table must have exactly three mass values'
+            )
+
+        # For each of positive, zero, and negative ROCD, it should be the case
+        # that the input data is dense in (FL, mass) values, in the sense that
+        # #rows = #FL × #mass, i.e. there is exactly one data row for each
+        # combination of FL and mass.
+
+        # TAS at zero ROC should depend only on FL.
+        check = self.df[
+            (self.df.rocd >= -self.ZERO_ROCD_TOL) & (self.df.rocd <= self.ZERO_ROCD_TOL)
+        ]
+        if len(list(zip(check.fl.values, check.mass.values))) != len(check):
+            raise ValueError('Performance data at zero ROC does not have full coverage')
+        if len(set(zip(check.fl, check.tas))) != len(set(check.fl)):
+            raise ValueError('TAS at zero ROC depends on variables other than FL')
+
+        # Fuel flow and TAS for positive ROC should depend only on FL.
+        check = self.df[self.df.rocd > self.ZERO_ROCD_TOL]
+        if len(list(zip(check.fl.values, check.mass.values))) != len(check):
+            raise ValueError(
+                'Performance data at positive ROC does not have full coverage'
+            )
+        if len(set(zip(check.fl, check.tas))) != len(set(check.fl)):
+            raise ValueError('TAS at positive ROC depends on variables other than FL')
+        if len(set(zip(check.fl, check.fuel_flow))) != len(set(check.fl)):
+            raise ValueError(
+                'fuel flow at positive ROC depends on variables other than FL'
+            )
+
+        # Fuel flow and TAS for negative ROC should depend only on FL.
+        # TODO: COMMENTED OUT BECAUSE THE SAMPLE PERFORMANCE MODEL DOESN'T PASS
+        # THIS TEST!
+        check = self.df[self.df.rocd < -self.ZERO_ROCD_TOL]
+        if len(list(zip(check.fl.values, check.mass.values))) != len(check):
+            raise ValueError(
+                'Performance data at negative ROC does not have full coverage'
+            )
+        # if len(set(zip(check.fl, check.tas))) != len(set(check.fl)):
+        #     raise ValueError(
+        #         'TAS at negative ROC depends on variables other than FL'
+        #     )
+        # if len(set(zip(check.fl, check.fuel_flow))) != len(set(check.fl)):
+        #     raise ValueError(
+        #         'fuel flow at negative ROC depends on variables other than FL'
+        #     )
 
     @classmethod
     def from_input(cls, ptin: PerformanceTableInput) -> Self:
@@ -196,40 +254,49 @@ class PerformanceTable:
         )
 
 
-@dataclass
-class LegacyPerformanceTable(PerformanceTable):
-    def __post_init__(self):
-        # Check that we have three mass values.
-        if len(self.mass) != 3:
-            raise ValueError(
-                'Legacy performance table must have exactly three mass values'
-            )
+class LegacyPerformanceModel(BasePerformanceModel):
+    """Legacy table-based performance model."""
 
-        # TAS at zero ROC should depend only on FL.
-        check = self.df[
-            (self.df.rocd >= -self.ZERO_ROCD_TOL) & (self.df.rocd <= self.ZERO_ROCD_TOL)
-        ]
-        if len(set(zip(check.fl, check.tas))) != len(set(check.fl)):
-            raise ValueError('TAS at zero ROC depends on variables other than FL')
+    # TODO: Better docstrings.
 
-        # Fuel flow and TAS for positive ROC should depend only on FL.
-        check = self.df[self.df.rocd > self.ZERO_ROCD_TOL]
-        if len(set(zip(check.fl, check.tas))) != len(set(check.fl)):
-            raise ValueError('TAS at positive ROC depends on variables other than FL')
-        if len(set(zip(check.fl, check.fuel_flow))) != len(set(check.fl)):
-            raise ValueError(
-                'fuel flow at positive ROC depends on variables other than FL'
-            )
+    model_type: Literal['legacy']
+    """Model type identifier for TOML input files."""
 
-        # Fuel flow and TAS for negative ROC should depend only on FL.
-        # TODO: COMMENTED OUT BECAUSE THE SAMPLE PERFORMANCE MODEL DOESN'T PASS
-        # THIS TEST!
-        # check = self.df[self.df.rocd < -self.ZERO_ROCD_TOL]
-        # if len(set(zip(check.fl, check.tas))) != len(set(check.fl)):
-        #     raise ValueError(
-        #         'TAS at negative ROC depends on variables other than FL'
-        #     )
-        # if len(set(zip(check.fl, check.fuel_flow))) != len(set(check.fl)):
-        #     raise ValueError(
-        #         'fuel flow at negative ROC depends on variables other than FL'
-        #     )
+    flight_performance: PerformanceTableInput
+    """Main flight performance table."""
+
+    _performance_table: PerformanceTable = PrivateAttr()
+
+    @model_validator(mode='after')
+    def validate_pm(self, info):
+        """Validate performance model after creation."""
+
+        # Create performance table from "flight_performance" section.
+        self._performance_table = PerformanceTable.from_input(self.flight_performance)
+
+        return self
+
+    @property
+    def empty_mass(self) -> float:
+        # Empty mass per BADA-3 is lowest mass / 1.2.
+        return min(self.performance_table.mass) / 1.2
+
+    @property
+    def maximum_mass(self) -> float:
+        return max(self.performance_table.mass)
+
+    @property
+    def performance_table(self) -> PerformanceTable:
+        return self._performance_table
+
+    def evaluate_impl(
+        self, state: AircraftState, rules: SimpleFlightRules
+    ) -> Performance:
+        # Interpolate performance table to get performance values.
+        match rules:
+            case SimpleFlightRules.CLIMB:
+                return self._performance_table.interpolate(state, ROCDFilter.POSITIVE)
+            case SimpleFlightRules.CRUISE:
+                return self._performance_table.interpolate(state, ROCDFilter.ZERO)
+            case SimpleFlightRules.DESCEND:
+                return self._performance_table.interpolate(state, ROCDFilter.NEGATIVE)
