@@ -1,15 +1,16 @@
 # TODO: Remove this when we move to Python 3.14+.
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import ClassVar, Literal, Self, cast
+from typing import ClassVar, Self
 
 import numpy as np
 import pandas as pd
 from pydantic import model_validator
+from scipy.interpolate import interpn
 
-from AEIC.performance.types import AircraftState
+from AEIC.performance.types import AircraftState, Performance
 from AEIC.utils.models import CIBaseModel
 from AEIC.utils.units import METERS_TO_FL
 
@@ -58,23 +59,77 @@ class ROCDFilter(Enum):
     POSITIVE = auto()
 
 
+class Interpolator:
+    def __init__(self, df: pd.DataFrame):
+        # Requirements:
+        #  - Regular FL, regular mass ⇒ rectlinear grid;
+        #  - Dense: unique (FL, mass); #rows = #FL × #mass
+        #
+        # These conditions should be checked in LegacyPerformanceTable
+        # constructor, but we check them here for security and testing
+        # purposes.
+        if len(list(zip(df.fl.values, df.mass.values))) != len(df):
+            raise ValueError('Interpolator requires unique (FL, mass) pairs in data')
+
+        # Coordinate values.
+        fls = sorted(df.fl.unique())
+        masses = sorted(df.mass.unique())
+        self.xs = (fls, masses)
+
+        # Output values.
+        shape = (len(fls), len(masses))
+        self.tas = np.zeros(shape)
+        self.rocd = np.zeros(shape)
+        self.fuel_flow = np.zeros(shape)
+
+        # Construct output values.
+        for row in df.itertuples():
+            i = fls.index(row.fl)  # type: ignore
+            j = masses.index(row.mass)  # type: ignore
+            self.tas[i, j] = row.tas  # type: ignore
+            self.rocd[i, j] = row.rocd  # type: ignore
+            self.fuel_flow[i, j] = row.fuel_flow  # type: ignore
+
+    def __call__(self, fl: float, mass: float) -> Performance:
+        x = (fl, mass)
+        return Performance(
+            true_airspeed=interpn(self.xs, self.tas, x, method='linear')[0],
+            rate_of_climb=interpn(self.xs, self.rocd, x, method='linear')[0],
+            fuel_flow=interpn(self.xs, self.fuel_flow, x, method='linear')[0],
+        )
+
+
 @dataclass
 class PerformanceTable:
-    """Performance table data."""
+    """Aircraft performance data table.
 
-    @dataclass
-    class Interpolate:
-        fuel_flow: float
-        true_airspeed: float
-        rate_of_climb: float
+    This class implements performance data interpolation as done in the legacy
+    AEIC code. This means that:
+
+    1. The table is divided into three sections, for ROCD>0, ROCD≈0, ROCD<0.
+    2. In each section, TAS, ROCD and fuel flow are functions of FL and
+       aircraft mass.
+
+    """
 
     df: pd.DataFrame
     """Performance table data."""
 
     fl: list[float]
+    """Sorted list of unique flight levels in the table."""
+
+    # TODO: Is this used anywhere?
     tas: list[float]
+    """Sorted list of unique airspeed values in the table."""
+
+    # TODO: Is this used anywhere?
     rocd: list[float]
+    """Sorted list of unique ROCD values in the table."""
+
     mass: list[float]
+    """Sorted list of unique mass values in the table."""
+
+    _interpolators: dict[ROCDFilter, Interpolator] = field(default_factory=dict)
 
     ZERO_ROCD_TOL: ClassVar[float] = 1.0e-6
 
@@ -102,174 +157,33 @@ class PerformanceTable:
     def __len__(self) -> int:
         return len(self.df)
 
-    def interpolate(
-        self,
-        *,
-        state: AircraftState | None = None,
-        fl: float | None = None,
-        mass: float | None = None,
-    ) -> PerformanceTable.Interpolate:
-        if state is not None:
-            if fl is not None or mass is not None:
-                raise ValueError(
-                    'interpolation with state cannot be combined with fl or mass'
-                )
-            return self._interpolate_state(state)
-        if fl is not None and mass is not None:
-            return self._interpolate_fl_mass(fl, mass)
-        if fl is not None:
-            return self._interpolate_fl(fl)
-        raise ValueError('interpolation requires at least FL to be specified')
-
-    def _interpolate_state(self, state: AircraftState) -> PerformanceTable.Interpolate:
+    def interpolate(self, state: AircraftState, rocd: ROCDFilter) -> Performance:
         fl = state.altitude * METERS_TO_FL
         mass = state.aircraft_mass
         if mass == 'min':
             mass = min(self.mass)
         elif mass == 'max':
             mass = max(self.mass)
-        return self._interpolate_fl_mass(fl, mass)
 
-    def _interpolate_fl(
-        self,
-        fl: float,
-    ) -> PerformanceTable.Interpolate:
-        # TODO: Docstring.
+        if rocd not in self._interpolators:
+            self._interpolators[rocd] = Interpolator(self.subset(rocd).df)
 
-        # Bracket input values.
-        t = self.subset(fl=fl)
-
-        # The interpolation requires exactly two bracketing points for an
-        # unambiguous result.
-        if len(t.fl) > 2 or len(t.mass) > 1:
-            raise ValueError('interpolation pre-condition failed')
-
-        # Make masks for bracketing values of FL and mass.
-        fl_lo: pd.Series = t.df.fl < fl
-        fl_hi: pd.Series = t.df.fl >= fl
-
-        # Extract bracketing rows from table.
-        r_lo = t.df[fl_lo]
-        r_hi = t.df[fl_hi]
-
-        # Flatten these rows to series for interpolation weight calculation.
-        s_lo = r_lo.squeeze()
-        s_hi = r_hi.squeeze()
-
-        # Interpolation weights.
-        f_fl = (fl - s_lo.fl) / (s_hi.fl - s_lo.fl)
-
-        # Extract target columns as Numpy array for interpolation.
-        def extract(row):
-            return cast(
-                pd.DataFrame, row[['fuel_flow', 'tas', 'rocd']]
-            ).values.squeeze()
-
-        v_lo = extract(r_lo)
-        v_hi = extract(r_hi)
-
-        # Bilinear interpolation.
-        result = v_lo * (1 - f_fl) + v_hi * f_fl
-
-        return PerformanceTable.Interpolate(
-            fuel_flow=result[0], true_airspeed=result[1], rate_of_climb=result[2]
-        )
-
-    def _interpolate_fl_mass(
-        self, fl: float, mass: float
-    ) -> PerformanceTable.Interpolate:
-        # TODO: Docstring.
-
-        # Bracket input values.
-        t = self.subset(fl=fl, mass=mass)
-
-        # The interpolation requires exactly four bracketing points for an
-        # unambiguous result.
-        if len(t.fl) > 2 or len(t.mass) > 2:
-            raise ValueError('interpolation pre-condition failed')
-
-        # Make masks for bracketing values of FL and mass.
-        fl_lo: pd.Series = t.df.fl < fl
-        fl_hi: pd.Series = t.df.fl >= fl
-        mass_lo: pd.Series = t.df.mass < mass
-        mass_hi: pd.Series = t.df.mass >= mass
-
-        # Extract bracketing rows from table.
-        r_lo_lo = t.df[fl_lo & mass_lo]
-        r_lo_hi = t.df[fl_lo & mass_hi]
-        r_hi_lo = t.df[fl_hi & mass_lo]
-        r_hi_hi = t.df[fl_hi & mass_hi]
-
-        # Flatten these rows to series for interpolation weight calculation.
-        s_lo_lo = r_lo_lo.squeeze()
-        s_lo_hi = r_lo_hi.squeeze()
-        s_hi_lo = r_hi_lo.squeeze()
-
-        # Interpolation weights.
-        f_fl = (fl - s_lo_lo.fl) / (s_hi_lo.fl - s_lo_lo.fl)
-        f_mass = (mass - s_lo_lo.mass) / (s_lo_hi.mass - s_lo_lo.mass)
-
-        # Extract target columns as Numpy array for interpolation.
-        def extract(row):
-            return cast(
-                pd.DataFrame, row[['fuel_flow', 'tas', 'rocd']]
-            ).values.squeeze()
-
-        v_lo_lo = extract(r_lo_lo)
-        v_lo_hi = extract(r_lo_hi)
-        v_hi_lo = extract(r_hi_lo)
-        v_hi_hi = extract(r_hi_hi)
-
-        # Bilinear interpolation.
-        result = (
-            v_lo_lo * (1 - f_fl) * (1 - f_mass)
-            + v_lo_hi * (1 - f_fl) * f_mass
-            + v_hi_lo * f_fl * (1 - f_mass)
-            + v_hi_hi * f_fl * f_mass
-        )
-
-        return PerformanceTable.Interpolate(
-            fuel_flow=result[0], true_airspeed=result[1], rate_of_climb=result[2]
-        )
+        return self._interpolators[rocd](fl, mass)
 
     # TODO: Docstring and comments about isinstance asserts.
-    def subset(
-        self,
-        *,
-        fl: float | None = None,
-        mass: float | Literal['max', 'min'] | None = None,
-        rocd: ROCDFilter | None = None,
-    ) -> PerformanceTable:
+    def subset(self, rocd: ROCDFilter) -> PerformanceTable:
         df_new = self.df
 
-        if fl is not None:
-            lo_fl, hi_fl = self.bracketing_fls(fl)
-            df_new = df_new[(df_new.fl >= lo_fl) & (df_new.fl <= hi_fl)]
-        assert isinstance(df_new, pd.DataFrame)
-
-        if mass is not None:
-            if mass == 'max':
-                max_mass = max(self.mass)
-                df_new = df_new[df_new.mass == max_mass]
-            elif mass == 'min':
-                min_mass = min(self.mass)
-                df_new = df_new[df_new.mass == min_mass]
-            else:
-                lo_mass, hi_mass = self.bracketing_mass(mass)
-                df_new = df_new[(df_new.mass >= lo_mass) & (df_new.mass <= hi_mass)]
-        assert isinstance(df_new, pd.DataFrame)
-
-        if rocd is not None:
-            match rocd:
-                case ROCDFilter.NEGATIVE:
-                    df_new = df_new[df_new.rocd < -self.ZERO_ROCD_TOL]
-                case ROCDFilter.ZERO:
-                    df_new = df_new[
-                        (df_new.rocd >= -self.ZERO_ROCD_TOL)
-                        & (df_new.rocd <= self.ZERO_ROCD_TOL)
-                    ]
-                case ROCDFilter.POSITIVE:
-                    df_new = df_new[df_new.rocd > self.ZERO_ROCD_TOL]
+        match rocd:
+            case ROCDFilter.NEGATIVE:
+                df_new = df_new[df_new.rocd < -self.ZERO_ROCD_TOL]
+            case ROCDFilter.ZERO:
+                df_new = df_new[
+                    (df_new.rocd >= -self.ZERO_ROCD_TOL)
+                    & (df_new.rocd <= self.ZERO_ROCD_TOL)
+                ]
+            case ROCDFilter.POSITIVE:
+                df_new = df_new[df_new.rocd > self.ZERO_ROCD_TOL]
         assert isinstance(df_new, pd.DataFrame)
 
         fl_new = sorted(df_new.fl.unique().tolist())
@@ -280,49 +194,6 @@ class PerformanceTable:
         return PerformanceTable(
             df=df_new, fl=fl_new, tas=tas_new, rocd=rocd_new, mass=mass_new
         )
-
-    # TODO: Remove this eventually.
-    def search_indexes(
-        self, column: str, error_label: str, value: float
-    ) -> tuple[int, int]:
-        """Searches the valid values in the performance model for the indices
-        bounding a known value in a specified column.
-
-        Args:
-            column (str): Column name to search.
-            value (float): Value of interest.
-
-        Returns:
-            (tuple[int, int]) Tuple containing the indices of the values in performance
-                data that bound the given value.
-        """
-
-        if column not in self.df.columns:
-            raise ValueError(f'Performance data missing required {column} column')
-
-        values = getattr(self, column)
-        idx_hi = np.searchsorted(values, value)
-
-        if idx_hi == 0:
-            raise ValueError(
-                f'Aircraft is trying to operate below minimum {error_label}'
-            )
-        if idx_hi == len(values):
-            raise ValueError(
-                f'Aircraft is trying to operate above maximum {error_label}'
-            )
-
-        return (int(idx_hi - 1), int(idx_hi))
-
-    def bracketing_fls(self, FL: float) -> tuple[float, float]:
-        """Find the bracketing flight levels for a given flight level."""
-        idx_lo, idx_hi = self.search_indexes('fl', f'cruise altitude (FL {FL:.2f})', FL)
-        return (self.fl[idx_lo], self.fl[idx_hi])
-
-    def bracketing_mass(self, mass: float) -> tuple[float, float]:
-        """Find the bracketing mass values for a given mass."""
-        idx_lo, idx_hi = self.search_indexes('mass', 'mass', mass)
-        return (self.mass[idx_lo], self.mass[idx_hi])
 
 
 @dataclass

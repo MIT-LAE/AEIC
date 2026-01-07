@@ -27,7 +27,6 @@ class TablePerformanceModel(BasePerformanceModel):
     """Main flight performance table."""
 
     _performance_table: PerformanceTable = PrivateAttr()
-    _performance_subsets: dict[ROCDFilter, PerformanceTable] = PrivateAttr()
 
     @model_validator(mode='after')
     def validate_pm(self, info):
@@ -36,11 +35,6 @@ class TablePerformanceModel(BasePerformanceModel):
         # TODO: Check that everything is filled in, pulling values from the EDB
         # or elsewhere as required. (I think this comment is obsolete now.)
         self._performance_table = PerformanceTable.from_input(self.flight_performance)
-
-        # Make performance table subsets for climb, cruise and descent.
-        self._performance_subsets = {
-            rocd: self._performance_table.subset(rocd=rocd) for rocd in ROCDFilter
-        }
 
         return self
 
@@ -60,20 +54,11 @@ class TablePerformanceModel(BasePerformanceModel):
     def evaluate_impl(
         self, state: AircraftState, rules: SimpleFlightRules
     ) -> Performance:
-        # Extract performance table subset for the given flight rule.
+        # Interpolate performance table to get performance values.
         match rules:
             case SimpleFlightRules.CLIMB:
-                table = self._performance_subsets[ROCDFilter.POSITIVE]
+                return self._performance_table.interpolate(state, ROCDFilter.POSITIVE)
             case SimpleFlightRules.CRUISE:
-                table = self._performance_subsets[ROCDFilter.ZERO]
+                return self._performance_table.interpolate(state, ROCDFilter.ZERO)
             case SimpleFlightRules.DESCEND:
-                table = self._performance_subsets[ROCDFilter.NEGATIVE]
-
-        # Interpolate performance table to get performance values.
-        interp = table.interpolate(state=state)
-
-        return Performance(
-            true_airspeed=interp.true_airspeed,
-            rate_of_climb=interp.rate_of_climb,
-            fuel_flow=interp.fuel_flow,
-        )
+                return self._performance_table.interpolate(state, ROCDFilter.NEGATIVE)

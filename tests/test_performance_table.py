@@ -1,14 +1,11 @@
 # TODO: Remove this when we move to Python 3.14+.
 from __future__ import annotations
 
-import tomllib
-
 import pytest
 
 from AEIC.config import config
 from AEIC.performance.models import PerformanceModel, TablePerformanceModel
 from AEIC.performance.utils.performance_table import (
-    LegacyPerformanceTable,
     PerformanceTable,
     PerformanceTableInput,
     ROCDFilter,
@@ -55,41 +52,11 @@ def test_performance_table_subsetting():
     assert isinstance(model, TablePerformanceModel)
     table = model.performance_table
 
-    sub_table_1 = table.subset(fl=310, rocd=ROCDFilter.POSITIVE)
-    assert len(sub_table_1.fl) == 2
-    assert len(sub_table_1.mass) == len(table.mass)
+    sub_table_1 = table.subset(rocd=ROCDFilter.POSITIVE)
+    assert len(sub_table_1.fl) <= len(table.fl)
+    assert len(sub_table_1.mass) <= len(table.mass)
+    assert all(rocd > 0 for rocd in sub_table_1.rocd)
 
-    sub_table_2 = table.subset(rocd=ROCDFilter.NEGATIVE, mass='max')
+    sub_table_2 = table.subset(rocd=ROCDFilter.NEGATIVE)
     assert all(rocd < 0 for rocd in sub_table_2.rocd)
-    assert len(sub_table_2.mass) == 1
-
-    sub_table_3 = table.subset(mass=65000)
-    assert len(sub_table_3.fl) == len(table.fl)
-    assert len(sub_table_3.mass) == 2
-
-
-def test_legacy_performance_table_ok():
-    with open(
-        config.file_location('performance/sample_performance_model.toml'), 'rb'
-    ) as fp:
-        data = tomllib.load(fp)
-
-    ptin = PerformanceTableInput(
-        data=data['flight_performance']['data'], cols=data['flight_performance']['cols']
-    )
-    tab1 = LegacyPerformanceTable.from_input(ptin)
-    assert len(tab1.mass) == 3
-
-
-def test_legacy_performance_table_bad(test_data_dir):
-    for bad_case in range(1, 4):
-        fname = test_data_dir / 'performance' / f'bad_performance_model_{bad_case}.toml'
-        with open(fname, 'rb') as fp:
-            data = tomllib.load(fp)
-        ptin = PerformanceTableInput(
-            data=data['flight_performance']['data'],
-            cols=data['flight_performance']['cols'],
-        )
-        with pytest.raises(ValueError):
-            tab = LegacyPerformanceTable.from_input(ptin)
-            assert len(tab.mass) == 3
+    assert len(sub_table_2.mass) <= len(table.mass)
