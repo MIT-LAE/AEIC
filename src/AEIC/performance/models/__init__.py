@@ -10,7 +10,6 @@ from .legacy import LegacyPerformanceModel
 from .piano import PianoPerformanceModel
 from .tasopt import TASOPTPerformanceModel
 
-# TODO: Document what's going on here.
 PerformanceModelUnion = Annotated[
     (
         BADAPerformanceModel
@@ -20,12 +19,17 @@ PerformanceModelUnion = Annotated[
     ),
     Field(discriminator='model_type'),
 ]
+"""Union type representing all supported performance model types. This is a
+Pydantic discriminated union, using the ``model_type`` field to guide the
+actual type of model instantiated when loading models from TOML files."""
 
 
-# TODO: Better docstrings.
 class PerformanceModel(RootModel[PerformanceModelUnion]):
-    """Wrapper class to make the ``model_type`` field case-insensitive and to
-    implement loading of performance models from TOML data."""
+    """Performance model loader.
+
+    This is a wrapper class to implement loading of performance models from
+    TOML data, and additionally to make the ``model_type`` field used for
+    discriminating model types case-insensitive."""
 
     @model_validator(mode='before')
     @classmethod
@@ -38,7 +42,7 @@ class PerformanceModel(RootModel[PerformanceModelUnion]):
     def load(cls, path: str | Path) -> PerformanceModelUnion:
         """Load a performance model from a TOML file.
 
-        The exact performance model type is determined by the 'model_type'
+        The exact performance model type is determined by the ``model_type``
         field in the TOML data."""
         with open(path, 'rb') as f:
             return cls.model_validate(tomllib.load(f)).root

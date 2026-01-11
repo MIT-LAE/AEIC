@@ -11,40 +11,47 @@ from AEIC.utils.models import CIBaseModel, CIStrEnum
 
 @dataclass
 class AircraftState:
-    """Aircraft state container for performance model inputs."""
+    """Aircraft state container for performance model inputs.
+
+    The fundamental inputs required for performance model evaluation are
+    altitude and aircraft mass. Depending on the performance model being used,
+    true airspeed and rate of climb/descent may also be required."""
 
     altitude: float
-    """Altitude in meters."""
-
-    true_airspeed: float
-    """True airspeed in meters per second."""
-
-    rate_of_climb: float
-    # TODO: Units?
-    """Rate of climb/descent in feet per minute."""
+    """Altitude [m]."""
 
     aircraft_mass: float | Literal['min', 'max']
-    """Aircraft total mass in kilograms."""
+    """Aircraft total mass [kg]. Can also be 'min' or 'max' to indicate
+    minimum or maximum aircraft mass."""
+
+    true_airspeed: float | None = None
+    """True airspeed [m/s]. Whether this needs to be provided depends on the
+    performance model being used."""
+
+    rate_of_climb: float | None = None
+    # TODO: Units?
+    """Rate of climb/descent [m/s]. Whether this needs to be privded depends on
+    the performance model being used."""
 
 
-# TODO: Better name for this?
 @dataclass
 class Performance:
     """Aircraft performance outputs from performance model."""
 
     true_airspeed: float
-    """True airspeed in meters per second."""
+    """Actual achievable true airspeed [m/s]."""
 
     rate_of_climb: float
-    # TODO: Units?
-    """Rate of climb/descent in feet per minute."""
+    """Actual achievable rate of climb/descent [m/s]."""
 
     fuel_flow: float
-    # TODO: Units?
-    """Fuel flow in kilograms per hour."""
+    """Fuel flow in [kg/s]."""
 
 
 class SimpleFlightRules(CIStrEnum):
+    """Flight rules class for simplest case, where the only distinction is
+    between climb, cruise, and descent."""
+
     CLIMB = 'climb'
     CRUISE = 'cruise'
     DESCEND = 'descend'
@@ -124,11 +131,11 @@ class LTOInputs:
 class SpeedData(CIBaseModel):
     """Performance model speed data for different flight phases."""
 
-    cas_lo: float
-    """Low speed calibrated airspeed (CAS) in m/s."""
+    cas_low: float
+    """Low speed calibrated airspeed (CAS) [m/s]."""
 
-    cas_hi: float
-    """High speed calibrated airspeed (CAS) in m/s."""
+    cas_high: float
+    """High speed calibrated airspeed (CAS) [m/s]."""
 
     mach: float
     """Mach number."""

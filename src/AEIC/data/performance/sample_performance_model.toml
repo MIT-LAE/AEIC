@@ -5,7 +5,6 @@ model_type = "legacy"
 #
 #  COMMON FIELDS
 #
-
 # Fields common to all performance model types.
 
 aircraft_name = "B738"
@@ -16,30 +15,24 @@ maximum_payload_kg = 22422
 number_of_engines = 2 # Number of engines
 APU_name = "APU 131-9" # None: APU emissions not calculated
 
-
-# ==============================================================================
-#
-#  MODEL-TYPE SPECIFIC FIELDS
-#
-
 # ------------------------------------------------------------------------------
 #
 # Speed data
 #
 
 [speeds.climb]
-cas_lo = 128.611
-cas_hi = 154.3332
+cas_low = 128.611
+cas_high = 154.3332
 mach = 0.80
 
 [speeds.cruise]
-cas_lo = 128.611
-cas_hi = 144.04432
+cas_low = 128.611
+cas_high = 144.04432
 mach = 0.80
 
 [speeds.descent]
-cas_lo = 128.611
-cas_hi = 149.18876
+cas_low = 128.611
+cas_high = 149.18876
 mach = 0.80
 
 # ------------------------------------------------------------------------------
@@ -79,6 +72,11 @@ fuel_kgs    = 0.102
 EI_NOx      = 0.0
 EI_HC       = 0.0
 EI_CO       = 0.0
+
+# ==============================================================================
+#
+#  MODEL-TYPE SPECIFIC FIELDS
+#
 
 # ------------------------------------------------------------------------------
 #

@@ -12,14 +12,13 @@ import pandas as pd
 from pydantic import PrivateAttr, model_validator
 from scipy.interpolate import interpn
 
-from AEIC.performance.types import AircraftState, Performance, SimpleFlightRules
+from AEIC.performance import AircraftState, Performance, SimpleFlightRules
 from AEIC.utils.models import CIBaseModel
 from AEIC.utils.units import METERS_TO_FL
 
 from .base import BasePerformanceModel
 
 
-# TODO: Better docstrings.
 class PerformanceTableInput(CIBaseModel):
     """Performance table data from TOML file."""
 
@@ -97,11 +96,14 @@ class Interpolator:
             self.fuel_flow[i, j] = row.fuel_flow  # type: ignore
 
     def __call__(self, fl: float, mass: float) -> Performance:
+        """Perform bilinear interpolation to get performance values at given
+        flight level and aircraft mass."""
+
         x = (fl, mass)
         return Performance(
-            true_airspeed=interpn(self.xs, self.tas, x, method='linear')[0],
-            rate_of_climb=interpn(self.xs, self.rocd, x, method='linear')[0],
-            fuel_flow=interpn(self.xs, self.fuel_flow, x, method='linear')[0],
+            true_airspeed=float(interpn(self.xs, self.tas, x, method='linear')[0]),
+            rate_of_climb=float(interpn(self.xs, self.rocd, x, method='linear')[0]),
+            fuel_flow=float(interpn(self.xs, self.fuel_flow, x, method='linear')[0]),
         )
 
 
@@ -117,7 +119,9 @@ class PerformanceTable:
     2. In each section, TAS, ROCD and fuel flow are functions of FL and
        aircraft mass.
 
-    """
+    On construction, the class checks that the input data satisfies these
+    requirements, ensuring that subsequent interpolation in the table data will
+    work correctly."""
 
     df: pd.DataFrame
     """Performance table data."""
@@ -125,11 +129,9 @@ class PerformanceTable:
     fl: list[float]
     """Sorted list of unique flight levels in the table."""
 
-    # TODO: Is this used anywhere?
     tas: list[float]
     """Sorted list of unique airspeed values in the table."""
 
-    # TODO: Is this used anywhere?
     rocd: list[float]
     """Sorted list of unique ROCD values in the table."""
 
@@ -137,8 +139,10 @@ class PerformanceTable:
     """Sorted list of unique mass values in the table."""
 
     _interpolators: dict[ROCDFilter, Interpolator] = field(default_factory=dict)
+    """Interpolators for each flight phase table segment."""
 
     ZERO_ROCD_TOL: ClassVar[float] = 1.0e-6
+    """Tolerance for zero rate of climb/descent comparisons."""
 
     def __post_init__(self):
         # Check that we have three mass values.
@@ -149,8 +153,7 @@ class PerformanceTable:
 
         # For each of positive, zero, and negative ROCD, it should be the case
         # that the input data is dense in (FL, mass) values, in the sense that
-        # #rows = #FL × #mass, i.e. there is exactly one data row for each
-        # combination of FL and mass.
+        # #rows = #FL × #mass.
 
         # TAS at zero ROC should depend only on FL.
         check = self.df[
@@ -216,6 +219,11 @@ class PerformanceTable:
         return len(self.df)
 
     def interpolate(self, state: AircraftState, rocd: ROCDFilter) -> Performance:
+        """Perform bilinear interpolation in flight level and aircraft mass.
+
+        The interpolation is done in the subset of the performance table
+        corresponding to the given rate of climb/descent filter."""
+
         fl = state.altitude * METERS_TO_FL
         mass = state.aircraft_mass
         if mass == 'min':
@@ -223,13 +231,16 @@ class PerformanceTable:
         elif mass == 'max':
             mass = max(self.mass)
 
+        # Lazily create interpolator for flight phase segment.
         if rocd not in self._interpolators:
             self._interpolators[rocd] = Interpolator(self.subset(rocd).df)
 
         return self._interpolators[rocd](fl, mass)
 
-    # TODO: Docstring and comments about isinstance asserts.
     def subset(self, rocd: ROCDFilter) -> PerformanceTable:
+        """Extract subset of performance table for given rate of climb/descent
+        filter."""
+
         df_new = self.df
 
         match rocd:
@@ -257,13 +268,11 @@ class PerformanceTable:
 class LegacyPerformanceModel(BasePerformanceModel):
     """Legacy table-based performance model."""
 
-    # TODO: Better docstrings.
-
     model_type: Literal['legacy']
     """Model type identifier for TOML input files."""
 
     flight_performance: PerformanceTableInput
-    """Main flight performance table."""
+    """Input data for flight performance table."""
 
     _performance_table: PerformanceTable = PrivateAttr()
 
@@ -278,21 +287,33 @@ class LegacyPerformanceModel(BasePerformanceModel):
 
     @property
     def empty_mass(self) -> float:
-        # Empty mass per BADA-3 is lowest mass / 1.2.
+        """Empty aircraft mass.
+
+        Empty mass per BADA-3 is lowest mass in performance table / 1.2."""
         return min(self.performance_table.mass) / 1.2
 
     @property
     def maximum_mass(self) -> float:
+        """Maximum aircraft mass from performance table."""
         return max(self.performance_table.mass)
 
     @property
     def performance_table(self) -> PerformanceTable:
+        """Performance table accessor."""
         return self._performance_table
 
     def evaluate_impl(
         self, state: AircraftState, rules: SimpleFlightRules
     ) -> Performance:
-        # Interpolate performance table to get performance values.
+        """Implementation of performance evaluation for legacy table-based
+        performance model.
+
+        The performance table is separated into climb, cruise and descent
+        segments. The performance evaluation implementation uses bilinear
+        interpolation in flight level and aircraft mass in the relevant segment
+        of the performance table (selected by the flight rule) to get
+        performance values."""
+
         match rules:
             case SimpleFlightRules.CLIMB:
                 return self._performance_table.interpolate(state, ROCDFilter.POSITIVE)

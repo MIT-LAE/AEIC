@@ -35,7 +35,6 @@ def test_create_performance_table():
     model = PerformanceTable.from_input(PerformanceTableInput(cols=cols, data=rows))
 
     assert model.fl == [330, 350]
-    assert model.rocd == [-500, 0, 500]
     assert model.mass == [60000, 70000, 80000]
 
     assert model.df[
@@ -63,8 +62,8 @@ def test_performance_table_subsetting():
     sub_table_1 = table.subset(rocd=ROCDFilter.POSITIVE)
     assert len(sub_table_1.fl) <= len(table.fl)
     assert len(sub_table_1.mass) <= len(table.mass)
-    assert all(rocd > 0 for rocd in sub_table_1.rocd)
+    assert all(rocd > 0 for rocd in sub_table_1.df.rocd)
 
     sub_table_2 = table.subset(rocd=ROCDFilter.NEGATIVE)
-    assert all(rocd < 0 for rocd in sub_table_2.rocd)
+    assert all(rocd < 0 for rocd in sub_table_2.df.rocd)
     assert len(sub_table_2.mass) <= len(table.mass)

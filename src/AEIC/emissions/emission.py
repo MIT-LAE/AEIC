@@ -8,8 +8,8 @@ from dataclasses import dataclass
 import numpy as np
 
 from AEIC.config import config
+from AEIC.performance import LTOInputs
 from AEIC.performance.models import PerformanceModel
-from AEIC.performance.types import LTOInputs
 from AEIC.trajectories.trajectory import Trajectory
 from AEIC.utils.consts import R_air, kappa
 from AEIC.utils.standard_atmosphere import (

@@ -51,8 +51,8 @@ APUList = TypeAdapter(list[APU])
 """Pydantic type adapter for a list of APUs."""
 
 
-def find_apu(apu_name: str) -> APU:
-    """Find APU data by name."""
+def lookup_apu(apu_name: str) -> APU | None:
+    """Look up APU data by name."""
 
     with open(config.file_location('engines/APU_data.toml'), 'rb') as fp:
         data = tomllib.load(fp)
@@ -60,6 +60,15 @@ def find_apu(apu_name: str) -> APU:
     for apu in apus:
         if apu.name.lower() == apu_name.lower():
             return apu
+    return None
+
+
+def find_apu(apu_name: str) -> APU:
+    """Find APU data by name, returning "unknown" APU for unknown name."""
+
+    apu = lookup_apu(apu_name)
+    if apu is not None:
+        return apu
     warnings.warn(
         f'APU "{apu_name}" not found in APU database. '
         'Using "unknown" APU with zero emissions and fuel consumption.'

@@ -41,13 +41,6 @@ def crosses_dateline(lon1, lon2):
     return np.sign(diff) * cross
 
 
-def filter_order_duplicates(seq):
-    '''Filters duplicate list entries while perserving order'''
-    seen = set()
-    seen_add = seen.add
-    return [x for x in seq if not (x in seen or seen_add(x))]
-
-
 def date_to_timestamp(d: date) -> pd.Timestamp:
     """Convert a Python `date` to a UTC Pandas `Timestamp` at midnight."""
     return cast(pd.Timestamp, pd.Timestamp(d, tzinfo=UTC))
