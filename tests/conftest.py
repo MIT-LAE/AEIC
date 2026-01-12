@@ -51,8 +51,10 @@ def default_config(request):
                 else:
                     config_data[section] = {param: value}
 
-    # Load the default configuration with updates applied.
-    Config.load(**config_data)
+    # Load the default configuration with updates applied, including an extra
+    # override to force loading of data files from the tests/data directory if
+    # such a file exists.
+    Config.load(**config_data, data_path_overrides=[TEST_DATA_DIR])
 
     # Test goes here...
     yield

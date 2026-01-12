@@ -67,6 +67,7 @@ source-exclude = ["airports.csv"]
 [project.scripts]
 convert-oag-data = "AEIC.commands.convert_oag_data:run"
 make-performance-model = "AEIC.commands.make_performance_model:cli"
+make-test-airports = "AEIC.commands.make_test_airports:run"
 
 [tool.ruff]
 extend-exclude = ["*.ipynb"]

@@ -38,6 +38,10 @@ class Config(CIBaseModel):
     this is taken from the AEIC_PATH environment variable if set, or defaults
     to the current working directory only."""
 
+    data_path_overrides: list[Path] = Field(default_factory=list)
+    """List of paths used for overriding the normal data directory search. Used
+    for testing."""
+
     performance_model: Path
     """Path to performance model data file."""
 
@@ -101,6 +105,10 @@ class Config(CIBaseModel):
     ) -> Path:
         """Get the full path to a file within the default data directory."""
 
+        for override_path in self.data_path_overrides:
+            override_file = override_path / f
+            if override_file.exists():
+                return override_file.resolve()
         with as_file(files('AEIC') / 'data') as data_dir:
             default_path = data_dir / f
             if default_path.exists() or missing_ok:
