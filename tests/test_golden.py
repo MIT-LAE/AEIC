@@ -1,12 +1,7 @@
-import sys
-
-import pytest
-
 import AEIC.trajectories.builders as tb
 from AEIC.trajectories import TrajectoryStore
 
 
-@pytest.mark.skipif(sys.platform != 'linux', reason='Golden test only on Linux')
 def test_trajectory_simulation_golden(
     test_data_dir, sample_missions, performance_model
 ):
@@ -18,6 +13,6 @@ def test_trajectory_simulation_golden(
     for idx, mis in enumerate(sample_missions):
         traj = builder.fly(performance_model, mis)
         comparison_traj = comparison_ts[idx]
-        assert traj == comparison_traj
+        assert traj.approx_eq(comparison_traj)
 
     comparison_ts.close()

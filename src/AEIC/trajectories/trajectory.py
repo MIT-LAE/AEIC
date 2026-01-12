@@ -102,6 +102,26 @@ class Trajectory:
                     return False
         return True
 
+    def approx_eq(self, other: object) -> bool:
+        """Two trajectories are approximately equal if their data dictionaries
+        are equal and all their field values are approximately equal."""
+        if not isinstance(other, Trajectory):
+            return NotImplemented
+        if self.X_data_dictionary != other.X_data_dictionary:
+            return False
+        for name in self.X_data_dictionary:
+            if name in self.X_data:
+                if not np.allclose(self.X_data[name], other.X_data[name]):
+                    return False
+            else:
+                if isinstance(self.X_metadata[name], str | None):
+                    if self.X_metadata[name] != other.X_metadata[name]:
+                        return False
+                else:
+                    if not np.isclose(self.X_metadata[name], other.X_metadata[name]):
+                        return False
+        return True
+
     def __init__(
         self, npoints: int, name: str | None = None, fieldsets: list[str] | None = None
     ):
