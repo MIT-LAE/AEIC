@@ -1,12 +1,12 @@
-import sys
-
 import pytest
 
 import AEIC.trajectories.builders as tb
 from AEIC.trajectories import TrajectoryStore
 
 
-@pytest.mark.skipif(sys.platform != 'linux', reason='Golden test only on Linux')
+@pytest.mark.skip(
+    reason='airport data is unstable: need to fix before golden test can be used'
+)
 def test_trajectory_simulation_golden(
     test_data_dir, sample_missions, performance_model
 ):
