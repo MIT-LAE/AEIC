@@ -1,248 +1,266 @@
 import re
+from dataclasses import dataclass
+
+from AEIC.performance.types import SpeedData, Speeds
+from AEIC.trajectories.phase import FlightPhase
+from AEIC.utils.units import FPM_TO_MPS, KNOTS_TO_MPS, MINUTES_TO_SECONDS
 
 
-def parse_PTF(file_path):
-    """
-    Reads the TASOPT performance file in a single pass and returns a dict:
-      {
-        "phases": {
-          "climb": {
-            "flight_levels_ft": [...],
-            "tas": [...],
-            "rocd_lo": [...],
-            "rocd_hi": [...],
-            "fuel_flow_lo": [...],
-            "fuel_flow_hi": [...],
-            "cas_lo": <int>,
-            "cas_hi": <int>,
-            "mach": <float>
-          },
-          "cruise": { ... },
-          "descent": { ... }
-        },
-        "max_alt_ft": ...,
-        "max_payload_kg": ...,
-        "low_mass_kg": ...,
-        "nominal_mass_kg": ...,
-        "high_mass_kg": ...
-      }
-    """
+@dataclass
+class ClimbPhaseData:
+    """One row of PTF file performance data for climb phase."""
 
-    # Prepare data structures for phases with new keys for speeds
-    climb_data = {
-        "flight_levels_ft": [],
-        "tas": [],
-        "rocd_lo": [],
-        "rocd_hi": [],
-        "fuel_flow_lo": [],
-        "fuel_flow_hi": [],
-        "cas_lo": None,
-        "cas_hi": None,
-        "mach": None,
-    }
-    cruise_data = {
-        "flight_levels_ft": [],
-        "tas": [],
-        "rocd_lo": [],
-        "rocd_hi": [],
-        "fuel_flow_lo": [],
-        "fuel_flow_hi": [],
-        "cas_lo": None,
-        "cas_hi": None,
-        "mach": None,
-    }
-    descent_data = {
-        "flight_levels_ft": [],
-        "tas": [],
-        "rocd_lo": [],
-        "rocd_hi": [],
-        "fuel_flow_lo": [],
-        "fuel_flow_hi": [],
-        "cas_lo": None,
-        "cas_hi": None,
-        "mach": None,
-    }
+    fl: int
+    """Flight level."""
 
-    # Prepare storage for top-level info
-    max_alt = None
-    max_payload = None
-    low_mass = None
-    nominal_mass = None
-    high_mass = None
+    tas: float
+    """True airspeed at nominal mass [m/s]."""
 
-    capture = False
+    rocd_low: float
+    """Rate of climb at low mass [m/s]."""
 
-    with open(file_path, encoding='utf-8', errors='ignore') as f:
-        for line in f:
-            # 1) Parse top-level lines before/after the table for
-            # alt/payload/mass and speeds:
-            if not capture:
-                # Max altitude
-                match_alt = re.search(r"Max Alt\.\s*\[ft\]:\s*([\d,]+)", line)
-                if match_alt:
-                    max_alt = int(match_alt.group(1).replace(",", ""))
+    rocd_nom: float
+    """Rate of climb at nominal mass [m/s]."""
 
-                # Max payload
-                match_payload = re.search(r"Max Payload\s*\[kg\]:\s*([\d,]+)", line)
-                if match_payload:
-                    max_payload = int(match_payload.group(1).replace(",", ""))
+    rocd_high: float
+    """Rate of climb at high mass [m/s]."""
 
-                # Mass levels
-                # low mass
-                if 'low' in line and 'climb' in line:
-                    match = re.search(r'low\s*-\s*(\d+)', line)
-                    if match:
-                        low_mass = int(match.group(1))
-                # nominal mass
-                elif 'nominal' in line and 'cruise' in line:
-                    match = re.search(r'nominal\s*-\s*(\d+)', line)
-                    if match:
-                        nominal_mass = int(match.group(1))
-                # high mass
-                elif 'high' in line and 'descent' in line:
-                    match = re.search(r'high\s*-\s*(\d+)', line)
-                    if match:
-                        high_mass = int(match.group(1))
+    fuel_flow_nom: float
+    """Fuel flow at nominal mass [kg/s]."""
 
-                # Parse speeds for each phase if the line starts with
-                # climb, cruise, or descent
-                stripped = line.lstrip()
-                if stripped.startswith("climb"):
-                    tokens = stripped.split()
-                    if len(tokens) >= 4:
-                        try:
-                            cas = tokens[2]  # Expecting a format like "250/300"
-                            mach = tokens[3]  # e.g., "0.80"
-                            cas_lo, cas_hi = cas.split("/")
-                            climb_data["cas_lo"] = int(cas_lo)
-                            climb_data["cas_hi"] = int(cas_hi)
-                            climb_data["mach"] = float(mach)
-                        except Exception:
-                            pass
-                elif stripped.startswith("cruise"):
-                    tokens = stripped.split()
-                    if len(tokens) >= 4:
-                        try:
-                            cas = tokens[2]
-                            mach = tokens[3]
-                            cas_lo, cas_hi = cas.split("/")
-                            cruise_data["cas_lo"] = int(cas_lo)
-                            cruise_data["cas_hi"] = int(cas_hi)
-                            cruise_data["mach"] = float(mach)
-                        except Exception:
-                            pass
-                elif stripped.startswith("descent"):
-                    tokens = stripped.split()
-                    if len(tokens) >= 4:
-                        try:
-                            cas = tokens[2]
-                            mach = tokens[3]
-                            cas_lo, cas_hi = cas.split("/")
-                            descent_data["cas_lo"] = int(cas_lo)
-                            descent_data["cas_hi"] = int(cas_hi)
-                            descent_data["mach"] = float(mach)
-                        except Exception:
-                            pass
 
-            # 2) Detect the start of the flight-level table
-            if "FL |" in line:
-                capture = True
-                continue
+@dataclass
+class CruisePhaseData:
+    """One row of PTF file performance data for cruise phase."""
 
-            # 3) Once capturing, parse columns for FL, climb, cruise, descent
-            if capture:
-                parts = line.split("|")
-                # We expect 4 columns: FL, CRUISE, CLIMB, DESCENT
-                if len(parts) < 4:
+    fl: int
+    """Flight level."""
+
+    tas: float
+    """True airspeed at nominal mass [m/s]."""
+
+    fuel_flow_low: float
+    """Fuel flow at low mass [kg/s]."""
+
+    fuel_flow_nom: float
+    """Fuel flow at nominal mass [kg/s]."""
+
+    fuel_flow_high: float
+    """Fuel flow at high mass [kg/s]."""
+
+
+@dataclass
+class DescentPhaseData:
+    """One row of PTF file performance data for descent phase."""
+
+    fl: int
+    """Flight level."""
+
+    tas: float
+    """True airspeed at nominal mass [m/s]."""
+
+    rocd_nom: float
+    """Rate of descent at nominal mass [m/s]."""
+
+    fuel_flow_nom: float
+    """Fuel flow at nominal mass [kg/s]."""
+
+
+@dataclass
+class PTFData:
+    """Internal representation of the contents of a BADA PTF file."""
+
+    aircraft_type: str
+    temperature_reference: str
+    maximum_altitude_ft: int
+    maximum_payload: int
+    low_mass: int
+    nominal_mass: int
+    high_mass: int
+    climb: list[ClimbPhaseData]
+    cruise: list[CruisePhaseData]
+    descent: list[DescentPhaseData]
+    speeds: Speeds
+
+    @property
+    def isa_offset(self) -> int:
+        """Estimate ISA offset from temperature reference string."""
+        match = re.search(r'ISA\s*([+-]\d+)', self.temperature_reference)
+        if match:
+            return int(match.group(1))
+        else:
+            return 0
+
+    @classmethod
+    def load(cls, file_path):
+        """Reads a BADA-format PTF file in a single pass."""
+
+        climb_data: list[ClimbPhaseData] = []
+        cruise_data: list[CruisePhaseData] = []
+        descent_data: list[DescentPhaseData] = []
+        speed_data: dict[FlightPhase, SpeedData] = {}
+
+        aircraft_type = 'unknown'
+        temperature_reference = 'ISA'
+
+        # All the following are initialized to zero to ensure types are int.
+        maximum_altitude_ft = 0
+        maximum_payload = 0
+        low_mass = 0
+        nominal_mass = 0
+        high_mass = 0
+
+        capture = False
+
+        with open(file_path, encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                # 1) Parse top-level lines before/after the table for
+                # alt/payload/mass and speeds:
+                if not capture:
+                    # Aircraft type
+                    match_ac_type = re.search(r"AC/Type\s*:\s*(.+)\s*$", line)
+                    if match_ac_type:
+                        aircraft_type = match_ac_type.group(1)
+
+                    # Temperature reference
+                    match_temp = re.search(r"Temperature\s*:\s*(.+)\s*$", line)
+                    if match_temp:
+                        temperature_reference = match_temp.group(1)
+
+                    # Max altitude
+                    match_alt = re.search(r"Max Alt\.\s*\[ft\]:\s*([\d,]+)", line)
+                    if match_alt:
+                        maximum_altitude_ft = int(match_alt.group(1).replace(',', ''))
+
+                    # Max payload
+                    match_payload = re.search(r"Max Payload\s*\[kg\]:\s*([\d,]+)", line)
+                    if match_payload:
+                        maximum_payload = int(match_payload.group(1).replace(',', ''))
+
+                    # Mass levels
+                    # low mass
+                    if 'low' in line and 'climb' in line:
+                        match = re.search(r'low\s*-\s*(\d+)', line)
+                        if match:
+                            low_mass = int(match.group(1))
+                    # nominal mass
+                    elif 'nominal' in line and 'cruise' in line:
+                        match = re.search(r'nominal\s*-\s*(\d+)', line)
+                        if match:
+                            nominal_mass = int(match.group(1))
+                    # high mass
+                    elif 'high' in line and 'descent' in line:
+                        match = re.search(r'high\s*-\s*(\d+)', line)
+                        if match:
+                            high_mass = int(match.group(1))
+
+                    # Parse speeds for each phase if the line starts with
+                    # climb, cruise, or descent
+                    def process(phase, stripped):
+                        tokens = stripped.split()
+                        if len(tokens) >= 4:
+                            try:
+                                # Expecting a format like "250/300" for CAS, and,
+                                # e.g. "0.80" for Mach number.
+                                cas_low, cas_high = tokens[2].split('/')
+                                speed_data[phase] = SpeedData(
+                                    cas_low=int(cas_low) * KNOTS_TO_MPS,
+                                    cas_high=int(cas_high) * KNOTS_TO_MPS,
+                                    mach=float(tokens[3]),
+                                )
+                            except Exception:
+                                pass
+
+                    stripped = line.lstrip()
+                    if stripped == '':
+                        continue
+                    match stripped.split()[0]:
+                        case 'climb':
+                            process(FlightPhase.CLIMB, stripped)
+                        case 'cruise':
+                            process(FlightPhase.CRUISE, stripped)
+                        case 'descent':
+                            process(FlightPhase.DESCENT, stripped)
+
+                # 2) Detect the start of the flight-level table
+                if 'FL |' in line:
+                    capture = True
                     continue
 
-                # Flight level in parts[0]
-                try:
-                    fl = int(parts[0].strip())
-                except ValueError:
-                    # If we can't parse a valid FL, skip
-                    continue
+                # 3) Once capturing, parse columns for FL, climb, cruise, descent
+                if capture:
+                    parts = line.split('|')
+                    # We expect 4 columns: FL, CRUISE, CLIMB, DESCENT
+                    if len(parts) < 4:
+                        continue
 
-                # ============ CRUISE ============
-                cruise_str = parts[1]
-                # Typically we expect [TAS, fuel_low, fuel_nom, fuel_high]
-                c_vals = re.findall(r"\d+\.?\d*", cruise_str)
-                if len(c_vals) >= 4:
-                    # TAS
-                    c_tas = float(c_vals[0])
-                    # Fuel flows ignoring nominal => Low and High
-                    c_fuel_lo = float(c_vals[1])
-                    c_fuel_hi = float(c_vals[3])
-                else:
-                    # If line is blank for cruise, skip
-                    c_tas = None
+                    # Flight level in parts[0]
+                    try:
+                        fl = int(parts[0].strip())
+                    except ValueError:
+                        # If we can't parse a valid FL, skip
+                        continue
 
-                # ============ CLIMB ============
-                climb_str = parts[2]
-                # Typically we expect [TAS, rocd_lo, rocd_nom, rocd_hi, fuel_nom]
-                cl_vals = re.findall(r"\d+\.?\d*", climb_str)
-                if len(cl_vals) >= 5:
-                    # TAS
-                    cl_tas = float(cl_vals[0])
-                    # ROCD
-                    cl_rocd_lo = float(cl_vals[1])
-                    cl_rocd_hi = float(cl_vals[3])  # ignoring nominal
-                    # Fuel: replicate nominal in lo & hi
-                    cl_fuel_nom = float(cl_vals[4])
-                else:
-                    # If line is blank for climb, skip
-                    cl_tas = None
+                    # ============ CRUISE ============
+                    cruise_str = parts[1]
+                    # Typically we expect [TAS, fuel_low, fuel_nom, fuel_high]
+                    c_vals = re.findall(r"\d+\.?\d*", cruise_str)
+                    if len(c_vals) >= 4:
+                        cruise_data.append(
+                            CruisePhaseData(
+                                fl=fl,
+                                tas=float(c_vals[0]) * KNOTS_TO_MPS,
+                                fuel_flow_low=float(c_vals[1]) / MINUTES_TO_SECONDS,
+                                fuel_flow_nom=float(c_vals[2]) / MINUTES_TO_SECONDS,
+                                fuel_flow_high=float(c_vals[3]) / MINUTES_TO_SECONDS,
+                            )
+                        )
 
-                # ============ DESCENT ============
-                descent_str = parts[3]
-                # Typically we expect [TAS_nom, rocd_nom, fuel_nom]
-                d_vals = re.findall(r"\d+\.?\d*", descent_str)
-                if len(d_vals) >= 3:
-                    d_tas_nom = float(d_vals[0])
-                    # TODO: For now just putting rocd for descent as negative
-                    d_rocd_nom = -float(d_vals[1])
-                    d_fuel_nom = float(d_vals[2])
-                else:
-                    d_tas_nom = None
+                    # ============ CLIMB ============
+                    climb_str = parts[2]
+                    # Typically we expect [TAS, rocd_low, rocd_nom, rocd_high, fuel_nom]
+                    cl_vals = re.findall(r"\d+\.?\d*", climb_str)
+                    if len(cl_vals) >= 5:
+                        climb_data.append(
+                            ClimbPhaseData(
+                                fl=fl,
+                                tas=float(cl_vals[0]) * KNOTS_TO_MPS,
+                                rocd_low=float(cl_vals[1]) * FPM_TO_MPS,
+                                rocd_nom=float(cl_vals[2]) * FPM_TO_MPS,
+                                rocd_high=float(cl_vals[3]) * FPM_TO_MPS,
+                                fuel_flow_nom=float(cl_vals[4]) / MINUTES_TO_SECONDS,
+                            )
+                        )
 
-                # Now store them if they exist
-                # -- Cruise
-                if c_tas is not None:
-                    cruise_data["flight_levels_ft"].append(fl)
-                    cruise_data["tas"].append(c_tas)
-                    # Cruise ROCD is always 0
-                    cruise_data["rocd_lo"].append(0.0)
-                    cruise_data["rocd_hi"].append(0.0)
-                    cruise_data["fuel_flow_lo"].append(c_fuel_lo)
-                    cruise_data["fuel_flow_hi"].append(c_fuel_hi)
+                    # ============ DESCENT ============
+                    descent_str = parts[3]
+                    # Typically we expect [TAS_nom, rocd_nom, fuel_nom]
+                    d_vals = re.findall(r"\d+\.?\d*", descent_str)
+                    if len(d_vals) >= 3:
+                        descent_data.append(
+                            DescentPhaseData(
+                                fl=fl,
+                                tas=float(d_vals[0]) * KNOTS_TO_MPS,
+                                # Descent ROCD is negative
+                                rocd_nom=-float(d_vals[1]) * FPM_TO_MPS,
+                                fuel_flow_nom=float(d_vals[2]) / MINUTES_TO_SECONDS,
+                            )
+                        )
 
-                # -- Climb
-                if cl_tas is not None:
-                    climb_data["flight_levels_ft"].append(fl)
-                    climb_data["tas"].append(cl_tas)
-                    climb_data["rocd_lo"].append(cl_rocd_lo)
-                    climb_data["rocd_hi"].append(cl_rocd_hi)
-                    climb_data["fuel_flow_lo"].append(cl_fuel_nom)
-                    climb_data["fuel_flow_hi"].append(cl_fuel_nom)
-
-                # -- Descent
-                if d_tas_nom is not None:
-                    descent_data["flight_levels_ft"].append(fl)
-                    descent_data["tas"].append(d_tas_nom)
-                    # Replicate nominal ROCD in both lo & hi
-                    descent_data["rocd_lo"].append(d_rocd_nom)
-                    descent_data["rocd_hi"].append(d_rocd_nom)
-                    descent_data["fuel_flow_lo"].append(d_fuel_nom)
-                    descent_data["fuel_flow_hi"].append(d_fuel_nom)
-
-    # Build final data structure
-    data = {
-        "phases": {"climb": climb_data, "cruise": cruise_data, "descent": descent_data},
-        # Top-level info
-        "max_alt_ft": max_alt,
-        "max_payload_kg": max_payload,
-        "low_mass_kg": low_mass,
-        "nominal_mass_kg": nominal_mass,
-        "high_mass_kg": high_mass,
-    }
-    return data
+        return cls(
+            aircraft_type=aircraft_type,
+            temperature_reference=temperature_reference,
+            maximum_altitude_ft=maximum_altitude_ft,
+            maximum_payload=maximum_payload,
+            low_mass=low_mass,
+            nominal_mass=nominal_mass,
+            high_mass=high_mass,
+            climb=climb_data,
+            cruise=cruise_data,
+            descent=descent_data,
+            speeds=Speeds(
+                climb=speed_data[FlightPhase.CLIMB],
+                cruise=speed_data[FlightPhase.CRUISE],
+                descent=speed_data[FlightPhase.DESCENT],
+            ),
+        )

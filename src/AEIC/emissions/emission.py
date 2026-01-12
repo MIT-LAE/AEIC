@@ -7,15 +7,20 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from AEIC.config import LTOInputMode, config
-from AEIC.performance_model import PerformanceModel
+from AEIC.config import config
+from AEIC.performance import LTOInputs
+from AEIC.performance.models import PerformanceModel
 from AEIC.trajectories.trajectory import Trajectory
 from AEIC.utils.consts import R_air, kappa
 from AEIC.utils.standard_atmosphere import (
     pressure_at_altitude_isa_bada4,
     temperature_at_altitude_isa_bada4,
 )
-from AEIC.utils.standard_fuel import get_SLS_equivalent_fuel_flow, get_thrust_cat
+from AEIC.utils.standard_fuel import (
+    get_SLS_equivalent_fuel_flow,
+    get_thrust_cat_cruise,
+    get_thrust_cat_lto,
+)
 
 from .APU_emissions import get_APU_emissions
 from .config import (
@@ -165,11 +170,7 @@ class Emission:
 
         # Compute Ground Service Equipment (GSE) emissions based on WNSF type
         if config.emissions.gse_enabled:
-            self.get_GSE_emissions(
-                self.performance_model.model_info['General_Information'][
-                    'aircraft_class'
-                ]
-            )
+            self.get_GSE_emissions(self.performance_model.aircraft_class)
 
         # Sum all emission contributions: trajectory + LTO + APU + GSE
         self.sum_total_emissions()
@@ -196,9 +197,9 @@ class Emission:
         ac_performance = self.performance_model
         idx_slice = self._trajectory_slice()
         lto_inputs = self._extract_lto_inputs()
-        lto_ff_array = lto_inputs['fuel_flow']
+        lto_ff_array = lto_inputs.fuel_flow
         fuel_flow = trajectory.fuel_flow[idx_slice]
-        thrust_categories = get_thrust_cat(fuel_flow, lto_ff_array, cruiseCalc=True)
+        thrust_categories = get_thrust_cat_cruise(fuel_flow, lto_ff_array)
 
         needs_hc = config.emissions.hc_enabled or (
             config.emissions.pmvol_enabled
@@ -231,7 +232,7 @@ class Emission:
         if needs_hc:
             hc_ei = self._compute_EI_HCCO(
                 sls_equiv_fuel_flow,
-                lto_inputs['hc_ei'],
+                lto_inputs.EI_HC,
                 lto_ff_array,
                 atmos_state,
             )
@@ -241,7 +242,7 @@ class Emission:
         if needs_co:
             co_ei = self._compute_EI_HCCO(
                 sls_equiv_fuel_flow,
-                lto_inputs['co_ei'],
+                lto_inputs.EI_CO,
                 lto_ff_array,
                 atmos_state,
             )
@@ -272,8 +273,8 @@ class Emission:
         ac_performance = self.performance_model
         TIM_LTO = self._get_LTO_TIMs()
         lto_inputs = self._extract_lto_inputs()
-        fuel_flows_LTO = lto_inputs['fuel_flow']
-        thrustCat = get_thrust_cat(fuel_flows_LTO, None, cruiseCalc=False)
+        fuel_flows_LTO = lto_inputs.fuel_flow
+        thrustCat = get_thrust_cat_lto(fuel_flows_LTO)
         thrust_labels = self._thrust_band_labels(thrustCat)
 
         constants = self._constant_species_values()
@@ -283,9 +284,9 @@ class Emission:
         self._get_LTO_nox(thrustCat, lto_inputs)
 
         if config.emissions.hc_enabled:
-            self.LTO_emission_indices['HC'] = lto_inputs['hc_ei']
+            self.LTO_emission_indices['HC'] = lto_inputs.EI_HC
         if config.emissions.co_enabled:
-            self.LTO_emission_indices['CO'] = lto_inputs['co_ei']
+            self.LTO_emission_indices['CO'] = lto_inputs.EI_CO
 
         if config.emissions.pmvol_enabled:
             self._get_LTO_PMvol(fuel_flows_LTO, thrust_labels, lto_inputs)
@@ -396,8 +397,8 @@ class Emission:
                 )
             bffm2_result = BFFM2_EINOx(
                 sls_equiv_fuel_flow=sls_equiv_fuel_flow,
-                NOX_EI_matrix=lto_inputs['nox_ei'],
-                fuelflow_performance=lto_inputs['fuel_flow'],
+                EI_NOx_matrix=lto_inputs.EI_NOx,
+                fuelflow_performance=lto_inputs.fuel_flow,
                 Pamb=atmos_state.pressure,
                 Tamb=atmos_state.temperature,
             )
@@ -526,62 +527,10 @@ class Emission:
             if self._field_controls[field]
         )
 
-    def _extract_lto_inputs(self):
-        """Return ordered fuel-flow and EI arrays for either EDB or user LTO data."""
-        if config.lto_input_mode is LTOInputMode.EDB:
-            edb = self.performance_model.EDB_data
-            fuel_flow = np.asarray(edb['fuelflow_KGperS'], dtype=float)
-            nox_ei = np.asarray(edb['NOX_EI_matrix'], dtype=float)
-            hc_ei = np.asarray(edb['HC_EI_matrix'], dtype=float)
-            co_ei = np.asarray(edb['CO_EI_matrix'], dtype=float)
-            thrust_pct = np.array([7.0, 30.0, 85.0, 100.0], dtype=float)
-        else:
-            settings = self.performance_model.LTO_data['thrust_settings']
-            ordered_modes = self._ordered_thrust_settings(settings)
-            fuel_flow = np.array(
-                [mode['FUEL_KGs'] for mode in ordered_modes], dtype=float
-            )
-            nox_ei = np.array(
-                [mode.get('NOX_EI', mode.get('EI_NOx', 0.0)) for mode in ordered_modes],
-                dtype=float,
-            )
-            hc_ei = np.array(
-                [mode.get('HC_EI', mode.get('EI_HC', 0.0)) for mode in ordered_modes],
-                dtype=float,
-            )
-            co_ei = np.array(
-                [mode.get('CO_EI', mode.get('EI_CO', 0.0)) for mode in ordered_modes],
-                dtype=float,
-            )
-            thrust_pct = np.array(
-                [mode.get('THRUST_FRAC', 0.0) * 100.0 for mode in ordered_modes],
-                dtype=float,
-            )
-
-        # TODO: Make this a dataclass.
-        return {
-            'fuel_flow': fuel_flow,
-            'nox_ei': nox_ei,
-            'hc_ei': hc_ei,
-            'co_ei': co_ei,
-            'thrust_pct': thrust_pct,
-        }
-
-    def _ordered_thrust_settings(self, settings):
-        """Preserve canonical idle -> takeoff order for thrust setting dictionaries."""
-        # TODO: Make this a natural ordering on an Enum representing the thrust
-        # modes.
-        if not isinstance(settings, dict):
-            return list(settings)
-        lower_lookup = {key.lower(): value for key, value in settings.items()}
-        ordered = []
-        for key in ('idle', 'approach', 'climb', 'takeoff'):
-            if key in lower_lookup:
-                ordered.append(lower_lookup[key])
-        for value in settings.values():
-            if value not in ordered:
-                ordered.append(value)
-        return ordered
+    def _extract_lto_inputs(self) -> LTOInputs:
+        """Return ordered fuel-flow and EI arrays for LTO data."""
+        assert self.performance_model.lto_performance is not None
+        return LTOInputs.from_performance(self.performance_model.lto_performance)
 
     def _thrust_band_labels(self, thrust_categories: np.ndarray) -> np.ndarray:
         """Translate numeric thrust codes into the L/H labels used by
@@ -654,13 +603,12 @@ class Emission:
         """Return sea-level static equivalent fuel flow"""
         if not enabled:
             return None
-        general_info = self.performance_model.model_info['General_Information']
         return get_SLS_equivalent_fuel_flow(
             fuel_flow,
             atmos_state.pressure,
             atmos_state.temperature,
             atmos_state.mach,
-            general_info['n_eng'],
+            self.performance_model.number_of_engines,
         )
 
     def _compute_EI_HCCO(
@@ -779,6 +727,7 @@ class Emission:
 
     def _get_LTO_TIMs(self):
         """Return the ICAO standard time-in-mode vector for Taxi → TO segments."""
+        # TODO: Units?
         TIM_TakeOff = 0.7 * 60
         TIM_Climb = 2.2 * 60
         TIM_Approach = 4.0 * 60
@@ -790,7 +739,7 @@ class Emission:
 
     def _get_LTO_nox(self, thrust_categories, lto_inputs):
         """Fill LTO NOx and species splits while keeping auxiliary arrays in sync."""
-        fuel_flows_LTO = lto_inputs['fuel_flow']
+        fuel_flows_LTO = lto_inputs.fuel_flow
         zeros = np.zeros_like(fuel_flows_LTO)
         if not config.emissions.nox_enabled:
             self.LTO_noProp = zeros
@@ -804,7 +753,7 @@ class Emission:
             self.LTO_honoProp = zeros
             return
 
-        self.LTO_emission_indices['NOx'] = lto_inputs['nox_ei']
+        self.LTO_emission_indices['NOx'] = lto_inputs.EI_NOx
         (
             self.LTO_noProp,
             self.LTO_no2Prop,
@@ -825,9 +774,7 @@ class Emission:
         if config.emissions.pmvol_method is PMvolMethod.FUEL_FLOW:
             LTO_PMvol, LTO_OCic = EI_PMvol_FuelFlow(fuel_flows_LTO, thrust_labels)
         elif config.emissions.pmvol_method is PMvolMethod.FOA3:
-            LTO_PMvol, LTO_OCic = EI_PMvol_FOA3(
-                lto_inputs['thrust_pct'], lto_inputs['hc_ei']
-            )
+            LTO_PMvol, LTO_OCic = EI_PMvol_FOA3(lto_inputs.thrust_pct, lto_inputs.EI_HC)
         elif config.emissions.pmvol_method is PMvolMethod.NONE:
             LTO_PMvol = LTO_OCic = np.zeros_like(fuel_flows_LTO)
         else:
@@ -842,6 +789,7 @@ class Emission:
         """Set PMnvol EIs for the four LTO thrust points."""
         method = config.emissions.pmnvol_method
         if method in (PMnvolMethod.FOA3, PMnvolMethod.MEEM):
+            # TODO: FIX
             PMnvolEI = np.asarray(
                 ac_performance.EDB_data['PMnvolEI_best_ICAOthrust'], dtype=float
             )
@@ -889,6 +837,7 @@ class Emission:
 
     def _scope11_profile(self, ac_performance):
         """Cache SCOPE11 lookups so we do the work only once."""
+        # TODO: FIX
         if self._scope11_cache is None:
             edb = ac_performance.EDB_data
             mass = calculate_PMnvolEI_scope11(

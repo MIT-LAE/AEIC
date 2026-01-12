@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from AEIC.missions import Mission
-from AEIC.performance_model import PerformanceModel
+from AEIC.performance.models import BasePerformanceModel
 
 from ..ground_track import GroundTrack
 from ..phase import FlightPhase
@@ -45,7 +45,7 @@ class Context:
     builder: 'Builder'
     """Trajectory builder instance being used for this simulation."""
 
-    ac_performance: PerformanceModel
+    ac_performance: BasePerformanceModel
     """Performance model used for trajectory simulation."""
 
     mission: Mission
@@ -81,7 +81,7 @@ class Builder(ABC):
     """Class for trajectory building context. Should be derived from base
     Context class."""
 
-    def __init__(self, options: Options = Options(), *args, **kwargs) -> None:
+    def __init__(self, options: Options = Options()) -> None:
         """Initialize trajectory builder with common options."""
 
         # Check that the context class has been defined properly in the
@@ -163,7 +163,7 @@ class Builder(ABC):
 
     def fly(
         self,
-        ac_performance: PerformanceModel,
+        ac_performance: BasePerformanceModel,
         mission: Mission,
         starting_mass: float | None = None,
         **kwargs,
@@ -174,7 +174,7 @@ class Builder(ABC):
         builder-specific additional keyword arguments.
 
         Args:
-            ac_performance (PerformanceModel): Performance model used for
+            ac_performance (BasePerformanceModel): Performance model used for
                 trajectory simulation.
             mission (Mission): Data dictating the mission to be flown
                 (departure/arrival info, etc.).
@@ -183,6 +183,7 @@ class Builder(ABC):
 
         Returns:
             trajectory (Trajectory): Trajectory object.
+
         """
 
         # This is a wrapper method to ensure that the simulation context gets
@@ -210,7 +211,7 @@ class Builder(ABC):
             # Allow user to specify starting mass if desired, but otherwise let
             # the trajectory builder calculate it.
             if self.starting_mass is None:
-                self.starting_mass = self.calc_starting_mass(**kwargs)
+                self.starting_mass = self.calc_starting_mass()
             assert self.starting_mass is not None
 
             # Set up trajectory: all initial values are zero, but that's OK,
@@ -236,11 +237,11 @@ class Builder(ABC):
 
             if self.options.iterate_mass:
                 # Iterate on starting mass to minimize mass residual.
-                self._iterate_mass(traj, **kwargs)
+                self._iterate_mass(traj)
             else:
                 # Otherwise, just fly a single iteration with the given starting
                 # mass.
-                self._fly_iteration(traj, **kwargs)
+                self._fly_iteration(traj)
 
             # If everything was OK, we return the filled-in trajectory here,
             # setting up metadata variables before we do.
@@ -260,13 +261,13 @@ class Builder(ABC):
             # trajectory.
             del self.ctx
 
-    def _iterate_mass(self, traj: Trajectory, **kwargs) -> None:
+    def _iterate_mass(self, traj: Trajectory) -> None:
         """Iterate on starting mass to minimize residual fuel mass."""
         mass_converged = False
         mass_res = 0
 
         for _ in range(self.options.max_mass_iters):
-            mass_res = self._fly_iteration(traj, **kwargs)
+            mass_res = self._fly_iteration(traj)
 
             # Keep the calculated trajectory if the mass is sufficiently
             # small.
@@ -284,14 +285,9 @@ class Builder(ABC):
                 f"{mass_res:.2e} > {self.options.mass_iter_reltol:.2e}"
             )
 
-    def _fly_iteration(self, traj: Trajectory, **kwargs):
+    def _fly_iteration(self, traj: Trajectory):
         """Run a single flight iteration. In non-weight-iterating mode, only
-        runs once. `kwargs` used to pass in relevent optimization variables in
-        applicable cases.
-
-        Args:
-            kwargs: Additional parameters needed by the specific type of
-                trajectory builder being used.
+        runs once.
 
         Returns:
             (float) Difference in fuel burned and calculated required fuel
@@ -316,7 +312,7 @@ class Builder(ABC):
         # descent phases).
         for phase in FlightPhase:
             if hasattr(self, phase.method_name):
-                getattr(self, phase.method_name)(traj, **kwargs)
+                getattr(self, phase.method_name)(traj)
 
         # Calculate weight residual normalized by total_fuel_mass.
         fuelBurned = self.starting_mass - traj.aircraft_mass[-1]
@@ -325,6 +321,6 @@ class Builder(ABC):
         return mass_residual
 
     @abstractmethod
-    def calc_starting_mass(self, **kwargs) -> float:
+    def calc_starting_mass(self) -> float:
         """Calculate the starting mass of the aircraft for the flight."""
         ...

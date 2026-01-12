@@ -36,6 +36,10 @@ myst_enable_extensions = [
     "dollarmath",
 ]
 
+autodoc_typehints = "description"
+autodoc_typehints_format = "short"
+myst_heading_anchors = 3
+add_function_parentheses = False
 autosummary_generate = True
 
 templates_path = ['_templates']

@@ -10,29 +10,8 @@ from pydantic import ConfigDict, Field, model_validator
 
 from AEIC.emissions.config import EmissionsConfig
 from AEIC.utils.helpers import deep_update
-from AEIC.utils.models import CIBaseModel, CIStrEnum
+from AEIC.utils.models import CIBaseModel
 from AEIC.weather.config import WeatherConfig
-
-
-class PerformanceInputMode(CIStrEnum):
-    """Options for selecting input modes for performance model."""
-
-    # INPUT OPTIONS
-    OPF = "opf"
-    PERFORMANCE_MODEL = "performance_model"
-
-
-class LTOInputMode(CIStrEnum):
-    """Options for selecting input modes for LTO data."""
-
-    PERFORMANCE_MODEL = 'performance_model'
-    EDB = 'edb'
-    INPUT_FILE = 'input_file'
-
-    @property
-    def requires_edb_file(self) -> bool:
-        """EDB mode needs an engine databank file path."""
-        return self is LTOInputMode.EDB
 
 
 class Config(CIBaseModel):
@@ -59,23 +38,12 @@ class Config(CIBaseModel):
     this is taken from the AEIC_PATH environment variable if set, or defaults
     to the current working directory only."""
 
-    performance_model_mode: PerformanceInputMode = (
-        PerformanceInputMode.PERFORMANCE_MODEL
-    )
-    """Performance model input mode selection: defaults to performance model
-    data."""
+    data_path_overrides: list[Path] = Field(default_factory=list)
+    """List of paths used for overriding the normal data directory search. Used
+    for testing."""
 
     performance_model: Path
     """Path to performance model data file."""
-
-    lto_input_mode: LTOInputMode = LTOInputMode.PERFORMANCE_MODEL
-    """LTO input mode selection: defaults to performance model data."""
-
-    lto_input_file: Path | None = None
-    """Path to LTO input data file (when using INPUT_FILE mode)."""
-
-    edb_input_file: Path | None = None
-    """Path to engine database file (for LTO emissions when using EDB mode)."""
 
     weather: WeatherConfig
     """Global weather configuration settings."""
@@ -108,31 +76,13 @@ class Config(CIBaseModel):
         return self
 
     @model_validator(mode='after')
-    def check_edb_file(self):
-        if self.lto_input_mode.requires_edb_file:
-            if self.edb_input_file is None:
-                raise ValueError(
-                    'edb_input_file must be specified when LTO_input_mode is "edb".'
-                )
-        return self
-
-    @model_validator(mode='after')
-    def check_lto_file(self):
-        if self.lto_input_mode == LTOInputMode.INPUT_FILE:
-            if self.lto_input_file is None:
-                raise ValueError(
-                    'lto_input_file must be specified when '
-                    'LTO_input_mode is "input_file".'
-                )
-        return self
-
-    @model_validator(mode='after')
     def resolve_paths(self):
-        for f in ['performance_model', 'edb_input_file', 'lto_input_file']:
-            if getattr(self, f) is not None:
-                object.__setattr__(
-                    self, f, Path(self.file_location(getattr(self, f))).resolve()
-                )
+        if getattr(self, 'performance_model') is not None:
+            object.__setattr__(
+                self,
+                'performance_model',
+                Path(self.file_location(getattr(self, 'performance_model'))).resolve(),
+            )
         if self.weather.weather_data_dir is not None:
             object.__setattr__(
                 self.weather,
@@ -155,6 +105,10 @@ class Config(CIBaseModel):
     ) -> Path:
         """Get the full path to a file within the default data directory."""
 
+        for override_path in self.data_path_overrides:
+            override_file = override_path / f
+            if override_file.exists():
+                return override_file.resolve()
         with as_file(files('AEIC') / 'data') as data_dir:
             default_path = data_dir / f
             if default_path.exists() or missing_ok:

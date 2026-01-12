@@ -1,11 +1,19 @@
+from enum import IntEnum
+
 import numpy as np
 
 
-def get_thrust_cat(
-    ff_eval: np.ndarray, ff_cal: np.ndarray, cruiseCalc: bool
-) -> np.ndarray:
+class ICAOThrustMode(IntEnum):
+    """ICAO thrust setting categories."""
+
+    TAKEOFF_CLIMB = 1
+    IDLE = 2
+    APPROACH = 3
+
+
+def get_thrust_cat_lto(ff_eval: np.ndarray) -> np.ndarray:
     """
-    Classify each fuel-flow value into a discrete thrust-setting category.
+    Classify each LTO fuel-flow value into a discrete thrust-setting category.
 
     Parameters
     ----------
@@ -13,26 +21,12 @@ def get_thrust_cat(
         Fuel-flow values to be evaluated
         Shape ``(n_times,)``.
     ff_cal : numpy.ndarray
-        Calibration fuel-flow points
-        *If* ``cruiseCalc`` is ``True``: at least the first three cruise
-        calibration points are required
-        (typically Idle, Approach, Climb/Take-off).
-        *If* ``cruiseCalc`` is ``False``: exactly four LTO-mode points
-        are expected.
-    cruiseCalc : bool
-        • ``True``  →  Cruise calculation.
-        • ``False`` →  Only LTO calculation.
+        Calibration fuel-flow points: exactly four LTO-mode points are expected.
 
     Returns
     -------
-    thrustCat : numpy.ndarray, dtype=int
+    thrustCat : numpy.ndarray, dtype=int (ICAOThrustMode)
         Integer category codes, same length as ``ff_eval``:
-
-        | Code | Meaning (ICAO convention) |
-        |------|---------------------------|
-        | 1    | Take-off / Climb          |
-        | 2    | Idle                      |
-        | 3    | Approach                  |
 
     Raises
     ------
@@ -41,55 +35,75 @@ def get_thrust_cat(
 
     Notes
     -----
-    **Cruise mode (`cruiseCalc=True`)**
+    The four thrust categories are fixed to
+    ``[2, 2, 3, 1]`` (Idle, Approach, Climb, Take-off) and simply returned.
+    """
+    # LTO case: assume exactly 4 calibration points (LTO modes)
+    # Categories fixed: [IDLE, APPROACH, CLIMB, TAKEOFF]
+    if ff_eval.size != 4:
+        raise ValueError("For LTO, ff_eval must have length 4.")
+    return np.array(
+        [
+            ICAOThrustMode.IDLE,
+            ICAOThrustMode.APPROACH,
+            ICAOThrustMode.TAKEOFF_CLIMB,
+            ICAOThrustMode.TAKEOFF_CLIMB,
+        ]
+    )
 
+
+def get_thrust_cat_cruise(ff_eval: np.ndarray, ff_cal: np.ndarray) -> np.ndarray:
+    """Classify each cruise fuel-flow value into a discrete thrust-setting category.
+
+    Parameters
+    ----------
+    ff_eval : numpy.ndarray
+        Fuel-flow values to be evaluated
+        Shape ``(n_times,)``.
+    ff_cal : numpy.ndarray
+        Calibration fuel-flow points: at least the first three cruise
+        calibration points are required (typically Idle, Approach,
+        Climb/Take-off).
+
+    Returns
+    -------
+    thrustCat : numpy.ndarray, dtype=int (ICAOThrustMode)
+        Integer category codes, same length as ``ff_eval``:
+
+    Raises
+    ------
+    ValueError
+        If the size/length constraints on ``ff_eval`` or ``ff_cal`` are violated.
+
+    Notes
+    -----
     Two mid-points define the category boundaries
     ``lowLimit  = (ff_cal[0] + ff_cal[1]) / 2``
     ``approachLimit = (ff_cal[1] + ff_cal[2]) / 2``
 
-    * Idle          : ``ff_eval ≤ lowLimit``       →  code 2
-    * Take-off/Climb: ``ff_eval >  approachLimit`` →  code 1
-    * Approach      : remainder                    →  code 3
+    * Idle          : ``ff_eval ≤ lowLimit``       →  ``IDLE``
+    * Take-off/Climb: ``ff_eval >  approachLimit`` →  ``TAKEOFF_CLIMB``
+    * Approach      : remainder                    →  ``APPROACH``
 
-    **LTO mode (`cruiseCalc=False`)**
-
-    The four thrust categories are fixed to
-    ``[2, 2, 3, 1]`` (Idle, Idle-2, Approach, Take-off) and simply returned.
     """
-    n_times = ff_eval.shape[0]
-    thrustCat = np.zeros(n_times, dtype=int)
+    if ff_eval.size < 3:
+        raise ValueError("For cruise, ff_eval must have at least 3 entries.")
 
-    if cruiseCalc:
-        if ff_eval.size < 3:
-            raise ValueError(
-                "fuelflow_KGperS must have at least 3 entries when cruiseCalc=True."
-            )
-        # Define thresholds from the first three calibration points
-        lowLimit = (ff_cal[0] + ff_cal[1]) / 2.0
-        approachLimit = (ff_cal[1] + ff_cal[2]) / 2.0
+    # Define thresholds from the first three calibration points
+    lowLimit = (ff_cal[0] + ff_cal[1]) / 2.0
+    approachLimit = (ff_cal[1] + ff_cal[2]) / 2.0
 
-        # Assign categories elementwise
-        thrustCat[ff_eval <= lowLimit] = 2
-        thrustCat[ff_eval > approachLimit] = 1
-        # The remainder (where thrustCat == 0) are Approach
-        thrustCat[thrustCat == 0] = 3
-
-    else:
-        # LTO case: assume exactly 4 calibration points (LTO modes)
-        # Categories fixed: [2, 2, 3, 1]
-        if ff_eval.size != 4:
-            raise ValueError(
-                "When cruiseCalc=False, fuelflow_KGperS must have length 11."
-            )
-        base = np.array([2, 2, 3, 1], dtype=int)
-        # We linearly interpolate each ff_eval against the 11-point calibration?
-        # But MATLAB simply tiles these 11 categories across each column.
-        # Since here we have 1D ff_eval, we assume it also has
-        # length 11 in the pure LTO scenario.
-        if n_times != 4:
-            raise ValueError("When cruiseCalc=False, ff_eval must have length 4.")
-        thrustCat = base.copy()
-    return thrustCat
+    return np.select(
+        [
+            ff_eval <= lowLimit,
+            ff_eval > approachLimit,
+        ],
+        [
+            ICAOThrustMode.IDLE,
+            ICAOThrustMode.TAKEOFF_CLIMB,
+        ],
+        default=ICAOThrustMode.APPROACH,
+    )
 
 
 def get_SLS_equivalent_fuel_flow(

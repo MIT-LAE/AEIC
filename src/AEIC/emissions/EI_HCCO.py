@@ -2,9 +2,9 @@ import numpy as np
 
 
 def EI_HCCO(
-    fuelflow_evaluate: np.ndarray,
-    x_EI_matrix: np.ndarray,
-    fuelflow_calibrate: np.ndarray,
+    ff_eval: np.ndarray,
+    x_EI: list[float],
+    ff_cal: list[float],
     Tamb: np.ndarray = np.empty(()),
     Pamb: np.ndarray = np.empty(()),
     cruiseCalc: bool = False,
@@ -14,12 +14,12 @@ def EI_HCCO(
 
     Parameters
     ----------
-    fuelflow_evaluate : ndarray, shape (n_points,)
+    ff_eval : ndarray, shape (n_points,)
         Fuel flows [kg/s] at which to compute xEI. Must be 1D.
-    x_EI_matrix : ndarray, shape (4,)
+    x_EI : ndarray, shape (4,)
         Baseline emission indices [g x / kg fuel] at four calibration fuel‐flow points.
-    fuelflow_calibrate : ndarray, shape (4,)
-        Calibration fuel flows [kg/s] corresponding to x_EI_matrix
+    ff_cal : ndarray, shape (4,)
+        Calibration fuel flows [kg/s] corresponding to x_EI
     cruiseCalc : bool
         If True, apply cruise correction (ambient T and P) to the final xEI.
     Tamb : ndarray, shape (n_points,)
@@ -30,21 +30,14 @@ def EI_HCCO(
     Returns
     -------
     xEI : ndarray, shape (n_points,)
-        The HC+CO emission index [g x / kg fuel] at each fuelflow_evaluate.
+        The HC+CO emission index [g x / kg fuel] at each ff_eval.
     """
 
     # Validate inputs
-    if x_EI_matrix.ndim != 1 or x_EI_matrix.size != 4:
-        raise ValueError("x_EI_matrix must be a 1D array of length 4.")
-    if fuelflow_calibrate.ndim != 1 or fuelflow_calibrate.size != 4:
-        raise ValueError("fuelflow_calibrate must be a 1D array of length 4.")
-    if fuelflow_evaluate.ndim != 1:
-        raise ValueError("fuelflow_evaluate must be a 1D array (n_points,).")
-
-    # Make copies to avoid modifying originals
-    x_EI = x_EI_matrix.astype(float).copy()
-    ff_cal = fuelflow_calibrate.astype(float).copy()
-    ff_eval = fuelflow_evaluate.astype(float).copy()
+    if len(x_EI) != 4:
+        raise ValueError("x_EI must be of length 4")
+    if len(ff_cal) != 4:
+        raise ValueError("ff_cal must be of length 4")
 
     # ----------------------------------------------------------------------------
     # 1. Compute slanted‐line parameters in log10 space
@@ -114,7 +107,7 @@ def EI_HCCO(
     # ----------------------------------------------------------------------------
     # 5. Allocate output array and compute xEI for each evaluation point
     # ----------------------------------------------------------------------------
-    n_points = ff_eval.size
+    n_points = len(ff_eval)
     xEI_out = np.zeros(n_points, dtype=float)
 
     # Compute log10 of evaluation fuel flows, masking out non‐positive flows
@@ -142,8 +135,8 @@ def EI_HCCO(
 
     # ----------------------------------------------------------------------------
     # 6. ACRP low‐thrust correction:
-    #    For any fuelflow_evaluate < ff_cal[0], use:
-    #       xEI_acrp = xEI * [1 + (–52) * (fuelflow_evaluate – ff_cal[0])]
+    #    For any ff_eval < ff_cal[0], use:
+    #       xEI_acrp = xEI * [1 + (–52) * (ff_eval – ff_cal[0])]
     #    Then overwrite those points with xEI_acrp.
     # ----------------------------------------------------------------------------
     ACRP_slope = -52.0

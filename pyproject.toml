@@ -32,6 +32,7 @@ dependencies = [
     "scipy>=1.16.3",
     "pandas>=2.3.3",
     "xarray>=2025.12.0",
+    "tomli-w>=1.2.0",
 ]
 
 [dependency-groups]
@@ -65,8 +66,12 @@ source-exclude = ["airports.csv"]
 
 [project.scripts]
 convert-oag-data = "AEIC.commands.convert_oag_data:run"
+make-performance-model = "AEIC.commands.make_performance_model:cli"
+make-test-airports = "AEIC.commands.make_test_airports:run"
 
 [tool.ruff]
+extend-exclude = ["*.ipynb"]
+
 # Use Black-compatible defaults
 line-length = 88
 

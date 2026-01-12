@@ -4,12 +4,19 @@ from typing import Self
 
 import numpy as np
 import pandas as pd
-
-# from numpy import ndarray as NDArray
 from numpy.typing import NDArray
+
+from .models import CIStrEnum
 
 # create a type for Union[float, NDArray]
 FloatOrNDArray = float | NDArray[np.float64]
+
+
+class AircraftClass(CIStrEnum):
+    WIDE = 'wide'
+    NARROW = 'narrow'
+    SMALL = 'small'
+    FREIGHT = 'freight'
 
 
 class DayOfWeek(Enum):

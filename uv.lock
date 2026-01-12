@@ -22,6 +22,7 @@ dependencies = [
     { name = "pyproj" },
     { name = "scipy" },
     { name = "timezonefinder" },
+    { name = "tomli-w" },
     { name = "tqdm" },
     { name = "xarray" },
 ]
@@ -53,6 +54,7 @@ requires-dist = [
     { name = "pyproj", specifier = ">=3.7.2" },
     { name = "scipy", specifier = ">=1.16.3" },
     { name = "timezonefinder", specifier = ">=8.0.0" },
+    { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "xarray", specifier = ">=2025.12.0" },
 ]
@@ -2102,6 +2104,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/9c/20/a5daf4418e2aa8956
 wheels = [
     { url = "https://files.pythonhosted.org/packages/35/17/fd9f301c6e8a97b2e5772ff36a1623fd6947359a1ec1c9f7f1b841b8bb38/timezonefinder-8.1.0-cp39-abi3-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:433612bcc8924ba9200df17268573895a8742ead435923e69a95245b1db0ce75", size = 28172566, upload-time = "2025-09-22T16:23:45.43Z" },
     { url = "https://files.pythonhosted.org/packages/c3/71/e28a59b645cafe0f2c0261cdbd7cd4eed47cbdb13870c4f5875ba43e796c/timezonefinder-8.1.0-cp39-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:0b87133777a3dbd1952f0874255a55d17c0da96c62d2156c49cf774720cf1d16", size = 28174544, upload-time = "2025-09-22T16:23:48.213Z" },
+]
+
+[[package]]
+name = "tomli-w"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/75/241269d1da26b624c0d5e110e8149093c759b7a286138f4efd61a60e75fe/tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021", size = 7184, upload-time = "2025-01-15T12:07:24.262Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90", size = 6675, upload-time = "2025-01-15T12:07:22.074Z" },
 ]
 
 [[package]]

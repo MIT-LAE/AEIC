@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from AEIC.config import Config, LTOInputMode, config
+from AEIC.config import Config, config
 from AEIC.emissions.config import EINOxMethod
 
 
@@ -23,7 +23,6 @@ def test_missing_config():
 def test_load_default_config():
     Config.load()
     assert config.performance_model is not None
-    assert config.lto_input_mode == LTOInputMode.EDB
     assert config.weather.weather_data_dir is not None
 
 
@@ -42,7 +41,6 @@ def test_load_config_file():
 
 
 def config1_checks():
-    assert config.lto_input_mode == LTOInputMode.PERFORMANCE_MODEL
     assert config.weather.use_weather is False
     assert config.emissions.sox_enabled is False
     assert config.emissions.nox_method == EINOxMethod.P3T3

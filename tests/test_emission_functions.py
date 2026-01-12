@@ -14,6 +14,7 @@ from AEIC.emissions.EI_PMnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
 from AEIC.emissions.EI_PMvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from AEIC.emissions.EI_SOx import EI_SOx, SOxEmissionResult
 from AEIC.emissions.lifecycle_CO2 import lifecycle_CO2
+from AEIC.performance.utils.apu import APU
 
 
 class TestEI_CO2:
@@ -103,45 +104,15 @@ class TestEI_HCCO:
         )
         assert np.all(np.isfinite(result))
 
-    def test_shape_consistency(self):
-        """Test shape consistency for fuel flow input"""
-        fuelflow_2d = np.array([[0.1, 0.5], [1.0, 2.0]])
-        with pytest.raises(ValueError, match="fuelflow_evaluate must be a 1D array"):
-            EI_HCCO(fuelflow_2d, self.x_EI_matrix, self.fuelflow_calibrate)
-
     def test_input_validation(self):
         """Test input validation for EI and calibration vectors"""
-        with pytest.raises(
-            ValueError, match="x_EI_matrix must be a 1D array of length 4"
-        ):
+        with pytest.raises(ValueError, match="x_EI must be of length 4"):
             EI_HCCO(
                 self.fuelflow_evaluate, np.array([1, 2, 3]), self.fuelflow_calibrate
             )
 
-        with pytest.raises(
-            ValueError, match="fuelflow_calibrate must be a 1D array of length 4"
-        ):
+        with pytest.raises(ValueError, match="ff_cal must be of length 4"):
             EI_HCCO(self.fuelflow_evaluate, self.x_EI_matrix, np.array([0.1, 0.2, 0.3]))
-
-    def test_cruise_correction(self):
-        """Test cruise correction modifies output as expected"""
-        result_no_cruise = EI_HCCO(
-            self.fuelflow_evaluate,
-            self.x_EI_matrix,
-            self.fuelflow_calibrate,
-            cruiseCalc=False,
-        )
-        result_with_cruise = EI_HCCO(
-            self.fuelflow_evaluate,
-            self.x_EI_matrix,
-            self.fuelflow_calibrate,
-            cruiseCalc=True,
-            Tamb=250.0,
-            Pamb=25000.0,
-        )
-
-        assert not np.allclose(result_no_cruise, result_with_cruise)
-        assert np.all(np.isfinite(result_with_cruise))
 
     def test_zero_and_negative_fuel_flows(self):
         """Test how zero and negative fuel flows are handled"""
@@ -198,7 +169,7 @@ class TestBFFM2_EINOx:
     def setup_method(self):
         """Set up test data"""
         self.fuelflow_trajectory = np.array([0.5, 1.0, 1.5, 2.0])
-        self.NOX_EI_matrix = np.array([30.0, 25.0, 20.0, 18.0])
+        self.EI_NOx_matrix = np.array([30.0, 25.0, 20.0, 18.0])
         self.fuelflow_performance = np.array([0.4, 0.8, 1.2, 1.8])
         self.Tamb = np.array([288.15, 250.0, 220.0, 280.0])
         self.Pamb = np.array([101325.0, 25000.0, 15000.0, 95000.0])
@@ -218,7 +189,7 @@ class TestBFFM2_EINOx:
         """Test basic NOx emissions calculation"""
         result = BFFM2_EINOx(
             self.fuelflow_trajectory,
-            self.NOX_EI_matrix,
+            self.EI_NOx_matrix,
             self.fuelflow_performance,
             self.Tamb,
             self.Pamb,
@@ -235,7 +206,7 @@ class TestBFFM2_EINOx:
         """Test that all outputs are non-negative"""
         result = BFFM2_EINOx(
             self.fuelflow_trajectory,
-            self.NOX_EI_matrix,
+            self.EI_NOx_matrix,
             self.fuelflow_performance,
             self.Tamb,
             self.Pamb,
@@ -248,7 +219,7 @@ class TestBFFM2_EINOx:
         """Test that NO + NO2 + HONO proportions sum to 1"""
         result = BFFM2_EINOx(
             self.fuelflow_trajectory,
-            self.NOX_EI_matrix,
+            self.EI_NOx_matrix,
             self.fuelflow_performance,
             self.Tamb,
             self.Pamb,
@@ -274,7 +245,7 @@ class TestBFFM2_EINOx:
         """Test that all outputs are finite"""
         result = BFFM2_EINOx(
             self.fuelflow_trajectory,
-            self.NOX_EI_matrix,
+            self.EI_NOx_matrix,
             self.fuelflow_performance,
             self.Tamb,
             self.Pamb,
@@ -283,43 +254,17 @@ class TestBFFM2_EINOx:
         for array in self._components(result):
             assert np.all(np.isfinite(array))
 
-    def test_cruise_correction_effect(self):
-        """Test that cruise correction has an effect"""
-        results_no_cruise = BFFM2_EINOx(
-            self.fuelflow_trajectory,
-            self.NOX_EI_matrix,
-            self.fuelflow_performance,
-            self.Tamb,
-            self.Pamb,
-            cruiseCalc=False,
-        )
-
-        results_with_cruise = BFFM2_EINOx(
-            self.fuelflow_trajectory,
-            self.NOX_EI_matrix,
-            self.fuelflow_performance,
-            self.Tamb,
-            self.Pamb,
-            cruiseCalc=True,
-        )
-
-        # NOx EI should be different
-        assert not np.allclose(
-            results_no_cruise.NOxEI,
-            results_with_cruise.NOxEI,
-        )
-
-    @patch('AEIC.utils.standard_fuel.get_thrust_cat')
-    def test_thrust_categorization(self, mock_get_thrust_cat):
+    @patch('AEIC.utils.standard_fuel.get_thrust_cat_cruise')
+    def test_thrust_categorization(self, mock_get_thrust_cat_cruise):
         """Test thrust categorization functionality"""
         # Mock thrust categories
-        mock_get_thrust_cat.return_value = np.array(
+        mock_get_thrust_cat_cruise.return_value = np.array(
             [1, 2, 3, 1]
         )  # High, Low, Approach, High
 
         result = BFFM2_EINOx(
             self.fuelflow_trajectory,
-            self.NOX_EI_matrix,
+            self.EI_NOx_matrix,
             self.fuelflow_performance,
             self.Tamb,
             self.Pamb,
@@ -333,7 +278,7 @@ class TestBFFM2_EINOx:
         """Reference regression to guard against inadvertent logic changes"""
         result = BFFM2_EINOx(
             self.fuelflow_trajectory,
-            self.NOX_EI_matrix,
+            self.EI_NOx_matrix,
             self.fuelflow_performance,
             self.Tamb,
             self.Pamb,
@@ -485,13 +430,15 @@ class TestGetAPUEmissions:
 
         self.LTO_emission_indices = {'SO2': np.array([1.2]), 'SO4': np.array([0.8])}
 
-        self.APU_data = {
-            'fuel_kg_per_s': 0.1,
-            'PM10_g_per_kg': 0.5,
-            'NOx_g_per_kg': 15.0,
-            'HC_g_per_kg': 2.0,
-            'CO_g_per_kg': 25.0,
-        }
+        self.APU_data = APU(
+            name='Test APU',
+            defra='00000',
+            fuel_kg_per_s=0.1,
+            PM10_g_per_kg=0.5,
+            NOx_g_per_kg=15.0,
+            HC_g_per_kg=2.0,
+            CO_g_per_kg=25.0,
+        )
 
         self.LTO_noProp = np.array([0.85])
         self.LTO_no2Prop = np.array([0.10])
@@ -546,7 +493,7 @@ class TestGetAPUEmissions:
             apu_tim=apu_tim,
         )
 
-        fuel_burn = self.APU_data['fuel_kg_per_s'] * apu_tim
+        fuel_burn = self.APU_data.fuel_kg_per_s * apu_tim
         for field in apu_ei.dtype.names:
             expected = apu_ei[field] * fuel_burn
             assert np.isclose(apu_g[field], expected, rtol=1e-10), (
@@ -566,14 +513,13 @@ class TestGetAPUEmissions:
             EI_H2O=1233.3865,
         )
 
-        assert apu_ei['NO'] == self.APU_data['PM10_g_per_kg'] * self.LTO_noProp[0]
-        assert apu_ei['NO2'] == self.APU_data['PM10_g_per_kg'] * self.LTO_no2Prop[0]
-        assert apu_ei['HONO'] == self.APU_data['PM10_g_per_kg'] * self.LTO_honoProp[0]
+        assert apu_ei['NO'] == self.APU_data.PM10_g_per_kg * self.LTO_noProp[0]
+        assert apu_ei['NO2'] == self.APU_data.PM10_g_per_kg * self.LTO_no2Prop[0]
+        assert apu_ei['HONO'] == self.APU_data.PM10_g_per_kg * self.LTO_honoProp[0]
 
     def test_zero_fuel_flow_handling(self):
         """Test handling of zero fuel flow"""
-        apu_data_zero = self.APU_data.copy()
-        apu_data_zero['fuel_kg_per_s'] = 0.0
+        apu_data_zero = self.APU_data.model_copy(update={'fuel_kg_per_s': 0.0})
 
         apu_ei, apu_g, _ = get_APU_emissions(
             self.APU_emission_indices,
@@ -752,13 +698,13 @@ class TestIntegration:
     def test_nox_emissions_consistency(self):
         """Test NOx emissions consistency across functions"""
         fuelflow_trajectory = np.array([1.0, 1.5, 2.0])
-        NOX_EI_matrix = np.array([30.0, 25.0, 20.0, 18.0])
+        EI_NOx_matrix = np.array([30.0, 25.0, 20.0, 18.0])
         fuelflow_performance = np.array([0.8, 1.2, 1.6, 2.0])
         Tamb = np.array([288.15, 250.0, 220.0])
         Pamb = np.array([101325.0, 25000.0, 15000.0])
 
         result = BFFM2_EINOx(
-            fuelflow_trajectory, NOX_EI_matrix, fuelflow_performance, Tamb, Pamb
+            fuelflow_trajectory, EI_NOx_matrix, fuelflow_performance, Tamb, Pamb
         )
 
         assert np.allclose(

@@ -1,22 +1,10 @@
-import tomllib
-
 import numpy as np
 import pytest
 
 import AEIC.trajectories.builders as tb
-from AEIC.config import config
 from AEIC.missions import Mission
-from AEIC.performance_model import PerformanceModel
 from AEIC.trajectories import FieldMetadata, FieldSet, TrajectoryStore
 from AEIC.utils.helpers import iso_to_timestamp
-
-
-@pytest.fixture
-def sample_missions():
-    missions_file = config.file_location('missions/sample_missions_10.toml')
-    with open(missions_file, 'rb') as f:
-        mission_dict = tomllib.load(f)
-    return Mission.from_toml(mission_dict)
 
 
 @pytest.fixture
@@ -48,13 +36,6 @@ def iteration_params():
     return dict(test_reltol=1e-6, test_maxiters=1000)
 
 
-@pytest.fixture
-def performance_model():
-    return PerformanceModel(
-        config.file_location('performance/sample_performance_model.toml')
-    )
-
-
 test_fields = FieldSet(
     'test_fields',
     test_field1=FieldMetadata(
@@ -64,6 +45,15 @@ test_fields = FieldSet(
         field_type=np.int32, description='A test field 2', units='unit2'
     ),
 )
+
+
+def test_trajectory_simulation_single(sample_missions, performance_model):
+    builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+
+    mis = sample_missions[0]
+    traj = builder.fly(performance_model, mis)
+
+    assert len(traj) > 100
 
 
 def test_trajectory_simulation_basic(tmp_path, sample_missions, performance_model):

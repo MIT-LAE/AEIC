@@ -56,7 +56,9 @@ class Extras:
 # trajectory store doesn't like incomplete data.
 
 
-def make_test_trajectory(npoints: int, seed: int, extras: bool = False) -> Trajectory:
+def make_test_trajectory(
+    npoints: int, seed: int, extras: bool = False, nulls: bool = False
+) -> Trajectory:
     t = Trajectory(npoints, name=f'traj_{seed}', fieldsets=['demo'] if extras else None)
     t.flight_id = seed
     t.fuel_flow = np.random.rand(npoints) * 5000 + 2000
@@ -73,7 +75,6 @@ def make_test_trajectory(npoints: int, seed: int, extras: bool = False) -> Traje
     t.heading = np.random.rand(npoints) * 360
     t.true_airspeed = np.random.rand(npoints) * 300 + 200
     t.ground_speed = t.true_airspeed + np.random.randn(npoints) * 5
-    t.flight_level_weight = np.ones(npoints)
     t.starting_mass = t.aircraft_mass[0]
     t.total_fuel_mass = t.fuel_mass[0] - t.fuel_mass[-1]
     t.n_climb = npoints // 3
@@ -84,6 +85,9 @@ def make_test_trajectory(npoints: int, seed: int, extras: bool = False) -> Traje
         t.f1 = extra_fields.f1
         t.f2 = extra_fields.f2
         t.mf = extra_fields.mf
+    if nulls:
+        t.flight_id = None
+        t.name = None
     return t
 
 
@@ -160,6 +164,31 @@ def test_create_reopen_large(tmp_path: Path):
         assert len(ts_read) == 1000000
         assert len(ts_read[200000]) == 100
         assert len(ts_read[999999]) == 100
+
+
+def test_read_nulls(tmp_path: Path):
+    # Check re-reading of null values from trajectory store.
+
+    path = tmp_path / 'test.nc'
+    with TrajectoryStore.create(base_file=path, title='Nulls') as ts:
+        ts.add(make_test_trajectory(10, 1, nulls=True))
+        ts.add(make_test_trajectory(15, 2, nulls=True))
+
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        assert ts_read.global_attributes['title'] == 'Nulls'
+        assert len(ts_read) == 2
+
+        t0 = ts_read[0]
+        assert len(t0) == 10
+        assert t0.flight_id is None
+        assert t0.name == ''
+        assert len(t0.fuel_flow) == 10
+
+        t1 = ts_read[1]
+        assert len(t1) == 15
+        assert t1.flight_id is None
+        assert t1.name == ''
+        assert len(t1.fuel_flow) == 15
 
 
 def test_multi_threading(tmp_path: Path):

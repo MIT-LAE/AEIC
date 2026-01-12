@@ -14,6 +14,7 @@ import pandas as pd
 import AEIC.utils.airports as airports
 from AEIC.utils.spatial import great_circle_distance
 from AEIC.utils.types import DayOfWeek, TimeOfDay
+from AEIC.utils.units import MINUTES_TO_SECONDS
 
 from .database import Database
 
@@ -246,8 +247,8 @@ class WritableDatabase(Database):
                 # Bitmask for days of week.
                 self._make_dow_mask(days),
                 # Both times are minutes since midnight, local time.
-                departure_time.hour * 60 + departure_time.minute,
-                arrival_time.hour * 60 + arrival_time.minute,
+                departure_time.hour * MINUTES_TO_SECONDS + departure_time.minute,
+                arrival_time.hour * MINUTES_TO_SECONDS + arrival_time.minute,
                 arrival_day_offset,
                 service_type,
                 aircraft_type,

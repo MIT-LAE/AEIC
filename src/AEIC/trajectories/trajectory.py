@@ -26,9 +26,6 @@ BASE_FIELDS = FieldSet(
     heading=FieldMetadata(description='Aircraft heading', units='degrees'),
     true_airspeed=FieldMetadata(description='True airspeed', units='m/s'),
     ground_speed=FieldMetadata(description='Ground speed', units='m/s'),
-    flight_level_weight=FieldMetadata(
-        description='Flight level weight factor', units='dimensionless'
-    ),
     # Trajectory metadata fields and their metadata. Each of these fields has a
     # single value per trajectory.
     starting_mass=FieldMetadata(
@@ -88,6 +85,42 @@ class Trajectory:
         'X_metadata',
         'X_npoints',
     }
+
+    def __eq__(self, other: object) -> bool:
+        """Two trajectories are equal if their data dictionaries are equal and
+        all their field values are equal."""
+        if not isinstance(other, Trajectory):
+            return NotImplemented
+        if self.X_data_dictionary != other.X_data_dictionary:
+            return False
+        for name in self.X_data_dictionary:
+            if name in self.X_data:
+                if not np.array_equal(self.X_data[name], other.X_data[name]):
+                    return False
+            else:
+                if self.X_metadata[name] != other.X_metadata[name]:
+                    return False
+        return True
+
+    def approx_eq(self, other: object) -> bool:
+        """Two trajectories are approximately equal if their data dictionaries
+        are equal and all their field values are approximately equal."""
+        if not isinstance(other, Trajectory):
+            return NotImplemented
+        if self.X_data_dictionary != other.X_data_dictionary:
+            return False
+        for name in self.X_data_dictionary:
+            if name in self.X_data:
+                if not np.allclose(self.X_data[name], other.X_data[name]):
+                    return False
+            else:
+                if isinstance(self.X_metadata[name], str | None):
+                    if self.X_metadata[name] != other.X_metadata[name]:
+                        return False
+                else:
+                    if not np.isclose(self.X_metadata[name], other.X_metadata[name]):
+                        return False
+        return True
 
     def __init__(
         self, npoints: int, name: str | None = None, fieldsets: list[str] | None = None
@@ -205,13 +238,21 @@ class Trajectory:
             # Check that the type of the assigned value can be safely cast to
             # the field type and cast and assign the value if OK.
             self.X_data[name] = _convert_types(
-                self.X_data_dictionary[name].field_type, value, 'data', name
+                self.X_data_dictionary[name].field_type,
+                value,
+                'data',
+                name,
+                self.X_data_dictionary[name].required,
             )
         elif name in self.X_metadata:
             # Check that the type of the assigned value can be safely cast to
             # the field type and cast and assign the value if OK.
             self.X_metadata[name] = _convert_types(
-                self.X_data_dictionary[name].field_type, value, 'metadata', name
+                self.X_data_dictionary[name].field_type,
+                value,
+                'metadata',
+                name,
+                self.X_data_dictionary[name].required,
             )
         else:
             raise ValueError(f"'Trajectory' object has no attribute '{name}'")
@@ -309,7 +350,9 @@ class Trajectory:
             )
 
 
-def _convert_types(expected_type: type, value: Any, label: str, name: str) -> Any:
+def _convert_types(
+    expected_type: type, value: Any, label: str, name: str, required: bool = True
+) -> Any:
     """Check that the type of the assigned value can be safely cast to the
     expected type and return the cast value.
 
@@ -317,11 +360,23 @@ def _convert_types(expected_type: type, value: Any, label: str, name: str) -> An
     the type check and casting.)
     """
 
+    # Wrap single values.
     arr = value
     wrapped = False
     if not isinstance(value, np.ndarray):
         arr = np.asarray(value)
         wrapped = True
+
+    # Handle missing values for optional fields.
+    if not required:
+        if (
+            value is None
+            or hasattr(arr, 'mask')
+            and np.all(getattr(arr, 'mask'))
+            or arr.size > 1
+            and np.all([v is None for v in arr])
+        ):
+            return None
 
     # Check that the type of the assigned value can be safely cast to
     # the field type.

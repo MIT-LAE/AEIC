@@ -26,37 +26,36 @@ included as part of the search. For example, if you set `AEIC_PATH` to
 
 ## Configuration initialization and access
 
-The AEIC configuration system is accessed via the `AEIC.config` package. In
-normal usage, you import both the `Config` class and the `config` singleton
-instance from this module:
+The AEIC configuration system is accessed via the {py:mod}`AEIC.config`
+package. In normal usage, you import both the {py:class}`Config
+<AEIC.config.Config>` class and the {py:data}`config <AEIC.config.config>`
+singleton instance from this module:
 
 ```python
 from AEIC.config import Config, config
 ```
 
-A selected AEIC configuration must then be loaded using the `Config.load`
-method. Calling `Config.load()` without arguments loads the default AEIC
-configuration (from the file `src/AEIC/data/default_config.toml` in the AEIC
-source tree). Individual configuration settings can be overridden by providing
-either a TOML file (that needs to contain only the options that are modified),
-or by passing keyword arguments to the `Config.load` method. For example, here
-we set the `lifecycle_enabled` emissions option to false (it defaults to true)
-and set the LTO input model to "performance_model" (it defaults to "edb", and
-you can use a string or the `LTOInputMode` enum value). All other values are
-taken from the default configuration that's included in the AEIC package.
+A selected AEIC configuration must then be loaded using the
+{py:meth}`Config.load <AEIC.config.Config.load>` method. Calling
+`Config.load()` without arguments loads the default AEIC configuration (from
+the file `src/AEIC/data/default_config.toml` in the AEIC source tree).
+Individual configuration settings can be overridden by providing either a TOML
+file (that needs to contain only the options that are modified), or by passing
+keyword arguments to the {py:meth}`Config.load <AEIC.config.Config.load>`
+method. For example, here we set the `lifecycle_enabled` emissions option to
+false (it defaults to true). All other values are taken from the default
+configuration that's included in the AEIC package.
 
 ```python
 from AEIC.config import Config, LTOInputMode
 
-Config.load(
-    emissions=dict(lifecycle_enabled=False),
-    lto_input_mode=LTOInputMode.PERFORMANCE_MODEL,
-)
+Config.load(emissions=dict(lifecycle_enabled=False))
 ```
 
-The global AEIC system configuration can be accessed via the `config` proxy
-object in the `AEIC.config` package. Attempting to access values in this
-object before initializing the system configuration will result in an error:
+The global AEIC system configuration can be accessed via the {py:data}`config
+<AEIC.config.config>` proxy object in the {py.mod}`AEIC.config` package.
+Attempting to access values in this object before initializing the system
+configuration will result in an error:
 
 ```python
 from AEIC.config import Config, config
@@ -75,17 +74,19 @@ values, you will do `from AEIC.config import config` at the top of your Python
 file and then use values like `config.emissions.lifecycle_enabled`, and these
 will come from whatever the currently loaded configuration is.
 
-Sometimes, for debugging, you may want to get a real `Config` object for the
-current configuration, instead of going via the `config` proxy. You can do
-this using the `Config.get()` method.
+Sometimes, for debugging, you may want to get a real {py:class}`Config
+<AEIC.config.Config>` object for the current configuration, instead of going
+via the `config` proxy. You can do this using the {py:meth}`Config.get
+<AEIC.config.Config.get>` method.
 
 ## Configuration uniqueness and immutability
 
-Only one `Config` object may exist at any time. This prevents accidentally
-running part of a simulation with one set of configuration data and another
-part with a different configuration. There should be no cases in code within
-AEIC where this poses an obstacle. (It does make testing a little more
-difficult, but this is dealt with in our test setup code.)
+Only one {py:class}`Config <AEIC.config.Config>` object may exist at any time.
+This prevents accidentally running part of a simulation with one set of
+configuration data and another part with a different configuration. There
+should be no cases in code within AEIC where this poses an obstacle. (It does
+make testing a little more difficult, but this is dealt with in our test setup
+code.)
 
 The configuration is frozen: it may not be modified it once it is initialized.
 This is also intended to avoid problems with simulations running with
@@ -96,9 +97,9 @@ data for non-test use cases.)
 
 In normal use and development of AEIC code, you should not need to do this,
 but it's possible to reset the configuration so that you can load a different
-one using the `Config.reset` method. This is important for testing and
-interactive use of the configuration system, but you should not be doing it in
-"normal" AEIC code!
+one using the {py:meth}`Config.reset <AEIC.config.Config.reset>` method. This
+is important for testing and interactive use of the configuration system, but
+you should not be doing it in "normal" AEIC code!
 
 ## Main configuration class
 
