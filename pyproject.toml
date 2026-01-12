@@ -69,6 +69,8 @@ convert-oag-data = "AEIC.commands.convert_oag_data:run"
 make-performance-model = "AEIC.commands.make_performance_model:cli"
 
 [tool.ruff]
+extend-exclude = ["*.ipynb"]
+
 # Use Black-compatible defaults
 line-length = 88
 
