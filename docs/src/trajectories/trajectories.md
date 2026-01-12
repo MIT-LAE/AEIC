@@ -6,18 +6,18 @@ operations below $914\,\text{m}$ relative to the departure/arrival airport is cl
 operations and are represented using ICAO Annex 16 Volume II time-in-modes. AEIC assumes that
 a negligible amount of fuel is burned during these operations.
 
-AEIC currently only supports a trajectory simulation method which is very similar to the
-legacy ([AEIC v2](<https://zenodo.org/records/6461767>)) trajectory model. In the future,
-support for additional trajectory models will be added. Possible additions include more
-dynamics-driven non-trapezoidal trajectories, trajectories closer to real flight tracks
-based on [ADS-B](<https://www.adsbexchange.com/>) data, and optimized (horzontal, vertical,
-speed) trajectories.
+AEIC currently only supports a trajectory simulation method which is very
+similar to the legacy ([AEIC v2](https://zenodo.org/records/6461767))
+trajectory model. In the future, support for additional trajectory models will
+be added. Possible additions include more dynamics-driven non-trapezoidal
+trajectories, trajectories closer to real flight tracks based on
+[ADS-B](https://www.adsbexchange.com/) data, and optimized (horzontal,
+vertical, speed) trajectories.
 
-```{eval-rst}
-.. toctree::
-   :maxdepth: 1
+```{toctree}
+:maxdepth: 1
 
-   trajectory_data.md
-   trajectory_builders.md
-   trajectory_stores.md
+trajectory_data.md
+trajectory_builders.md
+trajectory_stores.md
 ```

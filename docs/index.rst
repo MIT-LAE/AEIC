@@ -1,44 +1,48 @@
-.. AEIC documentation master file, created by
-   sphinx-quickstart on Wed Feb  5 10:33:56 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to AEIC's documentation!
 ================================
 
-The **Aviation Emissions Inventory Tool** (``AEIC``) is a Python library for modelling and aggregating global aviation emissions over time.
-Based on a previous version made using ``MATLAB`` by Simone et al. (found `here <https://zenodo.org/records/6461767>`_), this updated
-library seeks to migrate the MATLAB functionality to Python and add support for previously unsupported performance models,
-updated trajectory dynamics, parallelization, and more.
+The **Aviation Emissions Inventory Tool** (``AEIC``) is a Python library for
+modelling and aggregating global aviation emissions over time. Based on a
+previous version made using ``MATLAB`` by Simone et al. (found `here
+<https://zenodo.org/records/6461767>`_), this updated library seeks to migrate
+the MATLAB functionality to Python and add support for previously unsupported
+performance models, updated trajectory dynamics, parallelization, and more.
 
 .. note::
    This project is under active development
 
-.. include:: main_page.rst
-   :start-after: .. begin-getting-started
-   :end-before: .. end-getting-started
+.. include:: main_page.md
+   :parser: myst_parser.docutils_
 
 .. toctree::
    :hidden:
    :maxdepth: 2
-   :caption: Getting Started
+   :caption: Getting started
 
    main_page
 
 .. toctree::
    :hidden:
    :maxdepth: 2
-   :caption: AEIC Modules
+   :caption: AEIC modules
 
    src/configuration.md
-   src/performance_model
+   src/performance_models/performance_models.md
    src/trajectories/trajectories.md
-   src/emission
-   src/bada
-   src/gridding
+   src/emission.md
+   src/bada.md
+   src/gridding.md
    src/missions.md
    src/mission_database.md
    src/oag.md
-   src/parsers
+   src/parsers.md
    src/utilities.md
-   src/weather
+   src/weather.md
+
+.. toctree::
+   :hidden:
+   :maxdepth: 2
+   :caption: Developer documentation
+
+   src/developer/tools.md
+   src/developer/conventions.md

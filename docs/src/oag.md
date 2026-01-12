@@ -2,14 +2,15 @@
 
 Currently the primary source of scheduled flight data for AEIC is OAG data.
 This is converted from the CSV files provided by OAG into AEIC mission
-databases using code in the `AEIC.missions.oag` package. This contains classes
-representing records from OAG CSV files and a specialized database class
-(`OAGDatabase`) to generate the database entries needed to represent OAG data.
+databases using code in the {py:mod}`AEIC.missions.oag` package. This contains
+classes representing records from OAG CSV files and a specialized database
+class ({py:class}`OAGDatabase`) to generate the database entries needed to
+represent OAG data.
 
 In normal use, these classes will mostly only be used via that
 `convert-oag-data` utility. Once a mission database has been created from OAG
-data, it can be accessed using the classes in the top-level `AEIC.missions`
-package.
+data, it can be accessed using the classes in the top-level
+{py:mod}`AEIC.missions` package.
 
 ## Database creation
 

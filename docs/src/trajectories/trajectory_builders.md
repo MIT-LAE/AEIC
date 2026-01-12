@@ -39,7 +39,7 @@ You can see how all of this works together in the
 that simulates a list of sample missions from an input file, saves them to a
 NetCDF file and reloads them.
 
-A trajectory builderr class should have a `fly_...` method for each flight
+A trajectory builder class should have a `fly_...` method for each flight
 phase that it implements, e.g. `fly_climb`, `fly_cruise`, `fly_descent` at a
 minimum. These methods are passed the `Trajectory` being constructed, plus a
 set of additional builder-specific keyword arguments passed through from
@@ -67,10 +67,11 @@ implementing a builder is more complicated!
 
 ## Legacy trajectory builder
 
-The legacy trajectory relies on [BADA-3](<https://www.eurocontrol.int/model/bada>)-like
-performane data in the AEIC performance data format. Specifically, it requires data that
-has prescribed climb and descent profiles, as well as cruise data at a single altitude
-($7000\,\text{ft}$ below operating ceiling).
+The legacy trajectory relies on
+[BADA-3](https://www.eurocontrol.int/model/bada)-like performane data in the
+AEIC performance data format. Specifically, it requires data that has
+prescribed climb and descent profiles, as well as cruise data at a single
+altitude ($7000\,\text{ft}$ below operating ceiling).
 
 ```{eval-rst}
 .. automodule:: AEIC.trajectories.builders.legacy

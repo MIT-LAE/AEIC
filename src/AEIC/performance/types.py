@@ -29,9 +29,8 @@ class AircraftState:
     performance model being used."""
 
     rate_of_climb: float | None = None
-    # TODO: Units?
-    """Rate of climb/descent [m/s]. Whether this needs to be privded depends on
-    the performance model being used."""
+    """Rate of climb/descent [m/s]. Whether this needs to be provded depends
+    on the performance model being used."""
 
 
 @dataclass
