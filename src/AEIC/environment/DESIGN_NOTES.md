@@ -169,14 +169,8 @@ Optional (for pycontrails):
 
 ### ClimateConfig
 
-| Parameter              | Default   |
-| ---------------------- | --------- |
-| radiative_efficacy_CO2 | 1.0       |
-| CO2_IRF_source         | Joos2013  |
-| climate_sensitivity    | 3.0 K     |
-| contrail_model         | simple    |
-| time_horizon           | 100 years |
-| time_step              | 1 year    |
+Making a spreadsheet with detailed info on constants, configs etc here:
+https://docs.google.com/spreadsheets/d/1zDOw2smQkYmstu-6Txfnw04_3jfwQ2vSCGcHdnl46XA/edit?usp=sharing
 
 ### MonetizationConfig
 
@@ -189,11 +183,7 @@ Optional (for pycontrails):
 
 ### Air Quality
 
-| Parameter           | Default     |
-| ------------------- | ----------- |
-| VSL                 | $10M        |
-| CRF_source          | Burnett2018 |
-| adjoint_sens_source | GEOS-Chem   |
+Added on spreadsheet
 
 ---
 
