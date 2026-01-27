@@ -59,11 +59,3 @@ when required.
 
 Notes:
 1. Pressure altitude in feet, relative to 1013 hPa, divided by 100.
-
-```{admonition} Question
-Do we need to specify the reference atmosphere we use for
-converting to and from pressure altitude? There are two different functions
-used for this: `AEIC.weather.weather._altitude_to_pressure_level_hPa`,
-which is only used within the weather module, and
-`AEIC.utils.standard_atmosphere.pressure_at_altitude_isa_bada4`
-```

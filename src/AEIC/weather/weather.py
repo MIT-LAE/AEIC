@@ -7,6 +7,7 @@ import xarray as xr
 
 from AEIC.config import config
 from AEIC.trajectories.ground_track import GroundTrack
+from AEIC.utils.standard_atmosphere import pressure_at_altitude_isa_bada4
 
 
 class Weather:
@@ -109,13 +110,14 @@ class Weather:
         self._require_data(time)
         assert self._ds is not None
 
+        # NOTE: pressure levels in weather files are in hPa, not Pa.
         wind_u = self._ds['u'].interp(
-            pressure_level=_altitude_to_pressure_level_hPa(altitude),
+            pressure_level=pressure_at_altitude_isa_bada4(altitude) / 100.0,
             latitude=gt_point.location.latitude,
             longitude=gt_point.location.longitude,
         )
         wind_v = self._ds['v'].interp(
-            pressure_level=_altitude_to_pressure_level_hPa(altitude),
+            pressure_level=pressure_at_altitude_isa_bada4(altitude) / 100.0,
             latitude=gt_point.location.latitude,
             longitude=gt_point.location.longitude,
         )
@@ -131,8 +133,3 @@ class Weather:
         v_air = true_airspeed * np.sin(heading_rad)
 
         return float(np.hypot(u_air + wind_u, v_air + wind_v))
-
-
-def _altitude_to_pressure_level_hPa(altitude: float) -> float:
-    """Convert altitude to pressure level."""
-    return 1013.25 * (1.0 - altitude / 44330.0) ** 5.255
