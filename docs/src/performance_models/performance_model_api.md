@@ -4,10 +4,10 @@ Performance model classes are all Pydantic models derived from
 {py:class}`BasePerformanceModel
 <AEIC.performance.models.BasePerformanceModel>`. This is an abstract base
 class that includes data common to all performance model types (aircraft name
-and class, maximum altitude and payload, number of engines, APU information
-and optional LTO and speed information) and that defines the performance model
-API. The legacy table-based performance model is represented by the
-{py:class}`LegacyPerformanceModel
+and class, maximum altitude and payload, number of engines, optional APU
+information and optional LTO and speed information) and that defines the
+performance model API. The legacy table-based performance model is represented
+by the {py:class}`LegacyPerformanceModel
 <AEIC.performance.models.LegacyPerformanceModel>` class. This includes a
 performance table represented by the {py:class}`PerformanceTable
 <AEIC.performance.models.legacy.PerformanceTable>` class which performs

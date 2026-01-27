@@ -128,7 +128,7 @@ def cli(ctx, output_file):
 )
 @click.option(
     '--apu-name',
-    required=True,
+    required=False,
     help='Name of the APU used on the aircraft.',
 )
 @cli.command()
@@ -146,7 +146,7 @@ def legacy(
     number_of_engines,
     apu_name,
 ):
-    if lookup_apu(apu_name) is None:
+    if apu_name is not None and lookup_apu(apu_name) is None:
         raise click.UsageError(f'APU "{apu_name}" not found in APU database.')
     if engine_file is not None:
         engine_file = config.file_location(engine_file)
@@ -174,7 +174,8 @@ def legacy(
     toml_data['maximum_altitude_ft'] = ptf_data.maximum_altitude_ft
     toml_data['maximum_payload_kg'] = ptf_data.maximum_payload
     toml_data['number_of_engines'] = number_of_engines
-    toml_data['APU_name'] = apu_name
+    if apu_name is not None:
+        toml_data['APU_name'] = apu_name
 
     # Extract speed data.
     toml_data['speeds'] = ptf_data.speeds.model_dump()

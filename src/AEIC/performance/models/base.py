@@ -59,8 +59,9 @@ class BasePerformanceModel[RulesT = SimpleFlightRules](CIBaseModel, ABC):
     number_of_engines: PositiveInt
     """Number of engines."""
 
-    apu_name: str
-    """APU name. This is used to look up APU data from the APU database."""
+    apu_name: str | None
+    """Optional APU name. This is used to look up APU data from the APU
+    database."""
 
     speeds: Speeds | None
     """Optional speed data."""
@@ -74,11 +75,13 @@ class BasePerformanceModel[RulesT = SimpleFlightRules](CIBaseModel, ABC):
     @model_validator(mode='after')
     def load_apu_data(self) -> Self:
         """Load APU data from APU database after successful instance creation."""
-        self._apu: APU = find_apu(self.apu_name)
+        self._apu: APU | None = None
+        if self.apu_name is not None:
+            self._apu = find_apu(self.apu_name)
         return self
 
     @property
-    def apu(self) -> APU:
+    def apu(self) -> APU | None:
         """APU data associated with the performance model.
 
         This is loaded from the APU database based on the ``apu_name`` field
