@@ -8,9 +8,10 @@ from typing import ClassVar
 import numpy as np
 import pytest
 
-from AEIC.trajectories.field_sets import FieldMetadata, FieldSet
+from AEIC.storage.field_sets import FieldMetadata, FieldSet
 from AEIC.trajectories.store import TrajectoryStore
 from AEIC.trajectories.trajectory import Trajectory
+from AEIC.types import Dimension, Dimensions
 
 
 @dataclass
@@ -23,7 +24,7 @@ class Extras:
             f1=FieldMetadata(description='Test 1', units='unit1'),
             f2=FieldMetadata(description='Test 2', units='unit2'),
             mf=FieldMetadata(
-                pointwise=False,
+                dimensions=Dimensions(Dimension.TRAJECTORY),
                 field_type=np.int32,
                 description='Test metadata',
                 units='unit3',

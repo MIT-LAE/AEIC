@@ -7,13 +7,66 @@ import numpy as np
 
 from AEIC.config import config
 from AEIC.performance.models import BasePerformanceModel
-from AEIC.trajectories.trajectory import Trajectory
-from AEIC.types import EmissionsDict, EmissionsSubset, Fuel, ModeValues, Species
+from AEIC.storage.field_sets import FieldMetadata, FieldSet
+from AEIC.trajectories import Trajectory
+from AEIC.types import (
+    Dimension,
+    Dimensions,
+    EmissionsDict,
+    EmissionsSubset,
+    Fuel,
+    ModeValues,
+    Species,
+)
 
 from .apu import get_APU_emissions
 from .gse import get_GSE_emissions
 from .lto import get_LTO_emissions
 from .trajectory import get_trajectory_emissions
+
+# QUESTION: How to handle species? Dimension, coordinate values, variance?
+
+TRAJ_DIMS = Dimensions(Dimension.TRAJECTORY, Dimension.SPECIES, Dimension.POINT)
+LTO_DIMS = Dimensions(Dimension.TRAJECTORY, Dimension.SPECIES, Dimension.THRUST_MODE)
+OVERALL_DIMS = Dimensions(Dimension.TRAJECTORY, Dimension.SPECIES)
+
+EMISSIONS_FIELDSET_NAME = 'emissions'
+
+
+def f(dims, desc):
+    return FieldMetadata(dimensions=dims, description=desc, units='g')
+
+
+def fi(dims, desc):
+    return FieldMetadata(dimensions=dims, description=desc, units='g / kg fuel')
+
+
+EMISSIONS_FIELDS = FieldSet(
+    EMISSIONS_FIELDSET_NAME,
+    trajectory_emissions=f(TRAJ_DIMS, 'Per-segment emissions along trajectory'),
+    trajectory_indices=fi(TRAJ_DIMS, 'Per-segment emission indices along trajectory'),
+    lto_emissions=f(LTO_DIMS, 'Per-thrust mode LTO emissions'),
+    lto_indices=fi(LTO_DIMS, 'Per-thrust mode LTO emission indices'),
+    apu_emissions=f(OVERALL_DIMS, 'APU emissions'),
+    apu_indices=fi(OVERALL_DIMS, 'APU emission indices'),
+    gse_emissions=f(OVERALL_DIMS, 'GSE emissions'),
+    total_emissions=f(OVERALL_DIMS, 'Total emissions'),
+    fuel_burn_per_segment=FieldMetadata(
+        dimensions=Dimensions(Dimension.TRAJECTORY, Dimension.POINT),
+        description='Fuel burn per trajectory segment',
+        units='kg',
+    ),
+    total_fuel_burn=FieldMetadata(
+        dimensions=Dimensions(Dimension.TRAJECTORY),
+        description='Total fuel burn',
+        units='kg',
+    ),
+    lifecycle_co2=FieldMetadata(
+        dimensions=Dimensions(Dimension.TRAJECTORY),
+        description='Lifecycle CO2 adjustment',
+        units='g',
+    ),
+)
 
 
 @dataclass
@@ -76,6 +129,8 @@ class EmissionsOutput:
             | set(self.gse.keys())
             | set(self.total.keys())
         )
+
+    def field_set(self) -> FieldSet: ...
 
 
 def compute_emissions(

@@ -20,6 +20,7 @@ from .performance import (
 )
 from .spatial import Location, Position
 from .species import Species
+from .storage import Dimension, Dimensions
 from .time import DayOfWeek, TimeOfDay
 
 # create a type for Union[float, NDArray]
@@ -38,6 +39,8 @@ __all__ = [
     'AircraftState',
     'AtmosphericState',
     'DayOfWeek',
+    'Dimension',
+    'Dimensions',
     'EmissionsDict',
     'EmissionsSubset',
     'FloatOrNDArray',
