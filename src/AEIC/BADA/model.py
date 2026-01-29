@@ -3,14 +3,14 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from AEIC.utils.consts import g0
+from AEIC.constants import g0
+from AEIC.types import FloatOrNDArray
+from AEIC.units import METERS_TO_FEET, MPS_TO_KNOTS
 from AEIC.utils.standard_atmosphere import (
     calculate_air_density,
     pressure_at_altitude_isa_bada4,
     temperature_at_altitude_isa_bada4,
 )
-from AEIC.utils.types import FloatOrNDArray
-from AEIC.utils.units import METERS_TO_FEET, MPS_TO_KNOTS
 
 from .aircraft_parameters import Bada3AircraftParameters
 from .fuel_burn_base import BaseFuelBurnModel

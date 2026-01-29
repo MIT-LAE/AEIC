@@ -106,17 +106,19 @@ you should not be doing it in "normal" AEIC code!
 ```{eval-rst}
 .. autoclass:: AEIC.config.Config
     :members:
+    :exclude-members: model_config
 ```
 
 ## Individual module configuration classes
 
 ```{eval-rst}
-.. autoclass:: AEIC.emissions.config.EmissionsConfig
+.. autoclass:: AEIC.config.emissions.EmissionsConfig
     :members:
-    :no-index:
+    :exclude-members: model_config
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.weather.config.WeatherConfig
+.. autoclass:: AEIC.config.weather.WeatherConfig
     :members:
+    :exclude-members: model_config
 ```

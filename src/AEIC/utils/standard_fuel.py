@@ -1,58 +1,17 @@
-from enum import IntEnum
+# TODO: Remove this when we migrate to Python 3.14+.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
+from AEIC.types import ThrustMode, ThrustModeArray
 
-class ICAOThrustMode(IntEnum):
-    """ICAO thrust setting categories."""
-
-    TAKEOFF_CLIMB = 1
-    IDLE = 2
-    APPROACH = 3
+if TYPE_CHECKING:
+    from AEIC.types import ModeValues
 
 
-def get_thrust_cat_lto(ff_eval: np.ndarray) -> np.ndarray:
-    """
-    Classify each LTO fuel-flow value into a discrete thrust-setting category.
-
-    Parameters
-    ----------
-    ff_eval : numpy.ndarray
-        Fuel-flow values to be evaluated
-        Shape ``(n_times,)``.
-    ff_cal : numpy.ndarray
-        Calibration fuel-flow points: exactly four LTO-mode points are expected.
-
-    Returns
-    -------
-    thrustCat : numpy.ndarray, dtype=int (ICAOThrustMode)
-        Integer category codes, same length as ``ff_eval``:
-
-    Raises
-    ------
-    ValueError
-        If the size/length constraints on ``ff_eval`` or ``ff_cal`` are violated.
-
-    Notes
-    -----
-    The four thrust categories are fixed to
-    ``[2, 2, 3, 1]`` (Idle, Approach, Climb, Take-off) and simply returned.
-    """
-    # LTO case: assume exactly 4 calibration points (LTO modes)
-    # Categories fixed: [IDLE, APPROACH, CLIMB, TAKEOFF]
-    if ff_eval.size != 4:
-        raise ValueError("For LTO, ff_eval must have length 4.")
-    return np.array(
-        [
-            ICAOThrustMode.IDLE,
-            ICAOThrustMode.APPROACH,
-            ICAOThrustMode.TAKEOFF_CLIMB,
-            ICAOThrustMode.TAKEOFF_CLIMB,
-        ]
-    )
-
-
-def get_thrust_cat_cruise(ff_eval: np.ndarray, ff_cal: np.ndarray) -> np.ndarray:
+def get_thrust_cat_cruise(ff_eval: np.ndarray, ff_cal: ModeValues) -> ThrustModeArray:
     """Classify each cruise fuel-flow value into a discrete thrust-setting category.
 
     Parameters
@@ -90,19 +49,21 @@ def get_thrust_cat_cruise(ff_eval: np.ndarray, ff_cal: np.ndarray) -> np.ndarray
         raise ValueError("For cruise, ff_eval must have at least 3 entries.")
 
     # Define thresholds from the first three calibration points
-    lowLimit = (ff_cal[0] + ff_cal[1]) / 2.0
-    approachLimit = (ff_cal[1] + ff_cal[2]) / 2.0
+    lowLimit = (ff_cal[ThrustMode.IDLE] + ff_cal[ThrustMode.APPROACH]) / 2.0
+    approachLimit = (ff_cal[ThrustMode.APPROACH] + ff_cal[ThrustMode.CLIMB]) / 2.0
 
-    return np.select(
-        [
-            ff_eval <= lowLimit,
-            ff_eval > approachLimit,
-        ],
-        [
-            ICAOThrustMode.IDLE,
-            ICAOThrustMode.TAKEOFF_CLIMB,
-        ],
-        default=ICAOThrustMode.APPROACH,
+    return ThrustModeArray(
+        np.select(
+            [
+                ff_eval <= lowLimit,
+                ff_eval > approachLimit,
+            ],
+            [
+                ThrustMode.IDLE,
+                ThrustMode.CLIMB,
+            ],
+            default=ThrustMode.APPROACH,
+        )
     )
 
 

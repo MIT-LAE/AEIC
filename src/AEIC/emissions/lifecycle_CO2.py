@@ -1,4 +1,7 @@
-def lifecycle_CO2(fuel, fuel_burn):
+from AEIC.types import Fuel
+
+
+def lifecycle_CO2(fuel: Fuel, fuel_burn):
     """
     Calculate lifecycle CO2 emissions.
 
@@ -11,4 +14,6 @@ def lifecycle_CO2(fuel, fuel_burn):
     -------
     lifecycle_CO2 : float
     """
-    return fuel_burn * (fuel['LC_CO2'] - fuel['EI_CO2'])
+    if fuel.lifecycle_CO2 is None:
+        raise ValueError('Lifecycle CO2 data not available for this fuel.')
+    return fuel_burn * (fuel.lifecycle_CO2 * fuel.energy_MJ_per_kg - fuel.EI_CO2)

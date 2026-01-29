@@ -1,6 +1,6 @@
 import AEIC.utils.airports as airports
 from AEIC.missions.writable_database import WritableDatabase
-from AEIC.utils.types import DayOfWeek
+from AEIC.types import DayOfWeek
 
 
 def test_dow_mask():
@@ -43,7 +43,6 @@ def test_airport_handling(tmp_path):
 
         # Real airport.
         airport_info = db._get_or_add_airport(cur, 1234, 'CDG')
-        print(airport_info)
         assert airport_info is not None
         assert airport_info.airport.iata_code == 'CDG'
         assert airport_info.airport.country == 'FR'

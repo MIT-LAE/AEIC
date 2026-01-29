@@ -1,53 +1,75 @@
+# Default performance model.
 performance_model = "performance/sample_performance_model.toml"
 
+# Engine database spreadsheet.
+engine_file = "engines/sample_edb.xlsx"
+
+
 [weather]
-use_weather = true                  # Use loaded weather to calculate wind vectors
+
+# Use loaded weather to calculate wind vectors.
+use_weather = true
+
+# Location of weather data: files should be in YYYYMMDD.nc format.
 weather_data_dir = "weather"
-                                    # Location on weather data
-                                    # files should be in YYYYMMDD.nc format
+
 
 [emissions]
-fuel = "conventional_jetA"  # Fuel files stored in data/fuels/
-                            # Current options include:
-                            # conventional_jetA
 
-co2_enabled = true          # Compute CO2 emissions with EI in fuels file
+# Fuel files stored in src/AEIC/data/fuels/ - current options include:
+#   conventional_jetA
+fuel = "conventional_jetA"
 
-h2o_enabled = true          # Compute H2O emissions with EI in fuels file
+# Compute CO2 emissions with EI in fuels file.
+co2_enabled = true
 
-sox_enabled = true          # Compute SOx emissions with EI in fuels file
+# Compute H2O emissions with EI in fuels file.
+h2o_enabled = true
 
-nox_method = "BFFM2"        # Options include
-                            # P3T3: Pt3, Tt3 method
-                            # BFFM2: Boeing Fuel flow method 2
-                            # None: Do not compute NOx emissions
+# Compute SOx emissions with EI in fuels file.
+sox_enabled = true
 
-hc_method = "BFFM2"         # Options include
-                            # BFFM2: Boeing Fuel flow method 2
-                            # None: Do not compute HC emissions
+# Options:
+#   P3T3: Pt3, Tt3 method;
+#   BFFM2: Boeing Fuel flow method 2;
+#   none: Do not compute NOx emissions.
+nox_method = "BFFM2"
 
-co_method = "BFFM2"         # Options include
-                            # BFFM2: Boeing Fuel flow method 2
-                            # None: Do not compute CO emissions
+# Options:
+#   BFFM2: Boeing Fuel flow method 2
+#   none: Do not compute HC emissions
+hc_method = "BFFM2"
 
+# Options:
+#   BFFM2: Boeing Fuel flow method 2;
+#   none: Do not compute CO emissions.
+co_method = "BFFM2"
+
+# Options:
+#   fuel_flow: Calculate EI(PMvolo) and OCicEI based on fuel flow;
+#   FOA3: Using the FOA3.0 method (Wayson et al., 2009);
+#   none: Do not compute PMvol emissions.
 pmvol_method = "fuel_flow"
-                            # Options include
-                            # fuel_flow: Calculate EI(PMvolo) and OCicEI based on fuel flow
-                            # FOA3: Using the FOA3.0 method (Wayson et al., 2009)
-                            # None: Do not compute PMvol emissions
 
-pmnvol_method = "MEEM"      # Options include
-                            # MEEM: Mission Emissions Estimation Methodology (MEEM)
-                            #        based on Ahrens et al. (2022),
-                            #        SCOPE11, and the methodology of Peck et al. (2013).
-                            # SCOPE11: SCOPE11 methodology
-                            # None: Do not compute PMnvol emissions
+# Options:
+#   MEEM:    Mission Emissions Estimation Methodology (MEEM) based on Ahrens et
+#            al. (2022), SCOPE11, and the methodology of Peck et al. (2013);
+#   SCOPE11: SCOPE11 methodology;
+#   none:    Do not compute PMnvol emissions.
+pmnvol_method = "MEEM"
 
-climb_descent_usage = true  # true: emissions calculated for entire trajectory (takeoff, climb, cruise, descent)
-                            # false: emissions only calculated for cruise, LTO data used for takeoff, climb, approach
+# Options:
+#   trajectory: emissions calculated for entire trajectory (takeoff, climb,
+#               cruise, descent);
+#   lto:        emissions only calculated for cruise, LTO data used for takeoff,
+#               climb, approach.
+climb_descent_mode = "trajectory"
 
-apu_enabled = true          # Compute emissions from APU
+# Compute emissions from APU.
+apu_enabled = true
 
-gse_enabled = true          # Compute emissions from GSE
+# Compute emissions from GSE.
+gse_enabled = true
 
-lifecycle_enabled = true    # Compute lifecycle emissions
+# Compute lifecycle emissions.
+lifecycle_enabled = true

@@ -4,10 +4,10 @@ import numpy as np
 
 from AEIC.config import config
 from AEIC.missions import Mission
-from AEIC.performance import AircraftState, SimpleFlightRules
 from AEIC.performance.models import LegacyPerformanceModel
 from AEIC.trajectories import FlightPhase, GroundTrack, Trajectory
-from AEIC.utils.units import (
+from AEIC.types import AircraftState, SimpleFlightRules
+from AEIC.units import (
     FEET_TO_METERS,
     METERS_TO_FL,
     MINUTES_TO_SECONDS,

@@ -6,22 +6,22 @@ Small custom types are used to represent "locations" (2-D) and "positions"
 (3-D) and some time values.
 
 ```{eval-rst}
-.. autoclass:: AEIC.utils.types.Location
+.. autoclass:: AEIC.types.Location
     :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.utils.types.Position
+.. autoclass:: AEIC.types.Position
     :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.utils.types.DayOfWeek
+.. autoclass:: AEIC.types.DayOfWeek
     :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.utils.types.TimeOfDay
+.. autoclass:: AEIC.types.TimeOfDay
     :members:
 ```
 
@@ -59,7 +59,7 @@ Unit conversions are done with simple multiplying factors with a common
 ```
 
 ```{eval-rst}
-.. automodule:: AEIC.utils.units
+.. automodule:: AEIC.units
     :members:
 ```
 

@@ -12,9 +12,9 @@ import pandas as pd
 from pydantic import PrivateAttr, model_validator
 from scipy.interpolate import interpn
 
-from AEIC.performance import AircraftState, Performance, SimpleFlightRules
+from AEIC.types import AircraftState, Performance, SimpleFlightRules
+from AEIC.units import METERS_TO_FL
 from AEIC.utils.models import CIBaseModel
-from AEIC.utils.units import METERS_TO_FL
 
 from .base import BasePerformanceModel
 

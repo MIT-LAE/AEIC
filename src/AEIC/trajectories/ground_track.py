@@ -11,8 +11,8 @@ import itertools
 from bisect import bisect_left
 from dataclasses import dataclass
 
+from AEIC.types import Location
 from AEIC.utils.spatial import GEOD
-from AEIC.utils.types import Location
 
 
 class GroundTrack:

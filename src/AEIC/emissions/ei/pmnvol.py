@@ -1,10 +1,14 @@
+import functools
+
 import numpy as np
 
-from AEIC.utils.consts import T0, kappa, p0
+from AEIC.constants import T0, kappa, p0
+from AEIC.performance.utils.edb import EDBEntry
+from AEIC.types import ModeValues, ThrustMode
 
 
 def PMnvol_MEEM(
-    EDB_data: dict,
+    EDB_data: EDBEntry,
     altitudes: np.ndarray,
     Tamb_cruise: np.ndarray,
     Pamb_cruise: np.ndarray,
@@ -63,15 +67,15 @@ def PMnvol_MEEM(
     # ---------------------------------------------------------------------
     # (0)  MODE EIs (mg kg⁻¹ or # kg⁻¹)
     # ---------------------------------------------------------------------
-    SN = np.asarray(EDB_data["SN_matrix"], dtype=float)
-    EI_mass_mode = np.asarray(EDB_data["nvPM_mass_matrix"], dtype=float)
-    EI_num_mode = np.asarray(EDB_data["nvPM_num_matrix"], dtype=float)
+    SN = EDB_data.SN_matrix.as_array()
+    EI_mass_mode = EDB_data.nvPM_mass_matrix.as_array()
+    EI_num_mode = EDB_data.nvPM_num_matrix.as_array()
 
     if np.min(EI_mass_mode) < 0:
         # Smoke->mass correlation
         CI_mass = 0.6484 * np.exp(0.0766 * SN) / (1 + np.exp(-1.098 * (SN - 3.064)))
 
-        bypass_ratio = EDB_data["BP_Ratio"] if EDB_data["ENGINE_TYPE"] == "MTF" else 0.0
+        bypass_ratio = EDB_data.BP_Ratio if EDB_data.engine_type == "MTF" else 0.0
         Q_mode = 0.776 * AFR_mode * (1 + bypass_ratio) + 0.767
         kslm = np.log(
             (3.219 * CI_mass * (1 + bypass_ratio) * 1e3 + 312.5)
@@ -88,7 +92,7 @@ def PMnvol_MEEM(
     # ---------------------------------------------------------------------
     # (1)  COMBUSTOR INLET CONDITIONS ALONG TRAJECTORY
     # ---------------------------------------------------------------------
-    max_pr = float(EDB_data["PR"][0])
+    max_pr = EDB_data.PR[ThrustMode.IDLE]
 
     # climb (+) / level (0) / descent (–)
     alt_rate = np.diff(altitudes, prepend=altitudes[0])
@@ -122,7 +126,7 @@ def PMnvol_MEEM(
     # ---------------------------------------------------------------------
     # (3)  INTERPOLATION VERSUS THRUST SETTING
     # ---------------------------------------------------------------------
-    def build_interp(arr_mode, Tmax, Tmax_thrust):
+    def build_interp(arr_mode, Tmax: float, Tmax_thrust: float):
         if np.isnan(Tmax_thrust) or Tmax_thrust < 0:
             # four-point
             arr = np.concatenate(([arr_mode[0]], arr_mode, [arr_mode[-1]]))
@@ -143,10 +147,10 @@ def PMnvol_MEEM(
         return tgrid, arr
 
     t_mass, arr_mass = build_interp(
-        EI_mass_mode, EDB_data["EImass_max"], EDB_data["EImass_max_thrust"]
+        EI_mass_mode, EDB_data.EImass_max, EDB_data.EImass_max_thrust
     )
     t_num, arr_num = build_interp(
-        EI_num_mode, EDB_data["EInum_max"], EDB_data["EInum_max_thrust"]
+        EI_num_mode, EDB_data.EInum_max, EDB_data.EInum_max_thrust
     )
 
     t_GMD = np.array([-10, 0.07, 0.3, 0.85, 1.0, 100])
@@ -178,7 +182,10 @@ def PMnvol_MEEM(
     return GMD_ref, EI_mass, EI_num
 
 
-def calculate_PMnvolEI_scope11(SN_matrix, PR, ENGINE_TYPE, BP_Ratio):
+@functools.cache
+def calculate_PMnvolEI_scope11(
+    SN_matrix: ModeValues, engine_type: str, BP_Ratio: float
+) -> ModeValues:
     """
     Calculate PM non-volatile Emission Index (EI) using SCOPE11 methodology.
 
@@ -201,19 +208,18 @@ def calculate_PMnvolEI_scope11(SN_matrix, PR, ENGINE_TYPE, BP_Ratio):
     """
 
     # FoverF00 = np.array([0.07, 0.30, 0.85, 1.00])
-    AFR = np.array([106, 83, 51, 45])
+    AFR = ModeValues(106, 83, 51, 45)
     # num_engines = SN_matrix.shape[0]
 
-    CI_best = np.zeros_like(SN_matrix)
-    Q = np.zeros_like(SN_matrix)
+    CI_best = ModeValues(0.0, mutable=True)
+    Q = ModeValues(0.0, mutable=True)
 
     # for i in range(num_engines):
-    for i in range(4):
-        SN = SN_matrix[i]
+    for mode in ThrustMode:
+        SN = SN_matrix[mode]
 
         # --- Skip invalid SN
         if SN == -1 or SN == 0:
-            CI_best[i] = 0
             continue
 
         # --- Exit Plane BC Concentration C_BC,e [mg/m3]
@@ -221,15 +227,15 @@ def calculate_PMnvolEI_scope11(SN_matrix, PR, ENGINE_TYPE, BP_Ratio):
         CBC_i = 0.6484 * np.exp(0.0766 * SN) / (1 + np.exp(-1.098 * (SN - 3.064)))
 
         # --- System loss multiplier (kslm)
-        if ENGINE_TYPE == 'MTF':
+        if engine_type == 'MTF':
             kslm = np.log(
-                (3.219 * CBC_i * (1 + BP_Ratio[i]) * 1000 + 312.5)
-                / (CBC_i * (1 + BP_Ratio[i]) * 1000 + 42.6)
+                (3.219 * CBC_i * (1 + BP_Ratio) * 1000 + 312.5)
+                / (CBC_i * (1 + BP_Ratio) * 1000 + 42.6)
             )
         else:  # includes 'TF' or others
             kslm = np.log((3.219 * CBC_i * 1000 + 312.5) / (CBC_i * 1000 + 42.6))
 
-        CI_best[i] = kslm * CBC_i  # mg/m³
+        CI_best[mode] = kslm * CBC_i  # mg/m³
 
         # --- Combustor density
         # P4_LTO = 101325 * (1 + (PR[i] - 1) * FoverF00[i])
@@ -238,18 +244,22 @@ def calculate_PMnvolEI_scope11(SN_matrix, PR, ENGINE_TYPE, BP_Ratio):
         # RHO4_LTO = P4_LTO / (287.058 * T4_LTO)
 
         # --- Volumetric Fuel Flow Q [m³/kg_fuel]
-        if ENGINE_TYPE == 'MTF':
-            Q[i] = 0.776 * AFR[i] * (1 + BP_Ratio[i]) + 0.767
-        elif ENGINE_TYPE == 'TF':
-            Q[i] = 0.776 * AFR[i] + 0.767
+        if engine_type == 'MTF':
+            Q[mode] = 0.776 * AFR[mode] * (1 + BP_Ratio) + 0.767
+        elif engine_type == 'TF':
+            Q[mode] = 0.776 * AFR[mode] + 0.767
         else:
-            Q[i] = 0  # default if unknown engine type
+            Q[mode] = 0  # default if unknown engine type
 
     # --- PMnvolEI [mg/kg_fuel] = CI * Q
     PMnvolEI_best = CI_best * Q
 
     # --- Add 0% thrust extrapolation (same as 7%)
     # PMnvolEI_best = np.hstack([PMnvolEI_best[:, [0]], PMnvolEI_best])  # shape (n x 5)
-    PMnvolEI_best /= 1000.0  # Convert mg/kg to g/kg
 
-    return PMnvolEI_best
+    # Convert mg/kg to g/kg
+    profile = PMnvolEI_best / 1000.0
+
+    # Freeze the return value because we're caching.
+    profile.freeze()
+    return profile

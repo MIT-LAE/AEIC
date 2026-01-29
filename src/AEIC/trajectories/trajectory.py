@@ -26,13 +26,14 @@ BASE_FIELDS = FieldSet(
     heading=FieldMetadata(description='Aircraft heading', units='degrees'),
     true_airspeed=FieldMetadata(description='True airspeed', units='m/s'),
     ground_speed=FieldMetadata(description='Ground speed', units='m/s'),
-    # Trajectory metadata fields and their metadata. Each of these fields has a
-    # single value per trajectory.
+    # Per-trajectory fields and their metadata.
     starting_mass=FieldMetadata(
-        metadata=True, description='Aircraft mass at start of trajectory', units='kg'
+        pointwise=False, description='Aircraft mass at start of trajectory', units='kg'
     ),
     total_fuel_mass=FieldMetadata(
-        metadata=True, description='Total fuel mass used during trajectory', units='kg'
+        pointwise=False,
+        description='Total fuel mass used during trajectory',
+        units='kg',
     ),
     # Trajectory point counts for the different flight phases. (The "type:
     # ignore" is needed because PyRight cannot prove to itself that the
@@ -45,13 +46,13 @@ BASE_FIELDS = FieldSet(
     # connection to entries in missions databases, and `name` is an optional
     # textual name for the trajectory.
     flight_id=FieldMetadata(
-        metadata=True,
+        pointwise=False,
         field_type=np.int64,
         description='Mission database flight identifier',
         required=False,
     ),
     name=FieldMetadata(
-        metadata=True,
+        pointwise=False,
         field_type=str,
         description='Trajectory name',
         required=False,
@@ -64,11 +65,10 @@ class Trajectory:
     """Class representing a 1-D trajectory with various data fields and
     metadata.
 
-    The "various fields" include a base set of trajectory fields, one value per
-    trajectory point and a base set of metadata fields, one value per
-    trajectory, plus optional additional per-point or metadata fields added by
-    adding field sets to the trajectory.
-    """
+    The "various fields" include a base set of pointwise fields, one value per
+    trajectory point and a base set of trajectory fields, one value per
+    trajectory, plus optional additional pointwise or per-trajectory fields
+    added by adding field sets to the trajectory."""
 
     # The fixed set of attributes used for implementation of the flexible field
     # interface. Obscure names are used here to reduce the chance of conflicts
@@ -79,11 +79,11 @@ class Trajectory:
     # using here, we can't make these into Python double-underscore private
     # fields. Using obscure names is the best we can do.)
     FIXED_FIELDS = {
-        'X_data_dictionary',
-        'X_fieldsets',
-        'X_data',
-        'X_metadata',
-        'X_npoints',
+        'X_data_dictionary',  # Field definition information.
+        'X_fieldsets',  # Names of field sets in this trajectory.
+        'X_data',  # Per-point data fields.
+        'X_tdata',  # Per-trajectory data fields.
+        'X_npoints',  # Number of points in the trajectory.
     }
 
     def __eq__(self, other: object) -> bool:
@@ -98,7 +98,7 @@ class Trajectory:
                 if not np.array_equal(self.X_data[name], other.X_data[name]):
                     return False
             else:
-                if self.X_metadata[name] != other.X_metadata[name]:
+                if self.X_tdata[name] != other.X_tdata[name]:
                     return False
         return True
 
@@ -114,11 +114,11 @@ class Trajectory:
                 if not np.allclose(self.X_data[name], other.X_data[name]):
                     return False
             else:
-                if isinstance(self.X_metadata[name], str | None):
-                    if self.X_metadata[name] != other.X_metadata[name]:
+                if isinstance(self.X_tdata[name], str | None):
+                    if self.X_tdata[name] != other.X_tdata[name]:
                         return False
                 else:
-                    if not np.isclose(self.X_metadata[name], other.X_metadata[name]):
+                    if not np.isclose(self.X_tdata[name], other.X_tdata[name]):
                         return False
         return True
 
@@ -130,40 +130,39 @@ class Trajectory:
         The name is used for labelling trajectories within trajectory sets (and
         NetCDF files).
 
-        All per-point data and per-trajectory metadata fields included in every
+        All pointwise data and per-trajectory fields included in every
         trajectory by default are taken from the `BASE_FIELDS` dictionary
-        above. Other per-point and metadata fields may be added using the
-        `add_fields` method.
-        """
+        above. Other pointwise and per-trajectory fields may be added using the
+        `add_fields` method."""
 
         # A trajectory has a fixed number of points, known in advance.
         # TODO: Lift this restriction? How could we make it so that you can add
         # points incrementally, in a nice way?
         self.X_npoints = npoints
 
-        # A trajectory has a set of per-point data fields and per-trajectory
-        # metadata fields. Both are defined by a FieldSet, and the total sets
-        # of all fields are stored in a data dictionary.
+        # A trajectory has a set of pointwise data fields and per-trajectory
+        # fields. Both are defined by a FieldSet, and the total sets of all
+        # fields are stored in a data dictionary.
         self.X_data_dictionary: FieldSet = BASE_FIELDS
 
         # Keep track of the FieldSets that contributed to this trajectory.
         self.X_fieldsets = {BASE_FIELDS.fieldset_name}
 
-        # Data fields.
+        # Pointwise data fields.
         self.X_data: dict[str, np.ndarray[tuple[int], Any]] = {
-            n: np.zeros((npoints,), dtype=f.field_type)
+            n: np.zeros(npoints, dtype=f.field_type)
             for n, f in self.X_data_dictionary.items()
-            if not f.metadata
+            if f.pointwise
         }
 
-        # Metadata fields.
-        self.X_metadata: dict[str, Any] = {
-            n: f.default for n, f in self.X_data_dictionary.items() if f.metadata
+        # Per-trajectory fields.
+        self.X_tdata: dict[str, Any] = {
+            n: f.default for n, f in self.X_data_dictionary.items() if not f.pointwise
         }
 
         # A trajectory has an optional name.
         if name is not None:
-            self.X_metadata['name'] = name
+            self.X_tdata['name'] = name
 
         # Add any extra field sets named in the constructor.
         if fieldsets is not None:
@@ -179,12 +178,11 @@ class Trajectory:
         """Calculate approximate memory size of the trajectory in bytes.
 
         (This only needs to be approximate because it's just used for sizing
-        the `TrajectoryStore` LRU cache.)
-        """
+        the `TrajectoryStore` LRU cache.)"""
         size = 0
         for array in self.X_data.values():
             size += array.nbytes
-        for value in self.X_metadata.values():
+        for value in self.X_tdata.values():
             if isinstance(value, np.ndarray):
                 size += value.nbytes
             else:
@@ -196,7 +194,8 @@ class Trajectory:
         return hash(self.X_data_dictionary)
 
     def __getattr__(self, name: str) -> np.ndarray[tuple[int], Any] | Any:
-        """Override attribute retrieval to access data and metadata fields."""
+        """Override attribute retrieval to access pointwise and per-trajectory
+        data fields."""
 
         # Fixed attributes use for implementation: delegate to normal attribute
         # access.
@@ -205,13 +204,14 @@ class Trajectory:
 
         if name in self.X_data:
             return self.X_data[name]
-        elif name in self.X_metadata:
-            return self.X_metadata[name]
+        elif name in self.X_tdata:
+            return self.X_tdata[name]
         else:
             raise AttributeError(f"'Trajectory' object has no attribute '{name}'")
 
     def __setattr__(self, name: str, value: Any):
-        """Override attribute setting to handle data and metadata fields.
+        """Override attribute setting to handle pointwise and per-trajectory
+        data fields.
 
         The type and length of assigned values are checked to ensure
         consistency with the trajectory's data dictionary. The type checking
@@ -220,16 +220,16 @@ class Trajectory:
 
         NOTE: These type checking rules mean that assigning a value of type `int` to a
         field of type `np.int32` will work, but may result in loss of information if the
-        integer value is too large to fit in an `np.int32`. Caveat emptor!
-        """
+        integer value is too large to fit in an `np.int32`. Caveat emptor!"""
 
         # Fixed attributes use for implementation: delegate to normal attribute
         # access.
         if name in self.FIXED_FIELDS:
             return super().__setattr__(name, value)
 
-        # Assignment for data or metadata fields.
         if name in self.X_data:
+            # Assignment for pointwise data fields.
+
             # The number of points in a trajectory is currently fixed at
             # creation time.
             if len(value) != self.X_npoints:
@@ -240,17 +240,19 @@ class Trajectory:
             self.X_data[name] = _convert_types(
                 self.X_data_dictionary[name].field_type,
                 value,
-                'data',
+                'pointwise',
                 name,
                 self.X_data_dictionary[name].required,
             )
-        elif name in self.X_metadata:
+        elif name in self.X_tdata:
+            # Assignment for per-trajectory data fields.
+
             # Check that the type of the assigned value can be safely cast to
             # the field type and cast and assign the value if OK.
-            self.X_metadata[name] = _convert_types(
+            self.X_tdata[name] = _convert_types(
                 self.X_data_dictionary[name].field_type,
                 value,
-                'metadata',
+                'per-trajectory',
                 name,
                 self.X_data_dictionary[name].required,
             )
@@ -264,7 +266,7 @@ class Trajectory:
         if to_idx < 0 or to_idx >= self.X_npoints:
             raise IndexError('to_idx out of range')
         for name, field in self.X_data_dictionary.items():
-            if not field.metadata:
+            if field.pointwise:
                 self.X_data[name][to_idx] = self.X_data[name][from_idx]
 
     def add_fields(self, fieldset: FieldSet | HasFieldSets):
@@ -297,25 +299,12 @@ class Trajectory:
             self.X_fieldsets.add(fs.fieldset_name)
             self.X_data_dictionary = self.X_data_dictionary.merge(fs)
 
-        # Add data and metadata fields and set values from the `HasFieldSet`
-        # object if there is one.
+        # Add pointwise and per-trajectory data fields and set values from the
+        # `HasFieldSet` object if there is one.
         for fs in fss:
             assert isinstance(fs, FieldSet)
             for name, metadata in fs.items():
-                if metadata.metadata:
-                    if try_data and hasattr(fieldset, name):
-                        # Check that the type of the assigned value can be
-                        # safely cast to the field type and cast and assign
-                        # the value if OK.
-                        self.X_metadata[name] = _convert_types(
-                            metadata.field_type,
-                            getattr(fieldset, name),
-                            'metadata',
-                            name,
-                        )
-                        continue
-                    self.X_metadata[name] = None
-                else:
+                if metadata.pointwise:
                     if try_data and hasattr(fieldset, name):
                         value = getattr(fieldset, name)
 
@@ -330,15 +319,28 @@ class Trajectory:
                         # safely cast to the field type and cast and assign
                         # the value if OK.
                         self.X_data[name] = _convert_types(
-                            metadata.field_type, value, 'data', name
+                            metadata.field_type, value, 'pointwise', name
                         )
                         continue
                     self.X_data[name] = np.zeros(
-                        (self.X_npoints,), dtype=metadata.field_type
+                        self.X_npoints, dtype=metadata.field_type
                     )
+                else:
+                    if try_data and hasattr(fieldset, name):
+                        # Check that the type of the assigned value can be
+                        # safely cast to the field type and cast and assign
+                        # the value if OK.
+                        self.X_tdata[name] = _convert_types(
+                            metadata.field_type,
+                            getattr(fieldset, name),
+                            'per-trajectory',
+                            name,
+                        )
+                        continue
+                    self.X_tdata[name] = None
 
     def _check_fieldset(self, fieldset: FieldSet):
-        # Fields may not overlap with fixed implementatin fields.
+        # Fields may not overlap with fixed implementation fields.
         if any(name in self.FIXED_FIELDS for name in fieldset):
             raise ValueError('Field name conflicts with Trajectory fixed attribute')
 
@@ -356,9 +358,8 @@ def _convert_types(
     """Check that the type of the assigned value can be safely cast to the
     expected type and return the cast value.
 
-    (Metadata fields are single values, so we convert to a 1-element array for
-    the type check and casting.)
-    """
+    (Per-trajectory fields are single values, so we convert to a 1-element
+    array for the type check and casting.)"""
 
     # Wrap single values.
     arr = value
@@ -383,7 +384,7 @@ def _convert_types(
     if not np.can_cast(arr, expected_type, casting='same_kind'):
         raise TypeError(
             f'Cannot cast assigned value of type {type(value)} '
-            f'to expected type {expected_type} for {label} field {name}'
+            f'to expected type {expected_type} for {label} data field {name}'
         )
 
     # Return cast value.

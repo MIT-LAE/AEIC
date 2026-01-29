@@ -1,8 +1,13 @@
+# TODO: Remove when we move to Python 3.14+.
+from __future__ import annotations
+
+import functools
 import warnings
 from dataclasses import dataclass
 
 import numpy as np
 
+from AEIC.types import ModeValues
 from AEIC.utils.standard_fuel import get_thrust_cat_cruise
 
 
@@ -21,8 +26,8 @@ class BFFM2EINOxResult:
 
 def BFFM2_EINOx(
     sls_equiv_fuel_flow: np.ndarray,
-    EI_NOx_matrix: np.ndarray,
-    fuelflow_performance: np.ndarray,
+    EI_NOx_matrix: ModeValues,
+    fuelflow_performance: ModeValues,
     Tamb: np.ndarray,
     Pamb: np.ndarray,
 ) -> BFFM2EINOxResult:
@@ -55,8 +60,8 @@ def BFFM2_EINOx(
     # ---------------------------------------------------------------------
     # 1) Piece-wise log–log interpolation (Idle→App→Climb→TO)
     # ---------------------------------------------------------------------
-    ff_cal = np.asarray(fuelflow_performance, dtype=float).copy()
-    ei_cal = np.asarray(EI_NOx_matrix, dtype=float).copy()
+    ff_cal = fuelflow_performance.as_array()
+    ei_cal = EI_NOx_matrix.as_array()
     ff_eval = np.asarray(sls_equiv_fuel_flow, dtype=float).copy()
 
     ff_cal[ff_cal <= 0] = 1e-2
@@ -114,7 +119,10 @@ def BFFM2_EINOx(
     thrustCat = get_thrust_cat_cruise(sls_equiv_fuel_flow, fuelflow_performance)
 
     # 4) Speciation fractions (unchanged)
-    noProp, no2Prop, honoProp = NOx_speciation(thrustCat)
+    nox_speciation = NOx_speciation()
+    noProp = np.array([nox_speciation.no[cat] for cat in thrustCat])
+    no2Prop = np.array([nox_speciation.no2[cat] for cat in thrustCat])
+    honoProp = np.array([nox_speciation.hono[cat] for cat in thrustCat])
 
     # ----------------------------------------------------------------------------
     # 5. Compute component EIs
@@ -137,10 +145,18 @@ def BFFM2_EINOx(
     )
 
 
-def NOx_speciation(thrustCat):
-    n_times = thrustCat.shape[0]
+@dataclass(frozen=True)
+class NOXSpeciation:
+    no: ModeValues
+    no2: ModeValues
+    hono: ModeValues
+
+
+@functools.cache
+def NOx_speciation() -> NOXSpeciation:
     # HONO nominal (% of NOy)
     honoHnom, honoLnom, honoAnom = 0.75, 4.5, 4.5
+
     # NO2 nominal computed from (NO2/(NOy - HONO)) * (100 - HONO)
     no2Hnom = 7.5 * (100.0 - honoHnom) / 100.0
     no2Lnom = 86.5 * (100.0 - honoLnom) / 100.0
@@ -151,25 +167,11 @@ def NOx_speciation(thrustCat):
     noLnom = 100.0 - honoLnom - no2Lnom
     noAnom = 100.0 - honoAnom - no2Anom
 
-    # Allocate arrays for proportions
-    honoProp = np.zeros(n_times)
-    no2Prop = np.zeros(n_times)
-    noProp = np.zeros(n_times)
-
-    # Fill each based on thrust category
-    # Category 1 => High, 2 => Low, 3 => Approach
-    honoProp[thrustCat == 1] = honoHnom / 100.0
-    honoProp[thrustCat == 2] = honoLnom / 100.0
-    honoProp[thrustCat == 3] = honoAnom / 100.0
-
-    no2Prop[thrustCat == 1] = no2Hnom / 100.0
-    no2Prop[thrustCat == 2] = no2Lnom / 100.0
-    no2Prop[thrustCat == 3] = no2Anom / 100.0
-
-    noProp[thrustCat == 1] = noHnom / 100.0
-    noProp[thrustCat == 2] = noLnom / 100.0
-    noProp[thrustCat == 3] = noAnom / 100.0
-    return noProp, no2Prop, honoProp
+    return NOXSpeciation(
+        no=ModeValues(noLnom / 100, noAnom / 100, noHnom / 100, noHnom / 100),
+        no2=ModeValues(no2Lnom / 100, no2Anom / 100, no2Hnom / 100, no2Hnom / 100),
+        hono=ModeValues(honoLnom / 100, honoAnom / 100, honoHnom / 100, honoHnom / 100),
+    )
 
 
 # TODO: add P3T3 method support

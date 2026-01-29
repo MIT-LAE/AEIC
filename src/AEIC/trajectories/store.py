@@ -119,14 +119,15 @@ class TrajectoryStore:
     Data stored in a `TrajectoryStore` is divided into "field sets"
     (represented by the `FieldSet` class from the
     `AEIC.trajectories.field_sets` package). A field set is a collection of
-    data and metadata fields that are part of a trajectory or data that lives
-    alongside a trajectory (emissions data of one sort or another, for
-    example). "Data fields" in field sets have values for each point along a
-    trajectory: the length of the data values in each of these fields must
-    match the length of the trajectory. "Metadata fields" in field sets are
-    per-trajectory values: there is one value of each of these fields for each
-    trajectory. Each field in a field set has a name, a data type and
-    associated information used for serialization to and from NetCDF files.
+    pointwise and per-trajectory data fields that are part of a trajectory or
+    data that lives alongside a trajectory (emissions data of one sort or
+    another, for example). "Pointwise data fields" in field sets have values
+    for each point along a trajectory: the length of the data values in each of
+    these fields must match the length of the trajectory. "Per-trajectory data
+    fields" in field sets are per-trajectory values: there is one value of each
+    of these fields for each trajectory. Each field in a field set has a name,
+    a data type and associated information used for serialization to and from
+    NetCDF files.
 
     A `TrajectoryStore` always contains the "base" field set, which holds the
     basic trajectory data (defined as `BASE_FIELDS` in the
@@ -335,9 +336,9 @@ class TrajectoryStore:
             warning. Default is False. There are no guarantees that things will
             work if this is set to True!
         associated_files : list[PathType] | list[tuple[PathType, list[str]]] | None
-            Paths to associated NetCDF files containing additional data or
-            metadata fields. Each associated file may be specified as a string
-            path or as a tuple of the form (path, [fieldset_names]) where
+            Paths to associated NetCDF files containing additional pointwise or
+            per-trajectory data fields. Each associated file may be specified as
+            a string path or as a tuple of the form (path, [fieldset_names]) where
             fieldset_names is a list of names of field sets to load from the
             associated file.
         title : str | None, optional
@@ -991,7 +992,7 @@ class TrajectoryStore:
         for fs_name in fieldsets:
             fs = FieldSet.from_registry(fs_name)
             for field in fs.values():
-                if not field.metadata and field.field_type not in vl_types:
+                if field.pointwise and field.field_type not in vl_types:
                     try:
                         vl_types[field.field_type] = dataset.createVLType(
                             field.field_type, f'{field.field_type.__name__}_vlen'
@@ -1016,7 +1017,7 @@ class TrajectoryStore:
 
             # For each variable (per-point or per-trajectory) in the field set,
             for field_name, metadata in fs.items():
-                if not metadata.metadata:
+                if metadata.pointwise:
                     # if it's a per-point variable, create a variable-length
                     # array of the apprropriate scalar type, indexed by the
                     # trajectory dimension.
@@ -1028,8 +1029,8 @@ class TrajectoryStore:
                         )
                     v = g.createVariable(field_name, vl_type, ('trajectory',))
                 else:
-                    # if it's a per-trajectory metadata variable, create a
-                    # simple variable with a normal NetCDF type, indexed by the
+                    # if it's a per-trajectory variable, create a simple
+                    # variable with a normal NetCDF type, indexed by the
                     # trajectory dimension.
                     v = g.createVariable(
                         field_name, metadata.field_type, ('trajectory',)
@@ -1526,7 +1527,7 @@ class TrajectoryStore:
                         f'Data field "{name}" does not exist in NetCDF file'
                     )
                 data[name] = group.variables[name][group_index]
-                if not field.metadata and npoints is None:
+                if field.pointwise and npoints is None:
                     npoints = len(data[name])
 
         # Construct the return trajectory.
@@ -1593,7 +1594,7 @@ class TrajectoryStore:
                     val = getattr(data, name)
 
                 # Save the data to the correct NetCDF4 group.
-                if not field.metadata:
+                if field.pointwise:
                     if val is None:
                         raise ValueError(
                             f'Per-point data field "{name}" is None at index {index}'
@@ -1602,7 +1603,8 @@ class TrajectoryStore:
                 else:
                     if val is None and field.required:
                         raise ValueError(
-                            f'Metadata field "{name}" is None at index {index}'
+                            f'Per-trajectory data field "{name}" is None '
+                            f'at index {index}'
                         )
                     if val is not None:
                         group.variables[name][index] = val

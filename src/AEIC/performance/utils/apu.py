@@ -4,7 +4,7 @@ from __future__ import annotations
 import tomllib
 import warnings
 
-from pydantic import TypeAdapter
+from pydantic import ConfigDict, TypeAdapter
 
 from AEIC.config import config
 from AEIC.utils.models import CIBaseModel
@@ -12,6 +12,9 @@ from AEIC.utils.models import CIBaseModel
 
 class APU(CIBaseModel):
     """Pydantic model representing APU data."""
+
+    model_config = ConfigDict(frozen=True)
+    """Configuration is frozen after creation."""
 
     name: str
     """APU name."""

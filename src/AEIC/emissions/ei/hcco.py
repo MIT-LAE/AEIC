@@ -1,10 +1,12 @@
 import numpy as np
 
+from AEIC.types import ModeValues, ThrustMode
+
 
 def EI_HCCO(
     ff_eval: np.ndarray,
-    x_EI: list[float],
-    ff_cal: list[float],
+    x_EI: ModeValues,
+    ff_cal: ModeValues,
     Tamb: np.ndarray = np.empty(()),
     Pamb: np.ndarray = np.empty(()),
     cruiseCalc: bool = False,
@@ -33,12 +35,6 @@ def EI_HCCO(
         The HC+CO emission index [g x / kg fuel] at each ff_eval.
     """
 
-    # Validate inputs
-    if len(x_EI) != 4:
-        raise ValueError("x_EI must be of length 4")
-    if len(ff_cal) != 4:
-        raise ValueError("ff_cal must be of length 4")
-
     # ----------------------------------------------------------------------------
     # 1. Compute slanted‐line parameters in log10 space
     #    slope = [log10(xEI[1]) - log10(xEI[0])] / [log10(ff_cal[1]) - log10(ff_cal[0])]
@@ -46,21 +42,25 @@ def EI_HCCO(
     #    base_log_EI   = log10(xEI[0])
     # ----------------------------------------------------------------------------
     # Prevent log10(0) by assuming calibration flows/EIs are strictly positive
-    slope_num = np.log10(x_EI[1]) - np.log10(x_EI[0])
-    slope_den = np.log10(ff_cal[1]) - np.log10(ff_cal[0])
+    slope_num = np.log10(x_EI[ThrustMode.APPROACH]) - np.log10(x_EI[ThrustMode.IDLE])
+    slope_den = np.log10(ff_cal[ThrustMode.APPROACH]) - np.log10(
+        ff_cal[ThrustMode.IDLE]
+    )
     if np.isclose(slope_den, 0.0):
         slope = 0.0
     else:
         slope = slope_num / slope_den
 
-    base_log_fuel = np.log10(ff_cal[0])
-    base_log_EI = np.log10(x_EI[0])
+    base_log_fuel = np.log10(ff_cal[ThrustMode.IDLE])
+    base_log_EI = np.log10(x_EI[ThrustMode.IDLE])
 
     # ----------------------------------------------------------------------------
     # 2. Compute horizontal‐line level: midpoint of logs at calibration points 2 and 3
     #    x_horzline = 0.5 * [ log10(xEI[2]) + log10(xEI[3]) ]
     # ----------------------------------------------------------------------------
-    x_horzline = 0.5 * (np.log10(x_EI[2]) + np.log10(x_EI[3]))
+    x_horzline = 0.5 * (
+        np.log10(x_EI[ThrustMode.CLIMB]) + np.log10(x_EI[ThrustMode.TAKEOFF])
+    )
 
     # ----------------------------------------------------------------------------
     # 3. Compute intersection (in log10 fuel) between slanted and horizontal segments:
@@ -70,13 +70,13 @@ def EI_HCCO(
     #    If slope == 0, force intercept := log10(ff_cal[1]) to use horizontal segment
     # ----------------------------------------------------------------------------
     if np.isclose(slope, 0.0):
-        x_intercept = np.log10(ff_cal[1])
+        x_intercept = np.log10(ff_cal[ThrustMode.APPROACH])
     else:
         numerator = (
-            2.0 * np.log10(ff_cal[0]) * slope
-            + np.log10(x_EI[2])
-            + np.log10(x_EI[3])
-            - 2.0 * np.log10(x_EI[0])
+            2.0 * np.log10(ff_cal[ThrustMode.IDLE]) * slope
+            + np.log10(x_EI[ThrustMode.CLIMB])
+            + np.log10(x_EI[ThrustMode.TAKEOFF])
+            - 2.0 * np.log10(x_EI[ThrustMode.IDLE])
         )
         x_intercept = numerator / (2.0 * slope)
 
@@ -88,14 +88,14 @@ def EI_HCCO(
     #    (c) Else if slope >= 0: force slope=0, base_log_fuel=0, base_log_EI=x_horzline,
     #            and clamp x_intercept := log10(ff_cal[1]).
     # ----------------------------------------------------------------------------
-    log_ff_cal1 = np.log10(ff_cal[1])
-    log_ff_cal2 = np.log10(ff_cal[2])
+    log_ff_cal1 = np.log10(ff_cal[ThrustMode.APPROACH])
+    log_ff_cal2 = np.log10(ff_cal[ThrustMode.CLIMB])
 
     if x_intercept > log_ff_cal2:
         x_intercept = log_ff_cal2
 
     elif (x_intercept < log_ff_cal1) and (slope < 0.0):
-        x_horzline = np.log10(x_EI[1])
+        x_horzline = np.log10(x_EI[ThrustMode.APPROACH])
         x_intercept = log_ff_cal1
 
     elif slope >= 0.0:
@@ -140,9 +140,9 @@ def EI_HCCO(
     #    Then overwrite those points with xEI_acrp.
     # ----------------------------------------------------------------------------
     ACRP_slope = -52.0
-    low_thrust_mask = ff_eval < ff_cal[0]
+    low_thrust_mask = ff_eval < ff_cal[ThrustMode.IDLE]
     if np.any(low_thrust_mask):
-        delta_ff = ff_eval[low_thrust_mask] - ff_cal[0]
+        delta_ff = ff_eval[low_thrust_mask] - ff_cal[ThrustMode.IDLE]
         xEI_acrp = xEI_out[low_thrust_mask] * (1.0 + ACRP_slope * delta_ff)
         xEI_out[low_thrust_mask] = xEI_acrp
 

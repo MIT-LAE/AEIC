@@ -26,12 +26,12 @@ class FieldMetadata:
 
     This is intended to describe the properties of a field in a dataset that
     may be serialized to NetCDF. Fields can either be per-data-point variables
-    (metadata=False) or per-trajectory metadata (metadata=True).
+    (pointwise=True) or per-trajectory metadata (pointwise=False).
     """
 
-    metadata: bool = False
-    """Is this a metadata field (one value per trajectory) or a data variable
-    (one value per point along a trajectory)?"""
+    pointwise: bool = True
+    """Is this a metadata field (one value per trajectory, pointwise=False) or
+    a data variable (one value per point along a trajectory, pointwise=True)?"""
 
     field_type: type = np.float64
     """Type of the field; should be a Numpy dtype or str for variable-length
@@ -77,6 +77,19 @@ class FieldMetadata:
             raise ValueError(
                 f'FieldMetadata: invalid field_type {self.field_type}: {e}'
             ) from e
+
+    @property
+    def digest_info(self) -> str:
+        """Generate a string representation of the field metadata for hashing."""
+        parts = [
+            'P' if self.pointwise else 'T',
+            self.field_type.__name__,
+            self.description,
+            self.units,
+            'req' if self.required else 'opt',
+            str(self.default) if self.default is not None else 'nodefault',
+        ]
+        return ','.join(parts)
 
 
 class FieldSet(Mapping):
@@ -144,15 +157,15 @@ class FieldSet(Mapping):
                 field_type = field_type.type
             assert isinstance(field_type, type)
 
-            # Scalar or string fields are metadata fields.
+            # Scalar or string fields are per-trajectory fields.
             # TODO: Make this condition better?
-            is_metadata = (
+            is_per_trajectory = (
                 not isinstance(v.datatype, netCDF4.VLType) or field_type is str
             )
 
             # Set up the field information.
             metadata = FieldMetadata(
-                metadata=is_metadata,
+                pointwise=not is_per_trajectory,
                 field_type=field_type,
                 description=v.getncattr('description'),
                 units=v.getncattr('units'),
@@ -203,7 +216,11 @@ class FieldSet(Mapping):
         m = hashlib.md5()
         m.update(self.fieldset_name.encode('utf-8'))
         m.update(b':')
-        m.update(repr(sorted(self._fields.items())).encode('utf-8'))
+        data = ';'.join(
+            name + '=' + self._fields[name].digest_info
+            for name in sorted(self._fields.keys())
+        )
+        m.update(data.encode('utf-8'))
         return m.hexdigest()
 
     @property

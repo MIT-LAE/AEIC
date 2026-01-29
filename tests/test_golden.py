@@ -10,9 +10,14 @@ def test_trajectory_simulation_golden(
     builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
     comparison_ts = TrajectoryStore.open(base_file=comparison_fname)
 
+    failed = []
     for idx, mis in enumerate(sample_missions):
         traj = builder.fly(performance_model, mis)
         comparison_traj = comparison_ts[idx]
-        assert traj.approx_eq(comparison_traj)
+        if not traj.approx_eq(comparison_traj):
+            failed.append(traj.name)
 
     comparison_ts.close()
+
+    if len(failed) > 0:
+        raise AssertionError(f'Trajectory simulation mismatch for: {failed}')

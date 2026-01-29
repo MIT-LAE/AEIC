@@ -4,9 +4,9 @@ import os
 from dataclasses import dataclass
 
 from AEIC.config import config
+from AEIC.types import Position
+from AEIC.units import FEET_TO_METERS
 from AEIC.utils.files import download
-from AEIC.utils.types import Position
-from AEIC.utils.units import FEET_TO_METERS
 
 logger = logging.getLogger(__name__)
 

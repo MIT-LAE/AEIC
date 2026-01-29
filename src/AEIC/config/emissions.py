@@ -1,10 +1,12 @@
 # TODO: Remove this when we migrate to Python 3.14.
 from __future__ import annotations
 
+from functools import cached_property
 from typing import ClassVar
 
 from pydantic import ConfigDict
 
+from AEIC.types import Species
 from AEIC.utils.models import CIBaseModel, CIStrEnum
 
 
@@ -12,28 +14,35 @@ class EINOxMethod(CIStrEnum):
     """Config for selecting input modes for NOx emissions"""
 
     # NOx emission method options
-    BFFM2 = "bffm2"
-    P3T3 = "p3t3"
-    NONE = "none"
+    BFFM2 = 'bffm2'
+    P3T3 = 'p3t3'
+    NONE = 'none'
 
 
 class PMvolMethod(CIStrEnum):
     """Config for selecting input modes for PMvol emissions"""
 
     # PMvol emission method options
-    FUEL_FLOW = "fuel_flow"
-    FOA3 = "foa3"
-    NONE = "none"
+    FUEL_FLOW = 'fuel_flow'
+    FOA3 = 'foa3'
+    NONE = 'none'
 
 
 class PMnvolMethod(CIStrEnum):
     """Config for selecting input modes for PMnvol emissions"""
 
     # PMnvol emission method options
-    MEEM = "meem"
-    SCOPE11 = "scope11"
-    FOA3 = "foa3"
-    NONE = "none"
+    MEEM = 'meem'
+    SCOPE11 = 'scope11'
+    FOA3 = 'foa3'
+    NONE = 'none'
+
+
+class ClimbDescentMode(CIStrEnum):
+    """Config for selecting climb/descent emissions calculation mode."""
+
+    TRAJECTORY = 'trajectory'
+    LTO = 'lto'
 
 
 class EmissionsConfig(CIBaseModel):
@@ -50,11 +59,12 @@ class EmissionsConfig(CIBaseModel):
 
     # Trajectory emissions config
 
-    climb_descent_usage: bool = True
-    """Flag controlling flight phases for which emissions are calculated. If
-    true, emissions are calculated for the entire trajectory (takeoff, climb,
-    cruise, descent); if false, emissions are only calculated for cruise and
-    LTO data is used for takeoff, climb and approach."""
+    climb_descent_mode: ClimbDescentMode = ClimbDescentMode.TRAJECTORY
+    """Flag controlling how emissions are calculated for non-cruise flight
+    phases. If set to 'trajectory', emissions are calculated for the entire
+    trajectory (takeoff, climb, cruise, descent); if set to 'lto', emissions
+    are only calculated for cruise and LTO data is used for takeoff, climb and
+    approach."""
 
     # Emission calculation flags for only fuel dependent emission calculations.
 
@@ -127,3 +137,27 @@ class EmissionsConfig(CIBaseModel):
     def pmnvol_enabled(self) -> bool:
         """PMnvol emission calculation flag."""
         return self.pmnvol_method != PMnvolMethod.NONE
+
+    @cached_property
+    def enabled_species(self) -> set[Species]:
+        result = set()
+
+        def add(*species: Species, label: str | None = None):
+            if label is None:
+                label = species[0].name.lower()
+            if getattr(self, f'{label}_enabled'):
+                for s in species:
+                    result.add(s)
+
+        add(Species.CO2)
+        add(Species.H2O)
+        add(Species.HC)
+        add(Species.CO)
+        add(Species.NOx, Species.NO, Species.NO2, Species.HONO)
+        add(Species.PMvol, Species.OCic)
+        add(Species.PMnvol, Species.PMnvolGMD)
+        if self.pmnvol_method in (PMnvolMethod.SCOPE11, PMnvolMethod.MEEM):
+            add(Species.PMnvolN, label='pmnvol')
+        add(Species.SO2, Species.SO4, label='sox')
+
+        return result

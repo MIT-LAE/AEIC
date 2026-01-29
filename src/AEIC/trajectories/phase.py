@@ -69,7 +69,7 @@ FlightPhases = dict[FlightPhase, int]
 
 PHASE_FIELDS = {
     phase.field_name: FieldMetadata(
-        metadata=True,
+        pointwise=False,
         field_type=np.int32,
         description=f'Number of points in {phase.field_label} phase',
         units='count',
@@ -81,5 +81,4 @@ PHASE_FIELDS = {
 """Convenience dictionary of field metadata for all flight phases.
 
 This is used in the "base" field set for trajectory datasets to add the phase
-point count metadata variables to every trajectory.
-"""
+point count metadata variables to every trajectory."""

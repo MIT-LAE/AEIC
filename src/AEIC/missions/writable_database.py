@@ -12,9 +12,9 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 import AEIC.utils.airports as airports
+from AEIC.types import DayOfWeek, TimeOfDay
+from AEIC.units import MINUTES_TO_SECONDS
 from AEIC.utils.spatial import great_circle_distance
-from AEIC.utils.types import DayOfWeek, TimeOfDay
-from AEIC.utils.units import MINUTES_TO_SECONDS
 
 from .database import Database
 

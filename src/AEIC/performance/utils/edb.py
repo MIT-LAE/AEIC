@@ -1,53 +1,50 @@
 # TODO: Remove this when we move to Python 3.14+.
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
 
 from AEIC.config import config
-from AEIC.performance.types import LTOModeData, LTOPerformance, LTOThrustMode
-from AEIC.utils.models import CIBaseModel
-
-ModeDict = dict[LTOThrustMode, float]
+from AEIC.types import LTOPerformance, ModeValues, ThrustMode
 
 
-class EDBEntry(CIBaseModel):
+@dataclass
+class EDBEntry:
     engine: str
     uid: str
     engine_type: str
     BP_Ratio: float
     rated_thrust: float
-    fuel_flow: ModeDict
-    CO_EI_matrix: ModeDict
-    HC_EI_matrix: ModeDict
-    EI_NOx_matrix: ModeDict
-    SN_matrix: ModeDict
-    nvPM_mass_matrix: ModeDict
-    nvPM_num_matrix: ModeDict
-    PR: ModeDict
-    SNmax: ModeDict
+    fuel_flow: ModeValues
+    CO_EI_matrix: ModeValues
+    HC_EI_matrix: ModeValues
+    EI_NOx_matrix: ModeValues
+    SN_matrix: ModeValues
+    nvPM_mass_matrix: ModeValues
+    nvPM_num_matrix: ModeValues
+    PR: ModeValues
     EImass_max: float
     EImass_max_thrust: float
     EInum_max: float
     EInum_max_thrust: float
 
+    def __hash__(self) -> int:
+        return hash(self.engine + ':' + self.uid)
+
     def make_lto_performance(self, thrust_fractions: list[float]) -> LTOPerformance:
-        thrust_dict = {m: t for m, t in zip(LTOThrustMode, thrust_fractions)}
         return LTOPerformance(
             source='EDB',
             ICAO_UID=self.uid,
             rated_thrust=self.rated_thrust * 1000.0,
-            mode_data={
-                mode: LTOModeData(
-                    thrust_frac=thrust_dict[mode],
-                    fuel_kgs=self.fuel_flow[mode],
-                    EI_NOx=self.EI_NOx_matrix[mode],
-                    EI_HC=self.HC_EI_matrix[mode],
-                    EI_CO=self.CO_EI_matrix[mode],
-                )
-                for mode in LTOThrustMode
-            },
+            thrust_pct=ModeValues(
+                {m: t * 100 for m, t in zip(ThrustMode, thrust_fractions)}
+            ),
+            fuel_flow=self.fuel_flow,
+            EI_NOx=self.EI_NOx_matrix,
+            EI_HC=self.HC_EI_matrix,
+            EI_CO=self.CO_EI_matrix,
         )
 
     @classmethod
@@ -95,18 +92,18 @@ class EDBEntry(CIBaseModel):
 
         # Define the four LTO modes in the desired order
         modes = [
-            (LTOThrustMode.IDLE, 'Idle'),
-            (LTOThrustMode.APPROACH, 'App'),
-            (LTOThrustMode.CLIMB, 'C/O'),
-            (LTOThrustMode.TAKEOFF, 'T/O'),
+            (ThrustMode.IDLE, 'Idle'),
+            (ThrustMode.APPROACH, 'App'),
+            (ThrustMode.CLIMB, 'C/O'),
+            (ThrustMode.TAKEOFF, 'T/O'),
         ]
 
         # Extract data for each mode.
-        def mode_dict(template: str, gaseous: bool = True) -> dict:
+        def mode_dict(template: str, gaseous: bool = True) -> ModeValues:
             row = g if gaseous else n
-            return {
-                mode: float(row[template.format(mode=label)]) for mode, label in modes
-            }
+            return ModeValues(
+                {mode: float(row[template.format(mode=label)]) for mode, label in modes}
+            )
 
         # Build a dict for this engine
         return cls(
@@ -123,7 +120,6 @@ class EDBEntry(CIBaseModel):
             nvPM_mass_matrix=mode_dict('nvPM EImass {mode} (mg/kg)', gaseous=False),
             nvPM_num_matrix=mode_dict('nvPM EInum {mode} (#/kg)', gaseous=False),
             PR=mode_dict('Pressure Ratio'),
-            SNmax=mode_dict('SN Max'),
             EImass_max=float(n['nvPM EImass Max (mg/kg)']),
             EImass_max_thrust=-1.0,
             EInum_max=float(n['nvPM EInum Max (#/kg)']),

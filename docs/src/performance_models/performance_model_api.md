@@ -30,9 +30,9 @@ legacy-based performance models, use `model_type = "legacy"`.
 
 The fundamental operation of a performance model is to take an aircraft state,
 (represented by a value of the {py:class}`AircraftState
-<AEIC.performance.types.AircraftState>` type) and a flight rule (see below)
+<AEIC.types.AircraftState>` type) and a flight rule (see below)
 and to return aircraft performance data (a value of the {py:class}`Performance
-<AEIC.performance.types.Performance>` type). This is achieved by calling the
+<AEIC.types.Performance>` type). This is achieved by calling the
 {py:meth}`evaluate <AEIC.performance.models.BasePerformanceModel.evaluate>`
 method on a performance model instance.
 
@@ -54,17 +54,17 @@ of climb, constant calibrated airspeed, or constant Mach number, and the
 cruise phase at constant altitude or constant lift coefficient. The simplest
 flight rules, as used by the {py:class}`LegacyPerformanceModel
 <AEIC.performance.models.LegacyPerformanceModel>` class, are represented by
-the {py:class}`SimpleFlightRules <AEIC.performance.types.SimpleFlightRules>`
+the {py:class}`SimpleFlightRules <AEIC.types.SimpleFlightRules>`
 class, which simply specifies "climb", "cruise", or "descend".
 
 ## Usage example
 
 ```python
+import tomllib
 from AEIC.config import Config, config
-from AEIC.performance import AircraftState, SimpleFlightRules
+from AEIC.types import AircraftState, SimpleFlightRules
 from AEIC.performance.models import PerformanceModel, LegacyPerformanceModel
-from AEIC.utils.units import FL_TO_METERS
-from AEIC.emissions.emission import Emission
+from AEIC.units import FL_TO_METERS
 
 # Load default AEIC configuration.
 Config.load();
@@ -88,9 +88,6 @@ print(perf)
 #     rate_of_climb=33.69675733337415,
 #     fuel_flow=1.5102911008506104
 # )
-
-# Pass to trajectory or emissions builders.
-emitter = Emission(perf)
 ```
 
 ## Performance model members
@@ -129,35 +126,29 @@ After a performance model instance is created (of any type derived from
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.performance.types.AircraftState
+.. autoclass:: AEIC.types.AircraftState
    :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.performance.types.Performance
+.. autoclass:: AEIC.types.Performance
    :members:
 ```
 
 ```{eval-rst}
-.. autoenum:: AEIC.performance.types.SimpleFlightRules
+.. autoenum:: AEIC.types.SimpleFlightRules
    :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.performance.LTOPerformance
+.. autoclass:: AEIC.types.performance.LTOPerformance
    :members:
    :exclude-members: model_config
 ```
 
 ```{eval-rst}
-.. autoenum:: AEIC.performance.types.LTOThrustMode
+.. autoenum:: AEIC.types.ThrustMode
    :members:
-```
-
-```{eval-rst}
-.. autoclass:: AEIC.performance.types.LTOModeData
-   :members:
-   :exclude-members: model_config
 ```
 
 ```{eval-rst}
@@ -167,13 +158,13 @@ After a performance model instance is created (of any type derived from
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.performance.types.Speeds
+.. autoclass:: AEIC.types.Speeds
    :members:
    :exclude-members: model_config
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.performance.types.SpeedData
+.. autoclass:: AEIC.types.SpeedData
    :members:
    :exclude-members: model_config
 ```

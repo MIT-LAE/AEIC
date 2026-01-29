@@ -1,6 +1,6 @@
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+
+from AEIC.types import Fuel
 
 
 @dataclass(frozen=True)
@@ -11,7 +11,7 @@ class SOxEmissionResult:
     EI_SO4: float
 
 
-def EI_SOx(fuel: Mapping[str, Any]) -> SOxEmissionResult:
+def EI_SOx(fuel: Fuel) -> SOxEmissionResult:
     """
     Calculate universal SOx emissions indices (SO2EI and SO4EI).
 
@@ -27,8 +27,8 @@ def EI_SOx(fuel: Mapping[str, Any]) -> SOxEmissionResult:
         Structured SO2/SO4 emissions indices [g/kg fuel]
     """
     # Nominal values
-    FSCnom = fuel['FSCnom']
-    Epsnom = fuel['Epsnom']
+    FSCnom = fuel.fuel_sulfur_content_nom
+    Epsnom = fuel.sulfate_yield_nom
 
     # Apply MC for FSC
     # if mcsFSC == 1:

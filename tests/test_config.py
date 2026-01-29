@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from AEIC.config import Config, config
-from AEIC.emissions.config import EINOxMethod
+from AEIC.config.emissions import EINOxMethod
 
 
 # Disable default configuration loading fixture just for this file.

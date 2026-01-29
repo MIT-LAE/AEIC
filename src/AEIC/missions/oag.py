@@ -6,8 +6,8 @@ from datetime import date
 
 from tqdm import tqdm
 
-from AEIC.utils.types import DayOfWeek, TimeOfDay
-from AEIC.utils.units import STATUTE_MILES_TO_KM
+from AEIC.types import DayOfWeek, TimeOfDay
+from AEIC.units import STATUTE_MILES_TO_KM
 
 from .writable_database import WritableDatabase
 

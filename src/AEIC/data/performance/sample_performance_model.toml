@@ -45,33 +45,34 @@ source = "EDB"
 ICAO_UID = "01P11CM121" # Add UID for EDB data
 rated_thrust = 102.695
 
+[LTO_performance.mode_data.idle]
+thrust_frac = 0.07
+fuel_kgs = 0.11
+EI_NOx = 4.36
+EI_HC = 1.54
+EI_CO = 29.39
+
 [LTO_performance.mode_data.approach]
 thrust_frac = 0.3
-fuel_kgs    = 0.278
-EI_NOx      = 0.0
-EI_HC       = 0.0
-EI_CO       = 0.0
+fuel_kgs = 0.343
+EI_NOx = 9.09
+EI_HC = 0.05
+EI_CO = 2.82
 
 [LTO_performance.mode_data.climb]
 thrust_frac = 0.85
-fuel_kgs    = 0.754
-EI_NOx      = 0.0
-EI_HC       = 0.0
-EI_CO       = 0.0
+fuel_kgs = 1.031
+EI_NOx = 17.89
+EI_HC = 0.02
+EI_CO = 0.17
 
 [LTO_performance.mode_data.takeoff]
 thrust_frac = 1.0
-fuel_kgs    = 0.903
-EI_NOx      = 0.0
-EI_HC       = 0.0
-EI_CO       = 0.0
+fuel_kgs = 1.293
+EI_NOx = 23.94
+EI_HC = 0.03
+EI_CO = 0.31
 
-[LTO_performance.mode_data.idle]
-thrust_frac = 0.07
-fuel_kgs    = 0.102
-EI_NOx      = 0.0
-EI_HC       = 0.0
-EI_CO       = 0.0
 
 # ==============================================================================
 #

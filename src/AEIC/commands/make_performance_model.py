@@ -10,9 +10,10 @@ from AEIC.config import Config, config
 
 # from AEIC.parsers.LTO_reader import parseLTO
 from AEIC.parsers.PTF_reader import PTFData
-from AEIC.performance.types import LTOPerformance
+from AEIC.performance.models.base import LTOPerformanceInput
 from AEIC.performance.utils.apu import lookup_apu
 from AEIC.performance.utils.edb import EDBEntry
+from AEIC.types import LTOPerformance
 
 Config.load()
 
@@ -150,7 +151,7 @@ def legacy(
             lto = lto_from_lto_file(lto_file)
         case _:
             raise click.UsageError(f'Unsupported LTO source: {lto_source}')
-    toml_data['LTO_performance'] = lto.model_dump()
+    toml_data['LTO_performance'] = LTOPerformanceInput.from_internal(lto).model_dump()
 
     # Parse BADA performance file.
     ptf_data = PTFData.load(ptf_file)

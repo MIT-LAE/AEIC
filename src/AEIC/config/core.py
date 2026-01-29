@@ -8,10 +8,11 @@ from pathlib import Path
 
 from pydantic import ConfigDict, Field, model_validator
 
-from AEIC.emissions.config import EmissionsConfig
 from AEIC.utils.helpers import deep_update
 from AEIC.utils.models import CIBaseModel
-from AEIC.weather.config import WeatherConfig
+
+from .emissions import EmissionsConfig
+from .weather import WeatherConfig
 
 
 class Config(CIBaseModel):
@@ -44,6 +45,9 @@ class Config(CIBaseModel):
 
     performance_model: Path
     """Path to performance model data file."""
+
+    engine_file: Path
+    """Path to engine database file."""
 
     weather: WeatherConfig
     """Global weather configuration settings."""
@@ -82,6 +86,12 @@ class Config(CIBaseModel):
                 self,
                 'performance_model',
                 Path(self.file_location(getattr(self, 'performance_model'))).resolve(),
+            )
+        if getattr(self, 'engine_file') is not None:
+            object.__setattr__(
+                self,
+                'engine_file',
+                Path(self.file_location(getattr(self, 'engine_file'))).resolve(),
             )
         if self.weather.weather_data_dir is not None:
             object.__setattr__(
@@ -156,7 +166,9 @@ class Config(CIBaseModel):
 
         # Read default configuration data: this is in the top-level package
         # source directory to ensure that it ends up in the wheel.
-        with open(Path(__file__).parent / 'data/default_config.toml', 'rb') as fp:
+        with open(
+            Path(__file__).parent.parent / 'data/default_config.toml', 'rb'
+        ) as fp:
             default_data = tomllib.load(fp)
 
         # Overlay data can come either from a file or from keyword arguments.

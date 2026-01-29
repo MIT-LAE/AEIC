@@ -2,8 +2,8 @@ import pandas as pd
 import pytest
 
 from AEIC.config import config
-from AEIC.performance.types import LTOThrustMode
 from AEIC.performance.utils.edb import EDBEntry
+from AEIC.types import ThrustMode
 
 
 class DummyExcelFile:
@@ -52,58 +52,52 @@ def test_get_EDB_data_for_engine_returns_engine_data():
     assert engine_info.engine_type == "TF"
     assert engine_info.BP_Ratio == 5.1
     assert engine_info.fuel_flow == {
-        LTOThrustMode.IDLE: 0.11,
-        LTOThrustMode.APPROACH: 0.343,
-        LTOThrustMode.CLIMB: 1.031,
-        LTOThrustMode.TAKEOFF: 1.293,
+        ThrustMode.IDLE: 0.11,
+        ThrustMode.APPROACH: 0.343,
+        ThrustMode.CLIMB: 1.031,
+        ThrustMode.TAKEOFF: 1.293,
     }
     assert engine_info.CO_EI_matrix == {
-        LTOThrustMode.IDLE: 29.39,
-        LTOThrustMode.APPROACH: 2.82,
-        LTOThrustMode.CLIMB: 0.17,
-        LTOThrustMode.TAKEOFF: 0.31,
+        ThrustMode.IDLE: 29.39,
+        ThrustMode.APPROACH: 2.82,
+        ThrustMode.CLIMB: 0.17,
+        ThrustMode.TAKEOFF: 0.31,
     }
     assert engine_info.HC_EI_matrix == {
-        LTOThrustMode.IDLE: 1.54,
-        LTOThrustMode.APPROACH: 0.05,
-        LTOThrustMode.CLIMB: 0.02,
-        LTOThrustMode.TAKEOFF: 0.03,
+        ThrustMode.IDLE: 1.54,
+        ThrustMode.APPROACH: 0.05,
+        ThrustMode.CLIMB: 0.02,
+        ThrustMode.TAKEOFF: 0.03,
     }
     assert engine_info.EI_NOx_matrix == {
-        LTOThrustMode.IDLE: 4.36,
-        LTOThrustMode.APPROACH: 9.09,
-        LTOThrustMode.CLIMB: 17.89,
-        LTOThrustMode.TAKEOFF: 23.94,
+        ThrustMode.IDLE: 4.36,
+        ThrustMode.APPROACH: 9.09,
+        ThrustMode.CLIMB: 17.89,
+        ThrustMode.TAKEOFF: 23.94,
     }
     assert engine_info.SN_matrix == {
-        LTOThrustMode.IDLE: 2.1,
-        LTOThrustMode.APPROACH: 2.1,
-        LTOThrustMode.CLIMB: 11.2,
-        LTOThrustMode.TAKEOFF: 13.4,
+        ThrustMode.IDLE: 2.1,
+        ThrustMode.APPROACH: 2.1,
+        ThrustMode.CLIMB: 11.2,
+        ThrustMode.TAKEOFF: 13.4,
     }
     assert engine_info.nvPM_mass_matrix == {
-        LTOThrustMode.IDLE: 0.74,
-        LTOThrustMode.APPROACH: 1.72,
-        LTOThrustMode.CLIMB: 44.0,
-        LTOThrustMode.TAKEOFF: 70.8,
+        ThrustMode.IDLE: 0.74,
+        ThrustMode.APPROACH: 1.72,
+        ThrustMode.CLIMB: 44.0,
+        ThrustMode.TAKEOFF: 70.8,
     }
     assert engine_info.nvPM_num_matrix == {
-        LTOThrustMode.IDLE: 26600000000000.0,
-        LTOThrustMode.APPROACH: 71000000000000.0,
-        LTOThrustMode.CLIMB: 433000000000000.0,
-        LTOThrustMode.TAKEOFF: 402000000000000.0,
+        ThrustMode.IDLE: 26600000000000.0,
+        ThrustMode.APPROACH: 71000000000000.0,
+        ThrustMode.CLIMB: 433000000000000.0,
+        ThrustMode.TAKEOFF: 402000000000000.0,
     }
     assert engine_info.PR == {
-        LTOThrustMode.IDLE: 29.0,
-        LTOThrustMode.APPROACH: 29.0,
-        LTOThrustMode.CLIMB: 29.0,
-        LTOThrustMode.TAKEOFF: 29.0,
-    }
-    assert engine_info.SNmax == {
-        LTOThrustMode.IDLE: 13.38,
-        LTOThrustMode.APPROACH: 13.38,
-        LTOThrustMode.CLIMB: 13.38,
-        LTOThrustMode.TAKEOFF: 13.38,
+        ThrustMode.IDLE: 29.0,
+        ThrustMode.APPROACH: 29.0,
+        ThrustMode.CLIMB: 29.0,
+        ThrustMode.TAKEOFF: 29.0,
     }
     assert engine_info.EImass_max == 70.8
     assert engine_info.EInum_max == 433000000000000.0

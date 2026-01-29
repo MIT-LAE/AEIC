@@ -1,3 +1,5 @@
+"""Unit conversion factors for various measurements."""
+
 FEET_TO_METERS = 0.3048
 """Unit conversion factor for feet to meters."""
 
@@ -27,3 +29,9 @@ MINUTES_TO_SECONDS = 60
 
 FPM_TO_MPS = FEET_TO_METERS / MINUTES_TO_SECONDS
 """Unit conversion factor for feet per minute to meters per second."""
+
+PPM = 1.0e-6
+"""Parts per million as a unitless fraction."""
+
+KG_TO_GRAMS = 1000.0
+"""Unit conversion factor for kilograms to grams."""

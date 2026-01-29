@@ -1,28 +1,24 @@
 # Emissions module
 
-```{warning}
-This documentation is out of date. To be fixed when refactoring emissions module.
-```
-
-The {py:mod}`AEIC.emissions.emission` module uses a
-{py:class}`PerformanceModel <AEIC.performance.models.PerformanceModel>` and a
-flown {py:class}`Trajectory <AEIC.trajectories.trajectory.Trajectory>` to
-compute emissions for the entire mission. It layers multiple methods for
-emission calculations from user choices in the configuration file.
+The {py:func}`compute_emissions <AEIC.emissions.emission.compute_emissions>`
+function in the {py:mod}`AEIC.emissions` module uses a
+{py:class}`PerformanceModel <AEIC.performance.models.PerformanceModel>`, a
+{py:class}`Fuel <AEIC.types.Fuel>` definition and a flown
+{py:class}`Trajectory <AEIC.trajectories.trajectory.Trajectory>` to compute
+emissions for the entire mission. It layers multiple methods for emission
+calculations from user choices in the configuration file.
 
 ## Overview
 
 - Computes trajectory, LTO, APU, GSE, and life-cycle {math}`\mathrm{CO_2}`.
-- Emits structured arrays (grams by species) plus convenience containers
-  (`EmissionSlice` and `EmissionsOutput`) for downstream analysis.
-- Has helper methods such as {py:meth}`emit_trajectory
-  <AEIC.emissions.Emission.emit_trajectory>` or {py:meth}`emit_lto
-  <AEIC.emissions.Emission.emit_lto>` when only a subset is needed.
+- Emits per-species emission indices (grams per kilogram of feul) and emission
+  values (grams) wrapped in an {py:class}`EmissionsOutput
+  <AEIC.emissions.EmissionsOutput>` class for downstream analysis.
 
 ## Configuration inputs
 
 The `[emissions]` section of the configuration TOML file is validated through
-{py:class}`EmissionsConfig <AEIC.emissions.config.EmissionsConfig>`. Keys and
+{py:class}`EmissionsConfig <AEIC.config.emissions.EmissionsConfig>`. Keys and
 meanings are summarised below.
 
 ```{eval-rst}
@@ -33,35 +29,31 @@ meanings are summarised below.
    * - Key
      - Allowed values
      - Description
-   * - ``Fuel``
+   * - ``fuel``
      - any fuel name matching ``fuels/<name>.toml``
      - Selects the fuel file used for EIs and life-cycle data.
-   * - ``climb_descent_usage``
-     - ``true`` / ``false``
-     - When ``true``, the emissions are calculated over all segments of the trajectory;
-       otherwise climb/descent reverts to only LTO.
-   * - ``CO2_calculation`` / ``H2O_calculation`` / ``_calculation``
+   * - ``climb_descent_mode``
+     - ``trajectory`` / ``lto``
+     - When ``trajectory``, the emissions are calculated over all segments of
+       the trajectory; otherwise only the cruise part of the trajectory is
+       used and climb, descent and approach emissions are calculated from LTO
+       data.
+   * - ``co2_enabled`` / ``h2o_enabled`` / ``sox_enabled``
      - ``true`` / ``false``
      - Toggles calculation of fuel-dependent, constant EI species.
-   * - ``EI_NOx_method``
+   * - ``nox_method``
      - ``BFFM2`` / ``P3T3`` / ``none``
      - Selects the method for {math}`\mathrm{NO_x}` calculation (None disables calculation).
-   * - ``EI_HC_method`` / ``EI_CO_method``
+   * - ``hc_method`` / ``EI_CO_method``
      - ``BFFM2`` / ``none``
      - Selects the method for HC/CO calculation (None disables calculation).
-   * - ``EI_PMvol_method``
+   * - ``pmvol_method``
      - ``fuel_flow`` / ``FOA3`` / ``none``
      - Chooses the PMvol method.
-   * - ``EI_PMnvol_method``
+   * - ``pmnvol_method``
      - ``meem`` / ``scope11`` / ``FOA3`` / ``none``
      - Chooses the PMnvol method.
-   * - ``LTO_input_mode``
-     - ``performance_model`` / ``EDB``
-     - Pulls LTO EI/fuel-flow data from the performance tables or EDB file.
-   * - ``EDB_input_file``
-     - path
-     - Required when ``LTO_input_mode = "EDB"`` to locate the ICAO databank file.
-   * - ``APU_calculation`` / ``GSE_calculation`` / ``LC_calculation``
+   * - ``apu_enabled`` / ``gse_enabled`` / ``lifecycle_enabled``
      - ``true`` / ``false``
      - Enables non-trajectory emission sources and life-cycle {math}`\mathrm{CO_2}` adjustments.
 ```
@@ -69,25 +61,38 @@ meanings are summarised below.
 ## Usage example
 
 ```python
-   from AEIC.performance.models import PerformanceModel
-   from AEIC.trajectories.trajectory import Trajectory
-   from AEIC.emissions.emission import Emission
+import tomllib
 
-   perf = PerformanceModel.load("performance/sample_performance_model.toml")
-   mission = perf.missions[0]
+from AEIC.config import Config, config
+from AEIC.performance.models import PerformanceModel
+from AEIC.trajectories.trajectory import Trajectory
+from AEIC.missions import Mission
+from AEIC.emissions import compute_emissions
+from AEIC.types import Fuel, Species, ThrustMode
 
-   traj = Trajectory(perf, mission, optimize_traj=True, iterate_mass=False)
-   traj.fly_flight()
+Config.load();
 
-   emitter = Emission(perf)
-   output = emitter.emit(traj)
+perf = PerformanceModel.load(config.file_location(
+    'performance/sample_performance_model.toml'
+))
+mission = perf.missions[0]
 
-   print("Total CO2 (g)", output.total['CO2'])
-   print("Taxi NOx (g)", output.lto.emissions_g['NOx'][0])
+missions_file = config.file_location('missions/sample_missions_10.toml')
+with open(missions_file, 'rb') as f:
+    mission_dict = tomllib.load(f)
+mission = Mission.from_toml(mission_dict)[0]
 
-   # Need only the trajectory segment
-   segments = emitter.emit_trajectory(traj)
-   print("Per-segment PM number", segments.emissions_g['PMnvol'])
+with open(config.emissions.fuel_file, 'rb') as fp:
+    fuel = Fuel.model_validate(tomllib.load(fp))
+
+traj = Trajectory(perf, mission, optimize_traj=True, iterate_mass=False)
+traj.fly_flight()
+
+output = compute_emissions(perf, fuel, traj)
+
+print("Total CO2 (g)", output.total[Species.CO2])
+print("Taxi NOx (g)", output.lto[Species.NOx][ThrustMode.IDLE])
+print("Per-segment PM number", output.trajectory[Species.PMnvol])
 ```
 
 ## Inner containers
@@ -117,7 +122,18 @@ outputs of the computation:
 
 ## Computation workflow
 
-The `Emission` object is instanced once per performance model:
+The `compute_emissions` function calculates emissions for a given trajectory,
+based on a specific performance model and fuel. It performs the following
+steps:
+
+1. Calculate fuel burn per segment along the trajectory from the fuel mass
+   values provided in the trajectory.
+2. Calls the `AEIC.emissions.trajectory.get_trajectory_emissions` function to
+   calculate per-segment emission indices and emission values along the
+   trajectory. (If the emissiosn configuration flag `climb_descent_mode` is
+   set to `lto`, trajectory emissions are only returned for the cruise phase
+   of the flight.)
+3.
 
 1. `EmissionsConfig` is materialized from `PerformanceModel.config.emissions`
    and converted to `EmissionSettings`.
@@ -129,96 +145,107 @@ The `Emission` object is instanced once per performance model:
    - Constant EI species ({math}`\mathrm{CO_2}`, {math}`\mathrm{H_2O}`, {math}`\mathrm{SO}_x`).
    - Methods for HC/CO/{math}`\mathrm{NO_x}`/PMvol/PMnvol applied according to user specification.
 5. {py:meth}`Emission.get_LTO_emissions` builds the ICAO style landing and
-   take off emissions using either databank values (``LTO_input_mode =
-   "edb"``) or the per-mode inputs embedded in the performance file.
-6. {py:func}`AEIC.emissions.APU_emissions.get_APU_emissions` and
-   {py:meth}`Emission.get_GSE_emissions` contributions are added if enabled.
+   take off emissions using the per-mode inputs embedded in the performance
+   file.
+6. {py:func}`AEIC.emissions.apu.get_APU_emissions` and
+   {py:func}`AEIC.emissions.gse.get_GSE_emissions` contributions are added if
+   enabled.
 7. {py:meth}`Emission.sum_total_emissions` aggregates each pollutant into
    `self.summed_emission_g` and, when requested, life-cycle
    {math}`\mathrm{CO_2}` is appended via
    {py:meth}`Emission.get_lifecycle_emissions`.
 
-## Structured arrays
+## Types
 
-All emission indices and gram totals share the dtype emitted by the private
-`__emission_dtype` helper. Each field is `float64`:
+### `Species`
 
-`CO2`, `H2O`, `HC`, `CO`, `NOx`, `NO`, `NO2`, `HONO`,
-`PMnvol`, `PMnvolGMD`, `PMvol`, `OCic`, `SO2`, `SO4`.
-
-If `EI_PMnvol_method` is `SCOPE11` or `MEEM`, the additional `PMnvolN` field
-is emitted. Metric-specific flags (see `Emission.metric_flags`) determine
-which fields are populated; disabled species stay as `0`, making it easy to
-filter downstream.
-
-## API reference
+The {py:enum}`Species <AEIC.types.Species>` enumerated type lists the chemical
+species known to AEIC.
 
 ```{eval-rst}
-.. autoclass:: AEIC.emissions.config.EmissionsConfig
+.. autoenum:: AEIC.types.Species
    :members:
 ```
 
-```{eval-rst}
-.. autoclass:: AEIC.emissions.emission.Emission
-   :members: __init__, emit, emit_trajectory, emit_lto, emit_apu, emit_gse
-   :show-inheritance:
-```
+### `EmissionsOutput`
 
-```{eval-rst}
-.. autoclass:: AEIC.emissions.emission.EmissionSlice
-   :members:
-```
-
-```{eval-rst}
-.. autoclass:: AEIC.emissions.emission.TrajectoryEmissionSlice
-   :members:
-```
+The {py:class}`EmissionsOutput <AEIC.emission.emission.EmissionsOutput>` class
+holds emission index and emission quantities for trajectory, LTO, APU, GSE and
+total emissions, as well as some ancillary quantities like fuel burn per
+segment. The emission indices and emission quantities are stored as values of
+the generic type {py:class}`EmissionsDict
+<AEIC.emissions.types.EmissionsDict>`, with a value type of `float` (for APU,
+GSE and total emissions), {py:class}`ModeValues <AEIC.types.ModeValues>` for
+LTO, and `np.ndarray` for trajectory emissions. This structure captures the
+different types of per-species emissions from the different sources.
 
 ```{eval-rst}
 .. autoclass:: AEIC.emissions.emission.EmissionsOutput
    :members:
 ```
 
+### `EmissionsDict`
+
+
+```{eval-rst}
+.. autoclass:: AEIC.emissions.emission.EmissionsDict
+   :members:
+```
+
+### `ModeValues`
+
+```{eval-rst}
+.. autoclass:: AEIC.types.ModeValues
+   :members:
+```
+
+
+
+## API reference
+
+```{eval-rst}
+.. autofunction:: AEIC.emissions.compute_emissions
+```
+
+
 ## Helper functions
 
 ```{eval-rst}
-.. automodule:: AEIC.emissions.APU_emissions
-   :members:
-   :undoc-members:
+.. autofunction:: AEIC.emissions.apu.get_APU_emissions
 ```
 
 ```{eval-rst}
-.. automodule:: AEIC.emissions.EI_CO2
+.. automodule:: AEIC.emissions.ei.co2
    :members:
 ```
 
 ```{eval-rst}
-.. automodule:: AEIC.emissions.EI_H2O
+.. automodule:: AEIC.emissions.ei.h2o
    :members:
 ```
 
 ```{eval-rst}
-.. automodule:: AEIC.emissions.EI_SOx
+.. automodule:: AEIC.emissions.ei.sox
    :members:
 ```
 
 ```{eval-rst}
-.. automodule:: AEIC.emissions.EI_HCCO
+.. automodule:: AEIC.emissions.ei.hcco
    :members:
 ```
 
 ```{eval-rst}
-.. automodule:: AEIC.emissions.EI_NOx
+.. automodule:: AEIC.emissions.ei.nox
    :members:
 ```
 
 ```{eval-rst}
-.. automodule:: AEIC.emissions.EI_PMnvol
+.. automodule:: AEIC.emissions.ei.pmnvol
    :members:
 ```
 
 ```{eval-rst}
-.. automodule:: AEIC.emissions.EI_PMvol
+.. automodule:: AEIC.emissions.ei.pmvol
    :members:
 ```
 
