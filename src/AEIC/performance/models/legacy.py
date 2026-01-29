@@ -77,29 +77,57 @@ class Interpolator:
             raise ValueError('Interpolator requires unique (FL, mass) pairs in data')
 
         # Coordinate values.
-        fls = sorted(df.fl.unique())
-        masses = sorted(df.mass.unique())
-        self.xs = (fls, masses)
+        fls = sorted(float(fl) for fl in df.fl.unique())
+        masses = sorted(float(m) for m in df.mass.unique())
 
-        # Output values.
-        shape = (len(fls), len(masses))
-        self.tas = np.zeros(shape)
-        self.rocd = np.zeros(shape)
-        self.fuel_flow = np.zeros(shape)
+        # If there is only one mass value, we need to do linear interpolation
+        # in flight level. Otherwise we will be doing bilinear interpolation in
+        # flight level and mass.
+        self.n_masses = len(masses)
+        if self.n_masses > 1:
+            self.xs = (np.array(fls), np.array(masses))
 
-        # Construct output values.
-        for row in df.itertuples():
-            i = fls.index(row.fl)  # type: ignore
-            j = masses.index(row.mass)  # type: ignore
-            self.tas[i, j] = row.tas  # type: ignore
-            self.rocd[i, j] = row.rocd  # type: ignore
-            self.fuel_flow[i, j] = row.fuel_flow  # type: ignore
+            # Output values.
+            shape = (len(fls), len(masses))
+            self.tas = np.zeros(shape)
+            self.rocd = np.zeros(shape)
+            self.fuel_flow = np.zeros(shape)
+
+            # Construct output values.
+            for row in df.itertuples():
+                i = fls.index(row.fl)  # type: ignore
+                j = masses.index(row.mass)  # type: ignore
+                self.tas[i, j] = row.tas  # type: ignore
+                self.rocd[i, j] = row.rocd  # type: ignore
+                self.fuel_flow[i, j] = row.fuel_flow  # type: ignore
+        else:
+            self.xs = (np.array(fls),)
+
+            # Output values.
+            # shape = len(fls)
+            self.tas = df.tas.values
+            self.rocd = df.rocd.values
+            self.fuel_flow = df.fuel_flow.values
+            # self.tas = np.zeros(shape)
+            # self.rocd = np.zeros(shape)
+            # self.fuel_flow = np.zeros(shape)
+
+            # # Construct output values.
+            # for row in df.itertuples():
+            #     i = fls.index(row.fl)  # type: ignore
+            #     self.tas[i] = row.tas  # type: ignore
+            #     self.rocd[i] = row.rocd  # type: ignore
+            #     self.fuel_flow[i] = row.fuel_flow  # type: ignore
 
     def __call__(self, fl: float, mass: float) -> Performance:
         """Perform bilinear interpolation to get performance values at given
         flight level and aircraft mass."""
 
-        x = (fl, mass)
+        if self.n_masses > 1:
+            x = (fl, mass)
+        else:
+            x = np.array([fl])
+
         return Performance(
             true_airspeed=float(interpn(self.xs, self.tas, x, method='linear')[0]),
             rate_of_climb=float(interpn(self.xs, self.rocd, x, method='linear')[0]),
@@ -113,15 +141,26 @@ class PerformanceTable:
     model.
 
     This class implements performance data interpolation as done in the legacy
-    AEIC code. This means that:
+    AEIC code. The data in these performance tables is identical to the data
+    provided in BADA PTF performance table files. This means that:
 
-    1. The table is divided into three sections, for ROCD>0, ROCD≈0, ROCD<0.
-    2. In each section, TAS, ROCD and fuel flow are functions of FL and
-       aircraft mass.
+    1. The table is divided into three sections, for climb (ROCD>0), cruise
+       (ROCD≈0) and descent (ROCD<0).
+    2. There are three distinct mass values: low, nominal and high. Only the
+       nominal mass value is used in the descent section of the table.
+    3. In all sections of the table, TAS depends only on FL.
+    4. In the climb section of the table, ROCD depends on FL and mass, and fuel
+       flow depends only on FL.
+    5. In the cruise section of the table, fuel flow depends on FL and mass.
+    6. In the descent section of the table, both ROCD and fuel flow depend only
+       on FL.
+
 
     On construction, the class checks that the input data satisfies these
     requirements, ensuring that subsequent interpolation in the table data will
-    work correctly."""
+    work correctly.
+
+    """
 
     df: pd.DataFrame
     """Performance table data."""
@@ -145,54 +184,66 @@ class PerformanceTable:
     """Tolerance for zero rate of climb/descent comparisons."""
 
     def __post_init__(self):
-        # Check that we have three mass values.
-        if len(self.mass) != 3:
+        # Check that we have the right number of mass values: three for the
+        # whole table and the same for the climb and cruise sub-tables, but one
+        # for the descent sub-table.
+        sub_table = None
+        n_mass_values = 3
+        if all(v > self.ZERO_ROCD_TOL for v in self.rocd):
+            sub_table = 'positive'
+        elif all(abs(v) <= self.ZERO_ROCD_TOL for v in self.rocd):
+            sub_table = 'zero'
+        elif all(v < -self.ZERO_ROCD_TOL for v in self.rocd):
+            sub_table = 'negative'
+            n_mass_values = 1
+        if len(self.mass) != n_mass_values:
+            sub_table_str = '(' + sub_table + ') ' if sub_table is not None else ''
             raise ValueError(
-                'Legacy performance table must have exactly three mass values'
+                f'Legacy performance table {sub_table_str}'
+                f'has wrong number of mass values (should be {n_mass_values})'
             )
+
+        # Split into sub-tables for checking. (The asserts are to help type
+        # checkers.)
+        check_zero = self.df[
+            (self.df.rocd >= -self.ZERO_ROCD_TOL) & (self.df.rocd <= self.ZERO_ROCD_TOL)
+        ]
+        assert isinstance(check_zero, pd.DataFrame)
+        check_pos = self.df[self.df.rocd > self.ZERO_ROCD_TOL]
+        assert isinstance(check_pos, pd.DataFrame)
+        check_neg = self.df[self.df.rocd < -self.ZERO_ROCD_TOL]
+        assert isinstance(check_neg, pd.DataFrame)
+
+        def check_coverage(df, label):
+            if len(df.fl.unique()) * len(df.mass.unique()) != len(df):
+                raise ValueError(
+                    f'Performance data at {label} ROC does not have full coverage'
+                )
 
         # For each of positive, zero, and negative ROCD, it should be the case
         # that the input data is dense in (FL, mass) values, in the sense that
         # #rows = #FL × #mass.
+        check_coverage(check_zero, 'zero')
+        check_coverage(check_pos, 'positive')
+        check_coverage(check_neg, 'negative')
 
-        # TAS at zero ROC should depend only on FL.
-        check = self.df[
-            (self.df.rocd >= -self.ZERO_ROCD_TOL) & (self.df.rocd <= self.ZERO_ROCD_TOL)
-        ]
-        if len(list(zip(check.fl.values, check.mass.values))) != len(check):
-            raise ValueError('Performance data at zero ROC does not have full coverage')
-        if len(set(zip(check.fl, check.tas))) != len(set(check.fl)):
-            raise ValueError('TAS at zero ROC depends on variables other than FL')
+        def check_fl_only(df: pd.DataFrame, var: str, label: str):
+            if len(df.drop_duplicates(subset=['fl', var])) != len(df.fl.unique()):
+                raise ValueError(
+                    f'{var} at {label} ROC depends on variables other than FL'
+                )
 
-        # Fuel flow and TAS for positive ROC should depend only on FL.
-        check = self.df[self.df.rocd > self.ZERO_ROCD_TOL]
-        if len(list(zip(check.fl.values, check.mass.values))) != len(check):
-            raise ValueError(
-                'Performance data at positive ROC does not have full coverage'
-            )
-        if len(set(zip(check.fl, check.tas))) != len(set(check.fl)):
-            raise ValueError('TAS at positive ROC depends on variables other than FL')
-        if len(set(zip(check.fl, check.fuel_flow))) != len(set(check.fl)):
-            raise ValueError(
-                'fuel flow at positive ROC depends on variables other than FL'
-            )
+        # Zero ROC: TAS should depend only on FL.
+        check_fl_only(check_zero, 'tas', 'zero')
 
-        # Fuel flow and TAS for negative ROC should depend only on FL.
-        # TODO: COMMENTED OUT BECAUSE THE SAMPLE PERFORMANCE MODEL DOESN'T PASS
-        # THIS TEST!
-        check = self.df[self.df.rocd < -self.ZERO_ROCD_TOL]
-        if len(list(zip(check.fl.values, check.mass.values))) != len(check):
-            raise ValueError(
-                'Performance data at negative ROC does not have full coverage'
-            )
-        # if len(set(zip(check.fl, check.tas))) != len(set(check.fl)):
-        #     raise ValueError(
-        #         'TAS at negative ROC depends on variables other than FL'
-        #     )
-        # if len(set(zip(check.fl, check.fuel_flow))) != len(set(check.fl)):
-        #     raise ValueError(
-        #         'fuel flow at negative ROC depends on variables other than FL'
-        #     )
+        # Positive ROC: TAS and fuel flow should depend only on FL.
+        check_fl_only(check_pos, 'tas', 'positive')
+        check_fl_only(check_pos, 'fuel_flow', 'positive')
+
+        # Negative ROC: TAS, fuel flow and ROCD should depend only on FL.
+        check_fl_only(check_neg, 'tas', 'negative')
+        check_fl_only(check_neg, 'fuel_flow', 'negative')
+        check_fl_only(check_neg, 'rocd', 'negative')
 
     @classmethod
     def from_input(cls, ptin: PerformanceTableInput) -> Self:

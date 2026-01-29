@@ -76,7 +76,7 @@ class DummyPerformanceModel:
         self.lto_performance = LTOPerformance(
             source='test',
             ICAO_UID='TEST123',
-            Foo_kN=100.0,
+            rated_thrust=100.0,
             mode_data=lto_settings
             if lto_settings is not None
             else default_lto_settings,
@@ -372,7 +372,6 @@ def test_extract_lto_inputs_orders_performance_modes(sample_perf_model, trajecto
 
 @pytest.mark.config_updates(emissions__pmvol_method='foa3')
 def test_pmvol_foa3_uses_thrust_percentages(monkeypatch, sample_perf_model, trajectory):
-    print(config.emissions)
     perf = sample_perf_model({'EI_PMvol_method': 'foa3'})
     emission = Emission(perf)
     emission._prepare_run_state(trajectory)

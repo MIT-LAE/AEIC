@@ -47,6 +47,7 @@ when required.
 | Altitude | m | `altitude` and variants | Feet |
 | Flight level | FL (1) | `flight_level` | |
 | Aircraft mass | kg | `aircraft_mass` | |
+| Thrust | N | `..._thrust` | kN |
 | Fuel mass | kg | `fuel_mass` | |
 | Fuel flow | kg/s | `fuel_flow` | |
 | Rate of climb | m/s | `rate_of_climb` | ft/min? |

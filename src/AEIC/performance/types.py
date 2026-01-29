@@ -70,23 +70,37 @@ class LTOThrustMode(CIStrEnum):
 class LTOModeData(CIBaseModel):
     """LTO data for a given flight phase."""
 
-    # TODO: Better docstrings.
     thrust_frac: float
+    """Thrust fraction in thrust mode (0-1)."""
+
     fuel_kgs: float
+    """Fuel flow rate in thrust mode [kg/s]."""
+
     EI_NOx: float
+    """Emission index for NOx in thrust mode [g/kg fuel]."""
+
     EI_HC: float
+    """Emission index for HC in thrust mode [g/kg fuel]."""
+
     EI_CO: float
+    """Emission index for CO in thrust mode [g/kg fuel]."""
 
 
 class LTOPerformance(CIBaseModel):
     """LTO performance data."""
 
-    # TODO: Make source an enum? EDB or in-file?
-    # TODO: Docstrings.
     source: str
+    """Source of LTO data (e.g., 'EDB' or 'BADA LTO file'). For documentation
+    only."""
+
     ICAO_UID: str
-    Foo_kN: float
+    """ICAO engine ID from engine database (EDB). For documentation only."""
+
+    rated_thrust: float
+    """Engine rated thrust [N]."""
+
     mode_data: dict[LTOThrustMode, LTOModeData]
+    """LTO data for each thrust mode."""
 
 
 @dataclass

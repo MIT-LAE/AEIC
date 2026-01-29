@@ -59,7 +59,7 @@ class BasePerformanceModel[RulesT = SimpleFlightRules](CIBaseModel, ABC):
     number_of_engines: PositiveInt
     """Number of engines."""
 
-    apu_name: str | None
+    apu_name: str | None = None
     """Optional APU name. This is used to look up APU data from the APU
     database."""
 

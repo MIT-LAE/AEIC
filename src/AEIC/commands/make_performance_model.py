@@ -17,18 +17,14 @@ from AEIC.performance.utils.edb import EDBEntry
 Config.load()
 
 
-def lto_from_edb(engine_file, engine_uid, thrust_fractions, foo_kn) -> LTOPerformance:
+def lto_from_edb(engine_file, engine_uid, thrust_fractions) -> LTOPerformance:
     if engine_file is None or engine_uid is None:
         raise click.UsageError(
             'Both --engine-file and --engine-uid must be provided when '
             'using "edb" as the LTO source.'
         )
     edb_data = EDBEntry.get_engine(engine_file, engine_uid)
-    if foo_kn is None:
-        raise click.UsageError(
-            '--foo-kn must be provided when using "edb" as the LTO source.'
-        )
-    return edb_data.make_lto_performance(foo_kn, thrust_fractions)
+    return edb_data.make_lto_performance(thrust_fractions)
 
 
 def lto_from_lto_file(lto_file) -> LTOPerformance:
@@ -57,10 +53,8 @@ def build_performance_table(ptf: PTFData) -> dict[str, Any]:
         data.append([r.fl, ptf.nominal_mass, r.tas, 0.0, r.fuel_flow_nom])
         data.append([r.fl, ptf.high_mass, r.tas, 0.0, r.fuel_flow_high])
     for r in ptf.descent:
-        data.append([r.fl, ptf.low_mass, r.tas, r.rocd_nom, r.fuel_flow_nom])
         data.append([r.fl, ptf.nominal_mass, r.tas, r.rocd_nom, r.fuel_flow_nom])
-        data.append([r.fl, ptf.high_mass, r.tas, r.rocd_nom, r.fuel_flow_nom])
-    return dict(cols=cols, data=sorted(data, key=lambda x: (x[1], -x[3], x[0])))
+    return dict(cols=cols, data=sorted(data, key=lambda x: (x[1], x[0], -x[3])))
 
 
 @click.group()
@@ -99,11 +93,6 @@ def cli(ctx, output_file):
     help='Thrust fractions for LTO modes: idle, approach, climb, takeoff.',
 )
 @click.option(
-    '--foo-kn',
-    type=float,
-    help='Sea-level static thrust of the engine in kN.',
-)
-@click.option(
     '--lto-file',
     type=click.Path(exists=True),
     help='Input BADA LTO file.',
@@ -139,7 +128,6 @@ def legacy(
     engine_file,
     engine_uid,
     thrust_fractions,
-    foo_kn,
     lto_file,
     ptf_file,
     aircraft_class,
@@ -157,7 +145,7 @@ def legacy(
     # Foo value) or from a BADA LTO file.
     match lto_source:
         case 'edb':
-            lto = lto_from_edb(engine_file, engine_uid, thrust_fractions, foo_kn)
+            lto = lto_from_edb(engine_file, engine_uid, thrust_fractions)
         case 'lto-file':
             lto = lto_from_lto_file(lto_file)
         case _:

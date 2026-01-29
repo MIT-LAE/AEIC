@@ -6,7 +6,9 @@ distinguished by a top-level `model_type` field, with one of the following
 values:
 
  * `model_type = "legacy"`: legacy table-based performance model, intended to
-   replicate the behavior of the AEIC v2 Matlab code.
+   replicate the behavior of the AEIC v2 Matlab code. These files are
+   essentially just a conversion of BADA PTF files into TOML format, including
+   some extra information from the engine database.
  * `model_type = "bada"`: BADA3-based performance model.
  * `model_type = "tasopt"`: performance model based on TASOPT simulations.
 
@@ -37,19 +39,12 @@ uv run make-performance-model \
   --number-of-engines 2 \
   --aircraft-class narrow \
   --ptf-file /home/bada/B738__.PTF \
-  --lto-source edb \
   --engine-file engines/sample_edb.xlsx \
-  --engine-uid 01P11CM121 \
-  --foo-kn 102.695
+  --engine-uid 01P11CM121
 ```
 
 Performance data is taken from a BADA PTF file, and LTO data is taken from the
 engine database.
-
-```{admonition} Question
-Is `Foo_kN` available from the engine database? Which thrust value is it
-supposed to be?
-```
 
 (More documentation to come when this is finished.)
 

@@ -118,7 +118,7 @@ class PTFData:
                 # alt/payload/mass and speeds:
                 if not capture:
                     # Aircraft type
-                    match_ac_type = re.search(r"AC/Type\s*:\s*(.+)\s*$", line)
+                    match_ac_type = re.search(r"AC/Type\s*:\s*([^_]+)_*\s*$", line)
                     if match_ac_type:
                         aircraft_type = match_ac_type.group(1)
 

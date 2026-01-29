@@ -17,6 +17,7 @@ class EDBEntry(CIBaseModel):
     uid: str
     engine_type: str
     BP_Ratio: float
+    rated_thrust: float
     fuel_flow: ModeDict
     CO_EI_matrix: ModeDict
     HC_EI_matrix: ModeDict
@@ -31,14 +32,12 @@ class EDBEntry(CIBaseModel):
     EInum_max: float
     EInum_max_thrust: float
 
-    def make_lto_performance(
-        self, Foo_kN: float, thrust_fractions: list[float]
-    ) -> LTOPerformance:
+    def make_lto_performance(self, thrust_fractions: list[float]) -> LTOPerformance:
         thrust_dict = {m: t for m, t in zip(LTOThrustMode, thrust_fractions)}
         return LTOPerformance(
             source='EDB',
             ICAO_UID=self.uid,
-            Foo_kN=Foo_kN,
+            rated_thrust=self.rated_thrust * 1000.0,
             mode_data={
                 mode: LTOModeData(
                     thrust_frac=thrust_dict[mode],
@@ -115,6 +114,7 @@ class EDBEntry(CIBaseModel):
             uid=str(uid),
             engine_type=g['Eng Type'],
             BP_Ratio=float(g['B/P Ratio']),
+            rated_thrust=float(g['Rated Thrust (kN)']),
             fuel_flow=mode_dict('Fuel Flow {mode} (kg/sec)'),
             CO_EI_matrix=mode_dict('CO EI {mode} (g/kg)'),
             HC_EI_matrix=mode_dict('HC EI {mode} (g/kg)'),

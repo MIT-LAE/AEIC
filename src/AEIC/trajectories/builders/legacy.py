@@ -56,9 +56,18 @@ class LegacyContext(Context):
         n_descent = int(1 / builder.frac_step_des + 1)
 
         # Generate great circle ground track between departure and arrival
-        # locations.
+        # locations. Allow the trajectory to step beyond the end of the ground
+        # track to account for the fact that we just guess the point at which
+        # we need to start the descent - depending on the exact airspeed values
+        # returned by the performance model, we will either reach the ground
+        # before or after the destination point. If the airspeeds are higher
+        # than expected by the descent start point estimate, we will fly past
+        # the destination, so will need to step along the ground track beyond the
+        # final destination waypoint.
         ground_track = GroundTrack.great_circle(
-            mission.origin_position.location, mission.destination_position.location
+            mission.origin_position.location,
+            mission.destination_position.location,
+            allow_overstep=True,
         )
 
         # Climb defined as starting 3000' above airport.
