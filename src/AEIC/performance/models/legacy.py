@@ -104,20 +104,9 @@ class Interpolator:
             self.xs = (np.array(fls),)
 
             # Output values.
-            # shape = len(fls)
             self.tas = df.tas.values
             self.rocd = df.rocd.values
             self.fuel_flow = df.fuel_flow.values
-            # self.tas = np.zeros(shape)
-            # self.rocd = np.zeros(shape)
-            # self.fuel_flow = np.zeros(shape)
-
-            # # Construct output values.
-            # for row in df.itertuples():
-            #     i = fls.index(row.fl)  # type: ignore
-            #     self.tas[i] = row.tas  # type: ignore
-            #     self.rocd[i] = row.rocd  # type: ignore
-            #     self.fuel_flow[i] = row.fuel_flow  # type: ignore
 
     def __call__(self, fl: float, mass: float) -> Performance:
         """Perform bilinear interpolation to get performance values at given
@@ -154,7 +143,6 @@ class PerformanceTable:
     5. In the cruise section of the table, fuel flow depends on FL and mass.
     6. In the descent section of the table, both ROCD and fuel flow depend only
        on FL.
-
 
     On construction, the class checks that the input data satisfies these
     requirements, ensuring that subsequent interpolation in the table data will
