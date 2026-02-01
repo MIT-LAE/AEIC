@@ -3,26 +3,30 @@
 ## Custom types
 
 Small custom types are used to represent "locations" (2-D) and "positions"
-(3-D) and some time values.
+(3-D), some time values and other small enumerations (e.g., aircraft classes).
 
 ```{eval-rst}
 .. autoclass:: AEIC.types.Location
-    :members:
+   :members:
 ```
 
 ```{eval-rst}
 .. autoclass:: AEIC.types.Position
-    :members:
+   :members:
 ```
 
 ```{eval-rst}
 .. autoclass:: AEIC.types.DayOfWeek
-    :members:
+   :members:
 ```
 
 ```{eval-rst}
 .. autoclass:: AEIC.types.TimeOfDay
-    :members:
+   :members:
+```
+
+```{eval-rst}
+.. autoenum:: AEIC.types.AircraftClass
 ```
 
 ## Airport handling
@@ -90,9 +94,18 @@ module.
 
 ## Standard fuel
 
+As well as the functions in the {py:mod}`AEIC.utils.standard_fuel` module,
+there is a {py:class}`Fuel <AEIC.types.Fuel>` class defined in
+{py:mod}`AEIC.types`.
+
 ```{eval-rst}
 .. automodule:: AEIC.utils.standard_fuel
     :members:
+```
+
+```{eval-rst}
+.. autoclass:: AEIC.types.Fuel
+   :members:
 ```
 
 ## Miscellaneous utility functions

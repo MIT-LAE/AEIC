@@ -147,9 +147,17 @@ def BFFM2_EINOx(
 
 @dataclass(frozen=True)
 class NOXSpeciation:
+    """Fractional speciation of NOₓ into NO, NO2, and HONO in different thrust
+    modes."""
+
     no: ModeValues
+    """Fraction of NO in NOₓ in each thrust mode."""
+
     no2: ModeValues
+    """Fraction of NO₂ in NOₓ in each thrust mode."""
+
     hono: ModeValues
+    """Fraction of HONO in NOₓ in each thrust mode."""
 
 
 @functools.cache

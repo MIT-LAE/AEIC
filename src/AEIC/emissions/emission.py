@@ -82,7 +82,8 @@ def compute_emissions(
     pm: BasePerformanceModel, fuel: Fuel, traj: Trajectory
 ) -> EmissionsOutput:
     """
-    Compute all emissions
+    Compute all emissions.
+    TODO: Expand docstring.
     """
 
     # Calculate cruise trajectory emissions (CO2, H2O, SOx, NOx, HC, CO, PM).

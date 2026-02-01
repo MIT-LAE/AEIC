@@ -11,27 +11,24 @@ from AEIC.utils.models import CIBaseModel, CIStrEnum
 
 
 class EINOxMethod(CIStrEnum):
-    """Config for selecting input modes for NOx emissions"""
+    """NOₓ emissions calculation methods."""
 
-    # NOx emission method options
     BFFM2 = 'bffm2'
     P3T3 = 'p3t3'
     NONE = 'none'
 
 
 class PMvolMethod(CIStrEnum):
-    """Config for selecting input modes for PMvol emissions"""
+    """PMvol emissions calculation methods."""
 
-    # PMvol emission method options
     FUEL_FLOW = 'fuel_flow'
     FOA3 = 'foa3'
     NONE = 'none'
 
 
 class PMnvolMethod(CIStrEnum):
-    """Config for selecting input modes for PMnvol emissions"""
+    """PMnvol emissions calculation methods."""
 
-    # PMnvol emission method options
     MEEM = 'meem'
     SCOPE11 = 'scope11'
     FOA3 = 'foa3'
@@ -39,10 +36,15 @@ class PMnvolMethod(CIStrEnum):
 
 
 class ClimbDescentMode(CIStrEnum):
-    """Config for selecting climb/descent emissions calculation mode."""
+    """Climb/descent emissions calculation mode."""
 
     TRAJECTORY = 'trajectory'
+    """Calculate emissions for the entire trajectory (takeoff, climb, cruise,
+    descent)."""
+
     LTO = 'lto'
+    """Calculate emissions only for cruise and use LTO data for takeoff,
+    climb, and approach."""
 
 
 class EmissionsConfig(CIBaseModel):
@@ -52,10 +54,11 @@ class EmissionsConfig(CIBaseModel):
     """Configuration is frozen after creation."""
 
     DEFAULT_METHOD: ClassVar[EINOxMethod] = EINOxMethod.BFFM2
-    """Default method for NOx, HC, and CO emissions calculations."""
+    """Default method for NOₓ, HC, and CO emissions calculations."""
 
     fuel: str
-    """Fuel used (conventional Jet-A, SAF, etc.)."""
+    """Fuel used (conventional Jet-A, SAF, etc.). Should be the name of a file
+    accessible as "fuels/{fuel}.toml" using the AEIC configuration system."""
 
     # Trajectory emissions config
 
@@ -69,41 +72,42 @@ class EmissionsConfig(CIBaseModel):
     # Emission calculation flags for only fuel dependent emission calculations.
 
     co2_enabled: bool = True
-    """CO2 emission calculation flag."""
+    """Toggle fuel-dependent CO₂ emission calculation."""
 
     h2o_enabled: bool = True
-    """H2O emission calculation flag."""
+    """Toggle fuel-dependeny H₂O emission calculation."""
 
     sox_enabled: bool = True
-    """SOx emission calculation flag."""
+    """Toggle fuel-dependency SOₓ (SO₂ and SO₄) emission calculation."""
 
     # Emission calculation method options for all other emmisions
 
     nox_method: EINOxMethod = DEFAULT_METHOD
-    """NOx emission calculation method."""
+    """NOₓ emission calculation method. ("None" disables NOₓ emissions.)"""
 
     hc_method: EINOxMethod = DEFAULT_METHOD
-    """HC emission calculation method."""
+    """HC emission calculation method. ("None" disables HC emissions.)"""
 
     co_method: EINOxMethod = DEFAULT_METHOD
-    """CO emission calculation method."""
+    """CO emission calculation method. ("None" disables CO emissions.)"""
 
     pmvol_method: PMvolMethod = PMvolMethod.FUEL_FLOW
-    """PMvol emission calculation method."""
+    """PMvol emission calculation method. ("None" disables PMvol emissions.)"""
 
     pmnvol_method: PMnvolMethod = PMnvolMethod.MEEM
-    """PMnvol emission calculation method."""
+    """PMnvol emission calculation method. ("None" disables PMnvol emissions.)"""
 
     # Non trajectory emission calculation flags.
 
     apu_enabled: bool = True
-    """APU emission calculation flag."""
+    """Toggle APU emission calculation. (APU emissions are only calculated if
+    the performance model provides an APU name.)"""
 
     gse_enabled: bool = True
-    """GSE emission calculation flag."""
+    """Toggle GSE emission calculation."""
 
     lifecycle_enabled: bool = True
-    """Lifecycle emission calculation flag."""
+    """Toggle CO₂ lifecycle emission calculation."""
 
     @property
     def fuel_file(self) -> str:
@@ -115,7 +119,7 @@ class EmissionsConfig(CIBaseModel):
 
     @property
     def nox_enabled(self) -> bool:
-        """NOx emission calculation flag."""
+        """NOₓ emission calculation flag."""
         return self.nox_method != EINOxMethod.NONE
 
     @property

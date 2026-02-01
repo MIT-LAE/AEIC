@@ -137,7 +137,6 @@ After a performance model instance is created (of any type derived from
 
 ```{eval-rst}
 .. autoenum:: AEIC.types.SimpleFlightRules
-   :members:
 ```
 
 ```{eval-rst}
@@ -148,7 +147,6 @@ After a performance model instance is created (of any type derived from
 
 ```{eval-rst}
 .. autoenum:: AEIC.types.ThrustMode
-   :members:
 ```
 
 ```{eval-rst}

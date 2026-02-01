@@ -81,7 +81,6 @@ class, instances of which are created lazily for each flight phas as needed
 
 ```{eval-rst}
 .. autoenum:: AEIC.performance.models.legacy.ROCDFilter
-   :members:
 ```
 
 ```{eval-rst}

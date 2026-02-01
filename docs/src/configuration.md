@@ -109,13 +109,31 @@ you should not be doing it in "normal" AEIC code!
     :exclude-members: model_config
 ```
 
-## Individual module configuration classes
+## Emissions module configuration classes
 
 ```{eval-rst}
 .. autoclass:: AEIC.config.emissions.EmissionsConfig
     :members:
     :exclude-members: model_config
 ```
+
+```{eval-rst}
+.. autoenum:: AEIC.config.emissions.ClimbDescentMode
+```
+
+```{eval-rst}
+.. autoenum:: AEIC.config.emissions.EINOxMethod
+```
+
+```{eval-rst}
+.. autoenum:: AEIC.config.emissions.PMvolMethod
+```
+
+```{eval-rst}
+.. autoenum:: AEIC.config.emissions.PMnvolMethod
+```
+
+## Weather module configuration class
 
 ```{eval-rst}
 .. autoclass:: AEIC.config.weather.WeatherConfig
