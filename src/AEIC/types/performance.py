@@ -153,7 +153,7 @@ class ThrustModeArray:
 class ModeValues(Mapping):
     """Specialized dictionary for LTO values keyed by ThrustMode."""
 
-    _data: dict[ThrustMode, float | np.floating]
+    _data: dict[ThrustMode, float]
 
     # These values are used for a lot of configuration data, so we often want
     # to make them immutable to prevent things getting modified
@@ -169,13 +169,13 @@ class ModeValues(Mapping):
         elif len(args) == 1 and isinstance(args[0], np.ndarray):
             self._data = {m: args[0][i] for i, m in enumerate(ThrustMode)}
         elif len(args) == 1 and isinstance(args[0], float | np.floating):
-            self._data = {m: args[0] for m in ThrustMode}
+            self._data = {m: float(args[0]) for m in ThrustMode}
         elif len(args) == 4:
             self._data = {m: args[i] for i, m in enumerate(ThrustMode)}
         else:
             raise ValueError('Invalid initialization of ModeValues.')
 
-    def __getitem__(self, mode: ThrustMode) -> float | np.floating:
+    def __getitem__(self, mode: ThrustMode) -> float:
         if mode not in self._data:
             return 0.0
         return self._data[mode]
@@ -183,7 +183,7 @@ class ModeValues(Mapping):
     def __setitem__(self, mode: ThrustMode, value: float | np.floating) -> None:
         if not self._mutable:
             raise TypeError('ModeValues instance is frozen and cannot be modified.')
-        self._data[mode] = value
+        self._data[mode] = float(value)
 
     def __iter__(self):
         return iter(self._data)
@@ -213,7 +213,7 @@ class ModeValues(Mapping):
     def as_array(self) -> np.ndarray:
         return np.array([self._data[m] for m in ThrustMode])
 
-    def sum(self) -> float | np.floating:
+    def sum(self) -> float:
         return sum(self._data.values())
 
     def __add__(self, other: ModeValues | float | int) -> ModeValues:

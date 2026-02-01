@@ -97,7 +97,7 @@ def compute_emissions(
 
     # Calculate APU emissions based on specified APU type.
     apu = EmissionsSubset[float]()
-    if config.emissions.apu_enabled:
+    if config.emissions.apu_enabled and pm.apu is not None:
         apu = get_APU_emissions(lto.indices, pm.apu, fuel)
         total_fuel_burn += apu.fuel_burn
 
@@ -120,7 +120,7 @@ def compute_emissions(
         trajectory=trajectory.emissions,
         trajectory_indices=trajectory.indices,
         fuel_burn_per_segment=fuel_burn_per_segment,
-        total_fuel_burn=total_fuel_burn,
+        total_fuel_burn=float(total_fuel_burn),
         lto=lto.emissions,
         lto_indices=lto.indices,
         apu=apu.emissions,

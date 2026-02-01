@@ -72,7 +72,9 @@ class EDBEntry:
             raise ValueError(f"EDB workbook is missing required sheets: {missing}")
 
         gaseous = xls.parse(gaseous_sheet)
+        assert isinstance(gaseous, pd.DataFrame)
         nvpm = xls.parse(nvpm_sheet)
+        assert isinstance(nvpm, pd.DataFrame)
 
         if 'UID No' not in gaseous.columns or 'UID No' not in nvpm.columns:
             raise ValueError("UID No column is missing from one or both sheets.")
