@@ -1557,7 +1557,6 @@ class TrajectoryStore:
     ) -> None:
         """Write a trajectory at the given index to the NetCDF file(s)."""
 
-        return
         # Check: should be one or the other. We're either saving a real
         # trajectory (called from `_write_trajectory`) or writing data to an
         # associated file (called from `create_associated`).
@@ -1578,9 +1577,9 @@ class TrajectoryStore:
             nc_file = single_nc_file or self._nc[fs_name]
             group = nc_file.groups[fs_name][0]
 
-            # Write per-point data as variable-length arrays.
             for name in group.variables:
                 field = fs[name]
+                var = group.variables[name]
 
                 # Get data either from the trajectory or the "associated data"
                 # we've been passed.
@@ -1590,21 +1589,40 @@ class TrajectoryStore:
                 elif data is not None:
                     val = getattr(data, name)
 
-                # Save the data to the correct NetCDF4 group.
-                if field.dimensions == POINTWISE_DIMS:
-                    if val is None:
+                # Handle missing values.
+                if val is None:
+                    if field.required:
                         raise ValueError(
-                            f'Per-point data field "{name}" is None at index {index}'
+                            f'Data field "{name}" is None at index {index}'
                         )
-                    group.variables[name][index] = val
-                else:
-                    if val is None and field.required:
-                        raise ValueError(
-                            f'Per-trajectory data field "{name}" is None '
-                            f'at index {index}'
-                        )
-                    if val is not None:
-                        group.variables[name][index] = val
+                    continue
+
+                # Save data to NetCDF variable, handling species and thrust
+                # modes. At this point, we assume that all the types are
+                # correct, since these will have been checked earlier. Numpy
+                # array values are saved as variable length types of the
+                # appropriate base type.
+                has_sp = Dimension.SPECIES in field.dimensions
+                has_tm = Dimension.THRUST_MODE in field.dimensions
+                match (has_sp, has_tm):
+                    case (False, False):
+                        # float, np.ndarray
+                        var[index] = val
+                    case (False, True):
+                        # ModeValues
+                        for ti, tm in enumerate(ThrustMode):
+                            var[index, ti] = val[tm]
+                    case (True, False):
+                        # EmissionsDict[float], EmissionsDict[np.ndarray]
+                        for si, sp in enumerate(Species):
+                            if sp in val:
+                                var[index, si] = val[sp]
+                    case (True, True):
+                        # EmissionsDict[ModeValues]
+                        for si, sp in enumerate(Species):
+                            for ti, tm in enumerate(ThrustMode):
+                                if sp in val and tm in val[sp]:
+                                    var[index, si, ti] = val[sp][tm]
 
     def _check_file_paths(self, paths: list[PathType], mode: FileMode) -> None:
         # Ensure all input paths are distinct.
@@ -1862,6 +1880,8 @@ def _create_dimensions(dataset: nc4.Dataset, fieldsets: set[str]) -> nc4.Dimensi
         fs = FieldSet.from_registry(fs_name)
         dims = fs.dimensions
         if Dimension.SPECIES in dims and not species_dim_created:
+            # TODO: Create species dimension using only species in data to be
+            # saved, not all defined species.
             create_enum_dimension('species', Species)
             species_dim_created = True
         if Dimension.THRUST_MODE in dims and not thrust_mode_dim_created:
