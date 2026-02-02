@@ -3,7 +3,7 @@ from typing import Any
 import numpy as np
 
 from AEIC.storage.field_sets import FieldMetadata, FieldSet, HasFieldSets
-from AEIC.types import Dimension, Dimensions
+from AEIC.types import Dimension, Dimensions, EmissionsDict, Species
 
 from .phase import PHASE_FIELDS
 
@@ -292,6 +292,17 @@ class Trajectory:
                     self.X_data[name] = metadata.convert_in(value, name, self.X_npoints)
                 else:
                     self.X_data[name] = metadata.empty(self.X_npoints)
+
+    @property
+    def species(self) -> set[Species]:
+        """Set of species included in any species-indexed fields in the
+        trajectory."""
+        species = set()
+        for name, field in self.X_data_dictionary.items():
+            if Dimension.SPECIES in field.dimensions:
+                assert isinstance(self.X_data[name], EmissionsDict)
+                species.update(self.X_data[name].keys())
+        return species
 
     def _check_fieldset(self, fieldset: FieldSet):
         # Fields may not overlap with fixed implementation fields.

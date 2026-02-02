@@ -589,6 +589,8 @@ class TrajectoryStore:
         nc_info = self._create_nc_file(
             associated_file,
             set(fieldsets),
+            # TODO: Fix this.
+            set(),
             save=False,
             associated_name=self._nc_files[0].path[0],
             associated_hash=self._nc_files[0].dataset[0].id_hash,
@@ -907,7 +909,8 @@ class TrajectoryStore:
 
         # Create the base NetCDF file.
         assert self.base_file is not None
-        self._create_nc_file(self.base_file, base_nc_fieldsets)
+        species = proto.species
+        self._create_nc_file(self.base_file, base_nc_fieldsets, species)
 
         # Create the associated NetCDF files. The `associated_name` and
         # `associated_hash` arguments are used to record the link between the
@@ -921,6 +924,7 @@ class TrajectoryStore:
             self._create_nc_file(
                 nc_file,
                 set(fieldsets),
+                species,
                 associated_name=base_nc_file.path[0],
                 associated_hash=base_nc_file.dataset[0].id_hash,
             )
@@ -929,6 +933,7 @@ class TrajectoryStore:
         self,
         nc_file: str | Path,
         fieldsets: set[str],
+        species: set[Species],
         associated_name: Path | None = None,
         associated_hash: str | None = None,
         save: bool = True,
@@ -946,7 +951,7 @@ class TrajectoryStore:
         dataset = nc4.Dataset(nc_file, mode='w', format='NETCDF4', keepweakref=True)
 
         # Create dimensions and any required coordinate variables.
-        traj_dim = _create_dimensions(dataset, fieldsets)
+        traj_dim = _create_dimensions(dataset, fieldsets, species)
 
         # Set up basic global attributes.
         if len(self.global_attributes) > 0:
@@ -1859,7 +1864,9 @@ class TrajectoryStore:
         return check_paths
 
 
-def _create_dimensions(dataset: nc4.Dataset, fieldsets: set[str]) -> nc4.Dimension:
+def _create_dimensions(
+    dataset: nc4.Dataset, fieldsets: set[str], species: set[Species]
+) -> nc4.Dimension:
     # The only dimension we need to keep track of explicitly is the trajectory.
     # All per-point data is stored using NetCDF4 variable-length arrays and
     # species and thrust mode dimensions are of fixed size.
@@ -1868,11 +1875,18 @@ def _create_dimensions(dataset: nc4.Dataset, fieldsets: set[str]) -> nc4.Dimensi
     # Create species and thrust mode dimensions and coordinate variables if
     # required.
 
-    def create_enum_dimension(name, enum_type):
-        dataset.createDimension(name, len(enum_type))
+    def create_enum_dimension(
+        name: str, enum_type: type[Enum], values: set | None = None
+    ):
+        dataset.createDimension(
+            name, len(values) if values is not None else len(enum_type)
+        )
         dataset.createVariable(name, str, name)
-        for i, m in enumerate(enum_type):
-            dataset.variables[name][i] = m.name
+        idx = 0
+        for m in enum_type:
+            if values is None or m in values:
+                dataset.variables[name][idx] = m.name
+                idx += 1
 
     species_dim_created: bool = False
     thrust_mode_dim_created: bool = False
@@ -1880,9 +1894,9 @@ def _create_dimensions(dataset: nc4.Dataset, fieldsets: set[str]) -> nc4.Dimensi
         fs = FieldSet.from_registry(fs_name)
         dims = fs.dimensions
         if Dimension.SPECIES in dims and not species_dim_created:
-            # TODO: Create species dimension using only species in data to be
-            # saved, not all defined species.
-            create_enum_dimension('species', Species)
+            # Create species dimension using only species in data to be saved,
+            # not all defined species.
+            create_enum_dimension('species', Species, species)
             species_dim_created = True
         if Dimension.THRUST_MODE in dims and not thrust_mode_dim_created:
             create_enum_dimension('thrust_mode', ThrustMode)
