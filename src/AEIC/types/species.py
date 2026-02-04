@@ -1,7 +1,7 @@
-from enum import Enum, auto
+from enum import IntEnum, auto
 
 
-class Species(Enum):
+class Species(IntEnum):
     CO2 = auto()
     H2O = auto()
     HC = auto()

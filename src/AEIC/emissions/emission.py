@@ -26,9 +26,9 @@ from .trajectory import get_trajectory_emissions
 
 # QUESTION: How to handle species? Dimension, coordinate values, variance?
 
-TRAJ_DIMS = Dimensions(Dimension.TRAJECTORY, Dimension.SPECIES, Dimension.POINT)
-LTO_DIMS = Dimensions(Dimension.TRAJECTORY, Dimension.SPECIES, Dimension.THRUST_MODE)
-OVERALL_DIMS = Dimensions(Dimension.TRAJECTORY, Dimension.SPECIES)
+TRAJ_DIMS = Dimensions.from_abbrev('TSP')
+LTO_DIMS = Dimensions.from_abbrev('TSM')
+OVERALL_DIMS = Dimensions.from_abbrev('TS')
 
 EMISSIONS_FIELDSET_NAME = 'emissions'
 

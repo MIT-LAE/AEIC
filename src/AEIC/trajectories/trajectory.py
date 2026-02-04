@@ -88,7 +88,6 @@ class Trajectory:
         'X_fieldsets',  # Names of field sets in this trajectory.
         'X_data',  # Per-point data fields.
         'X_npoints',  # Number of points in the trajectory.
-        'X_nspecies',  # Number of chemical species in the trajectory.
     }
 
     def __eq__(self, other: object) -> bool:
@@ -114,15 +113,19 @@ class Trajectory:
             return False
         for name in self.X_data_dictionary:
             if name in self.X_data:
-                if not np.allclose(self.X_data[name], other.X_data[name]):
-                    return False
-            else:
-                if isinstance(self.X_tdata[name], str | None):
-                    if self.X_tdata[name] != other.X_tdata[name]:
+                vs = self.X_data[name]
+                vo = other.X_data[name]
+                if isinstance(vs, str | None):
+                    if vs != vo:
+                        return False
+                elif isinstance(vs, int | float | np.floating):
+                    if not np.isclose(vs, vo):
+                        return False
+                elif isinstance(vs, np.ndarray):
+                    if not np.allclose(vs, vo):
                         return False
                 else:
-                    if not np.isclose(self.X_tdata[name], other.X_tdata[name]):
-                        return False
+                    raise ValueError('TBD')
         return True
 
     def __init__(
@@ -141,10 +144,6 @@ class Trajectory:
         # TODO: Lift this restriction? How could we make it so that you can add
         # points incrementally, in a nice way?
         self.X_npoints = npoints
-
-        # We count the approximate number of chemical species being used when
-        # values are assigned to fields with a species dimension.
-        self.X_nspecies = 0
 
         # A trajectory has a set of data fields with specified dimensions. All
         # of these are defined by a FieldSet, and the total sets of all fields
@@ -181,7 +180,7 @@ class Trajectory:
         the `TrajectoryStore` LRU cache.)"""
         size = 0
         for f in self.X_data_dictionary.values():
-            size += f.nbytes(self.X_npoints, self.X_nspecies)
+            size += f.nbytes(self.X_npoints)
         return size
 
     def __hash__(self):
@@ -279,13 +278,6 @@ class Trajectory:
                 if try_data and hasattr(fieldset, name):
                     value = getattr(fieldset, name)
 
-                    # The number of points in a trajectory is currently
-                    # fixed at creation time.
-                    if len(value) != self.X_npoints:
-                        raise ValueError(
-                            'Assigned length does not match number of points'
-                        )
-
                     # Check that the type of the assigned value can be
                     # safely cast to the field type and cast and assign
                     # the value if OK.
@@ -294,7 +286,7 @@ class Trajectory:
                     self.X_data[name] = metadata.empty(self.X_npoints)
 
     @property
-    def species(self) -> set[Species]:
+    def species(self) -> list[Species]:
         """Set of species included in any species-indexed fields in the
         trajectory."""
         species = set()
@@ -302,7 +294,7 @@ class Trajectory:
             if Dimension.SPECIES in field.dimensions:
                 assert isinstance(self.X_data[name], EmissionsDict)
                 species.update(self.X_data[name].keys())
-        return species
+        return sorted(species)
 
     def _check_fieldset(self, fieldset: FieldSet):
         # Fields may not overlap with fixed implementation fields.
@@ -315,45 +307,3 @@ class Trajectory:
                 f'FieldSet with name "{fieldset.fieldset_name}" '
                 'already added to Trajectory'
             )
-
-
-def _convert_types(
-    expected_type: type, value: Any, label: str, name: str, required: bool = True
-) -> Any:
-    """Check that the type of the assigned value can be safely cast to the
-    expected type and return the cast value.
-
-    (Per-trajectory fields are single values, so we convert to a 1-element
-    array for the type check and casting.)"""
-
-    # Wrap single values.
-    arr = value
-    wrapped = False
-    if not isinstance(value, np.ndarray):
-        arr = np.asarray(value)
-        wrapped = True
-
-    # Handle missing values for optional fields.
-    if not required:
-        if (
-            value is None
-            or hasattr(arr, 'mask')
-            and np.all(getattr(arr, 'mask'))
-            or arr.size > 1
-            and np.all([v is None for v in arr])
-        ):
-            return None
-
-    # Check that the type of the assigned value can be safely cast to
-    # the field type.
-    if not np.can_cast(arr, expected_type, casting='same_kind'):
-        raise TypeError(
-            f'Cannot cast assigned value of type {type(value)} '
-            f'to expected type {expected_type} for {label} data field {name}'
-        )
-
-    # Return cast value.
-    cast_value = np.asarray(arr).astype(expected_type, casting='same_kind')
-    if wrapped:
-        cast_value = cast_value.item()
-    return cast_value

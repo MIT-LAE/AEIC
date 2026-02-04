@@ -20,8 +20,15 @@ import netCDF4 as nc4
 import numpy as np
 from cachetools import LRUCache
 
-from AEIC.storage.field_sets import FieldSet, HasFieldSets
-from AEIC.types import Dimension, Dimensions, Species, ThrustMode
+from AEIC.storage.field_sets import FieldMetadata, FieldSet, HasFieldSets
+from AEIC.types import (
+    Dimension,
+    Dimensions,
+    EmissionsDict,
+    ModeValues,
+    Species,
+    ThrustMode,
+)
 
 from .trajectory import BASE_FIELDSET_NAME, Trajectory
 
@@ -266,6 +273,9 @@ class TrajectoryStore:
         traj_dim: list[nc4.Dimension]
         """Trajectory dimension objects for the files: multiple to support
         merged stores."""
+
+        species: list[Species] | None
+        """Species included in the species dimension in the files, if any."""
 
         groups: dict[str, list[nc4.Group]]
         """Mapping from field set names to NetCDF groups in the files: groups
@@ -585,20 +595,33 @@ class TrajectoryStore:
                     f'FieldSet with name "{fs_name}" not found in FieldSet registry'
                 )
 
-        # Create file.
-        nc_info = self._create_nc_file(
-            associated_file,
-            set(fieldsets),
-            # TODO: Fix this.
-            set(),
-            save=False,
-            associated_name=self._nc_files[0].path[0],
-            associated_hash=self._nc_files[0].dataset[0].id_hash,
-        )
+        # We need to call the mapping once to see what chemical species we need
+        # to put in the species dimension int he new NetCDF file.
+        nc_info = None
 
         for i in range(len(self)):
             # Create associated data value.
             associated_data = mapping_function(self[i], *args, **kwargs)
+
+            # Create file: we can only do this once we have one result from the
+            # mapping function, because we need to determine the species we
+            # need to allow in the NetCDF files' species dimension.
+            if nc_info is None:
+                species = set()
+                for fs_name in fieldsets:
+                    fs = FieldSet.from_registry(fs_name)
+                    for f, metadata in fs.fields.items():
+                        if Dimension.SPECIES in metadata.dimensions:
+                            species.update(getattr(associated_data, f).keys())
+
+                nc_info = self._create_nc_file(
+                    associated_file,
+                    set(fieldsets),
+                    sorted(species),
+                    save=False,
+                    associated_name=self._nc_files[0].path[0],
+                    associated_hash=self._nc_files[0].dataset[0].id_hash,
+                )
 
             # These are the only checks we're going to do here: the call to
             # _write_data will fail if any of the fields from the field sets
@@ -929,11 +952,28 @@ class TrajectoryStore:
                 associated_hash=base_nc_file.dataset[0].id_hash,
             )
 
+    def _retrieve_nc_species_values(self, dataset: nc4.Dataset) -> list[Species] | None:
+        """Retrieve species values from a NetCDF Dataset's species dimension.
+
+        If the Dataset does not have a species dimension, return None.
+        """
+        if 'species' not in dataset.dimensions:
+            return None
+
+        var = dataset.variables.get('species', None)
+        if var is None:
+            raise ValueError('Dataset has species dimension but no species variable')
+
+        return [
+            Species[var[i].decode('utf-8') if isinstance(var[i], bytes) else var[i]]
+            for i in range(len(var))
+        ]
+
     def _create_nc_file(
         self,
         nc_file: str | Path,
         fieldsets: set[str],
-        species: set[Species],
+        species: list[Species],
         associated_name: Path | None = None,
         associated_hash: str | None = None,
         save: bool = True,
@@ -1063,6 +1103,7 @@ class TrajectoryStore:
             fieldsets=fieldsets,
             dataset=[dataset],
             traj_dim=[traj_dim],
+            species=species,
             size_index=None,
             groups=groups,
         )
@@ -1152,6 +1193,9 @@ class TrajectoryStore:
         # flight ID index.
         groups = {k: [g] for k, g in dataset.groups.items() if not k[0] == '_'}
 
+        # Retrieve values of species dimension, if any.
+        species = self._retrieve_nc_species_values(dataset)
+
         # Check consistency.
 
         # The groups in the file should match the field sets we're claiming are
@@ -1210,6 +1254,7 @@ class TrajectoryStore:
             fieldsets=set(fieldset_names),
             dataset=[dataset],
             traj_dim=[traj_dim],
+            species=species,
             groups=groups,
             size_index=[len(traj_dim)],
             title=title,
@@ -1367,11 +1412,15 @@ class TrajectoryStore:
             if k[0] != '_':
                 groups[k] = [ds.groups[k] for ds in dataset]
 
+        # Retrieve species actually used in the NetCDF files.
+        species = self._retrieve_nc_species_values(dataset[0])
+
         return TrajectoryStore.NcFiles(
             path=nc_files,
             fieldsets=set(fieldset_names),
             dataset=dataset,
             traj_dim=traj_dim,
+            species=species,
             groups=groups,
             size_index=list(itertools.accumulate([len(td) for td in traj_dim])),
             title=title,
@@ -1413,6 +1462,17 @@ class TrajectoryStore:
                 # Now we can check that the fields in the field set exist in the
                 # relevant NetCDF group and that they have the right types and
                 # shapes.
+                for n in fs.fields:
+                    if n not in netcdf_fs.fields:
+                        raise ValueError(
+                            f'Field "{n}" in FieldSet with name "{fs_name}" not '
+                            f'found in NetCDF file'
+                        )
+                    if fs.fields[n] != netcdf_fs.fields[n]:
+                        raise ValueError(
+                            f'Field "{n}" in FieldSet with name "{fs_name}" is '
+                            f'incompatible with field in NetCDF file'
+                        )
                 if hash(fs) != hash(netcdf_fs):
                     raise ValueError(
                         f'FieldSet with name "{fs_name}" in base NetCDF file is '
@@ -1521,13 +1581,20 @@ class TrajectoryStore:
                 group_index = index - nc_files.size_index[file_index]
             group = nc_files.groups[fs_name][file_index]
 
-            # Write per-point data as variable-length arrays.
+            # Read data from NetCDF variables.
             for name, field in fs.items():
                 if name not in group.variables:
                     raise ValueError(
                         f'Data field "{name}" does not exist in NetCDF file'
                     )
-                data[name] = group.variables[name][group_index]
+                val = self._read_from_nc_var(
+                    group.variables[name],
+                    group_index,
+                    name,
+                    field,
+                    nc_files.species or [],
+                )
+                data[name] = val
                 if field.dimensions == POINTWISE_DIMS and npoints is None:
                     npoints = len(data[name])
 
@@ -1594,40 +1661,101 @@ class TrajectoryStore:
                 elif data is not None:
                     val = getattr(data, name)
 
-                # Handle missing values.
-                if val is None:
-                    if field.required:
-                        raise ValueError(
-                            f'Data field "{name}" is None at index {index}'
-                        )
-                    continue
+                self._write_to_nc_var(var, index, name, field, val)
 
-                # Save data to NetCDF variable, handling species and thrust
-                # modes. At this point, we assume that all the types are
-                # correct, since these will have been checked earlier. Numpy
-                # array values are saved as variable length types of the
-                # appropriate base type.
-                has_sp = Dimension.SPECIES in field.dimensions
-                has_tm = Dimension.THRUST_MODE in field.dimensions
-                match (has_sp, has_tm):
-                    case (False, False):
-                        # float, np.ndarray
-                        var[index] = val
-                    case (False, True):
-                        # ModeValues
-                        for ti, tm in enumerate(ThrustMode):
-                            var[index, ti] = val[tm]
-                    case (True, False):
-                        # EmissionsDict[float], EmissionsDict[np.ndarray]
-                        for si, sp in enumerate(Species):
-                            if sp in val:
-                                var[index, si] = val[sp]
-                    case (True, True):
-                        # EmissionsDict[ModeValues]
-                        for si, sp in enumerate(Species):
-                            for ti, tm in enumerate(ThrustMode):
-                                if sp in val and tm in val[sp]:
-                                    var[index, si, ti] = val[sp][tm]
+    def _write_to_nc_var(
+        self,
+        var: nc4.Variable,
+        index: int,
+        name: str,
+        field: FieldMetadata,
+        val: Any,
+    ) -> None:
+        """Write a value to a NetCDF variable at the given index."""
+
+        # Handle missing values.
+        if val is None:
+            if field.required:
+                raise ValueError(f'Data field "{name}" is None at index {index}')
+            return
+
+        # Save data to NetCDF variable, handling species and thrust modes. At
+        # this point, we assume that all the types are correct, since these
+        # will have been checked earlier. Numpy array values are saved as
+        # variable length types of the appropriate base type.
+        has_sp = Dimension.SPECIES in field.dimensions
+        has_tm = Dimension.THRUST_MODE in field.dimensions
+        match (has_sp, has_tm):
+            case (False, False):
+                # float, np.ndarray
+                var[index] = val
+            case (False, True):
+                # ModeValues
+                for ti, tm in enumerate(ThrustMode):
+                    var[index, ti] = val[tm]
+            case (True, False):
+                # EmissionsDict[float], EmissionsDict[np.ndarray]
+                for si, sp in enumerate(Species):
+                    if sp in val:
+                        var[index, si] = val[sp]
+            case (True, True):
+                # EmissionsDict[ModeValues]
+                for si, sp in enumerate(Species):
+                    for ti, tm in enumerate(ThrustMode):
+                        if sp in val and tm in val[sp]:
+                            var[index, si, ti] = val[sp][tm]
+
+    def _read_from_nc_var(
+        self,
+        var: nc4.Variable,
+        index: int,
+        name: str,
+        field: FieldMetadata,
+        species: list[Species],
+    ) -> Any:
+        """Read a value from a NetCDF variable at the given index."""
+
+        # Make sure the netCDF4 package doesn't return masked arrays.
+        var.set_auto_mask(False)
+
+        # Read data from NetCDF variable, handling species and thrust modes.
+        match (
+            Dimension.SPECIES in field.dimensions,
+            Dimension.THRUST_MODE in field.dimensions,
+            Dimension.POINT in field.dimensions,
+        ):
+            case (False, False, False):
+                # float
+                if var[index] == var.get_fill_value():
+                    return None
+                return var[index]
+            case (False, False, True):
+                # np.ndarray
+                if all(var[index] == var.get_fill_value()):
+                    return None
+                return var[index]
+            case (True, False, False) | (True, False, True):
+                # EmissionsDict[float] | EmissionsDict[np.ndarray]
+                return EmissionsDict(
+                    {sp: var[index, si] for si, sp in enumerate(species)}
+                )
+            case (False, True, False):
+                # ModeValues
+                return ModeValues(
+                    {tm: var[index, ti] for ti, tm in enumerate(ThrustMode)}
+                )
+            case (True, True, False):
+                # EmissionsDict[ModeValues]
+                return EmissionsDict[ModeValues](
+                    {
+                        sp: ModeValues(
+                            {tm: var[index, si, ti] for ti, tm in enumerate(ThrustMode)}
+                        )
+                        for si, sp in enumerate(species)
+                    }
+                )
+            case _:
+                raise ValueError(f'Invalid combination of dimensions for field {name}')
 
     def _check_file_paths(self, paths: list[PathType], mode: FileMode) -> None:
         # Ensure all input paths are distinct.
@@ -1865,7 +1993,7 @@ class TrajectoryStore:
 
 
 def _create_dimensions(
-    dataset: nc4.Dataset, fieldsets: set[str], species: set[Species]
+    dataset: nc4.Dataset, fieldsets: set[str], species: list[Species]
 ) -> nc4.Dimension:
     # The only dimension we need to keep track of explicitly is the trajectory.
     # All per-point data is stored using NetCDF4 variable-length arrays and
@@ -1876,17 +2004,16 @@ def _create_dimensions(
     # required.
 
     def create_enum_dimension(
-        name: str, enum_type: type[Enum], values: set | None = None
+        name: str, enum_type: type[Enum], values: list | None = None
     ):
         dataset.createDimension(
             name, len(values) if values is not None else len(enum_type)
         )
-        dataset.createVariable(name, str, name)
-        idx = 0
-        for m in enum_type:
-            if values is None or m in values:
-                dataset.variables[name][idx] = m.name
-                idx += 1
+        v = dataset.createVariable(name, str, name)
+        v.set_auto_mask(False)
+        v.set_always_mask(False)
+        for idx, m in enumerate(values if values is not None else enum_type):
+            dataset.variables[name][idx] = m.name
 
     species_dim_created: bool = False
     thrust_mode_dim_created: bool = False

@@ -10,15 +10,15 @@ aircraft trajectories, including emissions data.
 
 import hashlib
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cached_property
 from types import MappingProxyType
 from typing import Any, ClassVar, Protocol, runtime_checkable
 
-import netCDF4
+import netCDF4 as nc4
 import numpy as np
 
-from AEIC.types import Dimension, Dimensions, EmissionsDict, ModeValues
+from AEIC.types import Dimension, Dimensions, EmissionsDict, ModeValues, Species
 
 
 # The options here cause a hash method to be generated for `FieldMetadata`.
@@ -65,7 +65,7 @@ class FieldMetadata:
 
     """
 
-    dimensions: Dimensions = Dimensions(Dimension.TRAJECTORY, Dimension.POINT)
+    dimensions: Dimensions = field(default_factory=lambda: Dimensions.from_abbrev('TP'))
     """Dimensions for this field."""
 
     field_type: type = np.float64
@@ -145,7 +145,7 @@ class FieldMetadata:
                     f'for field: {self.dimensions.dims}'
                 )
 
-    def nbytes(self, npoints: int, nspecies: int) -> int:
+    def nbytes(self, npoints: int) -> int:
         """Estimate the number of bytes used by this field per trajectory point.
 
         This is a rough estimate used for memory usage calculations.
@@ -154,13 +154,10 @@ class FieldMetadata:
         if Dimension.THRUST_MODE in self.dimensions:
             size *= len(ModeValues())
         if Dimension.SPECIES in self.dimensions:
-            size *= nspecies
+            size *= len(Species)
         if Dimension.POINT in self.dimensions:
             size *= npoints
         return size
-
-    def to_nc(self, v: Any, npoints: int) -> Any:
-        return None
 
     def _cast(self, v: Any, name: str) -> Any:
         """Cast a scalar or array value to this field's base type."""
@@ -203,6 +200,9 @@ class FieldMetadata:
                     and np.all([e is None for e in v])
                 ):
                     return None
+
+        if isinstance(v, np.ma.MaskedArray):
+            v = v.filled()
 
         # Split by dimension cases.
         match (
@@ -269,7 +269,7 @@ class FieldMetadata:
     def digest_info(self) -> str:
         """Generate a string representation of the field metadata for hashing."""
         parts = [
-            '+'.join(d.name.lower() for d in self.dimensions.ordered),
+            self.dimensions.abbrev,
             self.field_type.__name__,
             self.description,
             self.units,
@@ -334,7 +334,7 @@ class FieldSet(Mapping):
         return cls.REGISTRY[name]
 
     @classmethod
-    def from_netcdf_group(cls, group: netCDF4.Group) -> 'FieldSet':
+    def from_netcdf_group(cls, group: nc4.Group) -> 'FieldSet':
         """Construct a `FieldSet` from a NetCDF group."""
         fields = {}
         for f, v in group.variables.items():
@@ -344,19 +344,14 @@ class FieldSet(Mapping):
                 field_type = field_type.type
             assert isinstance(field_type, type)
 
-            # Scalar or string fields are per-trajectory fields.
-            # TODO: Make this condition better?
-            is_per_trajectory = (
-                not isinstance(v.datatype, netCDF4.VLType) or field_type is str
-            )
+            # Determine dimensions for variable.
+            dimensions = Dimensions.from_dim_names(*v.dimensions)
+            if isinstance(v.datatype, nc4.VLType) and field_type is not str:
+                dimensions = dimensions.add(Dimension.POINT)
 
             # Set up the field information.
             metadata = FieldMetadata(
-                dimensions=(
-                    Dimensions(Dimension.TRAJECTORY)
-                    if is_per_trajectory
-                    else Dimensions(Dimension.TRAJECTORY, Dimension.POINT)
-                ),
+                dimensions=dimensions,
                 field_type=field_type,
                 description=v.getncattr('description'),
                 units=v.getncattr('units'),
@@ -439,8 +434,8 @@ class FieldSet(Mapping):
     def dimensions(self) -> set[Dimension]:
         """Combined dimensions of all fields in the field set."""
         dims = set()
-        for field in self._fields.values():
-            dims.update(field.dimensions.dims)
+        for f in self._fields.values():
+            dims.update(f.dimensions.dims)
         return dims
 
 
