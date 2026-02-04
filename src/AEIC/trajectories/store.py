@@ -12,7 +12,7 @@ import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -249,7 +249,7 @@ class TrajectoryStore:
 
     """
 
-    class FileMode(str, Enum):
+    class FileMode(StrEnum):
         READ = 'r'
         CREATE = 'w'
         APPEND = 'a'

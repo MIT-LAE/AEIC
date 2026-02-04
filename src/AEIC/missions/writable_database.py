@@ -6,7 +6,7 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
-from enum import Enum
+from enum import StrEnum
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -44,7 +44,7 @@ class AirportInfo:
 
 @dataclass
 class Warning:
-    class Type(str, Enum):
+    class Type(StrEnum):
         UNKNOWN_AIRPORT = 'unknown airport code'
         TIME_MISORDERING = 'arrival time before departure time'
         SUSPICIOUS_DISTANCE = 'suspicious distance'
