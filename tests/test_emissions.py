@@ -248,9 +248,9 @@ def test_emit_matches_expected_indices_and_pointwise(perf_model, trajectory, emi
             emissions.trajectory_indices[species][idx_slice], expected_values
         )
     fuel_burn = emissions.fuel_burn_per_segment[idx_slice]
-    for field in emissions.trajectory:
+    for field in emissions.trajectory_emissions:
         np.testing.assert_allclose(
-            emissions.trajectory[field][idx_slice],
+            emissions.trajectory_emissions[field][idx_slice],
             emissions.trajectory_indices[field][idx_slice] * fuel_burn,
         )
     np.testing.assert_allclose(
@@ -265,7 +265,7 @@ def test_emit_matches_expected_indices_and_pointwise(perf_model, trajectory, emi
         emissions.trajectory_indices[Species.HONO][idx_slice],
         emissions.trajectory_indices[Species.NOx][idx_slice] * hono_prop,
     )
-    assert emissions.lifecycle_co2_g is not None
+    assert emissions.lifecycle_co2 is not None
 
 
 @pytest.mark.config_updates(
@@ -273,17 +273,17 @@ def test_emit_matches_expected_indices_and_pointwise(perf_model, trajectory, emi
 )
 def test_sum_total_emissions_matches_components(perf_model, fuel, trajectory):
     emissions = compute_emissions(perf_model, fuel, trajectory)
-    for species in emissions.total:
+    for species in emissions.total_emissions:
         expected = 0.0
-        if species in emissions.trajectory:
-            expected += np.sum(emissions.trajectory[species])
-        if species in emissions.lto:
-            expected += emissions.lto[species].sum()
-        if species in emissions.apu:
-            expected += emissions.apu[species]
-        if species in emissions.gse:
-            expected += emissions.gse[species]
-        assert emissions.total[species] == pytest.approx(expected)
+        if species in emissions.trajectory_emissions:
+            expected += np.sum(emissions.trajectory_emissions[species])
+        if species in emissions.lto_emissions:
+            expected += emissions.lto_emissions[species].sum()
+        if species in emissions.apu_emissions:
+            expected += emissions.apu_emissions[species]
+        if species in emissions.gse_emissions:
+            expected += emissions.gse_emissions[species]
+        assert emissions.total_emissions[species] == pytest.approx(expected)
 
 
 def test_scope11_profile_caching(perf_model):
@@ -296,14 +296,20 @@ def test_scope11_profile_caching(perf_model):
 def test_lto_respects_traj_flag_true(perf_model, fuel, trajectory):
     output = compute_emissions(perf_model, fuel, trajectory)
     for m in [ThrustMode.APPROACH, ThrustMode.CLIMB]:
-        assert all(np.isclose(output.lto[species][m], 0.0) for species in output.lto)
+        assert all(
+            np.isclose(output.lto_emissions[species][m], 0.0)
+            for species in output.lto_emissions
+        )
 
 
 @pytest.mark.config_updates(emissions__climb_descent_usage=ClimbDescentMode.LTO)
 def test_lto_respects_traj_flag_false(perf_model, fuel, trajectory):
     output = compute_emissions(perf_model, fuel, trajectory)
     for m in [ThrustMode.APPROACH, ThrustMode.CLIMB, ThrustMode.TAKEOFF]:
-        assert any(np.isclose(output.lto[species][m], 0.0) for species in output.lto)
+        assert any(
+            np.isclose(output.lto_emissions[species][m], 0.0)
+            for species in output.lto_emissions
+        )
 
 
 def test_lto_nox_split_matches_speciation(emissions):
