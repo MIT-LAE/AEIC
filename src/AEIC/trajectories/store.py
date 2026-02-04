@@ -274,6 +274,10 @@ class TrajectoryStore:
         """Trajectory dimension objects for the files: multiple to support
         merged stores."""
 
+        traj_var: list[nc4.Variable]
+        """Trajectory variable objects for the files: multiple to support
+        merged stores."""
+
         species: list[Species] | None
         """Species included in the species dimension in the files, if any."""
 
@@ -991,7 +995,7 @@ class TrajectoryStore:
         dataset = nc4.Dataset(nc_file, mode='w', format='NETCDF4', keepweakref=True)
 
         # Create dimensions and any required coordinate variables.
-        traj_dim = _create_dimensions(dataset, fieldsets, species)
+        traj_dim, traj_var = _create_dimensions(dataset, fieldsets, species)
 
         # Set up basic global attributes.
         if len(self.global_attributes) > 0:
@@ -1103,6 +1107,7 @@ class TrajectoryStore:
             fieldsets=fieldsets,
             dataset=[dataset],
             traj_dim=[traj_dim],
+            traj_var=[traj_var],
             species=species,
             size_index=None,
             groups=groups,
@@ -1164,8 +1169,9 @@ class TrajectoryStore:
             keepweakref=True,
         )
 
-        # Retrieve trajectory dimension.
+        # Retrieve trajectory dimension and variable.
         traj_dim = dataset.dimensions['trajectory']
+        traj_var = dataset.variables['trajectory']
 
         # Retrieve global attributes.
         title = getattr(dataset, 'title', None)
@@ -1246,14 +1252,15 @@ class TrajectoryStore:
                     f'hash of base file {check_associated.path}'
                 )
 
-        # Here, the `path`, `dataset`, `traj_dim` and `size_index` fields are
-        # lists to support merged stores. In this case, we have a single file,
-        # so we put the values into singleton lists.
+        # Here, the `path`, `dataset`, `traj_dim`, `traj_var` and `size_index`
+        # fields are lists to support merged stores. In this case, we have a
+        # single file, so we put the values into singleton lists.
         return TrajectoryStore.NcFiles(
             path=[nc_file],
             fieldsets=set(fieldset_names),
             dataset=[dataset],
             traj_dim=[traj_dim],
+            traj_var=[traj_var],
             species=species,
             groups=groups,
             size_index=[len(traj_dim)],
@@ -1331,8 +1338,9 @@ class TrajectoryStore:
             nc4.Dataset(nc_file, mode='r', keepweakref=True) for nc_file in nc_files
         ]
 
-        # Retrieve trajectory dimensions.
+        # Retrieve trajectory dimensions and variables.
         traj_dim = [ds.dimensions['trajectory'] for ds in dataset]
+        traj_var = [ds.variables['trajectory'] for ds in dataset]
 
         # Retrieve global attributes from JSON data (created when merged store
         # is created).
@@ -1420,6 +1428,7 @@ class TrajectoryStore:
             fieldsets=set(fieldset_names),
             dataset=dataset,
             traj_dim=traj_dim,
+            traj_var=traj_var,
             species=species,
             groups=groups,
             size_index=list(itertools.accumulate([len(td) for td in traj_dim])),
@@ -1662,6 +1671,7 @@ class TrajectoryStore:
                     val = getattr(data, name)
 
                 self._write_to_nc_var(var, index, name, field, val)
+                nc_file.traj_var[0][index] = index
 
     def _write_to_nc_var(
         self,
@@ -1994,11 +2004,14 @@ class TrajectoryStore:
 
 def _create_dimensions(
     dataset: nc4.Dataset, fieldsets: set[str], species: list[Species]
-) -> nc4.Dimension:
+) -> tuple[nc4.Dimension, nc4.Variable]:
     # The only dimension we need to keep track of explicitly is the trajectory.
     # All per-point data is stored using NetCDF4 variable-length arrays and
     # species and thrust mode dimensions are of fixed size.
     traj_dim = dataset.createDimension('trajectory', None)
+
+    # Coordinate variable for trajectory dimension.
+    traj_var = dataset.createVariable('trajectory', np.int64, ('trajectory',))
 
     # Create species and thrust mode dimensions and coordinate variables if
     # required.
@@ -2029,7 +2042,7 @@ def _create_dimensions(
             create_enum_dimension('thrust_mode', ThrustMode)
             thrust_mode_dim_created = True
 
-    return traj_dim
+    return traj_dim, traj_var
 
 
 def _create_vl_types(

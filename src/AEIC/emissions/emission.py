@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 
@@ -65,6 +66,7 @@ EMISSIONS_FIELDS = FieldSet(
         dimensions=Dimensions(Dimension.TRAJECTORY),
         description='Lifecycle CO2 adjustment',
         units='g',
+        required=False,
     ),
 )
 
@@ -86,28 +88,30 @@ class EmissionsOutput:
 
     """
 
-    trajectory: EmissionsDict[np.ndarray]
+    FIELD_SETS: ClassVar[list[FieldSet]] = [EMISSIONS_FIELDS]
+
+    trajectory_emissions: EmissionsDict[np.ndarray]
     """Per-segment emissions along the trajectory for each species [g]."""
 
     trajectory_indices: EmissionsDict[np.ndarray]
     """Per-segment emission indices along the trajectory for each species."""
 
-    lto: EmissionsDict[ModeValues]
+    lto_emissions: EmissionsDict[ModeValues]
     """LTO emissions for each species [g]."""
 
     lto_indices: EmissionsDict[ModeValues]
     """LTO emission indices for each species."""
 
-    apu: EmissionsDict[float]
+    apu_emissions: EmissionsDict[float]
     """APU emissions for each species [g]."""
 
     apu_indices: EmissionsDict[float]
     """APU emission indices for each species."""
 
-    gse: EmissionsDict[float]
+    gse_emissions: EmissionsDict[float]
     """GSE emissions for each species [g]."""
 
-    total: EmissionsDict[float]
+    total_emissions: EmissionsDict[float]
     """Total emissions for each species [g]."""
 
     fuel_burn_per_segment: np.ndarray
@@ -116,18 +120,18 @@ class EmissionsOutput:
     total_fuel_burn: float
     """Total fuel burn for the mission [kg]."""
 
-    lifecycle_co2_g: float = 0.0
+    lifecycle_co2: float = 0.0
     """Lifecycle CO2 emissions adjustment [g]."""
 
     @property
     def species(self) -> set[Species]:
         """Set of species included in any emissions."""
         return (
-            set(self.trajectory.keys())
-            | set(self.lto.keys())
-            | set(self.apu.keys())
-            | set(self.gse.keys())
-            | set(self.total.keys())
+            set(self.trajectory_emissions.keys())
+            | set(self.lto_emissions.keys())
+            | set(self.apu_emissions.keys())
+            | set(self.gse_emissions.keys())
+            | set(self.total_emissions.keys())
         )
 
     def field_set(self) -> FieldSet: ...
@@ -173,16 +177,16 @@ def compute_emissions(
     )
 
     emissions = EmissionsOutput(
-        trajectory=trajectory.emissions,
+        trajectory_emissions=trajectory.emissions,
         trajectory_indices=trajectory.indices,
         fuel_burn_per_segment=fuel_burn_per_segment,
         total_fuel_burn=float(total_fuel_burn),
-        lto=lto.emissions,
+        lto_emissions=lto.emissions,
         lto_indices=lto.indices,
-        apu=apu.emissions,
+        apu_emissions=apu.emissions,
         apu_indices=apu.indices,
-        gse=gse.emissions,
-        total=total_emissions,
+        gse_emissions=gse.emissions,
+        total_emissions=total_emissions,
     )
 
     lifecycle_adjustment = None
@@ -191,8 +195,8 @@ def compute_emissions(
         and config.emissions.lifecycle_enabled
     ):
         lifecycle_adjustment = get_lifecycle_emissions(fuel, traj)
-        emissions.total[Species.CO2] += lifecycle_adjustment
-        emissions.lifecycle_co2_g = lifecycle_adjustment
+        emissions.total_emissions[Species.CO2] += lifecycle_adjustment
+        emissions.lifecycle_co2 = lifecycle_adjustment
 
     return emissions
 

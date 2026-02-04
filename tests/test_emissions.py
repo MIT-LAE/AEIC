@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import tomllib
-
 import numpy as np
 import pytest
 
@@ -27,7 +25,6 @@ from AEIC.types import (
     AircraftClass,
     AtmosphericState,
     EmissionsDict,
-    Fuel,
     LTOPerformance,
     ModeValues,
     Species,
@@ -136,12 +133,6 @@ def trajectory():
 @pytest.fixture
 def perf_model():
     return DummyPerformanceModel()
-
-
-@pytest.fixture
-def fuel():
-    with open(config.emissions.fuel_file, 'rb') as fp:
-        return Fuel.model_validate(tomllib.load(fp))
 
 
 @pytest.fixture

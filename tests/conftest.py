@@ -7,6 +7,7 @@ import pytest
 from AEIC.config import Config, config
 from AEIC.missions import Mission
 from AEIC.performance.models import PerformanceModel
+from AEIC.types import Fuel
 
 # Absolute path to test data directory.
 TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
@@ -76,3 +77,9 @@ def performance_model():
     return PerformanceModel.load(
         config.file_location('performance/sample_performance_model.toml')
     )
+
+
+@pytest.fixture
+def fuel():
+    with open(config.emissions.fuel_file, 'rb') as fp:
+        return Fuel.model_validate(tomllib.load(fp))
