@@ -33,35 +33,45 @@ class FieldMetadata:
     `dimensions` field (in the "Type" rows, "scalar" means a Numpy floating
     point or integer type, or Python str):
 
-    Dimensions: trajectory
-    Use:        per-trajectory individual values
-    Examples:  total fuel burn for a trajectory, number of climb segments, etc.
-    Type:      scalar
+    - Dimensions: trajectory
+    - Use:        per-trajectory individual values
+    - Examples:  total fuel burn for a trajectory, number of climb segments, etc.
+    - Type:      scalar
 
-    Dimensions: trajectory, point
-    Use:        pointwise values along a trajectory
-    Examples:   trajectory latitude, longitude, altitude
-    Type:       np.ndarray
+    ----------------------------------------------------------------
 
-    Dimensions: trajectory, species
-    Use:        per-species values for a whole trajectory
-    Examples:   APU emissions for a species on a trajectory
-    Type:       EmissionsDict[scalar]
+    - Dimensions: trajectory, point
+    - Use:        pointwise values along a trajectory
+    - Examples:   trajectory latitude, longitude, altitude
+    - Type:       np.ndarray
 
-    Dimensions: trajectory, species, point
-    Use:        pointwise values for each species along a trajectory
-    Example:    CO2 emissions at each point along a trajectory
-    Type:       EmissionsDict[np.ndarray]
+    ----------------------------------------------------------------
 
-    Dimensions: trajectory, thrust_mode
-    Use:        per-thrust-mode values for a whole trajectory
-    Examples:   LTO fuel burn per thrust mode for a trajectory
-    Type:       ModeValues
+    - Dimensions: trajectory, species
+    - Use:        per-species values for a whole trajectory
+    - Examples:   APU emissions for a species on a trajectory
+    - Type:       EmissionsDict[scalar]
 
-    Dimensions: trajectory, species, thrust_mode
-    Use:        per-species values for each thrust mode for a whole trajectory.
-    Examples:   NOx emiesions per thrust mode for a trajectory
-    Type:       EmissionsDict[ModeValues]
+    ----------------------------------------------------------------
+
+    - Dimensions: trajectory, species, point
+    - Use:        pointwise values for each species along a trajectory
+    - Example:    CO2 emissions at each point along a trajectory
+    - Type:       EmissionsDict[np.ndarray]
+
+    ----------------------------------------------------------------
+
+    - Dimensions: trajectory, thrust_mode
+    - Use:        per-thrust-mode values for a whole trajectory
+    - Examples:   LTO fuel burn per thrust mode for a trajectory
+    - Type:       ModeValues
+
+    ----------------------------------------------------------------
+
+    - Dimensions: trajectory, species, thrust_mode
+    - Use:        per-species values for each thrust mode for a whole trajectory.
+    - Examples:   NOx emiesions per thrust mode for a trajectory
+    - Type:       EmissionsDict[ModeValues]
 
     """
 

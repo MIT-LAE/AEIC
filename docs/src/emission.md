@@ -187,8 +187,3 @@ per-species emissions from the different sources.
 .. automodule:: AEIC.emissions.ei.pmvol
    :members:
 ```
-
-```{eval-rst}
-.. automodule:: AEIC.emissions.lifecycle_CO2
-   :members:
-```

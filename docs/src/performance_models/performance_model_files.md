@@ -31,7 +31,7 @@ down some of the choices for generating the performance table and LTO data.
 A complete invocation of {command}`make-performance-model` to generate a
 legacy performance model file looks like this:
 
-```{shell}
+```shell
 uv run make-performance-model \
   --output-file tmp.toml \
   legacy \

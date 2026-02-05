@@ -16,6 +16,9 @@ reference to the field sets included in the trajectory. This means that any
 field in the base field set can be accessed directly for a trajectory, as, for
 example, `traj.rate_of_climb` or `traj.n_cruise`. The first of these is a
 per-point Numpy array value, while the second is an integer metadata value.
+Other data types are supported to work with emissions data, and there is an
+"emissions" field set (defined in `EMISSIONS_FIELDS` values in the
+`AEIC.emissions.emission` module).
 
 This approach is designed to work cleanly with the `TrajectoryStore` class for
 saving trajectory data to NetCDF files.
@@ -29,7 +32,20 @@ saving trajectory data to NetCDF files.
 ```
 
 ```{eval-rst}
-.. automodule:: AEIC.trajectories.trajectory
+.. WARNING::
+   There is more documentation to come here.
+```
+
+```{eval-rst}
+.. autodata:: AEIC.trajectories.trajectory.BASE_FIELDS
+```
+
+```{eval-rst}
+.. autodata:: AEIC.emissions.emission.EMISSIONS_FIELDS
+```
+
+```{eval-rst}
+.. autoclass:: AEIC.trajectories.trajectory.Trajectory
    :members:
    :special-members:
 ```
@@ -58,12 +74,22 @@ sets of fields.
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.trajectories.field_sets.FieldMetadata
+.. autoclass:: AEIC.storage.field_sets.FieldMetadata
    :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.trajectories.field_sets.FieldSet
+.. autoclass:: AEIC.storage.field_sets.FieldSet
+   :members:
+```
+
+```{eval-rst}
+.. autoenum:: AEIC.types.storage.Dimension
+   :members:
+```
+
+```{eval-rst}
+.. autoclass:: AEIC.types.storage.Dimensions
    :members:
 ```
 

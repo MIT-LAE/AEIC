@@ -13,7 +13,6 @@ from AEIC.emissions.ei.nox import BFFM2_EINOx, BFFM2EINOxResult, NOx_speciation
 from AEIC.emissions.ei.pmnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
 from AEIC.emissions.ei.pmvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from AEIC.emissions.ei.sox import EI_SOx, SOxEmissionResult
-from AEIC.emissions.lifecycle_CO2 import lifecycle_CO2
 from AEIC.performance.utils.apu import APU
 from AEIC.performance.utils.edb import EDBEntry
 from AEIC.types import (
@@ -595,21 +594,6 @@ class TestEI_PMvol:
 
         assert np.allclose(pmvol, expected_pmvol)
         assert np.allclose(ocic, expected_pmvol)
-
-
-class TestLifecycleCO2:
-    """Tests for lifecycle_CO2"""
-
-    # TODO: Not a useful test, since it just duplicates exactly the calculate
-    # in AEIC.emissions.lifecycle_CO2.lifecycle_CO2. (And both were wrong...)
-    def test_lifecycle_offset_applies(self, fuel_jetA):
-        result = lifecycle_CO2(fuel_jetA, fuel_burn=10.0)
-
-        assert result == pytest.approx(
-            10.0
-            * (fuel_jetA.lifecycle_CO2 * fuel_jetA.energy_MJ_per_kg - fuel_jetA.EI_CO2)
-        )
-        assert result > 0.0
 
 
 # Integration tests

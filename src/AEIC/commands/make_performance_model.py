@@ -8,8 +8,8 @@ import tomli_w
 
 from AEIC.config import Config, config
 
-# from AEIC.parsers.LTO_reader import parseLTO
-from AEIC.parsers.PTF_reader import PTFData
+# from AEIC.parsers.lto_reader import parseLTO
+from AEIC.parsers.ptf_reader import PTFData
 from AEIC.performance.models.base import LTOPerformanceInput
 from AEIC.performance.utils.apu import lookup_apu
 from AEIC.performance.utils.edb import EDBEntry

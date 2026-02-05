@@ -69,6 +69,7 @@ EMISSIONS_FIELDS = FieldSet(
         required=False,
     ),
 )
+"""Field set containing emissions data."""
 
 
 @dataclass
