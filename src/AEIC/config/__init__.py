@@ -1,2 +1,3 @@
-from .core import Config as Config
-from .core import config as config
+from .core import Config, config
+
+__all__ = ['Config', 'config']

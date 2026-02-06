@@ -1,15 +1,14 @@
 import numpy as np
 
-from AEIC.types import ModeValues, ThrustMode
+from AEIC.performance.types import ThrustMode, ThrustModeValues
 
 
 def EI_HCCO(
     ff_eval: np.ndarray,
-    x_EI: ModeValues,
-    ff_cal: ModeValues,
-    Tamb: np.ndarray = np.empty(()),
-    Pamb: np.ndarray = np.empty(()),
-    cruiseCalc: bool = False,
+    x_EI: ThrustModeValues,
+    ff_cal: ThrustModeValues,
+    Tamb: float | np.ndarray,
+    Pamb: float | np.ndarray,
 ) -> np.ndarray:
     """
     BFFM2 bilinear HC/CO fit to SLS data
@@ -18,16 +17,14 @@ def EI_HCCO(
     ----------
     ff_eval : ndarray, shape (n_points,)
         Fuel flows [kg/s] at which to compute xEI. Must be 1D.
-    x_EI : ndarray, shape (4,)
+    x_EI : ThrustModeValues
         Baseline emission indices [g x / kg fuel] at four calibration fuel‐flow points.
-    ff_cal : ndarray, shape (4,)
+    ff_cal : ThrustModeValues
         Calibration fuel flows [kg/s] corresponding to x_EI
-    cruiseCalc : bool
-        If True, apply cruise correction (ambient T and P) to the final xEI.
     Tamb : ndarray, shape (n_points,)
-        Ambient temperature [K] for cruise correction (if cruiseCalc is True).
+        Ambient temperature [K] for cruise correction.
     Pamb : ndarray, shape (n_points,)
-        Ambient pressure [Pa] for cruise correction (if cruiseCalc is True).
+        Ambient pressure [Pa] for cruise correction.
 
     Returns
     -------
@@ -147,14 +144,13 @@ def EI_HCCO(
         xEI_out[low_thrust_mask] = xEI_acrp
 
     # ----------------------------------------------------------------------------
-    # 7. Cruise correction (if requested):
+    # 7. Cruise correction:
     #    Multiply entire xEI_out by (θ^3.3)/(δ^1.02),
     #    where θ = Tamb / 288.15, δ = Pamb / 101325.
     # ----------------------------------------------------------------------------
-    if cruiseCalc:
-        theta_amb = Tamb / 288.15
-        delta_amb = Pamb / 101325.0
-        factor = (theta_amb**3.3) / (delta_amb**1.02)
-        xEI_out *= factor
+    theta_amb = Tamb / 288.15
+    delta_amb = Pamb / 101325.0
+    factor = (theta_amb**3.3) / (delta_amb**1.02)
+    xEI_out *= factor
 
     return xEI_out

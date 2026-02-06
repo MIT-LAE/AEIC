@@ -8,6 +8,9 @@ Field sets are used to represent the data and metadata fields associated with
 aircraft trajectories, including emissions data.
 """
 
+# TODO: Remove this when we migrate to Python 3.14+.
+from __future__ import annotations
+
 import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -18,7 +21,10 @@ from typing import Any, ClassVar, Protocol, runtime_checkable
 import netCDF4 as nc4
 import numpy as np
 
-from AEIC.types import Dimension, Dimensions, EmissionsDict, ModeValues, Species
+from AEIC.performance.types import ThrustModeValues
+from AEIC.types import Species, SpeciesValues
+
+from .dimensions import Dimension, Dimensions
 
 
 # The options here cause a hash method to be generated for `FieldMetadata`.
@@ -50,28 +56,28 @@ class FieldMetadata:
     - Dimensions: trajectory, species
     - Use:        per-species values for a whole trajectory
     - Examples:   APU emissions for a species on a trajectory
-    - Type:       EmissionsDict[scalar]
+    - Type:       SpeciesValues[scalar]
 
     ----------------------------------------------------------------
 
     - Dimensions: trajectory, species, point
     - Use:        pointwise values for each species along a trajectory
-    - Example:    CO2 emissions at each point along a trajectory
-    - Type:       EmissionsDict[np.ndarray]
+    - Example:    CO₂ emissions at each point along a trajectory
+    - Type:       SpeciesValues[np.ndarray]
 
     ----------------------------------------------------------------
 
     - Dimensions: trajectory, thrust_mode
     - Use:        per-thrust-mode values for a whole trajectory
     - Examples:   LTO fuel burn per thrust mode for a trajectory
-    - Type:       ModeValues
+    - Type:       ThrustModeValues
 
     ----------------------------------------------------------------
 
     - Dimensions: trajectory, species, thrust_mode
     - Use:        per-species values for each thrust mode for a whole trajectory.
-    - Examples:   NOx emiesions per thrust mode for a trajectory
-    - Type:       EmissionsDict[ModeValues]
+    - Examples:   NOₓ emissions per thrust mode for a trajectory
+    - Type:       SpeciesValues[ThrustModeValues]
 
     """
 
@@ -125,7 +131,6 @@ class FieldMetadata:
 
     def empty(self, npoints: int) -> Any:
         """Create an empty value for this field based on its type and dimensions."""
-        # TODO: This is all kind of sketchy, especially the types for Numpy arrays.
         match (
             Dimension.POINT in self.dimensions,
             Dimension.SPECIES in self.dimensions,
@@ -139,16 +144,16 @@ class FieldMetadata:
                 return np.zeros(npoints, dtype=self.field_type)
             case (False, True, False):
                 # Per-species field for whole trajectory.
-                return EmissionsDict()
+                return SpeciesValues()
             case (True, True, False):
                 # Pointwise per-species field along trajectory.
-                return EmissionsDict()
+                return SpeciesValues()
             case (False, False, True):
                 # Per-thrust-mode field for whole trajectory.
-                return ModeValues()
+                return ThrustModeValues()
             case (False, True, True):
                 # Per-species per-thrust-mode field for whole trajectory.
-                return EmissionsDict()
+                return SpeciesValues()
             case _:
                 raise ValueError(
                     'FieldMetadata.empty: invalid combination of dimensions '
@@ -162,7 +167,7 @@ class FieldMetadata:
         """
         size = np.dtype(self.field_type).itemsize
         if Dimension.THRUST_MODE in self.dimensions:
-            size *= len(ModeValues())
+            size *= len(ThrustModeValues())
         if Dimension.SPECIES in self.dimensions:
             size *= len(Species)
         if Dimension.POINT in self.dimensions:
@@ -234,11 +239,11 @@ class FieldMetadata:
                     return self._cast(v, name)
             case (False, True, False):
                 # Per-species field for whole trajectory.
-                if isinstance(v, EmissionsDict):
-                    return EmissionsDict({s: self._cast(e, name) for s, e in v.items()})
+                if isinstance(v, SpeciesValues):
+                    return SpeciesValues({s: self._cast(e, name) for s, e in v.items()})
             case (True, True, False):
                 # Pointwise per-species field along trajectory.
-                if isinstance(v, EmissionsDict) and all(
+                if isinstance(v, SpeciesValues) and all(
                     isinstance(e, np.ndarray) for e in v.values()
                 ):
                     if any(len(e) != npoints for e in v.values()):
@@ -246,19 +251,21 @@ class FieldMetadata:
                             f'field {name}: assigned arrays have inconsistent lengths '
                             f'for field with point dimension'
                         )
-                    return EmissionsDict({s: self._cast(e, name) for s, e in v.items()})
+                    return SpeciesValues({s: self._cast(e, name) for s, e in v.items()})
             case (False, False, True):
                 # Per-thrust-mode field for whole trajectory.
-                if isinstance(v, ModeValues):
-                    return ModeValues({m: self._cast(x, name) for m, x in v.items()})
+                if isinstance(v, ThrustModeValues):
+                    return ThrustModeValues(
+                        {m: self._cast(x, name) for m, x in v.items()}
+                    )
             case (False, True, True):
                 # Per-species per-thrust-mode field for whole trajectory.
-                if isinstance(v, EmissionsDict) and all(
-                    isinstance(e, ModeValues) for e in v.values()
+                if isinstance(v, SpeciesValues) and all(
+                    isinstance(e, ThrustModeValues) for e in v.values()
                 ):
-                    return EmissionsDict(
+                    return SpeciesValues(
                         {
-                            s: ModeValues(
+                            s: ThrustModeValues(
                                 {m: self._cast(x, name) for m, x in e.items()}
                             )
                             for s, e in v.items()
@@ -295,7 +302,7 @@ class FieldSet(Mapping):
     Represented as a mapping from field name to metadata.
     """
 
-    REGISTRY: dict[str, 'FieldSet'] = {}
+    REGISTRY: dict[str, FieldSet] = {}
     """Registry of named field sets for reuse."""
 
     def __init__(
@@ -337,14 +344,14 @@ class FieldSet(Mapping):
         return name in cls.REGISTRY
 
     @classmethod
-    def from_registry(cls, name: str) -> 'FieldSet':
+    def from_registry(cls, name: str) -> FieldSet:
         """Retrieve a `FieldSet` from the registry by name."""
         if not cls.known(name):
             raise KeyError(f'FieldSet with name "{name}" not found in registry.')
         return cls.REGISTRY[name]
 
     @classmethod
-    def from_netcdf_group(cls, group: nc4.Group) -> 'FieldSet':
+    def from_netcdf_group(cls, group: nc4.Group) -> FieldSet:
         """Construct a `FieldSet` from a NetCDF group."""
         fields = {}
         for f, v in group.variables.items():

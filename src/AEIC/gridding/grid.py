@@ -6,9 +6,9 @@ import pandas as pd
 from numpy.typing import NDArray
 from shapely.geometry import Polygon
 
+from AEIC.types import FloatOrNDArray
 from AEIC.units import METERS_TO_FEET
-from AEIC.utils.helpers import calculate_line_parameters, crosses_dateline
-from AEIC.utils.spatial import great_circle_distance
+from AEIC.utils import GEOD
 
 
 @dataclass
@@ -1381,3 +1381,60 @@ class Gridder(GeospatialGrid):
                 state_variable_values,
                 integrated_variable_values,
             )
+
+
+def great_circle_distance(
+    lat1: FloatOrNDArray,
+    lon1: FloatOrNDArray,
+    lat2: FloatOrNDArray,
+    lon2: FloatOrNDArray,
+):
+    """Calculates the great circle distance between two points. **Note that the
+    latitude and longitude inputs are in radians by default.**
+
+    Args:
+        lat1 (Union[NDArray,float]): latitude of the first point in radians
+        lon1 (Union[NDArray,float]): longitude of the first point in radians
+        lat2 (Union[NDArray,float]): latitude of the second point in radians
+        lon2 (Union[NDArray,float]): longitude of the second point in radians
+
+    Returns:
+        Union[NDArray,float]: great circle distance between the two points in meters
+
+    """
+    return GEOD.inv(lon1, lat1, lon2, lat2, radians=True)[2]
+
+
+def calculate_line_parameters(x: NDArray, y: NDArray) -> tuple[NDArray, NDArray]:
+    """
+    Calculates the slope and intercept of the lines defined by the points (x, y).
+
+    Parameters
+    ----------
+    x : NDArray
+        The x coordinates of the points.
+    y : NDArray
+        The y coordinates of the points.
+
+    Returns
+    -------
+    tuple[NDArray, NDArray]
+        The slopes and intercepts of the lines defined by the points (x, y).
+    """
+
+    dx = np.diff(x)
+    dy = np.diff(y)
+
+    slopes = np.divide(dy, dx, out=np.full_like(dy, np.inf), where=dx != 0)
+    # slopes = np.where(dx != 0, dy / dx, np.inf)
+    # slopes = dy / dx
+
+    intercepts = y[:-1] - slopes * x[:-1]
+
+    return slopes, intercepts
+
+
+def crosses_dateline(lon1, lon2):
+    diff = lon2 - lon1
+    cross = (np.abs(diff) > np.pi).astype(int)
+    return np.sign(diff) * cross

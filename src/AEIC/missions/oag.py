@@ -1,3 +1,6 @@
+# TODO: Remove this when we migrate to Python 3.14+.
+from __future__ import annotations
+
 import csv
 import logging
 from collections.abc import Generator
@@ -136,7 +139,7 @@ class CSVEntry:
         return True
 
     @classmethod
-    def from_csv_row(cls, row: dict, line: int = 0) -> 'CSVEntry | None':
+    def from_csv_row(cls, row: dict, line: int = 0) -> CSVEntry | None:
         """Create an CSVEntry instance from a CSV row."""
 
         try:
@@ -207,7 +210,7 @@ class CSVEntry:
             return None
 
     @classmethod
-    def read(cls, file_path: str) -> Generator['CSVEntry']:
+    def read(cls, file_path: str) -> Generator[CSVEntry]:
         """Read an OAG CSV file and yield CSVEntry instances for each row."""
         with open(file_path, newline='') as csvfile:
             for idx, row in enumerate(csv.DictReader(csvfile)):

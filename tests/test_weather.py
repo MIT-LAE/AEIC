@@ -1,9 +1,9 @@
 import pytest
 
 from AEIC.missions import Mission
+from AEIC.missions.mission import iso_to_timestamp
 from AEIC.trajectories.ground_track import GroundTrack
-from AEIC.utils.helpers import iso_to_timestamp
-from AEIC.weather.weather import Weather
+from AEIC.weather import Weather
 
 # Sample mission
 sample_mission = Mission(

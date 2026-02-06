@@ -1,4 +1,4 @@
-# TODO: Remove this when we move to Python 3.14.
+# TODO: Remove this when we migrate to Python 3.14.
 from __future__ import annotations
 
 import tomllib
@@ -26,7 +26,7 @@ class APU(CIBaseModel):
     """Fuel consumption in kilograms per second."""
 
     NOx_g_per_kg: float
-    """NOx emissions in grams per kilogram of fuel."""
+    """NOₓ emissions in grams per kilogram of fuel."""
 
     CO_g_per_kg: float
     """CO emissions in grams per kilogram of fuel."""

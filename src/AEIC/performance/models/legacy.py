@@ -1,6 +1,16 @@
-"""TODO: Docstring here!"""
+"""This module implements a performance model intended to replicate the
+behavior of the legacy table-based performance model in the original Matlab
+AEIC code. The performance data is derived from BADA PTF performance files and
+so has the same restrictions in terms of the dependence of fuel flow,
+rate-of-climb and airspeed on flight level and aircraft mass.
 
-# TODO: Remove this when we move to Python 3.14+.
+Performance evaluation is done by bilinear interpolation in flight level and
+aircraft mass in the relevant segment of the performance table (climb, cruise
+or descent) selected by the flight rules. Performance table data is checked on
+construction to ensure that it satisfies the requirements for this
+interpolation to work correctly."""
+
+# TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -12,7 +22,7 @@ import pandas as pd
 from pydantic import PrivateAttr, model_validator
 from scipy.interpolate import interpn
 
-from AEIC.types import AircraftState, Performance, SimpleFlightRules
+from AEIC.performance.types import AircraftState, Performance, SimpleFlightRules
 from AEIC.units import METERS_TO_FL
 from AEIC.utils.models import CIBaseModel
 

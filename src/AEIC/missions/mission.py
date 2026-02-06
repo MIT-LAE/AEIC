@@ -1,12 +1,16 @@
+# TODO: Remove this when we migrate to Python 3.14+.
+from __future__ import annotations
+
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from functools import cached_property
+from typing import cast
 
 import pandas as pd
 
 from AEIC.types import Position
+from AEIC.utils import GEOD
 from AEIC.utils.airports import airport
-from AEIC.utils.helpers import iso_to_timestamp
-from AEIC.utils.spatial import great_circle_distance
 
 from .query import QueryResult
 
@@ -54,16 +58,15 @@ class Mission:
     @cached_property
     def gc_distance(self) -> float:
         """Great circle distance between departure and arrival positions (m)."""
-        return great_circle_distance(
+        return GEOD.inv(
             self.origin_position.latitude,
             self.origin_position.longitude,
             self.destination_position.latitude,
             self.destination_position.longitude,
-            degrees=True,
-        )
+        )[2]
 
     @classmethod
-    def from_toml(cls, data: dict) -> list['Mission']:
+    def from_toml(cls, data: dict) -> list[Mission]:
         """Create a list of `Mission` instances from a TOML-like dictionary.
 
         This is used for parsing sample mission data.
@@ -84,7 +87,7 @@ class Mission:
         return result
 
     @classmethod
-    def from_query_result(cls, qr: QueryResult, load_factor: float = 1.0) -> 'Mission':
+    def from_query_result(cls, qr: QueryResult, load_factor: float = 1.0) -> Mission:
         """Create a `Mission` instance from a `QueryResult` instance.
 
         This is used for generating missions from mission database queries.
@@ -98,3 +101,11 @@ class Mission:
             aircraft_type=qr.aircraft_type,
             flight_id=qr.id,  # The schedule ID is unique across the database
         )
+
+
+def iso_to_timestamp(s: str) -> pd.Timestamp:
+    """Convert an ISO 8601 string to a UTC Pandas `Timestamp`."""
+    ts = cast(pd.Timestamp, pd.Timestamp(datetime.fromisoformat(s)))
+    if ts.tzinfo is None:
+        ts = ts.tz_localize(UTC)
+    return ts.tz_convert(UTC)

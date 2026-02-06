@@ -6,24 +6,15 @@ import pytest
 
 from AEIC.config import config
 from AEIC.emissions.apu import get_APU_emissions
-from AEIC.emissions.ei.co2 import EI_CO2
-from AEIC.emissions.ei.h2o import EI_H2O
 from AEIC.emissions.ei.hcco import EI_HCCO
 from AEIC.emissions.ei.nox import BFFM2_EINOx, BFFM2EINOxResult, NOx_speciation
 from AEIC.emissions.ei.pmnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
 from AEIC.emissions.ei.pmvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from AEIC.emissions.ei.sox import EI_SOx, SOxEmissionResult
-from AEIC.performance.utils.apu import APU
-from AEIC.performance.utils.edb import EDBEntry
-from AEIC.types import (
-    EmissionsDict,
-    Fuel,
-    ModeValues,
-    Species,
-    ThrustLabel,
-    ThrustLabelArray,
-    ThrustMode,
-)
+from AEIC.performance.apu import APU
+from AEIC.performance.edb import EDBEntry
+from AEIC.performance.types import ThrustMode, ThrustModeArray, ThrustModeValues
+from AEIC.types import Fuel, Species, SpeciesValues
 
 
 @pytest.fixture
@@ -38,48 +29,26 @@ def fuel_SAF():
         return Fuel.model_validate(tomllib.load(f))
 
 
-class TestEI_CO2:
-    """Tests for EI_CO2 function"""
-
-    def test_returns_documented_jet_a_values(self, fuel_jetA):
-        """Jet-A reference EI and carbon fraction should match documentation"""
-        result = EI_CO2(fuel_jetA)
-
-        assert isinstance(result, float)
-        assert result == pytest.approx(3155.6)
-
-    def test_distinguishes_saf_inputs(self, fuel_SAF):
-        """Different fuels propagate their specific EI metadata."""
-        result = EI_CO2(fuel_SAF)
-
-        assert result == pytest.approx(fuel_SAF.EI_CO2)
-
-
-class TestEI_H2O:
-    """Tests for EI_H2O function"""
-
-    def test_returns_documented_jet_a_values(self, fuel_jetA):
-        """Jet-A water EI should match the nominal property sheet."""
-        assert EI_H2O(fuel_jetA) == pytest.approx(1233.3865)
-
-    def test_distinguishes_saf_inputs(self, fuel_SAF):
-        """SAF water EI is different and should be propagated verbatim."""
-        assert EI_H2O(fuel_SAF) == pytest.approx(1356.72515)
-
-
 class TestEI_HCCO:
     """Tests for EI_HCCO function"""
 
     def setup_method(self):
         """Set up test data"""
         self.fuelflow_evaluate = np.array([0.1, 0.5, 1.0, 2.0])
-        self.x_EI_matrix = ModeValues(100.0, 50.0, 10.0, 8.0)
-        self.fuelflow_calibrate = ModeValues(0.2, 0.6, 1.5, 2.0)
+        self.x_EI_matrix = ThrustModeValues(100.0, 50.0, 10.0, 8.0)
+        self.fuelflow_calibrate = ThrustModeValues(0.2, 0.6, 1.5, 2.0)
+        # Standard atmosphere conditions.
+        self.Tamb = 288.15
+        self.Pamb = 101325.0
 
     def test_basic_functionality(self):
         """Test basic HC+CO emissions calculation"""
         result = EI_HCCO(
-            self.fuelflow_evaluate, self.x_EI_matrix, self.fuelflow_calibrate
+            self.fuelflow_evaluate,
+            self.x_EI_matrix,
+            self.fuelflow_calibrate,
+            self.Tamb,
+            self.Pamb,
         )
 
         assert isinstance(result, np.ndarray)
@@ -89,21 +58,31 @@ class TestEI_HCCO:
     def test_non_negativity(self):
         """Test that outputs are non-negative"""
         result = EI_HCCO(
-            self.fuelflow_evaluate, self.x_EI_matrix, self.fuelflow_calibrate
+            self.fuelflow_evaluate,
+            self.x_EI_matrix,
+            self.fuelflow_calibrate,
+            self.Tamb,
+            self.Pamb,
         )
         assert np.all(result >= 0)
 
     def test_finiteness(self):
         """Test that outputs are finite"""
         result = EI_HCCO(
-            self.fuelflow_evaluate, self.x_EI_matrix, self.fuelflow_calibrate
+            self.fuelflow_evaluate,
+            self.x_EI_matrix,
+            self.fuelflow_calibrate,
+            self.Tamb,
+            self.Pamb,
         )
         assert np.all(np.isfinite(result))
 
     def test_zero_and_negative_fuel_flows(self):
         """Test how zero and negative fuel flows are handled"""
         test_flow = np.array([0.0, -0.01, 0.1, 1.0])
-        result = EI_HCCO(test_flow, self.x_EI_matrix, self.fuelflow_calibrate)
+        result = EI_HCCO(
+            test_flow, self.x_EI_matrix, self.fuelflow_calibrate, self.Tamb, self.Pamb
+        )
         assert result.shape == test_flow.shape
         assert np.all(np.isfinite(result))
         assert np.all(result >= 0.0)
@@ -111,10 +90,12 @@ class TestEI_HCCO:
     def test_duplicate_calibration_flows_flatten_slanted_segment(self):
         """Duplicate calibration flows should force a flat lower segment"""
         fuelflow_eval = np.array([0.15, 0.25, 0.3, 0.5])
-        x_EI_matrix = ModeValues(10.0, 10.0, 5.0, 3.0)
-        fuelflow_calibrate = ModeValues(0.3, 0.3, 0.7, 1.4)
+        x_EI_matrix = ThrustModeValues(10.0, 10.0, 5.0, 3.0)
+        fuelflow_calibrate = ThrustModeValues(0.3, 0.3, 0.7, 1.4)
 
-        result = EI_HCCO(fuelflow_eval, x_EI_matrix, fuelflow_calibrate)
+        result = EI_HCCO(
+            fuelflow_eval, x_EI_matrix, fuelflow_calibrate, self.Tamb, self.Pamb
+        )
         expected_upper = np.sqrt(
             x_EI_matrix[ThrustMode.CLIMB] * x_EI_matrix[ThrustMode.TAKEOFF]
         )
@@ -130,10 +111,16 @@ class TestEI_HCCO:
     def test_intercept_adjustment_uses_second_mode_value(self):
         """When intercept drifts low, the second mode should set the ceiling"""
         fuelflow_eval = np.array([0.2, 0.5, 0.9])
-        x_EI_matrix = ModeValues(38.33753758, 2.4406048, 106.49710981, 13.57427593)
-        fuelflow_calibrate = ModeValues(0.10569869, 0.40041291, 0.81271722, 0.86727924)
+        x_EI_matrix = ThrustModeValues(
+            38.33753758, 2.4406048, 106.49710981, 13.57427593
+        )
+        fuelflow_calibrate = ThrustModeValues(
+            0.10569869, 0.40041291, 0.81271722, 0.86727924
+        )
 
-        result = EI_HCCO(fuelflow_eval, x_EI_matrix, fuelflow_calibrate)
+        result = EI_HCCO(
+            fuelflow_eval, x_EI_matrix, fuelflow_calibrate, self.Tamb, self.Pamb
+        )
         high_mask = fuelflow_eval >= fuelflow_calibrate[ThrustMode.APPROACH]
 
         assert np.allclose(result[high_mask], x_EI_matrix[ThrustMode.APPROACH])
@@ -142,10 +129,12 @@ class TestEI_HCCO:
     def test_positive_slope_forces_horizontal_segment(self):
         """Non-negative slopes should collapse to the upper horizontal level"""
         fuelflow_eval = np.array([0.2, 0.35, 0.5])
-        x_EI_matrix = ModeValues(10.0, 11.0, 2.0, 1.0)
-        fuelflow_calibrate = ModeValues(0.2, 0.3, 0.4, 0.5)
+        x_EI_matrix = ThrustModeValues(10.0, 11.0, 2.0, 1.0)
+        fuelflow_calibrate = ThrustModeValues(0.2, 0.3, 0.4, 0.5)
 
-        result = EI_HCCO(fuelflow_eval, x_EI_matrix, fuelflow_calibrate)
+        result = EI_HCCO(
+            fuelflow_eval, x_EI_matrix, fuelflow_calibrate, self.Tamb, self.Pamb
+        )
         expected_value = np.sqrt(
             x_EI_matrix[ThrustMode.CLIMB] * x_EI_matrix[ThrustMode.TAKEOFF]
         )
@@ -159,8 +148,8 @@ class TestBFFM2_EINOx:
     def setup_method(self):
         """Set up test data"""
         self.fuelflow_trajectory = np.array([0.5, 1.0, 1.5, 2.0])
-        self.EI_NOx_matrix = ModeValues(30.0, 25.0, 20.0, 18.0)
-        self.fuelflow_performance = ModeValues(0.4, 0.8, 1.2, 1.8)
+        self.EI_NOx_matrix = ThrustModeValues(30.0, 25.0, 20.0, 18.0)
+        self.fuelflow_performance = ThrustModeValues(0.4, 0.8, 1.2, 1.8)
         self.Tamb = np.array([288.15, 250.0, 220.0, 280.0])
         self.Pamb = np.array([101325.0, 25000.0, 15000.0, 95000.0])
 
@@ -176,7 +165,7 @@ class TestBFFM2_EINOx:
         )
 
     def test_basic_functionality(self):
-        """Test basic NOx emissions calculation"""
+        """Test basic NOₓ emissions calculation"""
         result = BFFM2_EINOx(
             self.fuelflow_trajectory,
             self.EI_NOx_matrix,
@@ -206,7 +195,7 @@ class TestBFFM2_EINOx:
             assert np.all(array >= 0)
 
     def test_summation_consistency(self):
-        """Test that NO + NO2 + HONO proportions sum to 1"""
+        """Test that NO + NO₂ + HONO proportions sum to 1"""
         result = BFFM2_EINOx(
             self.fuelflow_trajectory,
             self.EI_NOx_matrix,
@@ -227,7 +216,7 @@ class TestBFFM2_EINOx:
         total_prop = noProp + no2Prop + honoProp
         assert np.allclose(total_prop, 1.0, rtol=1e-10)
 
-        # Component EIs should sum to total NOx EI
+        # Component EIs should sum to total NOₓ EI
         total_component_EI = NOEI + NO2EI + HONOEI
         assert np.allclose(total_component_EI, NOxEI, rtol=1e-10)
 
@@ -244,7 +233,7 @@ class TestBFFM2_EINOx:
         for array in self._components(result):
             assert np.all(np.isfinite(array))
 
-    @patch('AEIC.utils.standard_fuel.get_thrust_cat_cruise')
+    @patch('AEIC.emissions.utils.get_thrust_cat_cruise')
     def test_thrust_categorization(self, mock_get_thrust_cat_cruise):
         """Test thrust categorization functionality"""
         # Mock thrust categories
@@ -287,7 +276,7 @@ class TestBFFM2_EINOx:
 
 
 class TestNOxSpeciation:
-    """Tests for NOx_speciation function"""
+    """Tests for NOₓ_speciation function"""
 
     def test_summation_consistency(self):
         """Test that proportions sum to 1 for each thrust category"""
@@ -362,10 +351,10 @@ class TestGetAPUEmissions:
     def setup_method(self):
         """Set up test data"""
 
-        self.LTO_emission_indices = EmissionsDict[ModeValues](
+        self.LTO_emission_indices = SpeciesValues[ThrustModeValues](
             {
-                Species.SO2: ModeValues(1.2),
-                Species.SO4: ModeValues(0.8),
+                Species.SO2: ThrustModeValues(1.2),
+                Species.SO4: ThrustModeValues(0.8),
             }
         )
 
@@ -413,7 +402,7 @@ class TestGetAPUEmissions:
             )
 
     def test_nox_speciation_consistency(self, fuel_jetA):
-        """Test NOx speciation consistency via PM10_g_per_kg scaling"""
+        """Test NOₓ speciation consistency via PM10_g_per_kg scaling"""
         apu = get_APU_emissions(self.LTO_emission_indices, self.apu, fuel_jetA)
         nox_speciation = NOx_speciation()
 
@@ -450,9 +439,9 @@ class TestGetAPUEmissions:
         assert apu.indices[Species.PMnvolN] == 0.0
 
 
-def make_edb_lto_values(x0: float, x1: float, x2: float, x3: float) -> ModeValues:
+def make_edb_lto_values(x0: float, x1: float, x2: float, x3: float) -> ThrustModeValues:
     """Helper to create ModeDict from array for tests"""
-    return ModeValues(
+    return ThrustModeValues(
         {
             ThrustMode.IDLE: x0,
             ThrustMode.APPROACH: x1,
@@ -538,7 +527,7 @@ class TestCalculatePMnvolScope11:
     """Tests for calculate_PMnvolEI_scope11"""
 
     def test_engine_type_scaling_and_invalid_smoke_numbers(self):
-        SN_matrix = ModeValues(5.0, 50.0, -1.0, 0.0)
+        SN_matrix = ThrustModeValues(5.0, 50.0, -1.0, 0.0)
         BP_Ratio = 2.0
 
         mtf = calculate_PMnvolEI_scope11(SN_matrix, 'MTF', BP_Ratio)
@@ -546,7 +535,7 @@ class TestCalculatePMnvolScope11:
 
         SN0 = min(SN_matrix[ThrustMode.IDLE], 40.0)
         CBC0 = 0.6484 * np.exp(0.0766 * SN0) / (1 + np.exp(-1.098 * (SN0 - 3.064)))
-        AFR = ModeValues(106, 83, 51, 45)
+        AFR = ThrustModeValues(106, 83, 51, 45)
 
         bypass = 1 + BP_Ratio
         kslm_mtf = np.log(
@@ -571,11 +560,11 @@ class TestEI_PMvol:
 
     def test_fuel_flow_path_uses_lube_contributions(self):
         fuelflow = np.ones((2, 4))
-        thrustCat = ThrustLabelArray(np.array([ThrustLabel.LOW, ThrustLabel.HIGH]))
+        thrustModes = ThrustModeArray(np.array([ThrustMode.IDLE, ThrustMode.APPROACH]))
 
-        pmvol, ocic = EI_PMvol_FuelFlow(fuelflow, thrustCat)
+        pmvol, ocic = EI_PMvol_FuelFlow(fuelflow, thrustModes)
 
-        assert pmvol.shape == thrustCat.shape
+        assert pmvol.shape == thrustModes.shape
         assert ocic.shape == fuelflow.shape
         assert np.isclose(pmvol[0], 0.02 / (1 - 0.15))
         assert np.isclose(pmvol[1], 0.02 / (1 - 0.50))
@@ -601,10 +590,10 @@ class TestIntegration:
     """Integration tests to check function interactions"""
 
     def test_nox_emissions_consistency(self):
-        """Test NOx emissions consistency across functions"""
+        """Test NOₓ emissions consistency across functions"""
         fuelflow_trajectory = np.array([1.0, 1.5, 2.0])
-        EI_NOx_matrix = ModeValues(30.0, 25.0, 20.0, 18.0)
-        fuelflow_performance = ModeValues(0.8, 1.2, 1.6, 2.0)
+        EI_NOx_matrix = ThrustModeValues(30.0, 25.0, 20.0, 18.0)
+        fuelflow_performance = ThrustModeValues(0.8, 1.2, 1.6, 2.0)
         Tamb = np.array([288.15, 250.0, 220.0])
         Pamb = np.array([101325.0, 25000.0, 15000.0])
 

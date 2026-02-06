@@ -11,10 +11,16 @@ from typing import ClassVar
 import numpy as np
 import pytest
 
-from AEIC.storage.field_sets import FieldMetadata, FieldSet
-from AEIC.trajectories.store import TrajectoryStore
+from AEIC.performance.types import ThrustModeValues
+from AEIC.trajectories import (
+    Dimension,
+    Dimensions,
+    FieldMetadata,
+    FieldSet,
+    TrajectoryStore,
+)
 from AEIC.trajectories.trajectory import Trajectory
-from AEIC.types import Dimension, Dimensions, EmissionsDict, ModeValues, Species
+from AEIC.types import Species, SpeciesValues
 
 
 @dataclass
@@ -87,38 +93,38 @@ class ComplexExtras:
         )
     ]
 
-    tot: EmissionsDict[float]
-    seg: EmissionsDict[np.ndarray]
-    tm: ModeValues
-    tm2: EmissionsDict[ModeValues]
+    tot: SpeciesValues[float]
+    seg: SpeciesValues[np.ndarray]
+    tm: ThrustModeValues
+    tm2: SpeciesValues[ThrustModeValues]
 
     @classmethod
     def random(cls, npoints: int) -> ComplexExtras:
         return cls(
-            tot=EmissionsDict(
+            tot=SpeciesValues(
                 {Species.CO2: random.uniform(0, 10), Species.H2O: random.uniform(0, 10)}
             ),
-            seg=EmissionsDict(
+            seg=SpeciesValues(
                 {
                     Species.CO2: np.random.rand(npoints),
                     Species.H2O: np.random.rand(npoints),
                 }
             ),
-            tm=ModeValues(
+            tm=ThrustModeValues(
                 random.uniform(0, 10),
                 random.uniform(0, 10),
                 random.uniform(0, 10),
                 random.uniform(0, 10),
             ),
-            tm2=EmissionsDict(
+            tm2=SpeciesValues(
                 {
-                    Species.CO2: ModeValues(
+                    Species.CO2: ThrustModeValues(
                         random.uniform(0, 10),
                         random.uniform(0, 10),
                         random.uniform(0, 10),
                         random.uniform(0, 10),
                     ),
-                    Species.H2O: ModeValues(
+                    Species.H2O: ThrustModeValues(
                         random.uniform(0, 10),
                         random.uniform(0, 10),
                         random.uniform(0, 10),
@@ -729,18 +735,18 @@ def test_merged_store_indexing(tmp_path: Path):
 def _check_complex(ts_read: TrajectoryStore, repeats: int = 1):
     assert len(ts_read) == 5 * repeats
     for i in range(5):
-        assert isinstance(ts_read[i].tot, EmissionsDict)
+        assert isinstance(ts_read[i].tot, SpeciesValues)
         for sp in ts_read[i].tot:
             assert isinstance(ts_read[i].tot[sp], float)
-        assert isinstance(ts_read[i].seg, EmissionsDict)
+        assert isinstance(ts_read[i].seg, SpeciesValues)
         for sp in ts_read[i].seg:
             v = ts_read[i].seg[sp]
             assert isinstance(v, np.ndarray)
             assert v.shape == ((i + 1) * 5,)
-        assert isinstance(ts_read[i].tm, ModeValues)
-        assert isinstance(ts_read[i].tm2, EmissionsDict)
+        assert isinstance(ts_read[i].tm, ThrustModeValues)
+        assert isinstance(ts_read[i].tm2, SpeciesValues)
         for sp in ts_read[i].tm2:
-            assert isinstance(ts_read[i].tm2[sp], ModeValues)
+            assert isinstance(ts_read[i].tm2[sp], ThrustModeValues)
 
 
 def test_complex_extra_fields_in_base_nc(tmp_path: Path):
@@ -816,15 +822,15 @@ def test_create_associated_complex(tmp_path: Path):
         assert ts_read.files[0].fieldsets == {'base'}
         assert ts_read.files[1].fieldsets == {'complex_extras'}
         for i in range(2):
-            assert isinstance(ts_read[i].tot, EmissionsDict)
+            assert isinstance(ts_read[i].tot, SpeciesValues)
             for sp in ts_read[i].tot:
                 assert isinstance(ts_read[i].tot[sp], float)
-            assert isinstance(ts_read[i].seg, EmissionsDict)
+            assert isinstance(ts_read[i].seg, SpeciesValues)
             for sp in ts_read[i].seg:
                 v = ts_read[i].seg[sp]
                 assert isinstance(v, np.ndarray)
                 assert v.shape == (10 + i * 5,)
-            assert isinstance(ts_read[i].tm, ModeValues)
-            assert isinstance(ts_read[i].tm2, EmissionsDict)
+            assert isinstance(ts_read[i].tm, ThrustModeValues)
+            assert isinstance(ts_read[i].tm2, SpeciesValues)
             for sp in ts_read[i].tm2:
-                assert isinstance(ts_read[i].tm2[sp], ModeValues)
+                assert isinstance(ts_read[i].tm2[sp], ThrustModeValues)

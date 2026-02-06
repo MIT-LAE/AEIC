@@ -1,9 +1,9 @@
 import numpy as np
 
-from AEIC.types import ThrustLabel, ThrustLabelArray
+from AEIC.performance.types import ThrustMode, ThrustModeArray
 
 
-def EI_PMvol_FuelFlow(fuelflow: np.ndarray, thrustLabel: ThrustLabelArray):
+def EI_PMvol_FuelFlow(fuelflow: np.ndarray, thrustMode: ThrustModeArray):
     """
     Calculate EI(PMvolo) and OCicEI based on fuel flow
 
@@ -26,7 +26,7 @@ def EI_PMvol_FuelFlow(fuelflow: np.ndarray, thrustLabel: ThrustLabelArray):
     # 2) Deterministic lube-oil contributions (midpoints of low/high ranges)
     lubeContrL = 0.15  # midpoint of 10–20%
     lubeContrH = 0.50  # midpoint of 40–60%
-    lubeContr = np.where(thrustLabel.data == ThrustLabel.LOW, lubeContrL, lubeContrH)
+    lubeContr = np.where(thrustMode.data == ThrustMode.IDLE, lubeContrL, lubeContrH)
 
     # 3) Compute PMvoloEI = OCicEI / (1 − lubeContr)
     PMvolo_vec = OCic_val / (1.0 - lubeContr)

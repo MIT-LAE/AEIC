@@ -74,22 +74,22 @@ sets of fields.
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.storage.field_sets.FieldMetadata
+.. autoclass:: AEIC.trajectories.field_sets.FieldMetadata
    :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.storage.field_sets.FieldSet
+.. autoclass:: AEIC.trajectories.field_sets.FieldSet
    :members:
 ```
 
 ```{eval-rst}
-.. autoenum:: AEIC.types.storage.Dimension
+.. autoenum:: AEIC.trajectories.dimensions.Dimension
    :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.types.storage.Dimensions
+.. autoclass:: AEIC.trajectories.dimensions.Dimensions
    :members:
 ```
 

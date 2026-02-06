@@ -15,7 +15,7 @@ section of the configuration data (represented by the
 
 The output from the emissions calculations include per-species emission
 indices (grams per kilogram of fuel) and emission values (grams), all wrapped
-in a single {py:class}`EmissionsOutput <AEIC.emissions.EmissionsOutput>` value
+in a single {py:class}`Emissions <AEIC.emissions.Emissions>` value
 for downstream analysis.
 
 ## Usage example
@@ -29,7 +29,8 @@ from AEIC.performance.models import PerformanceModel
 from AEIC.trajectories.trajectory import Trajectory
 from AEIC.missions import Mission
 from AEIC.emissions import compute_emissions
-from AEIC.types import Fuel, Species, ThrustMode
+from AEIC.performance.types import ThrustMode
+from AEIC.types import Fuel, Species
 
 Config.load();
 
@@ -89,9 +90,8 @@ steps:
    totals.
 7. If requested, calculates a lifecycle CO₂ emissions adjustment and applies
    it to the totals.
-8. Collects together all emissions data into a single
-   {py:class}`EmissionsOutput <AEIC.types.EmissionsOutput>` value and returns
-   it.
+8. Collects together all emissions data into a single {py:class}`Emissions
+   <AEIC.emissions.types.Emissions>` value and returns it.
 
 ```{eval-rst}
 .. autofunction:: AEIC.emissions.compute_emissions
@@ -110,28 +110,28 @@ species known to AEIC.
 
 ### Emissions output
 
-The {py:class}`EmissionsOutput <AEIC.emission.emission.EmissionsOutput>` class
-holds emission index and emission quantities for trajectory, LTO, APU, GSE and
-total emissions, as well as some ancillary quantities like fuel burn per
-segment. The emission indices and emission quantities are stored as values of
-the generic type {py:class}`EmissionsDict <AEIC.types.EmissionsDict>`, with a
+The {py:class}`Emissions <AEIC.emission.emission.Emissions>` class holds
+emission index and emission quantities for trajectory, LTO, APU, GSE and total
+emissions, as well as some ancillary quantities like fuel burn per segment.
+The emission indices and emission quantities are stored as values of the
+generic type {py:class}`SpeciesValues <AEIC.types.SpeciesValues>`, with a
 value type of `float` (for APU, GSE and total emissions),
-{py:class}`ModeValues <AEIC.types.ModeValues>` for LTO, and `np.ndarray` for
-trajectory emissions. This structure captures the different types of
-per-species emissions from the different sources.
+{py:class}`ThrustModeValues <AEIC.performance.types.ThrustModeValues>` for
+LTO, and `np.ndarray` for trajectory emissions. This structure captures the
+different types of per-species emissions from the different sources.
 
 ```{eval-rst}
-.. autoclass:: AEIC.emissions.emission.EmissionsOutput
+.. autoclass:: AEIC.emissions.emission.Emissions
    :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.emissions.emission.EmissionsDict
+.. autoclass:: AEIC.types.species.SpeciesValues
    :members:
 ```
 
 ```{eval-rst}
-.. autoclass:: AEIC.types.ModeValues
+.. autoclass:: AEIC.performance.types.ThrustModeValues
    :members:
 ```
 
@@ -151,16 +151,6 @@ per-species emissions from the different sources.
 
 ```{eval-rst}
 .. autofunction:: AEIC.emissions.gse.get_GSE_emissions
-```
-
-```{eval-rst}
-.. automodule:: AEIC.emissions.ei.co2
-   :members:
-```
-
-```{eval-rst}
-.. automodule:: AEIC.emissions.ei.h2o
-   :members:
 ```
 
 ```{eval-rst}
@@ -185,5 +175,10 @@ per-species emissions from the different sources.
 
 ```{eval-rst}
 .. automodule:: AEIC.emissions.ei.pmvol
+   :members:
+```
+
+```{eval-rst}
+.. automodule:: AEIC.emissions.utils
    :members:
 ```

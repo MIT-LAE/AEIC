@@ -2,9 +2,11 @@ from typing import Any
 
 import numpy as np
 
-from AEIC.storage.field_sets import FieldMetadata, FieldSet, HasFieldSets
-from AEIC.types import Dimension, Dimensions, EmissionsDict, Species
+from AEIC.performance.types import ThrustModeValues
+from AEIC.types import Species, SpeciesValues
 
+from .dimensions import Dimension, Dimensions
+from .field_sets import FieldMetadata, FieldSet, HasFieldSets
 from .phase import PHASE_FIELDS
 
 BASE_FIELDSET_NAME = 'base'
@@ -98,10 +100,26 @@ class Trajectory:
         if self.X_data_dictionary != other.X_data_dictionary:
             return False
         for name in self.X_data_dictionary:
-            # TODO: This is now wrong - there can be other types than
-            # np.ndarray.
-            if not np.array_equal(self.X_data[name], other.X_data[name]):
-                return False
+            if name in self.X_data:
+                vs = self.X_data[name]
+                vo = other.X_data[name]
+                if isinstance(
+                    vs,
+                    str
+                    | None
+                    | int
+                    | float
+                    | np.floating
+                    | SpeciesValues
+                    | ThrustModeValues,
+                ):
+                    if vs != vo:
+                        return False
+                elif isinstance(vs, np.ndarray):
+                    if not np.array_equal(vs, vo):
+                        return False
+                else:
+                    raise ValueError('unknown type in trajectory comparison')
         return True
 
     def approx_eq(self, other: object) -> bool:
@@ -121,11 +139,14 @@ class Trajectory:
                 elif isinstance(vs, int | float | np.floating):
                     if not np.isclose(vs, vo):
                         return False
+                elif isinstance(vs, SpeciesValues | ThrustModeValues):
+                    if not vs.isclose(vo):
+                        return False
                 elif isinstance(vs, np.ndarray):
                     if not np.allclose(vs, vo):
                         return False
                 else:
-                    raise ValueError('TBD')
+                    raise ValueError('unknown type in trajectory comparison')
         return True
 
     def __init__(
@@ -237,7 +258,7 @@ class Trajectory:
         for name, field in self.X_data_dictionary.items():
             # Only copy point-wise data.
             if Dimension.POINT in field.dimensions:
-                # TODO: Handle species dimension as well.
+                # TODO: Handle species dimension as well?
                 self.X_data[name][to_idx] = self.X_data[name][from_idx]
 
     def add_fields(self, fieldset: FieldSet | HasFieldSets):
@@ -292,7 +313,7 @@ class Trajectory:
         species = set()
         for name, field in self.X_data_dictionary.items():
             if Dimension.SPECIES in field.dimensions:
-                assert isinstance(self.X_data[name], EmissionsDict)
+                assert isinstance(self.X_data[name], SpeciesValues)
                 species.update(self.X_data[name].keys())
         return sorted(species)
 

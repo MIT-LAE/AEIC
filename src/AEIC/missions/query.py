@@ -1,12 +1,13 @@
+# TODO: Remove this when we migrate to Python 3.14+.
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, timedelta
-from typing import ClassVar, TypeVar
+from datetime import UTC, date, timedelta
+from typing import ClassVar, TypeVar, cast
 
 import pandas as pd
-
-from AEIC.utils.helpers import date_to_timestamp
 
 from .filter import Filter
 
@@ -129,7 +130,7 @@ class QueryResult:
     """Unique flight ID."""
 
     @classmethod
-    def from_row(cls, row: tuple) -> 'QueryResult':
+    def from_row(cls, row: tuple) -> QueryResult:
         """Create a QueryResult from a database row."""
 
         return cls(
@@ -247,7 +248,7 @@ class FrequentFlightQueryResult:
     """Number of flights between the two airports."""
 
     @classmethod
-    def from_row(cls, row: tuple) -> 'FrequentFlightQueryResult':
+    def from_row(cls, row: tuple) -> FrequentFlightQueryResult:
         """Create a FrequentFlightQueryResult from a database row."""
 
         return cls(airport1=row[0], airport2=row[1], number_of_flights=row[2])
@@ -319,3 +320,8 @@ class CountQuery(QueryBase[int]):
             )
 
         return sql, self._params
+
+
+def date_to_timestamp(d: date) -> pd.Timestamp:
+    """Convert a Python `date` to a UTC Pandas `Timestamp` at midnight."""
+    return cast(pd.Timestamp, pd.Timestamp(d, tzinfo=UTC))

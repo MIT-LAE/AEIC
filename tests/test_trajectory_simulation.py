@@ -3,9 +3,8 @@ import pytest
 
 import AEIC.trajectories.builders as tb
 from AEIC.missions import Mission
-from AEIC.storage.field_sets import FieldMetadata, FieldSet
-from AEIC.trajectories import TrajectoryStore
-from AEIC.utils.helpers import iso_to_timestamp
+from AEIC.missions.mission import iso_to_timestamp
+from AEIC.trajectories import FieldMetadata, FieldSet, TrajectoryStore
 
 
 @pytest.fixture

@@ -36,6 +36,6 @@ Example::
 ## Class members
 
 ```{eval-rst}
-.. autoclass:: AEIC.weather.weather.Weather
+.. autoclass:: AEIC.weather.Weather
    :members:
 ```

@@ -3,13 +3,13 @@ name = "Jet-A"
 
 energy_MJ_per_kg = 43.2
 
-EI_H2O = 1233.3865 # gH2O/kgfuel
-EI_CO2 = 3155.6 # gCO2/kgfuel
+EI_H2O = 1233.3865 # gH₂O/kg fuel
+EI_CO2 = 3155.6 # gCO₂/kg fuel
 
 non_volatile_carbon_content = 0.95
 
-lifecycle_CO2 = 89 # gCO2e/MJfuel
-# CI of conventional jet fuel (89 g/MJ) from this source: 89 gCO2e/MJfuel
+lifecycle_CO2 = 89 # gCO₂(e)/MJ fuel
+# CI of conventional jet fuel (89 g/MJ) from this source: 89 gCO₂(e)/MJ fuel
 # https://www.icao.int/environmental-protection/CORSIA/Documents/CORSIA%20Supporting%20Document_CORSIA%20Eligible%20Fuels_LCA%20Methodology.pdf
 
 # Sulfur content and sulfate yield.

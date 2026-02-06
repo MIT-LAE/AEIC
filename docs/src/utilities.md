@@ -74,8 +74,7 @@ These can all be done using the single `pyproj.Geod` instance defined in this
 module.
 
 ```{eval-rst}
-.. automodule:: AEIC.utils.spatial
-    :members:
+.. autodata:: AEIC.utils.GEOD
 ```
 
 ## File handling functions
@@ -92,27 +91,11 @@ module.
     :members:
 ```
 
-## Standard fuel
-
-As well as the functions in the {py:mod}`AEIC.utils.standard_fuel` module,
-there is a {py:class}`Fuel <AEIC.types.Fuel>` class defined in
-{py:mod}`AEIC.types`.
-
-```{eval-rst}
-.. automodule:: AEIC.utils.standard_fuel
-    :members:
-```
+## Fuel
 
 ```{eval-rst}
 .. autoclass:: AEIC.types.Fuel
    :members:
-```
-
-## Miscellaneous utility functions
-
-```{eval-rst}
-.. automodule:: AEIC.utils.helpers
-    :members:
 ```
 
 ## Data modeling utility classes

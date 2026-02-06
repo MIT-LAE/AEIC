@@ -3,11 +3,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from AEIC.types import AircraftClass, EmissionsDict, EmissionsSubset, Species
+from AEIC.emissions.types import EmissionsSubset
+from AEIC.types import AircraftClass, Species, SpeciesValues
 from AEIC.units import KG_TO_GRAMS, PPM
-
-from .ei.co2 import EI_CO2
-from .ei.h2o import EI_H2O
 
 if TYPE_CHECKING:
     from AEIC.types import Fuel
@@ -18,31 +16,31 @@ def get_GSE_emissions(
 ) -> EmissionsSubset[float]:
     """Calculate Ground Service Equipment emissions based on aircraft class.
     Returns emissions dictionary and fuel burn."""
-    gse = EmissionsDict[float]()
+    gse = SpeciesValues[float]()
 
     nominal, pm_core = _gse_nominal_profile(aircraft_class)
     for species in [Species.CO2, Species.NOx, Species.HC, Species.CO]:
         gse[species] = nominal[species]
 
-    gse_fuel = gse[Species.CO2] / EI_CO2(fuel)
+    gse_fuel = gse[Species.CO2] / fuel.EI_CO2
 
-    gse[Species.H2O] = EI_H2O(fuel) * gse_fuel
+    gse[Species.H2O] = fuel.EI_H2O * gse_fuel
 
-    # NOx split.
+    # NOₓ split.
     gse[Species.NO] = gse[Species.NOx] * 0.90
     gse[Species.NO2] = gse[Species.NOx] * 0.09
     gse[Species.HONO] = gse[Species.NOx] * 0.01
 
-    # Sulfate / SO2 fraction (independent of aircraft class).
+    # Sulfate / SO₂ fraction (independent of aircraft class).
     GSE_FSC = 5.0 * PPM  # fuel‐sulfur concentration (ppm)
     GSE_EPS = 0.02  # fraction → sulfate
     # Molecular weights.
     MWT_O2 = 16.0 * 2
     MWT_SO2 = 32.0 + 16.0 * 2
     MWT_SO4 = 32.0 + 16.0 * 4
-    # g SO4 per kg fuel:
+    # g SO₄ per kg fuel:
     gse[Species.SO4] = GSE_FSC * KG_TO_GRAMS * GSE_EPS * (MWT_SO4 / MWT_O2)
-    # g SO2 per kg fuel:
+    # g SO₂ per kg fuel:
     gse[Species.SO2] = GSE_FSC * KG_TO_GRAMS * (1.0 - GSE_EPS) * (MWT_SO2 / MWT_O2)
 
     # Subtract sulfate from the core PM₁₀ then split 50:50.
@@ -60,15 +58,15 @@ def get_GSE_emissions(
 
 def _gse_nominal_profile(
     aircraft_class: AircraftClass,
-) -> tuple[EmissionsDict[float], float]:
+) -> tuple[SpeciesValues[float], float]:
     """Return nominal per-cycle GSE emissions for the requested aircraft class.
 
-    Return value is an emissions dictionary for CO2, NOx, HC, CO, and a
+    Return value is an emissions dictionary for CO₂, NOₓ, HC, CO, and a
     single value for PM10."""
     match aircraft_class:
         case AircraftClass.WIDE:
             return (
-                EmissionsDict[float](
+                SpeciesValues[float](
                     {
                         Species.CO2: 58e3,
                         Species.NOx: 0.9e3,
@@ -80,7 +78,7 @@ def _gse_nominal_profile(
             )
         case AircraftClass.NARROW:
             return (
-                EmissionsDict[float](
+                SpeciesValues[float](
                     {
                         Species.CO2: 18e3,
                         Species.NOx: 0.4e3,
@@ -92,7 +90,7 @@ def _gse_nominal_profile(
             )
         case AircraftClass.SMALL:
             return (
-                EmissionsDict[float](
+                SpeciesValues[float](
                     {
                         Species.CO2: 10e3,
                         Species.NOx: 0.3e3,
@@ -104,7 +102,7 @@ def _gse_nominal_profile(
             )
         case AircraftClass.FREIGHT:
             return (
-                EmissionsDict[float](
+                SpeciesValues[float](
                     {
                         Species.CO2: 58e3,
                         Species.NOx: 0.9e3,

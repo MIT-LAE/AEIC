@@ -20,10 +20,10 @@ weather_data_dir = "weather"
 #   conventional_jetA
 fuel = "conventional_jetA"
 
-# Compute CO2 emissions with EI in fuels file.
+# Compute CO₂ emissions with EI in fuels file.
 co2_enabled = true
 
-# Compute H2O emissions with EI in fuels file.
+# Compute H₂O emissions with EI in fuels file.
 h2o_enabled = true
 
 # Compute SOx emissions with EI in fuels file.

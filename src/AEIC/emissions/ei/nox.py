@@ -7,13 +7,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from AEIC.types import ModeValues
-from AEIC.utils.standard_fuel import get_thrust_cat_cruise
+from AEIC.performance.types import ThrustModeValues
+
+from ..utils import get_thrust_cat_cruise
 
 
 @dataclass(frozen=True)
 class BFFM2EINOxResult:
-    """Bundled NOx emissions indices and speciation data."""
+    """Bundled NOₓ emissions indices and speciation data."""
 
     NOxEI: np.ndarray
     NOEI: np.ndarray
@@ -26,13 +27,13 @@ class BFFM2EINOxResult:
 
 def BFFM2_EINOx(
     sls_equiv_fuel_flow: np.ndarray,
-    EI_NOx_matrix: ModeValues,
-    fuelflow_performance: ModeValues,
+    EI_NOx_matrix: ThrustModeValues,
+    fuelflow_performance: ThrustModeValues,
     Tamb: np.ndarray,
     Pamb: np.ndarray,
 ) -> BFFM2EINOxResult:
     """
-    Calculate NOx, NO, NO2, and HONO emission indices
+    Calculate NOₓ, NO, NO₂, and HONO emission indices
     All inputs are 1-dimensional arrays of equal length for calibration
     (fuelflow_KGperS vs. EI_NOx_matrix)
     and 1-dimensional for SLS_equivalent_fuel_flow (multiple evaluation points).
@@ -42,7 +43,7 @@ def BFFM2_EINOx(
     fuelflow_trajectory : ndarray, shape (n_times,)
         Fuel flow at which to compute EI.
     EI_NOx_matrix : ndarray, shape (n_cal,)
-        Baseline NOx EI values [g NOx / kg fuel]
+        Baseline NOₓ EI values [g NOₓ / kg fuel]
         corresponding to calibration fuel flows.
     fuelflow_performance : ndarray, shape (n_cal,)
         Calibration fuel flow values [kg/s] for which EI_NOx_matrix is defined.
@@ -54,7 +55,7 @@ def BFFM2_EINOx(
     Returns
     -------
     BFFM2EINOxResult
-        Structured NOx EI arrays and speciation fractions.
+        Structured NOₓ EI arrays and speciation fractions.
     """
 
     # ---------------------------------------------------------------------
@@ -113,8 +114,8 @@ def BFFM2_EINOx(
     # ---------------------------------------------------------------------
     # 3) Map each evaluation point to thrust category
     #    Low  : ≤ Idle fuel-flow  (HC/CO “L”)
-    #    Appr.: (Idle, Approach]  (NOx “A”)
-    #    High : > Approach        (NOx “H”, includes Climb & TO)
+    #    Appr.: (Idle, Approach]  (NOₓ “A”)
+    #    High : > Approach        (NOₓ “H”, includes Climb & TO)
     # ---------------------------------------------------------------------
     thrustCat = get_thrust_cat_cruise(sls_equiv_fuel_flow, fuelflow_performance)
 
@@ -131,7 +132,7 @@ def BFFM2_EINOx(
         warnings.warn("NaN encountered in NOxEI calculation.", RuntimeWarning)
 
     NOEI = NOxEI * noProp  # g NO / kg fuel
-    NO2EI = NOxEI * no2Prop  # g NO2 / kg fuel
+    NO2EI = NOxEI * no2Prop  # g NO₂ / kg fuel
     HONOEI = NOxEI * honoProp  # g HONO / kg fuel
 
     return BFFM2EINOxResult(
@@ -147,16 +148,16 @@ def BFFM2_EINOx(
 
 @dataclass(frozen=True)
 class NOXSpeciation:
-    """Fractional speciation of NOₓ into NO, NO2, and HONO in different thrust
+    """Fractional speciation of NOₓ into NO, NO₂, and HONO in different thrust
     modes."""
 
-    no: ModeValues
+    no: ThrustModeValues
     """Fraction of NO in NOₓ in each thrust mode."""
 
-    no2: ModeValues
+    no2: ThrustModeValues
     """Fraction of NO₂ in NOₓ in each thrust mode."""
 
-    hono: ModeValues
+    hono: ThrustModeValues
     """Fraction of HONO in NOₓ in each thrust mode."""
 
 
@@ -165,20 +166,24 @@ def NOx_speciation() -> NOXSpeciation:
     # HONO nominal (% of NOy)
     honoHnom, honoLnom, honoAnom = 0.75, 4.5, 4.5
 
-    # NO2 nominal computed from (NO2/(NOy - HONO)) * (100 - HONO)
+    # NO₂ nominal computed from (NO₂/(NOy - HONO)) * (100 - HONO)
     no2Hnom = 7.5 * (100.0 - honoHnom) / 100.0
     no2Lnom = 86.5 * (100.0 - honoLnom) / 100.0
     no2Anom = 16.0 * (100.0 - honoAnom) / 100.0
 
-    # NO nominal so that NO + NO2 + HONO = 100%
+    # NO nominal so that NO + NO₂ + HONO = 100%
     noHnom = 100.0 - honoHnom - no2Hnom
     noLnom = 100.0 - honoLnom - no2Lnom
     noAnom = 100.0 - honoAnom - no2Anom
 
     return NOXSpeciation(
-        no=ModeValues(noLnom / 100, noAnom / 100, noHnom / 100, noHnom / 100),
-        no2=ModeValues(no2Lnom / 100, no2Anom / 100, no2Hnom / 100, no2Hnom / 100),
-        hono=ModeValues(honoLnom / 100, honoAnom / 100, honoHnom / 100, honoHnom / 100),
+        no=ThrustModeValues(noLnom / 100, noAnom / 100, noHnom / 100, noHnom / 100),
+        no2=ThrustModeValues(
+            no2Lnom / 100, no2Anom / 100, no2Hnom / 100, no2Hnom / 100
+        ),
+        hono=ThrustModeValues(
+            honoLnom / 100, honoAnom / 100, honoHnom / 100, honoHnom / 100
+        ),
     )
 
 
@@ -197,7 +202,7 @@ def NOx_speciation() -> NOXSpeciation:
 #         sp_humidity: float = 0.00634
 #     ):
 #     """
-#     Calculates NOx emissions indices and speciation.
+#     Calculates NOₓ emissions indices and speciation.
 
 #     Parameters
 #     ----------
@@ -244,22 +249,11 @@ def NOx_speciation() -> NOXSpeciation:
 #         'L': (75.0, 98.0 * (100-4.5)/100, 86.5 * (100-4.5)/100),
 #         'A': (12.0, 20.0 * (100-4.5)/100, 16.0 * (100-4.5)/100)
 #     }
-#     # TODO: check if Monte Carlo for speciation needed
-#     # if mcsHONO == 1:
-#     #     honoH = trirnd(*hono_bounds['H'], rvHONO)
-#     #     honoL = trirnd(*hono_bounds['L'], rvHONO)
-#     #     honoA = trirnd(*hono_bounds['A'], rvHONO)
-#     # else:
 #     honoH_nom = hono_bounds['H'][2]
 #     honoL_nom = hono_bounds['L'][2]
 #     honoA_nom = hono_bounds['A'][2]
 #     honoH, honoL, honoA = honoH_nom, honoL_nom, honoA_nom
 
-#     # if mcsNO2 == 1:
-#     #     no2H = trirnd(*no2_bounds['H'], rvNO2)
-#     #     no2L = trirnd(*no2_bounds['L'], rvNO2)
-#     #     no2A = trirnd(*no2_bounds['A'], rvNO2)
-#     # else:
 #     no2H, no2L, no2A = no2_bounds['H'][2], no2_bounds['L'][2], no2_bounds['A'][2]
 
 #     noH = 100 - honoH - no2H

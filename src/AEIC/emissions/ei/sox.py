@@ -5,15 +5,21 @@ from AEIC.types import Fuel
 
 @dataclass(frozen=True)
 class SOxEmissionResult:
-    """Structured SOx emission indices."""
+    """Structured SOₓ emission indices."""
 
     EI_SO2: float
     EI_SO4: float
 
 
+# Molecular weights
+MW_SO2 = 64.0
+MW_SO4 = 96.0
+MW_S = 32.0
+
+
 def EI_SOx(fuel: Fuel) -> SOxEmissionResult:
     """
-    Calculate universal SOx emissions indices (SO2EI and SO4EI).
+    Calculate universal SOₓ emissions indices (SO2EI and SO4EI).
 
     Parameters
     ----------
@@ -24,31 +30,14 @@ def EI_SOx(fuel: Fuel) -> SOxEmissionResult:
     Returns
     -------
     SOxEmissionResult
-        Structured SO2/SO4 emissions indices [g/kg fuel]
+        Structured SO₂/SO₄ emissions indices [g/kg fuel]
     """
-    # Nominal values
-    FSCnom = fuel.fuel_sulfur_content_nom
-    Epsnom = fuel.sulfate_yield_nom
 
-    # Apply MC for FSC
-    # if mcsFSC == 1:
-    #     FSC = trirnd(500, 700, FSCnom, rvFSC)
-    # else:
-    FSC = FSCnom
+    # Convert fuel sulfur content (ppm) to fraction.
+    sulfur_frac = fuel.fuel_sulfur_content_nom / 1.0e6
 
-    # Apply MC for Eps
-    # if mcsEps == 1:
-    #     Eps = trirnd(0.005, 0.05, Epsnom, rvEps)
-    # else:
-    Eps = Epsnom
-
-    # Molecular weights
-    MW_SO2 = 64.0
-    MW_SO4 = 96.0
-    MW_S = 32.0
-
-    # Compute emissions indices (g/kg fuel)
-    SO4EI = 1e3 * ((FSC / 1e6) * Eps * MW_SO4) / MW_S
-    SO2EI = 1e3 * ((FSC / 1e6) * (1 - Eps) * MW_SO2) / MW_S
-
-    return SOxEmissionResult(EI_SO2=SO2EI, EI_SO4=SO4EI)
+    # Compute emissions indices (g/kg fuel).
+    return SOxEmissionResult(
+        EI_SO2=sulfur_frac * (1 - fuel.sulfate_yield_nom) * MW_SO2 / MW_S * 1.0e3,
+        EI_SO4=sulfur_frac * fuel.sulfate_yield_nom * MW_SO4 / MW_S * 1.0e3,
+    )

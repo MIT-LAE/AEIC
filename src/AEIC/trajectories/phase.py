@@ -16,7 +16,8 @@ from enum import Enum, auto
 
 import numpy as np
 
-from AEIC.storage.field_sets import Dimension, Dimensions, FieldMetadata
+from .dimensions import Dimension, Dimensions
+from .field_sets import FieldMetadata
 
 PHASE_FIELD_PREFIX = 'n_'
 

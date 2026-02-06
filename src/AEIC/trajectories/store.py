@@ -20,16 +20,11 @@ import netCDF4 as nc4
 import numpy as np
 from cachetools import LRUCache
 
-from AEIC.storage.field_sets import FieldMetadata, FieldSet, HasFieldSets
-from AEIC.types import (
-    Dimension,
-    Dimensions,
-    EmissionsDict,
-    ModeValues,
-    Species,
-    ThrustMode,
-)
+from AEIC.performance.types import ThrustMode, ThrustModeValues
+from AEIC.types import Species, SpeciesValues
 
+from .dimensions import Dimension
+from .field_sets import FieldMetadata, FieldSet, HasFieldSets
 from .trajectory import BASE_FIELDSET_NAME, Trajectory
 
 # Python doesn't have a simple way of saying "anything that's acceptable as a
@@ -48,10 +43,6 @@ AssociatedFiles = list[AssociatedFileCreate] | list[AssociatedFileOpen]
 # NOTE: Whenever a NetCDF4 Dataset is opened, the keepweakref parameter must be
 # set to avoid the segmentation fault issues described at
 # https://github.com/Unidata/netcdf4-python/issues/1444
-
-
-# TODO: Temporary.
-POINTWISE_DIMS = Dimensions(Dimension.TRAJECTORY, Dimension.POINT)
 
 
 class AssociatedFileCreateFn(Protocol):
@@ -655,6 +646,7 @@ class TrajectoryStore:
                 data=associated_data,
             )
 
+        assert nc_info is not None
         nc_info.dataset[0].close()
 
     @property
@@ -781,7 +773,13 @@ class TrajectoryStore:
     ) -> None:
         """Merge multiple `TrajectoryStore` files into a single merged store.
 
-        TODO: Finish this docstring."""
+        The merging is done simply by copying the individual NetCDF files into
+        a directory and creating a metadata JSON file in the same directory to
+        record the metadata about the merged store and its constituent files.
+        (If the store is indexed, a separate NetCDF file is also created to
+        hold the merged index.) The resulting merged store can then be opened
+        in READ mode like any other `TrajectoryStore`. Merged stores must have
+        extension `.aeic-store`."""
 
         # Check parameters and normalize input stores list.
         input_stores = TrajectoryStore._check_merge_arguments(
@@ -865,7 +863,7 @@ class TrajectoryStore:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, _exc_type, exc, tb):
         self.close()
         # Returning False propagates exceptions.
         return False
@@ -1604,8 +1602,14 @@ class TrajectoryStore:
                     nc_files.species or [],
                 )
                 data[name] = val
-                if field.dimensions == POINTWISE_DIMS and npoints is None:
-                    npoints = len(data[name])
+                if Dimension.POINT in field.dimensions and npoints is None:
+                    if Dimension.SPECIES in field.dimensions:
+                        # Get number of points from arbitrary entry in the
+                        # SpeciesValues dictionary here.
+                        npoints = len(next(iter(data[name].values())))
+                    else:
+                        # Data should be a simple Numpy array here.
+                        npoints = len(data[name])
 
         # Construct the return trajectory.
         assert npoints is not None
@@ -1700,16 +1704,16 @@ class TrajectoryStore:
                 # float, np.ndarray
                 var[index] = val
             case (False, True):
-                # ModeValues
+                # ThrustModeValues
                 for ti, tm in enumerate(ThrustMode):
                     var[index, ti] = val[tm]
             case (True, False):
-                # EmissionsDict[float], EmissionsDict[np.ndarray]
+                # SpeciesValues[float], SpeciesValues[np.ndarray]
                 for si, sp in enumerate(Species):
                     if sp in val:
                         var[index, si] = val[sp]
             case (True, True):
-                # EmissionsDict[ModeValues]
+                # SpeciesValues[ThrustModeValues]
                 for si, sp in enumerate(Species):
                     for ti, tm in enumerate(ThrustMode):
                         if sp in val and tm in val[sp]:
@@ -1745,20 +1749,20 @@ class TrajectoryStore:
                     return None
                 return var[index]
             case (True, False, False) | (True, False, True):
-                # EmissionsDict[float] | EmissionsDict[np.ndarray]
-                return EmissionsDict(
+                # SpeciesValues[float] | SpeciesValues[np.ndarray]
+                return SpeciesValues(
                     {sp: var[index, si] for si, sp in enumerate(species)}
                 )
             case (False, True, False):
-                # ModeValues
-                return ModeValues(
+                # ThrustModeValues
+                return ThrustModeValues(
                     {tm: var[index, ti] for ti, tm in enumerate(ThrustMode)}
                 )
             case (True, True, False):
-                # EmissionsDict[ModeValues]
-                return EmissionsDict[ModeValues](
+                # SpeciesValues[ThrustModeValues]
+                return SpeciesValues[ThrustModeValues](
                     {
-                        sp: ModeValues(
+                        sp: ThrustModeValues(
                             {tm: var[index, si, ti] for ti, tm in enumerate(ThrustMode)}
                         )
                         for si, sp in enumerate(species)

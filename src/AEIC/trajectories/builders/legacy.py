@@ -5,16 +5,16 @@ import numpy as np
 from AEIC.config import config
 from AEIC.missions import Mission
 from AEIC.performance.models import LegacyPerformanceModel
-from AEIC.trajectories import FlightPhase, GroundTrack, Trajectory
-from AEIC.types import AircraftState, SimpleFlightRules
+from AEIC.performance.types import AircraftState, SimpleFlightRules
 from AEIC.units import (
     FEET_TO_METERS,
     METERS_TO_FL,
     MINUTES_TO_SECONDS,
     NAUTICAL_MILES_TO_METERS,
 )
-from AEIC.weather.weather import Weather
+from AEIC.weather import Weather
 
+from .. import FlightPhase, GroundTrack, Trajectory
 from .base import Builder, Context, Options
 
 
@@ -173,12 +173,9 @@ class LegacyBuilder(Builder):
         """Calculates the starting mass using AEIC v2 methods.
         Sets both starting mass and non-reserve/hold/divert fuel mass."""
 
-        # TODO: Fill in parameters correctly.
         perf = self.ac_performance.evaluate(
             AircraftState(
                 altitude=self.crz_start_altitude,
-                true_airspeed=0,
-                rate_of_climb=0,
                 aircraft_mass='max',
             ),
             SimpleFlightRules.CRUISE,
@@ -306,9 +303,10 @@ class LegacyBuilder(Builder):
             seg_time = (traj.altitude[i + 1] - traj.altitude[i]) / perf.rate_of_climb
             seg_fuel = perf.fuel_flow * seg_time
 
-            # Ground speed, including weather effects.
-            # TODO: Replace weather check here with a mixin class?
-            if self.weather is not None:
+            # Ground speed, including weather effects if required.
+            if self.weather is None:
+                traj.ground_speed[i] = fwd_tas
+            else:
                 traj.ground_speed[i] = self.weather.get_ground_speed(
                     time=self.mission.departure,
                     gt_point=self.ground_track.location(traj.ground_distance[i]),
@@ -316,10 +314,7 @@ class LegacyBuilder(Builder):
                     true_airspeed=fwd_tas,
                     azimuth=traj.azimuth[i],
                 )
-                traj.heading[i] = traj.azimuth[i]
-            else:
-                traj.ground_speed[i] = fwd_tas
-                traj.heading[i] = traj.azimuth[i]
+            traj.heading[i] = traj.azimuth[i]
 
             # Calculate distance along route travelled.
             dist = traj.ground_speed[i] * seg_time

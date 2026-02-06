@@ -10,10 +10,10 @@ from AEIC.config import Config, config
 
 # from AEIC.parsers.lto_reader import parseLTO
 from AEIC.parsers.ptf_reader import PTFData
+from AEIC.performance.apu import lookup_apu
+from AEIC.performance.edb import EDBEntry
 from AEIC.performance.models.base import LTOPerformanceInput
-from AEIC.performance.utils.apu import lookup_apu
-from AEIC.performance.utils.edb import EDBEntry
-from AEIC.types import LTOPerformance
+from AEIC.performance.types import LTOPerformance
 
 Config.load()
 

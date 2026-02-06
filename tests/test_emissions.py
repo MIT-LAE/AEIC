@@ -17,24 +17,23 @@ from AEIC.emissions.trajectory import (
     _thrust_percentages_from_categories,
     _trajectory_slice,
 )
-from AEIC.emissions.utils import scope11_profile
+from AEIC.emissions.types import AtmosphericState
+from AEIC.emissions.utils import (
+    get_SLS_equivalent_fuel_flow,
+    get_thrust_cat_cruise,
+    scope11_profile,
+)
 from AEIC.missions import Mission
-from AEIC.performance.utils.apu import APU
-from AEIC.performance.utils.edb import EDBEntry
-from AEIC.types import (
-    AircraftClass,
-    AtmosphericState,
-    EmissionsDict,
+from AEIC.missions.mission import iso_to_timestamp
+from AEIC.performance.apu import APU
+from AEIC.performance.edb import EDBEntry
+from AEIC.performance.types import (
     LTOPerformance,
-    ModeValues,
-    Species,
-    ThrustLabel,
-    ThrustLabelArray,
     ThrustMode,
     ThrustModeArray,
+    ThrustModeValues,
 )
-from AEIC.utils.helpers import iso_to_timestamp
-from AEIC.utils.standard_fuel import get_SLS_equivalent_fuel_flow, get_thrust_cat_cruise
+from AEIC.types import AircraftClass, Species, SpeciesValues
 
 sample_mission = Mission(
     origin="BOS",
@@ -54,14 +53,14 @@ class DummyPerformanceModel:
             engine_type='TF',
             BP_Ratio=5.0,
             rated_thrust=100.0,
-            fuel_flow=ModeValues(0.25, 0.5, 0.9, 1.2),
-            CO_EI_matrix=ModeValues(20.0, 15.0, 10.0, 5.0),
-            HC_EI_matrix=ModeValues(4.0, 3.0, 2.0, 1.0),
-            EI_NOx_matrix=ModeValues(8.0, 12.0, 26.0, 32.0),
-            SN_matrix=ModeValues(6.0, 8.0, 11.0, 13.0),
-            nvPM_mass_matrix=ModeValues(5.0, 5.5, 6.0, 6.5),
-            nvPM_num_matrix=ModeValues(2.0e14, 2.1e14, 2.2e14, 2.3e14),
-            PR=ModeValues(22.0, 22.0, 22.0, 22.0),
+            fuel_flow=ThrustModeValues(0.25, 0.5, 0.9, 1.2),
+            CO_EI_matrix=ThrustModeValues(20.0, 15.0, 10.0, 5.0),
+            HC_EI_matrix=ThrustModeValues(4.0, 3.0, 2.0, 1.0),
+            EI_NOx_matrix=ThrustModeValues(8.0, 12.0, 26.0, 32.0),
+            SN_matrix=ThrustModeValues(6.0, 8.0, 11.0, 13.0),
+            nvPM_mass_matrix=ThrustModeValues(5.0, 5.5, 6.0, 6.5),
+            nvPM_num_matrix=ThrustModeValues(2.0e14, 2.1e14, 2.2e14, 2.3e14),
+            PR=ThrustModeValues(22.0, 22.0, 22.0, 22.0),
             EImass_max=8.0,
             EImass_max_thrust=0.575,
             EInum_max=2.4e14,
@@ -85,11 +84,11 @@ class DummyPerformanceModel:
             source='test',
             ICAO_UID='TEST123',
             rated_thrust=100.0 * 1000.0,
-            thrust_pct=ModeValues(7, 30, 85, 100),
-            fuel_flow=ModeValues(0.25, 0.5, 0.9, 1.2),
-            EI_NOx=ModeValues(8.0, 12.0, 32.0, 40.0),
-            EI_HC=ModeValues(4.0, 3.0, 1.5, 1.0),
-            EI_CO=ModeValues(20.0, 10.0, 3.0, 2.0),
+            thrust_pct=ThrustModeValues(7, 30, 85, 100),
+            fuel_flow=ThrustModeValues(0.25, 0.5, 0.9, 1.2),
+            EI_NOx=ThrustModeValues(8.0, 12.0, 32.0, 40.0),
+            EI_HC=ThrustModeValues(4.0, 3.0, 1.5, 1.0),
+            EI_CO=ThrustModeValues(20.0, 10.0, 3.0, 2.0),
         )
         self.apu = APU(
             name='Test APU',
@@ -201,7 +200,6 @@ def _expected_trajectory_indices(perf_model, trajectory):
         lto_inputs.fuel_flow,
         Tamb=atmos.temperature,
         Pamb=atmos.pressure,
-        cruiseCalc=True,
     )
     expected[Species.CO] = EI_HCCO(
         sls_flow,
@@ -209,14 +207,10 @@ def _expected_trajectory_indices(perf_model, trajectory):
         lto_inputs.fuel_flow,
         Tamb=atmos.temperature,
         Pamb=atmos.pressure,
-        cruiseCalc=True,
     )
 
     if config.emissions.pmvol_method is PMvolMethod.FUEL_FLOW:
-        labels = np.full(thrust_categories.shape, ThrustLabel.HIGH, dtype='<U1')
-        labels[thrust_categories == ThrustMode.IDLE] = ThrustLabel.LOW
-        thrust_labels = ThrustLabelArray(labels)
-        pmvol, ocic = EI_PMvol_FuelFlow(fuel_flow, thrust_labels)
+        pmvol, ocic = EI_PMvol_FuelFlow(fuel_flow, thrust_categories)
     else:
         thrust_pct = _thrust_percentages_from_categories(thrust_categories)
         pmvol, ocic = EI_PMvol_FOA3(thrust_pct, expected[Species.HC])
@@ -315,7 +309,7 @@ def test_lto_respects_traj_flag_false(perf_model, fuel, trajectory):
 def test_lto_nox_split_matches_speciation(emissions):
     speciation = NOx_speciation()
 
-    def check(species: Species, prop: ModeValues):
+    def check(species: Species, prop: ThrustModeValues):
         v1 = emissions.lto_indices[species]
         v2 = emissions.lto_indices[Species.NOx] * prop
         np.testing.assert_allclose(v1.as_array(), v2.as_array())
@@ -428,7 +422,7 @@ def test_atmospheric_state_and_sls_flow_shapes(perf_model, trajectory):
 
 def test_get_gse_emissions_matches_reference_profile(fuel):
     result = get_GSE_emissions(AircraftClass.WIDE, fuel).emissions
-    expected = EmissionsDict[float](
+    expected = SpeciesValues[float](
         {
             Species.CO2: 58_000.0,
             Species.NOx: 900.0,

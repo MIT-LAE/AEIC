@@ -1,4 +1,4 @@
-# TODO: Remove this when we move to Python 3.14+.
+# TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations
 
 from enum import IntEnum, auto

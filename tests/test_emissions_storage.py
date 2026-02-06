@@ -5,7 +5,7 @@ import numpy as np
 import AEIC.trajectories.builders as tb
 from AEIC.emissions.emission import compute_emissions
 from AEIC.trajectories import TrajectoryStore
-from AEIC.types import EmissionsDict
+from AEIC.types import SpeciesValues
 
 
 def test_emissions_storage(tmp_path, sample_missions, performance_model, fuel):
@@ -55,10 +55,10 @@ def test_separate_emissions(tmp_path, sample_missions, performance_model, fuel):
         assert ts_read.files[0].fieldsets == {'base'}
         assert ts_read.files[1].fieldsets == {'emissions'}
         for i in range(len(sample_missions)):
-            assert isinstance(ts_read[i].total_emissions, EmissionsDict)
+            assert isinstance(ts_read[i].total_emissions, SpeciesValues)
             for sp in ts_read[i].total_emissions:
                 assert isinstance(ts_read[i].total_emissions[sp], float)
-            assert isinstance(ts_read[i].trajectory_indices, EmissionsDict)
+            assert isinstance(ts_read[i].trajectory_indices, SpeciesValues)
             for sp in ts_read[i].trajectory_indices:
                 v = ts_read[i].trajectory_indices[sp]
                 assert isinstance(v, np.ndarray)

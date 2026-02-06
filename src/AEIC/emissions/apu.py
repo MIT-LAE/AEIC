@@ -1,21 +1,15 @@
 from AEIC.config import config
 from AEIC.config.emissions import PMnvolMethod
-from AEIC.performance.utils.apu import APU
-from AEIC.types import (
-    EmissionsDict,
-    EmissionsSubset,
-    Fuel,
-    ModeValues,
-    Species,
-    ThrustMode,
-)
+from AEIC.emissions.types import EmissionsSubset
+from AEIC.performance.apu import APU
+from AEIC.performance.types import ThrustMode, ThrustModeValues
+from AEIC.types import Fuel, Species, SpeciesValues
 
-from .ei.h2o import EI_H2O
 from .ei.nox import NOx_speciation
 
 
 def get_APU_emissions(
-    lto_indices: EmissionsDict[ModeValues],
+    lto_indices: SpeciesValues[ThrustModeValues],
     apu: APU,
     fuel: Fuel,
     apu_time: float = 900,
@@ -25,40 +19,29 @@ def get_APU_emissions(
 
     Parameters
     ----------
-    APU_emission_indices : ndarray
-        self.APU_emission_indices from Emissions class
-    APU_emissions_g: ndarray
-        self.APU_emissions_g from Emissions class
     lto_indices : ndarray
-        self.lto_indices from Emissions class
-    apu: dict
-        dictionary containing fuel flows and EIs of chosen APU
-    LTO_noProp, LTO_no2Prop, LTO_honoProp: float
-        NOx speciation elements from LTO analysis
+        previously determined LTO emission indices
+    apu: APU
+        APU data
+    fuel: Fuel
+        Fuel data
     apu_time: float
         Time in mode for APU; default value = 900 seconds (Stettler et al. 2011)
-
-    Returns
-    -------
-    APU_emission_indices : ndarray
-        Emissions indicies for APU
-    APU_emissions_g: ndarray
-        Emissions in g for APU
-    apu_fuel_burn: float
-        kg of fuel burnt by APU
     """
 
-    indices = EmissionsDict[float]()
-    emissions = EmissionsDict[float]()
+    indices = SpeciesValues[float]()
+    emissions = SpeciesValues[float]()
 
-    # TODO: Better name for this.
-    mask = apu.fuel_kg_per_s != 0.0
-
+    apu_running = apu.fuel_kg_per_s != 0.0
     apu_fuel_burn = apu.fuel_kg_per_s * apu_time
 
     # SOx
-    indices[Species.SO2] = lto_indices[Species.SO2][ThrustMode.IDLE] if mask else 0.0
-    indices[Species.SO4] = lto_indices[Species.SO4][ThrustMode.IDLE] if mask else 0.0
+    indices[Species.SO2] = (
+        lto_indices[Species.SO2][ThrustMode.IDLE] if apu_running else 0.0
+    )
+    indices[Species.SO4] = (
+        lto_indices[Species.SO4][ThrustMode.IDLE] if apu_running else 0.0
+    )
 
     # Particulate‐matter breakdown (deterministic BC fraction of 0.95)
     APU_PM10 = max(apu.PM10_g_per_kg - indices[Species.SO4], 0.0)
@@ -71,7 +54,7 @@ def get_APU_emissions(
     indices[Species.PMnvolGMD] = 0.0
     indices[Species.OCic] = 0.0
 
-    # NO/NO2/HONO speciation
+    # NO/NO₂/HONO speciation.
     # TODO: Is using the idle values here right?
     nox_speciation = NOx_speciation()
     indices[Species.NO] = apu.PM10_g_per_kg * nox_speciation.no[ThrustMode.IDLE]
@@ -82,11 +65,11 @@ def get_APU_emissions(
     indices[Species.HC] = apu.HC_g_per_kg
     indices[Species.CO] = apu.CO_g_per_kg
 
-    # H2O
-    indices[Species.H2O] = EI_H2O(fuel)
+    # H₂O.
+    indices[Species.H2O] = fuel.EI_H2O
 
-    # CO2 via mass balance
-    if mask:
+    # CO₂ via mass balance.
+    if apu_running:
         co2_ei_nom = 3160
         nvol_carb_cont = 0.95
 
