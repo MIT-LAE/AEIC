@@ -1,3 +1,4 @@
+import os
 import tomllib
 from pathlib import Path
 
@@ -83,7 +84,7 @@ def test_data_file_locations(tmp_path: Path, monkeypatch):
     test2 = sd / 'test2.dat'
     test2.write_text('test')
 
-    monkeypatch.setenv('AEIC_PATH', str(d))
+    monkeypatch.setenv('AEIC_PATH', os.environ['AEIC_PATH'] + ':' + str(d))
     Config.load()
 
     assert config.file_location(test1.resolve()) == test1.resolve()
