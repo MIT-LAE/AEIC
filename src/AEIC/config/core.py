@@ -142,7 +142,7 @@ class Config(CIBaseModel):
             if file_path.exists():
                 return file_path
 
-        raise FileNotFoundError(f'File {f} not found in AEIC search path.')
+        raise FileNotFoundError(f'File {f} not found in AEIC search path {self.path}.')
 
     @classmethod
     def get(cls) -> Config:
