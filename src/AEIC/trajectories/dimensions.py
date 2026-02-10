@@ -50,7 +50,7 @@ class Dimensions:
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Dimensions):
-            return NotImplemented
+            return False
         return self.dims == other.dims
 
     def __len__(self):

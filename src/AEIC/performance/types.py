@@ -86,6 +86,11 @@ class ThrustModeValues(Mapping):
         else:
             raise ValueError('Invalid initialization of ThrustModeValues.')
 
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, ThrustModeValues):
+            return False
+        return self._data == other._data
+
     def __getitem__(self, mode: ThrustMode) -> float:
         if mode not in self._data:
             return 0.0
@@ -138,7 +143,6 @@ class ThrustModeValues(Mapping):
             return ThrustModeValues(
                 {m: v + other for m, v in self._data.items()}, mutable=True
             )
-        return NotImplemented
 
     def __radd__(self, other) -> ThrustModeValues:
         return self.__add__(other)
@@ -152,7 +156,6 @@ class ThrustModeValues(Mapping):
             return ThrustModeValues(
                 {m: v * other for m, v in self._data.items()}, mutable=True
             )
-        return NotImplemented
 
     def __rmul__(self, other) -> ThrustModeValues:
         return self.__mul__(other)
@@ -166,7 +169,6 @@ class ThrustModeValues(Mapping):
             return ThrustModeValues(
                 {m: v / other for m, v in self._data.items()}, mutable=True
             )
-        return NotImplemented
 
     def __or__(self, other: dict) -> ThrustModeValues:
         return ThrustModeValues(

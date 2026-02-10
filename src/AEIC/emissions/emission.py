@@ -128,8 +128,6 @@ class Emissions:
             | set(self.total_emissions.keys())
         )
 
-    def field_set(self) -> FieldSet: ...
-
 
 def compute_emissions(
     pm: BasePerformanceModel, fuel: Fuel, traj: Trajectory

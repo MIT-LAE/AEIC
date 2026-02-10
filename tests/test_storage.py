@@ -232,6 +232,12 @@ def test_create_reopen(tmp_path: Path):
 
     simple_check_ts(path, 'simple case', [10, 15])
 
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        for traj in ts_read:
+            assert isinstance(traj, Trajectory)
+        with pytest.raises(IndexError):
+            ts_read[10]
+
 
 def test_create_append_reopen(tmp_path: Path):
     # Create a TrajectoryStore, save to NetCDF, close, reopen file in append
@@ -242,6 +248,7 @@ def test_create_append_reopen(tmp_path: Path):
 
     with TrajectoryStore.append(base_file=path) as ts:
         ts.add(make_test_trajectory(20, 3))
+        ts.sync()
 
     simple_check_ts(path, 'append case', [10, 15, 20])
 

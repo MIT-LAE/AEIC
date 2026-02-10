@@ -3,7 +3,7 @@ import pytest
 
 from AEIC.config import config
 from AEIC.performance.edb import EDBEntry
-from AEIC.performance.types import ThrustMode
+from AEIC.performance.types import ThrustMode, ThrustModeValues
 
 
 class DummyExcelFile:
@@ -51,53 +51,69 @@ def test_get_EDB_data_for_engine_returns_engine_data():
     assert engine_info.uid == UID
     assert engine_info.engine_type == "TF"
     assert engine_info.BP_Ratio == 5.1
-    assert engine_info.fuel_flow == {
-        ThrustMode.IDLE: 0.11,
-        ThrustMode.APPROACH: 0.343,
-        ThrustMode.CLIMB: 1.031,
-        ThrustMode.TAKEOFF: 1.293,
-    }
-    assert engine_info.CO_EI_matrix == {
-        ThrustMode.IDLE: 29.39,
-        ThrustMode.APPROACH: 2.82,
-        ThrustMode.CLIMB: 0.17,
-        ThrustMode.TAKEOFF: 0.31,
-    }
-    assert engine_info.HC_EI_matrix == {
-        ThrustMode.IDLE: 1.54,
-        ThrustMode.APPROACH: 0.05,
-        ThrustMode.CLIMB: 0.02,
-        ThrustMode.TAKEOFF: 0.03,
-    }
-    assert engine_info.EI_NOx_matrix == {
-        ThrustMode.IDLE: 4.36,
-        ThrustMode.APPROACH: 9.09,
-        ThrustMode.CLIMB: 17.89,
-        ThrustMode.TAKEOFF: 23.94,
-    }
-    assert engine_info.SN_matrix == {
-        ThrustMode.IDLE: 2.1,
-        ThrustMode.APPROACH: 2.1,
-        ThrustMode.CLIMB: 11.2,
-        ThrustMode.TAKEOFF: 13.4,
-    }
-    assert engine_info.nvPM_mass_matrix == {
-        ThrustMode.IDLE: 0.74,
-        ThrustMode.APPROACH: 1.72,
-        ThrustMode.CLIMB: 44.0,
-        ThrustMode.TAKEOFF: 70.8,
-    }
-    assert engine_info.nvPM_num_matrix == {
-        ThrustMode.IDLE: 26600000000000.0,
-        ThrustMode.APPROACH: 71000000000000.0,
-        ThrustMode.CLIMB: 433000000000000.0,
-        ThrustMode.TAKEOFF: 402000000000000.0,
-    }
-    assert engine_info.PR == {
-        ThrustMode.IDLE: 29.0,
-        ThrustMode.APPROACH: 29.0,
-        ThrustMode.CLIMB: 29.0,
-        ThrustMode.TAKEOFF: 29.0,
-    }
+    assert engine_info.fuel_flow == ThrustModeValues(
+        {
+            ThrustMode.IDLE: 0.11,
+            ThrustMode.APPROACH: 0.343,
+            ThrustMode.CLIMB: 1.031,
+            ThrustMode.TAKEOFF: 1.293,
+        }
+    )
+    assert engine_info.CO_EI_matrix == ThrustModeValues(
+        {
+            ThrustMode.IDLE: 29.39,
+            ThrustMode.APPROACH: 2.82,
+            ThrustMode.CLIMB: 0.17,
+            ThrustMode.TAKEOFF: 0.31,
+        }
+    )
+    assert engine_info.HC_EI_matrix == ThrustModeValues(
+        {
+            ThrustMode.IDLE: 1.54,
+            ThrustMode.APPROACH: 0.05,
+            ThrustMode.CLIMB: 0.02,
+            ThrustMode.TAKEOFF: 0.03,
+        }
+    )
+    assert engine_info.EI_NOx_matrix == ThrustModeValues(
+        {
+            ThrustMode.IDLE: 4.36,
+            ThrustMode.APPROACH: 9.09,
+            ThrustMode.CLIMB: 17.89,
+            ThrustMode.TAKEOFF: 23.94,
+        }
+    )
+    assert engine_info.SN_matrix == ThrustModeValues(
+        {
+            ThrustMode.IDLE: 2.1,
+            ThrustMode.APPROACH: 2.1,
+            ThrustMode.CLIMB: 11.2,
+            ThrustMode.TAKEOFF: 13.4,
+        }
+    )
+    assert engine_info.nvPM_mass_matrix == ThrustModeValues(
+        {
+            ThrustMode.IDLE: 0.74,
+            ThrustMode.APPROACH: 1.72,
+            ThrustMode.CLIMB: 44.0,
+            ThrustMode.TAKEOFF: 70.8,
+        }
+    )
+    assert engine_info.nvPM_num_matrix == ThrustModeValues(
+        {
+            ThrustMode.IDLE: 26600000000000.0,
+            ThrustMode.APPROACH: 71000000000000.0,
+            ThrustMode.CLIMB: 433000000000000.0,
+            ThrustMode.TAKEOFF: 402000000000000.0,
+        }
+    )
+    assert engine_info.PR == ThrustModeValues(
+        {
+            ThrustMode.IDLE: 29.0,
+            ThrustMode.APPROACH: 29.0,
+            ThrustMode.CLIMB: 29.0,
+            ThrustMode.TAKEOFF: 29.0,
+        }
+    )
     assert engine_info.EImass_max == 70.8
     assert engine_info.EInum_max == 433000000000000.0

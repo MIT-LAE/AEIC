@@ -1,3 +1,7 @@
+# TODO: Remove this when we migrate to Python 3.14+.
+from __future__ import annotations
+
+from copy import deepcopy
 from typing import Any
 
 import numpy as np
@@ -96,7 +100,7 @@ class Trajectory:
         """Two trajectories are equal if their data dictionaries are equal and
         all their field values are equal."""
         if not isinstance(other, Trajectory):
-            return NotImplemented
+            return False
         if self.X_data_dictionary != other.X_data_dictionary:
             return False
         for name in self.X_data_dictionary:
@@ -126,7 +130,7 @@ class Trajectory:
         """Two trajectories are approximately equal if their data dictionaries
         are equal and all their field values are approximately equal."""
         if not isinstance(other, Trajectory):
-            return NotImplemented
+            return False
         if self.X_data_dictionary != other.X_data_dictionary:
             return False
         for name in self.X_data_dictionary:
@@ -258,7 +262,9 @@ class Trajectory:
         for name, field in self.X_data_dictionary.items():
             # Only copy point-wise data.
             if Dimension.POINT in field.dimensions:
-                # TODO: Handle species dimension as well?
+                # TODO: Handle species dimension as well? Or will this never be
+                # called other than when simulating trajectories, where there
+                # are no species-indexed fields?
                 self.X_data[name][to_idx] = self.X_data[name][from_idx]
 
     def add_fields(self, fieldset: FieldSet | HasFieldSets):
@@ -328,3 +334,11 @@ class Trajectory:
                 f'FieldSet with name "{fieldset.fieldset_name}" '
                 'already added to Trajectory'
             )
+
+    def copy(self) -> Trajectory:
+        """Create a deep copy of the trajectory."""
+        new_traj = Trajectory(self.X_npoints, fieldsets=list(self.X_fieldsets))
+        for name in self.X_data_dictionary:
+            if name in self.X_data:
+                new_traj.X_data[name] = deepcopy(self.X_data[name])
+        return new_traj

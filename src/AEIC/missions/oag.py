@@ -230,7 +230,7 @@ class OAGDatabase(WritableDatabase):
         super().__init__(db_path)
         self._year = year
 
-    def add(self, e: CSVEntry, commit: bool = True):
+    def add(self, e: CSVEntry, commit: bool = True) -> bool:
         """Add a flight to the database.
 
         This adds a single flight entry to the database, along with all the
@@ -256,7 +256,7 @@ class OAGDatabase(WritableDatabase):
 
         # Skip entries with unknown airports.
         if origin is None or destination is None:
-            return
+            return False
 
         # Skip entries where the stated flight distance is not plausible:
         # require the stated distance and the distance we calculate from
@@ -265,7 +265,7 @@ class OAGDatabase(WritableDatabase):
         if not self._distance_check(
             e.line, origin, destination, e.distance * STATUTE_MILES_TO_KM
         ):
-            return
+            return False
 
         # Handle cases where the effective from/to dates are not set, implying
         # from beginning of year or to end of year.
@@ -312,6 +312,8 @@ class OAGDatabase(WritableDatabase):
         if commit:
             self._conn.commit()
 
+        return True
+
 
 def convert_oag_data(
     in_file: str, year: int, db_file: str, warnings_file: str | None = None
@@ -331,8 +333,8 @@ def convert_oag_data(
                 continue
 
             # Add entries to database in batches of 10,000.
-            db.add(entry, commit=False)
-            nentries += 1
+            if db.add(entry, commit=False):
+                nentries += 1
             if nentries % 10000 == 0:
                 db.commit()
 

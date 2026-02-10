@@ -139,6 +139,10 @@ def emissions(perf_model, fuel, trajectory):
     return compute_emissions(perf_model, fuel, trajectory)
 
 
+def test_emissions_species(emissions):
+    assert len(emissions.species) == len(Species)
+
+
 def _expected_scope11_mapping(perf_model, thrust_categories):
     edb = perf_model.edb
     mass_modes = calculate_PMnvolEI_scope11(

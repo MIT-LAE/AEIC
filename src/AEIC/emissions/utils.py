@@ -94,8 +94,6 @@ def get_thrust_cat_cruise(
     * Approach      : remainder                    →  ``APPROACH``
 
     """
-    if ff_eval.size < 3:
-        raise ValueError("For cruise, ff_eval must have at least 3 entries.")
 
     # Define thresholds from the first three calibration points
     lowLimit = (ff_cal[ThrustMode.IDLE] + ff_cal[ThrustMode.APPROACH]) / 2.0
