@@ -1,0 +1,47 @@
+[[flight]]
+origin = "SFO"
+destination = "ATL"
+departure = "2019-01-01T06:00:00"
+arrival = "2019-01-01T13:33:00"
+aircraft_type = "738"
+load_factor = 1.0
+
+[[flight]]
+origin = "BOS"
+destination = "LAX"
+departure = "2019-01-01T12:00:00"
+arrival = "2019-01-01T18:33:00"
+aircraft_type = "738"
+load_factor = 1.0
+
+[[flight]]
+origin = "JFK"
+destination = "ORD"
+departure = "2019-01-01T13:00:00"
+arrival = "2019-01-01T14:48:00"
+aircraft_type = "738"
+load_factor = 1.0
+
+[[flight]]
+origin = "BOS"
+destination = "MIA"
+departure = "2019-01-01T05:45:00"
+arrival = "2019-01-01T09:26:00"
+aircraft_type = "738"
+load_factor = 1.0
+
+[[flight]]
+origin = "SJC"
+destination = "LAX"
+departure = "2019-01-01T09:40:00"
+arrival = "2019-01-01T11:00:00"
+aircraft_type = "738"
+load_factor = 1.0
+
+[[flight]]
+origin = "PHX"
+destination = "IAD"
+departure = "2019-01-01T09:40:00"
+arrival = "2019-01-01T11:00:00"
+aircraft_type = "738"
+load_factor = 1.0
