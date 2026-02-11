@@ -48,7 +48,9 @@ EMISSIONS_FIELDS = [
     'EI_SOx',
 ]
 
-DEFAULT_TEST_DATA_DIR = "/home/aditeya/AEIC/tests/data/legacy_verification/"
+# NOTE: Not sure whether we want to use the pytest fixture for this, since we
+# might want to put it somewhere else.
+DEFAULT_TEST_DATA_DIR = Path(__file__).parent / 'data/verification/legacy'
 
 
 def _interp_to_legacy(t_new: np.ndarray, y_new: np.ndarray, t_old: np.ndarray):
@@ -211,7 +213,7 @@ def plot_fields(
         fig.suptitle(f'{title_prefix} {mission_id}')
         fig.tight_layout(rect=[0, 0.02, 1, 0.97])
 
-    plot_path = plot_dir + f'{title_prefix}_{mission_id}.png'
+    plot_path = plot_dir / f'{title_prefix}_{mission_id}.png'
     fig.savefig(plot_path, dpi=150)
     plt.close(fig)
 
@@ -219,11 +221,12 @@ def plot_fields(
 def main() -> None:
     data_dir = DEFAULT_TEST_DATA_DIR
     legacy_dir = data_dir
-    traj_path = data_dir + 'AEIC_OUTPUT_MATLAB_TRAJ.csv'
-    emis_path = data_dir + 'AEIC_OUTPUT_MATLAB_EMISSIONS.csv'
-    missions_path = data_dir + 'legacy_verf_missions.toml'
-    perf_path = data_dir + 'legacy_verification.toml'
-    plot_dir = legacy_dir + 'plots/'
+    traj_path = data_dir / 'AEIC_OUTPUT_MATLAB_TRAJ.csv'
+    emis_path = data_dir / 'AEIC_OUTPUT_MATLAB_EMISSIONS.csv'
+    missions_path = data_dir / 'legacy_verf_missions.toml'
+    perf_path = data_dir / 'legacy_verification.toml'
+    # TODO: This should go somewhere else.
+    plot_dir = legacy_dir / 'plots/'
 
     os.environ['AEIC_PATH'] = str(data_dir)
     Config.load(weather={'use_weather': False}, data_path_overrides=[data_dir])
