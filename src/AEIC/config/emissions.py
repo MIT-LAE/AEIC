@@ -162,6 +162,6 @@ class EmissionsConfig(CIBaseModel):
         add(Species.PMnvol, Species.PMnvolGMD)
         if self.pmnvol_method in (PMnvolMethod.SCOPE11, PMnvolMethod.MEEM):
             add(Species.PMnvolN, label='pmnvol')
-        add(Species.SO2, Species.SO4, label='sox')
+        add(Species.SOx, Species.SO2, Species.SO4)
 
         return result

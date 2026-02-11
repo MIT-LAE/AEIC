@@ -7,6 +7,7 @@ from AEIC.types import Fuel
 class SOxEmissionResult:
     """Structured SOₓ emission indices."""
 
+    EI_SOx: float
     EI_SO2: float
     EI_SO4: float
 
@@ -37,7 +38,6 @@ def EI_SOx(fuel: Fuel) -> SOxEmissionResult:
     sulfur_frac = fuel.fuel_sulfur_content_nom / 1.0e6
 
     # Compute emissions indices (g/kg fuel).
-    return SOxEmissionResult(
-        EI_SO2=sulfur_frac * (1 - fuel.sulfate_yield_nom) * MW_SO2 / MW_S * 1.0e3,
-        EI_SO4=sulfur_frac * fuel.sulfate_yield_nom * MW_SO4 / MW_S * 1.0e3,
-    )
+    EI_SO2 = sulfur_frac * (1 - fuel.sulfate_yield_nom) * MW_SO2 / MW_S * 1.0e3
+    EI_SO4 = sulfur_frac * fuel.sulfate_yield_nom * MW_SO4 / MW_S * 1.0e3
+    return SOxEmissionResult(EI_SOx=EI_SO2 + EI_SO4, EI_SO2=EI_SO2, EI_SO4=EI_SO4)

@@ -220,12 +220,7 @@ class Builder(ABC):
             # nothing goes wrong along the way. We give the trajectory a name
             # to identify it in `TrajectoryStore`s and intermediate NetCDF
             # files.
-            traj = Trajectory(
-                self.n_total,
-                name=(
-                    f'{mission.origin}_{mission.destination}_{mission.aircraft_type}'
-                ),
-            )
+            traj = Trajectory(self.n_total, name=mission.label)
 
             # Do the simulation...
 

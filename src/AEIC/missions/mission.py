@@ -65,6 +65,11 @@ class Mission:
             self.destination_position.longitude,
         )[2]
 
+    @property
+    def label(self) -> str:
+        """Label for mission, based on origin, destination, and aircraft type."""
+        return f'{self.origin}_{self.destination}_{self.aircraft_type}'
+
     @classmethod
     def from_toml(cls, data: dict) -> list[Mission]:
         """Create a list of `Mission` instances from a TOML-like dictionary.
