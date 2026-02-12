@@ -153,7 +153,6 @@ def plot_emissions_fields(
     legacy_traj: Trajectory,
     new_traj: Trajectory,
 ) -> None:
-
     def get_field(t: Trajectory, species: Species) -> np.ndarray:
         return t.trajectory_indices[species]
 
