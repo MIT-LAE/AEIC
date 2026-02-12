@@ -1,6 +1,8 @@
+# TODO: Remove this when we migrate to Python 3.14.
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
-from typing import Self
 
 import pandas as pd
 
@@ -17,7 +19,7 @@ class DayOfWeek(Enum):
     SUNDAY = 7
 
     @classmethod
-    def from_pandas(cls, t: pd.Timestamp) -> Self:
+    def from_pandas(cls, t: pd.Timestamp) -> DayOfWeek:
         """Extract day of week from a pandas `Timestamp`."""
         return cls(t.isoweekday())
 

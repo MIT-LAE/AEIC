@@ -14,28 +14,23 @@ from AEIC.config.emissions import (
 )
 from AEIC.performance.models import BasePerformanceModel
 from AEIC.trajectories.trajectory import Trajectory
-from AEIC.types import (
-    AtmosphericState,
-    EmissionsDict,
-    EmissionsSubset,
-    Species,
-    ThrustLabel,
-    ThrustLabelArray,
-    ThrustMode,
-)
-from AEIC.utils.standard_fuel import (
-    get_SLS_equivalent_fuel_flow,
-    get_thrust_cat_cruise,
-)
+from AEIC.types import Species, SpeciesValues
 
 from .ei.hcco import EI_HCCO
 from .ei.nox import BFFM2_EINOx
 from .ei.pmnvol import PMnvol_MEEM
 from .ei.pmvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
-from .utils import constant_species_values, scope11_profile
+from .types import AtmosphericState, EmissionsSubset
+from .utils import (
+    constant_species_values,
+    get_SLS_equivalent_fuel_flow,
+    get_thrust_cat_cruise,
+    scope11_profile,
+)
 
 if TYPE_CHECKING:
-    from AEIC.types import Fuel, LTOPerformance, ModeValues, ThrustModeArray
+    from AEIC.performance.types import LTOPerformance, ThrustModeArray
+    from AEIC.types import Fuel
 
 
 def get_trajectory_emissions(
@@ -49,8 +44,8 @@ def get_trajectory_emissions(
     """
 
     # Output emissions indices and emissions.
-    indices = EmissionsDict[np.ndarray]()
-    emissions = EmissionsDict[np.ndarray]()
+    indices = SpeciesValues[np.ndarray]()
+    emissions = SpeciesValues[np.ndarray]()
 
     # Set up constant emission index values.
     for species, value in constant_species_values(fuel).items():
@@ -75,21 +70,23 @@ def get_trajectory_emissions(
         and config.emissions.pmvol_method is PMvolMethod.FOA3
     )
     if needs_hc:
-        hc_ei = _compute_EI_HCCO(
+        hc_ei = EI_HCCO(
             sls_equiv_fuel_flow,
             pm.lto.EI_HC,
             pm.lto.fuel_flow,
-            atmos_state,
+            Tamb=atmos_state.temperature,
+            Pamb=atmos_state.pressure,
         )
         if Species.HC in config.emissions.enabled_species:
             indices[Species.HC] = hc_ei
 
     if Species.CO in config.emissions.enabled_species:
-        indices[Species.CO] = _compute_EI_HCCO(
+        indices[Species.CO] = EI_HCCO(
             sls_equiv_fuel_flow,
             pm.lto.EI_CO,
             pm.lto.fuel_flow,
-            atmos_state,
+            Tamb=atmos_state.temperature,
+            Pamb=atmos_state.pressure,
         )
 
     # Thrust mode along trajectory, using LTO fuel flows for calibration.
@@ -124,9 +121,9 @@ def compute_EI_NOx(
     lto: LTOPerformance,
     atmos_state: AtmosphericState,
     sls_equiv_fuel_flow: np.ndarray,
-) -> EmissionsDict[np.ndarray]:
-    """Fill NOx-related EI arrays according to the selected method."""
-    indices = EmissionsDict[np.ndarray]()
+) -> SpeciesValues[np.ndarray]:
+    """Fill NOₓ-related EI arrays according to the selected method."""
+    indices = SpeciesValues[np.ndarray]()
     match config.emissions.nox_method:
         case EINOxMethod.NONE:
             pass
@@ -151,40 +148,20 @@ def compute_EI_NOx(
     return indices
 
 
-def _compute_EI_HCCO(
-    sls_equiv_fuel_flow,
-    emission_matrix: ModeValues,
-    performance_fuel_flow: ModeValues,
-    atmos_state: AtmosphericState,
-):
-    """Shared helper for HC/CO EI calculations."""
-    if sls_equiv_fuel_flow is None:
-        raise RuntimeError("HC/CO EI calculation requires SLS equivalent fuel flow.")
-    return EI_HCCO(
-        sls_equiv_fuel_flow,
-        emission_matrix,
-        performance_fuel_flow,
-        Tamb=atmos_state.temperature,
-        Pamb=atmos_state.pressure,
-        cruiseCalc=True,
-    )
-
-
 def _calculate_EI_PMvol(
     thrust_modes: ThrustModeArray,
     fuel_flow: np.ndarray,
     hc_ei: np.ndarray | None,
-) -> EmissionsDict[np.ndarray]:
+) -> SpeciesValues[np.ndarray]:
     """Populate PMvol/OCic trajectory indices according to the configured method."""
-    indices = EmissionsDict[np.ndarray]()
+    indices = SpeciesValues[np.ndarray]()
     if (
         not config.emissions.pmvol_enabled
         or config.emissions.pmvol_method is PMvolMethod.NONE
     ):
         return indices
     if config.emissions.pmvol_method is PMvolMethod.FUEL_FLOW:
-        thrust_labels = _thrust_band_labels(thrust_modes)
-        pmvol_ei, ocic_ei = EI_PMvol_FuelFlow(fuel_flow, thrust_labels)
+        pmvol_ei, ocic_ei = EI_PMvol_FuelFlow(fuel_flow, thrust_modes)
     elif config.emissions.pmvol_method is PMvolMethod.FOA3:
         if hc_ei is None:
             raise RuntimeError("FOA3 PMvol calculation requires HC EIs.")
@@ -204,9 +181,9 @@ def _calculate_EI_PMnvol(
     thrust_modes: ThrustModeArray,
     altitudes: np.ndarray,
     atmos_state: AtmosphericState | None = None,
-) -> EmissionsDict[np.ndarray]:
+) -> SpeciesValues[np.ndarray]:
     """Populate PMnvol indices for trajectory points."""
-    indices = EmissionsDict[np.ndarray]()
+    indices = SpeciesValues[np.ndarray]()
 
     match config.emissions.pmnvol_method:
         case PMnvolMethod.NONE:
@@ -247,14 +224,6 @@ def _calculate_EI_PMnvol(
             )
 
     return indices
-
-
-def _thrust_band_labels(thrust_modes: ThrustModeArray) -> ThrustLabelArray:
-    """Translate numeric thrust codes into the L/H labels used by
-    EI_PMvol_FuelFlow."""
-    labels = np.full(thrust_modes.shape, ThrustLabel.HIGH, dtype='<U1')
-    labels[thrust_modes == ThrustMode.IDLE] = ThrustLabel.LOW
-    return ThrustLabelArray(labels)
 
 
 def _thrust_percentages_from_categories(thrust_modes: ThrustModeArray):

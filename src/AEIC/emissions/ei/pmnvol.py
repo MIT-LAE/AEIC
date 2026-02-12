@@ -3,8 +3,8 @@ import functools
 import numpy as np
 
 from AEIC.constants import T0, kappa, p0
-from AEIC.performance.utils.edb import EDBEntry
-from AEIC.types import ModeValues, ThrustMode
+from AEIC.performance.edb import EDBEntry
+from AEIC.performance.types import ThrustMode, ThrustModeValues
 
 
 def PMnvol_MEEM(
@@ -184,35 +184,33 @@ def PMnvol_MEEM(
 
 @functools.cache
 def calculate_PMnvolEI_scope11(
-    SN_matrix: ModeValues, engine_type: str, BP_Ratio: float
-) -> ModeValues:
+    SN_matrix: ThrustModeValues, engine_type: str, BP_Ratio: float
+) -> ThrustModeValues:
     """
     Calculate PM non-volatile Emission Index (EI) using SCOPE11 methodology.
 
     Parameters
     ----------
-    SN_matrix : ndarray (n x 4)
-        Smoke number matrix for each engine and ICAO mode.
-    PR : ndarray (n x 4)
-        Pressure ratio matrix.
-    ENGINE_TYPE : list of str
-        Engine types ('TF', 'MTF', etc.) for each engine.
-    BP_Ratio : ndarray (n,)
-        Bypass ratio for each engine.
+    SN_matrix : ThrustModeValues
+        Smoke number matrix for each ICAO mode.
+    ENGINE_TYPE : str
+        Engine type ('TF', 'MTF', etc.).
+    BP_Ratio : float
+        Bypass ratio.
 
     Returns
     -------
-    PMnvolEI_best_ICAOthrust : ndarray (n x 5)
-        Emission index of non-volatile PM mass [g/kg_fuel] for each engine,
+    PMnvolEI_best_ICAOthrust : ThrustModeValues
+        Emission index of non-volatile PM mass [g/kg_fuel],
         including 0% thrust extrapolation as first column.
     """
 
     # FoverF00 = np.array([0.07, 0.30, 0.85, 1.00])
-    AFR = ModeValues(106, 83, 51, 45)
+    AFR = ThrustModeValues(106, 83, 51, 45)
     # num_engines = SN_matrix.shape[0]
 
-    CI_best = ModeValues(0.0, mutable=True)
-    Q = ModeValues(0.0, mutable=True)
+    CI_best = ThrustModeValues(0.0, mutable=True)
+    Q = ThrustModeValues(0.0, mutable=True)
 
     # for i in range(num_engines):
     for mode in ThrustMode:

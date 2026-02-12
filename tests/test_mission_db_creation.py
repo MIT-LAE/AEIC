@@ -1,4 +1,6 @@
 import AEIC.utils.airports as airports
+from AEIC.missions import Database
+from AEIC.missions.oag import convert_oag_data
 from AEIC.missions.writable_database import WritableDatabase
 from AEIC.types import DayOfWeek
 
@@ -53,3 +55,20 @@ def test_airport_handling(tmp_path):
 
         # Not a real airport.
         assert db._get_or_add_airport(cur, 1235, 'QPX') is None
+
+
+def test_oag_conversion(tmp_path, test_data_dir):
+    # This extract of the 2019 OAG data contains 7 valid flights.
+    oag_file = test_data_dir / 'oag/2019-extract.csv'
+
+    convert_oag_data(
+        oag_file,
+        2019,
+        tmp_path / 'oag_test.sqlite',
+        warnings_file=tmp_path / 'oag_warnings.txt',
+    )
+
+    with Database(tmp_path / 'oag_test.sqlite') as db:
+        cur = db._conn.cursor()
+        cur.execute('SELECT COUNT(*) FROM flights')
+        assert cur.fetchone()[0] == 7

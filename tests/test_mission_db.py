@@ -4,7 +4,7 @@ from datetime import date
 import pandas as pd
 
 from AEIC.missions import BoundingBox, Database, Filter, FrequentFlightQuery, Query
-from AEIC.utils.helpers import date_to_timestamp
+from AEIC.missions.query import date_to_timestamp
 
 
 def test_filter():

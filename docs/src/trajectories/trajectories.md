@@ -1,10 +1,11 @@
 # Trajectories
 
-Trajectories in AEIC are defined as the operation profile of the aircraft starting at $914\,\text{m}$
-($3000\,\text{ft}$) above the departure airport and ending $914\,\text{m}$ above the arrival airport. All
-operations below $914\,\text{m}$ relative to the departure/arrival airport is classified as LTO
-operations and are represented using ICAO Annex 16 Volume II time-in-modes. AEIC assumes that
-a negligible amount of fuel is burned during these operations.
+Trajectories in AEIC are defined as the operation profile of the aircraft
+starting at 914 meters (3000 feet) above the departure airport and ending 914
+meters above the arrival airport. All operations below 914 meters relative to
+the departure/arrival airport are classified as LTO operations and are
+(optionally) represented using ICAO Annex 16 Volume II time-in-modes. AEIC
+assumes that a negligible amount of fuel is burned during these operations.
 
 AEIC currently only supports a trajectory simulation method which is very
 similar to the legacy ([AEIC v2](https://zenodo.org/records/6461767))

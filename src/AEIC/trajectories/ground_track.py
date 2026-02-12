@@ -4,7 +4,7 @@ great circle paths between waypoints. Trajectory builders can use ground tracks
 to determine the aircraft's position as they simulate flight along its route.
 """
 
-# TODO: Remove this when we move to Python 3.14+.
+# TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations
 
 import itertools
@@ -12,7 +12,7 @@ from bisect import bisect_left
 from dataclasses import dataclass
 
 from AEIC.types import Location
-from AEIC.utils.spatial import GEOD
+from AEIC.utils import GEOD
 
 
 class GroundTrack:

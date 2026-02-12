@@ -16,7 +16,8 @@ from enum import Enum, auto
 
 import numpy as np
 
-from AEIC.trajectories.field_sets import FieldMetadata
+from .dimensions import Dimension, Dimensions
+from .field_sets import FieldMetadata
 
 PHASE_FIELD_PREFIX = 'n_'
 
@@ -69,7 +70,7 @@ FlightPhases = dict[FlightPhase, int]
 
 PHASE_FIELDS = {
     phase.field_name: FieldMetadata(
-        pointwise=False,
+        dimensions=Dimensions(Dimension.TRAJECTORY),
         field_type=np.int32,
         description=f'Number of points in {phase.field_label} phase',
         units='count',

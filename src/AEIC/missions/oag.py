@@ -1,3 +1,6 @@
+# TODO: Remove this when we migrate to Python 3.14+.
+from __future__ import annotations
+
 import csv
 import logging
 from collections.abc import Generator
@@ -136,7 +139,7 @@ class CSVEntry:
         return True
 
     @classmethod
-    def from_csv_row(cls, row: dict, line: int = 0) -> 'CSVEntry | None':
+    def from_csv_row(cls, row: dict, line: int = 0) -> CSVEntry | None:
         """Create an CSVEntry instance from a CSV row."""
 
         try:
@@ -207,7 +210,7 @@ class CSVEntry:
             return None
 
     @classmethod
-    def read(cls, file_path: str) -> Generator['CSVEntry']:
+    def read(cls, file_path: str) -> Generator[CSVEntry]:
         """Read an OAG CSV file and yield CSVEntry instances for each row."""
         with open(file_path, newline='') as csvfile:
             for idx, row in enumerate(csv.DictReader(csvfile)):
@@ -227,7 +230,7 @@ class OAGDatabase(WritableDatabase):
         super().__init__(db_path)
         self._year = year
 
-    def add(self, e: CSVEntry, commit: bool = True):
+    def add(self, e: CSVEntry, commit: bool = True) -> bool:
         """Add a flight to the database.
 
         This adds a single flight entry to the database, along with all the
@@ -253,7 +256,7 @@ class OAGDatabase(WritableDatabase):
 
         # Skip entries with unknown airports.
         if origin is None or destination is None:
-            return
+            return False
 
         # Skip entries where the stated flight distance is not plausible:
         # require the stated distance and the distance we calculate from
@@ -262,7 +265,7 @@ class OAGDatabase(WritableDatabase):
         if not self._distance_check(
             e.line, origin, destination, e.distance * STATUTE_MILES_TO_KM
         ):
-            return
+            return False
 
         # Handle cases where the effective from/to dates are not set, implying
         # from beginning of year or to end of year.
@@ -309,6 +312,8 @@ class OAGDatabase(WritableDatabase):
         if commit:
             self._conn.commit()
 
+        return True
+
 
 def convert_oag_data(
     in_file: str, year: int, db_file: str, warnings_file: str | None = None
@@ -328,8 +333,8 @@ def convert_oag_data(
                 continue
 
             # Add entries to database in batches of 10,000.
-            db.add(entry, commit=False)
-            nentries += 1
+            if db.add(entry, commit=False):
+                nentries += 1
             if nentries % 10000 == 0:
                 db.commit()
 

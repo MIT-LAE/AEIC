@@ -1,4 +1,4 @@
-# TODO: Remove this when we move to Python 3.14+.
+# TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -7,7 +7,8 @@ from pathlib import Path
 import pandas as pd
 
 from AEIC.config import config
-from AEIC.types import LTOPerformance, ModeValues, ThrustMode
+
+from .types import LTOPerformance, ThrustMode, ThrustModeValues
 
 
 @dataclass
@@ -17,14 +18,14 @@ class EDBEntry:
     engine_type: str
     BP_Ratio: float
     rated_thrust: float
-    fuel_flow: ModeValues
-    CO_EI_matrix: ModeValues
-    HC_EI_matrix: ModeValues
-    EI_NOx_matrix: ModeValues
-    SN_matrix: ModeValues
-    nvPM_mass_matrix: ModeValues
-    nvPM_num_matrix: ModeValues
-    PR: ModeValues
+    fuel_flow: ThrustModeValues
+    CO_EI_matrix: ThrustModeValues
+    HC_EI_matrix: ThrustModeValues
+    EI_NOx_matrix: ThrustModeValues
+    SN_matrix: ThrustModeValues
+    nvPM_mass_matrix: ThrustModeValues
+    nvPM_num_matrix: ThrustModeValues
+    PR: ThrustModeValues
     EImass_max: float
     EImass_max_thrust: float
     EInum_max: float
@@ -38,7 +39,7 @@ class EDBEntry:
             source='EDB',
             ICAO_UID=self.uid,
             rated_thrust=self.rated_thrust * 1000.0,
-            thrust_pct=ModeValues(
+            thrust_pct=ThrustModeValues(
                 {m: t * 100 for m, t in zip(ThrustMode, thrust_fractions)}
             ),
             fuel_flow=self.fuel_flow,
@@ -101,9 +102,9 @@ class EDBEntry:
         ]
 
         # Extract data for each mode.
-        def mode_dict(template: str, gaseous: bool = True) -> ModeValues:
+        def mode_dict(template: str, gaseous: bool = True) -> ThrustModeValues:
             row = g if gaseous else n
-            return ModeValues(
+            return ThrustModeValues(
                 {mode: float(row[template.format(mode=label)]) for mode, label in modes}
             )
 

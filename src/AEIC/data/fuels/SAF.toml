@@ -3,11 +3,11 @@ name = "SAF"
 
 energy_MJ_per_kg = 44.1
 
-EI_H2O = 1356.72515 # gH2O/kgfuel
-EI_CO2 = 3155.6 # gCO2/kgfuel
+EI_H2O = 1356.72515 # gH₂O/kg fuel
+EI_CO2 = 3155.6 # gCO₂/kg fuel
 
 non_volatile_carbon_content = 0.95
 
 # Sulfur content and sulfate yield
-fuel_sulfur_content_nom = 0.0    # gS/kgfuel
+fuel_sulfur_content_nom = 0.0    # gS/kg fuel
 sulfate_yield_nom = 0.0    # fraction converted to sulfate

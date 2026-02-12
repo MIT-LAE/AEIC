@@ -1,53 +1,71 @@
+# TODO: Remove this when we migrate to Python 3.14+.
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import ClassVar, Self
+from typing import TYPE_CHECKING, ClassVar, Self
 
 from pydantic import ConfigDict, PositiveInt, model_validator
 
 from AEIC.config import config
-from AEIC.performance.utils.apu import APU, find_apu
-from AEIC.performance.utils.edb import EDBEntry
-from AEIC.types import (
-    AircraftClass,
-    AircraftState,
+from AEIC.performance.apu import APU, find_apu
+from AEIC.performance.edb import EDBEntry
+from AEIC.performance.types import (
     LTOPerformance,
-    ModeValues,
-    Performance,
     SimpleFlightRules,
     Speeds,
     ThrustMode,
+    ThrustModeValues,
 )
+from AEIC.types import AircraftClass
 from AEIC.units import FEET_TO_METERS
 from AEIC.utils.models import CIBaseModel
 
+if TYPE_CHECKING:
+    from AEIC.performance.types import AircraftState, Performance
+
 
 class LTOModeDataInput(CIBaseModel):
-    """LTO data for a given flight phase."""
+    """LTO data for a given thrust mode."""
 
-    # TODO: Better docstrings.
     thrust_frac: float
+    """Thrust as a fraction of rated thrust."""
+
     fuel_kgs: float
+    """Fuel flow in kg/s."""
+
     EI_NOx: float
+    """NOₓ emission index in g/kg fuel."""
+
     EI_HC: float
+    """HC emission index in g/kg fuel."""
+
     EI_CO: float
+    """CO emission index in g/kg fuel."""
 
 
 class LTOPerformanceInput(CIBaseModel):
     """LTO performance data as represented in configuration file."""
 
-    # TODO: Make source an enum? EDB or in-file?
-    # TODO: Docstrings.
     source: str
+    """Source of LTO data (e.g., 'EDB' or 'BADA LTO file'). For documentation
+    only."""
+
     ICAO_UID: str
+    """ICAO engine ID from engine database (EDB). For documentation only."""
+
     rated_thrust: float
+    """Engine rated thrust [kN]."""
+
     mode_data: dict[ThrustMode, LTOModeDataInput]
+    """LTO data for each thrust mode."""
 
     def convert(self) -> LTOPerformance:
         """Create internal representation of LTO performance data from input
         data."""
 
-        def extract(attr_name: str, scale: float = 1.0) -> ModeValues:
-            return ModeValues(
+        def extract(attr_name: str, scale: float = 1.0) -> ThrustModeValues:
+            return ThrustModeValues(
                 {m: getattr(self.mode_data[m], attr_name) * scale for m in ThrustMode}
             )
 
@@ -63,7 +81,7 @@ class LTOPerformanceInput(CIBaseModel):
         )
 
     @classmethod
-    def from_internal(cls, lto: LTOPerformance) -> Self:
+    def from_internal(cls, lto: LTOPerformance) -> LTOPerformanceInput:
         """Create LTOPerformanceInput from internal LTOPerformance data."""
 
         mode_data = {
@@ -90,7 +108,7 @@ class BasePerformanceModel[RulesT = SimpleFlightRules](CIBaseModel, ABC):
 
     This a generic class parameterized by the type of flight rules accepted by
     the class's :meth:`evaluate` method. By default, this is
-    :class:`SimpleFlightRules <AEIC.types.SimpleFlightRules>`, but
+    :class:`SimpleFlightRules <AEIC.performance.types.SimpleFlightRules>`, but
     subclasses can override this to specify more sophisticated flight rule
     types.
 
@@ -165,7 +183,7 @@ class BasePerformanceModel[RulesT = SimpleFlightRules](CIBaseModel, ABC):
         """APU data associated with the performance model.
 
         This is loaded from the APU database based on the ``apu_name`` field
-        using the ``AEIC.performance.utils.apu.find_apu`` function."""
+        using the ``AEIC.performance.apu.find_apu`` function."""
         return self._apu
 
     @cached_property

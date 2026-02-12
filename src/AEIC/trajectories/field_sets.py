@@ -8,15 +8,23 @@ Field sets are used to represent the data and metadata fields associated with
 aircraft trajectories, including emissions data.
 """
 
+# TODO: Remove this when we migrate to Python 3.14+.
+from __future__ import annotations
+
 import hashlib
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cached_property
 from types import MappingProxyType
 from typing import Any, ClassVar, Protocol, runtime_checkable
 
-import netCDF4
+import netCDF4 as nc4
 import numpy as np
+
+from AEIC.performance.types import ThrustModeValues
+from AEIC.types import Species, SpeciesValues
+
+from .dimensions import Dimension, Dimensions
 
 
 # The options here cause a hash method to be generated for `FieldMetadata`.
@@ -25,13 +33,56 @@ class FieldMetadata:
     """Metadata for a single field.
 
     This is intended to describe the properties of a field in a dataset that
-    may be serialized to NetCDF. Fields can either be per-data-point variables
-    (pointwise=True) or per-trajectory metadata (pointwise=False).
+    may be serialized to NetCDF.
+
+    Fields can indexed by a range of different dimensions, represented by the
+    `dimensions` field (in the "Type" rows, "scalar" means a Numpy floating
+    point or integer type, or Python str):
+
+    - Dimensions: trajectory
+    - Use:        per-trajectory individual values
+    - Examples:  total fuel burn for a trajectory, number of climb segments, etc.
+    - Type:      scalar
+
+    ----------------------------------------------------------------
+
+    - Dimensions: trajectory, point
+    - Use:        pointwise values along a trajectory
+    - Examples:   trajectory latitude, longitude, altitude
+    - Type:       np.ndarray
+
+    ----------------------------------------------------------------
+
+    - Dimensions: trajectory, species
+    - Use:        per-species values for a whole trajectory
+    - Examples:   APU emissions for a species on a trajectory
+    - Type:       SpeciesValues[scalar]
+
+    ----------------------------------------------------------------
+
+    - Dimensions: trajectory, species, point
+    - Use:        pointwise values for each species along a trajectory
+    - Example:    CO₂ emissions at each point along a trajectory
+    - Type:       SpeciesValues[np.ndarray]
+
+    ----------------------------------------------------------------
+
+    - Dimensions: trajectory, thrust_mode
+    - Use:        per-thrust-mode values for a whole trajectory
+    - Examples:   LTO fuel burn per thrust mode for a trajectory
+    - Type:       ThrustModeValues
+
+    ----------------------------------------------------------------
+
+    - Dimensions: trajectory, species, thrust_mode
+    - Use:        per-species values for each thrust mode for a whole trajectory.
+    - Examples:   NOₓ emissions per thrust mode for a trajectory
+    - Type:       SpeciesValues[ThrustModeValues]
+
     """
 
-    pointwise: bool = True
-    """Is this a metadata field (one value per trajectory, pointwise=False) or
-    a data variable (one value per point along a trajectory, pointwise=True)?"""
+    dimensions: Dimensions = field(default_factory=lambda: Dimensions.from_abbrev('TP'))
+    """Dimensions for this field."""
 
     field_type: type = np.float64
     """Type of the field; should be a Numpy dtype or str for variable-length
@@ -78,11 +129,164 @@ class FieldMetadata:
                 f'FieldMetadata: invalid field_type {self.field_type}: {e}'
             ) from e
 
+    def empty(self, npoints: int) -> Any:
+        """Create an empty value for this field based on its type and dimensions."""
+        match (
+            Dimension.POINT in self.dimensions,
+            Dimension.SPECIES in self.dimensions,
+            Dimension.THRUST_MODE in self.dimensions,
+        ):
+            case (False, False, False):
+                # Scalar per-trajectory field.
+                return self.default
+            case (True, False, False):
+                # Pointwise field along trajectory.
+                return np.zeros(npoints, dtype=self.field_type)
+            case (False, True, False):
+                # Per-species field for whole trajectory.
+                return SpeciesValues()
+            case (True, True, False):
+                # Pointwise per-species field along trajectory.
+                return SpeciesValues()
+            case (False, False, True):
+                # Per-thrust-mode field for whole trajectory.
+                return ThrustModeValues()
+            case (False, True, True):
+                # Per-species per-thrust-mode field for whole trajectory.
+                return SpeciesValues()
+            case _:
+                raise ValueError(
+                    'FieldMetadata.empty: invalid combination of dimensions '
+                    f'for field: {self.dimensions.dims}'
+                )
+
+    def nbytes(self, npoints: int) -> int:
+        """Estimate the number of bytes used by this field per trajectory point.
+
+        This is a rough estimate used for memory usage calculations.
+        """
+        size = np.dtype(self.field_type).itemsize
+        if Dimension.THRUST_MODE in self.dimensions:
+            size *= len(ThrustModeValues())
+        if Dimension.SPECIES in self.dimensions:
+            size *= len(Species)
+        if Dimension.POINT in self.dimensions:
+            size *= npoints
+        return size
+
+    def _cast(self, v: Any, name: str) -> Any:
+        """Cast a scalar or array value to this field's base type."""
+
+        # Wrap single values.
+        arr = v
+        wrapped = False
+        if not isinstance(v, np.ndarray):
+            arr = np.asarray(v)
+            wrapped = True
+
+        # Check that the incoming type can be safely cast to the field type.
+        if not np.can_cast(arr, self.field_type, casting='same_kind'):
+            raise TypeError(
+                f'field {name}: cannot cast assigned value of type {type(v)} '
+                f'to field with dimensions {self.dimensions} and '
+                f'scalar type {self.field_type}'
+            )
+
+        # Return cast value.
+        cast_value = arr.astype(self.field_type, casting='same_kind')
+        if wrapped:
+            cast_value = cast_value.item()
+        return cast_value
+
+    def convert_in(self, v: Any, name: str, npoints: int) -> Any:
+        """Convert an incoming value to the appropriate type for this field."""
+
+        # Deal with missing optional values first. Missing values read from
+        # NetCDF files are often represented as masked arrays with all values
+        # masked, so we handle that case explicitly here.
+        if not self.required:
+            if v is None:
+                return None
+            if isinstance(v, np.ndarray):
+                if (
+                    hasattr(v, 'mask')
+                    and np.all(getattr(v, 'mask'))
+                    or v.size > 1
+                    and np.all([e is None for e in v])
+                ):
+                    return None
+
+        if isinstance(v, np.ma.MaskedArray):
+            v = v.filled()
+
+        # Split by dimension cases.
+        match (
+            Dimension.POINT in self.dimensions,
+            Dimension.SPECIES in self.dimensions,
+            Dimension.THRUST_MODE in self.dimensions,
+        ):
+            case (False, False, False):
+                # Scalar per-trajectory field.
+                return self._cast(v, name)
+            case (True, False, False):
+                # Pointwise field along trajectory.
+                if isinstance(v, np.ndarray):
+                    if len(v) != npoints:
+                        raise ValueError(
+                            f'field {name}: assigned array has length {len(v)}, '
+                            f'expected {npoints} for field with point dimension'
+                        )
+                    return self._cast(v, name)
+            case (False, True, False):
+                # Per-species field for whole trajectory.
+                if isinstance(v, SpeciesValues):
+                    return SpeciesValues({s: self._cast(e, name) for s, e in v.items()})
+            case (True, True, False):
+                # Pointwise per-species field along trajectory.
+                if isinstance(v, SpeciesValues) and all(
+                    isinstance(e, np.ndarray) for e in v.values()
+                ):
+                    if any(len(e) != npoints for e in v.values()):
+                        raise ValueError(
+                            f'field {name}: assigned arrays have inconsistent lengths '
+                            f'for field with point dimension'
+                        )
+                    return SpeciesValues({s: self._cast(e, name) for s, e in v.items()})
+            case (False, False, True):
+                # Per-thrust-mode field for whole trajectory.
+                if isinstance(v, ThrustModeValues):
+                    return ThrustModeValues(
+                        {m: self._cast(x, name) for m, x in v.items()}
+                    )
+            case (False, True, True):
+                # Per-species per-thrust-mode field for whole trajectory.
+                if isinstance(v, SpeciesValues) and all(
+                    isinstance(e, ThrustModeValues) for e in v.values()
+                ):
+                    return SpeciesValues(
+                        {
+                            s: ThrustModeValues(
+                                {m: self._cast(x, name) for m, x in e.items()}
+                            )
+                            for s, e in v.items()
+                        }
+                    )
+            case _:
+                raise ValueError(
+                    f'field {name}: invalid combination of dimensions '
+                    f'for field: {self.dimensions.dims}'
+                )
+        raise TypeError(
+            f'field {name}: assigned value of type {type(v)} is not compatible '
+            f'with field dimensions {self.dimensions} and '
+            f'scalar type {self.field_type}'
+        )
+
     @property
     def digest_info(self) -> str:
         """Generate a string representation of the field metadata for hashing."""
         parts = [
-            'P' if self.pointwise else 'T',
+            self.dimensions.abbrev,
             self.field_type.__name__,
             self.description,
             self.units,
@@ -98,7 +302,7 @@ class FieldSet(Mapping):
     Represented as a mapping from field name to metadata.
     """
 
-    REGISTRY: dict[str, 'FieldSet'] = {}
+    REGISTRY: dict[str, FieldSet] = {}
     """Registry of named field sets for reuse."""
 
     def __init__(
@@ -140,14 +344,14 @@ class FieldSet(Mapping):
         return name in cls.REGISTRY
 
     @classmethod
-    def from_registry(cls, name: str) -> 'FieldSet':
+    def from_registry(cls, name: str) -> FieldSet:
         """Retrieve a `FieldSet` from the registry by name."""
         if not cls.known(name):
             raise KeyError(f'FieldSet with name "{name}" not found in registry.')
         return cls.REGISTRY[name]
 
     @classmethod
-    def from_netcdf_group(cls, group: netCDF4.Group) -> 'FieldSet':
+    def from_netcdf_group(cls, group: nc4.Group) -> FieldSet:
         """Construct a `FieldSet` from a NetCDF group."""
         fields = {}
         for f, v in group.variables.items():
@@ -157,15 +361,14 @@ class FieldSet(Mapping):
                 field_type = field_type.type
             assert isinstance(field_type, type)
 
-            # Scalar or string fields are per-trajectory fields.
-            # TODO: Make this condition better?
-            is_per_trajectory = (
-                not isinstance(v.datatype, netCDF4.VLType) or field_type is str
-            )
+            # Determine dimensions for variable.
+            dimensions = Dimensions.from_dim_names(*v.dimensions)
+            if isinstance(v.datatype, nc4.VLType) and field_type is not str:
+                dimensions = dimensions.add(Dimension.POINT)
 
             # Set up the field information.
             metadata = FieldMetadata(
-                pointwise=not is_per_trajectory,
+                dimensions=dimensions,
                 field_type=field_type,
                 description=v.getncattr('description'),
                 units=v.getncattr('units'),
@@ -243,6 +446,14 @@ class FieldSet(Mapping):
 
     def __repr__(self):
         return f'<FieldSet {self.fieldset_name}: {list(self._fields)}>'
+
+    @property
+    def dimensions(self) -> set[Dimension]:
+        """Combined dimensions of all fields in the field set."""
+        dims = set()
+        for f in self._fields.values():
+            dims.update(f.dimensions.dims)
+        return dims
 
 
 @runtime_checkable

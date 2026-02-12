@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from pydantic import Field, RootModel, model_validator
 
 from .bada import BADAPerformanceModel
-from .base import BasePerformanceModel as BasePerformanceModel
+from .base import BasePerformanceModel
 from .legacy import LegacyPerformanceModel
 from .piano import PianoPerformanceModel
 from .tasopt import TASOPTPerformanceModel
@@ -51,3 +51,14 @@ class PerformanceModel(RootModel[PerformanceModelUnion]):
     def from_data(cls, data: dict) -> PerformanceModelUnion:
         """Initialize a performance model from a dictionary."""
         return cls.model_validate(data).root
+
+
+__all__ = [
+    'BasePerformanceModel',
+    'BADAPerformanceModel',
+    'TASOPTPerformanceModel',
+    'PianoPerformanceModel',
+    'LegacyPerformanceModel',
+    'PerformanceModel',
+    'PerformanceModelUnion',
+]

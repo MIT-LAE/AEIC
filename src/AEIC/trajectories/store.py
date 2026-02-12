@@ -1,3 +1,6 @@
+# TODO: Remove this when we migrate to Python 3.14+.
+from __future__ import annotations
+
 import bisect
 import gc
 import hashlib
@@ -9,15 +12,19 @@ import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Any, Protocol
 
+import netCDF4 as nc4
 import numpy as np
 from cachetools import LRUCache
-from netCDF4 import Dataset, Dimension, Group, VLType
 
-from .field_sets import FieldSet, HasFieldSets
+from AEIC.performance.types import ThrustMode, ThrustModeValues
+from AEIC.types import Species, SpeciesValues
+
+from .dimensions import Dimension
+from .field_sets import FieldMetadata, FieldSet, HasFieldSets
 from .trajectory import BASE_FIELDSET_NAME, Trajectory
 
 # Python doesn't have a simple way of saying "anything that's acceptable as a
@@ -233,7 +240,7 @@ class TrajectoryStore:
 
     """
 
-    class FileMode(str, Enum):
+    class FileMode(StrEnum):
         READ = 'r'
         CREATE = 'w'
         APPEND = 'a'
@@ -250,15 +257,22 @@ class TrajectoryStore:
         fieldsets: set[str]
         """Field sets stored in the NetCDF files."""
 
-        dataset: list[Dataset]
+        dataset: list[nc4.Dataset]
         """Netcdf4 Dataset objects for the files: multiple to support merged
         stores."""
 
-        traj_dim: list[Dimension]
+        traj_dim: list[nc4.Dimension]
         """Trajectory dimension objects for the files: multiple to support
         merged stores."""
 
-        groups: dict[str, list[Group]]
+        traj_var: list[nc4.Variable]
+        """Trajectory variable objects for the files: multiple to support
+        merged stores."""
+
+        species: list[Species] | None
+        """Species included in the species dimension in the files, if any."""
+
+        groups: dict[str, list[nc4.Group]]
         """Mapping from field set names to NetCDF groups in the files: groups
         are multiple for each field set name to support merged stores."""
 
@@ -381,8 +395,8 @@ class TrajectoryStore:
         # The index information is stored in a special NetCDF group that we
         # access separately from the main NcFiles mechanism.
         self.indexable = None
-        self.index_group: Group | None = None
-        self.index_dataset: Dataset | None = None
+        self.index_group: nc4.Group | None = None
+        self.index_dataset: nc4.Dataset | None = None
 
         # The index can become stale when new items are added to the store. We
         # reindex lazily, either when an index lookup is performed or on a sync
@@ -461,7 +475,7 @@ class TrajectoryStore:
                 raise
 
     @classmethod
-    def create(cls, *args, **kwargs) -> 'TrajectoryStore':
+    def create(cls, *args, **kwargs) -> TrajectoryStore:
         """Create a new TrajectoryStore.
 
         This class method is the preferred way to create a new trajectory
@@ -471,7 +485,7 @@ class TrajectoryStore:
         return cls(mode=TrajectoryStore.FileMode.CREATE, *args, **kwargs)
 
     @classmethod
-    def open(cls, *args, **kwargs) -> 'TrajectoryStore':
+    def open(cls, *args, **kwargs) -> TrajectoryStore:
         """Open an existing TrajectoryStore read-only.
 
         This class method is the preferred way to open an existing trajectory
@@ -481,7 +495,7 @@ class TrajectoryStore:
         return cls(mode=TrajectoryStore.FileMode.READ, *args, **kwargs)
 
     @classmethod
-    def append(cls, *args, **kwargs) -> 'TrajectoryStore':
+    def append(cls, *args, **kwargs) -> TrajectoryStore:
         """Open an existing TrajectoryStore for appending.
 
         This class method is the preferred way to open an existing trajectory
@@ -576,18 +590,33 @@ class TrajectoryStore:
                     f'FieldSet with name "{fs_name}" not found in FieldSet registry'
                 )
 
-        # Create file.
-        nc_info = self._create_nc_file(
-            associated_file,
-            set(fieldsets),
-            save=False,
-            associated_name=self._nc_files[0].path[0],
-            associated_hash=self._nc_files[0].dataset[0].id_hash,
-        )
+        # We need to call the mapping once to see what chemical species we need
+        # to put in the species dimension int he new NetCDF file.
+        nc_info = None
 
         for i in range(len(self)):
             # Create associated data value.
             associated_data = mapping_function(self[i], *args, **kwargs)
+
+            # Create file: we can only do this once we have one result from the
+            # mapping function, because we need to determine the species we
+            # need to allow in the NetCDF files' species dimension.
+            if nc_info is None:
+                species = set()
+                for fs_name in fieldsets:
+                    fs = FieldSet.from_registry(fs_name)
+                    for f, metadata in fs.fields.items():
+                        if Dimension.SPECIES in metadata.dimensions:
+                            species.update(getattr(associated_data, f).keys())
+
+                nc_info = self._create_nc_file(
+                    associated_file,
+                    set(fieldsets),
+                    sorted(species),
+                    save=False,
+                    associated_name=self._nc_files[0].path[0],
+                    associated_hash=self._nc_files[0].dataset[0].id_hash,
+                )
 
             # These are the only checks we're going to do here: the call to
             # _write_data will fail if any of the fields from the field sets
@@ -617,6 +646,7 @@ class TrajectoryStore:
                 data=associated_data,
             )
 
+        assert nc_info is not None
         nc_info.dataset[0].close()
 
     @property
@@ -743,7 +773,13 @@ class TrajectoryStore:
     ) -> None:
         """Merge multiple `TrajectoryStore` files into a single merged store.
 
-        TODO: Finish this docstring."""
+        The merging is done simply by copying the individual NetCDF files into
+        a directory and creating a metadata JSON file in the same directory to
+        record the metadata about the merged store and its constituent files.
+        (If the store is indexed, a separate NetCDF file is also created to
+        hold the merged index.) The resulting merged store can then be opened
+        in READ mode like any other `TrajectoryStore`. Merged stores must have
+        extension `.aeic-store`."""
 
         # Check parameters and normalize input stores list.
         input_stores = TrajectoryStore._check_merge_arguments(
@@ -827,7 +863,7 @@ class TrajectoryStore:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, _exc_type, exc, tb):
         self.close()
         # Returning False propagates exceptions.
         return False
@@ -898,7 +934,8 @@ class TrajectoryStore:
 
         # Create the base NetCDF file.
         assert self.base_file is not None
-        self._create_nc_file(self.base_file, base_nc_fieldsets)
+        species = proto.species
+        self._create_nc_file(self.base_file, base_nc_fieldsets, species)
 
         # Create the associated NetCDF files. The `associated_name` and
         # `associated_hash` arguments are used to record the link between the
@@ -912,18 +949,37 @@ class TrajectoryStore:
             self._create_nc_file(
                 nc_file,
                 set(fieldsets),
+                species,
                 associated_name=base_nc_file.path[0],
                 associated_hash=base_nc_file.dataset[0].id_hash,
             )
+
+    def _retrieve_nc_species_values(self, dataset: nc4.Dataset) -> list[Species] | None:
+        """Retrieve species values from a NetCDF Dataset's species dimension.
+
+        If the Dataset does not have a species dimension, return None.
+        """
+        if 'species' not in dataset.dimensions:
+            return None
+
+        var = dataset.variables.get('species', None)
+        if var is None:
+            raise ValueError('Dataset has species dimension but no species variable')
+
+        return [
+            Species[var[i].decode('utf-8') if isinstance(var[i], bytes) else var[i]]
+            for i in range(len(var))
+        ]
 
     def _create_nc_file(
         self,
         nc_file: str | Path,
         fieldsets: set[str],
+        species: list[Species],
         associated_name: Path | None = None,
         associated_hash: str | None = None,
         save: bool = True,
-    ) -> 'TrajectoryStore.NcFiles':
+    ) -> TrajectoryStore.NcFiles:
         # Ensure output directory exists.
         nc_file = Path(nc_file).resolve()
         if not nc_file.parent.exists():
@@ -934,11 +990,10 @@ class TrajectoryStore:
             raise ValueError(f'Output file {nc_file} already exists')
 
         # Create NetCDF4 file in write mode.
-        dataset = Dataset(nc_file, mode='w', format='NETCDF4', keepweakref=True)
+        dataset = nc4.Dataset(nc_file, mode='w', format='NETCDF4', keepweakref=True)
 
-        # The only dimension we need is the trajectory. All per-point data is
-        # stored using NetCDF4 variable-length arrays.
-        traj_dim = dataset.createDimension('trajectory', None)
+        # Create dimensions and any required coordinate variables.
+        traj_dim, traj_var = _create_dimensions(dataset, fieldsets, species)
 
         # Set up basic global attributes.
         if len(self.global_attributes) > 0:
@@ -988,20 +1043,7 @@ class TrajectoryStore:
         # Variable length types for floating point and integer per-point data.
         # (NetCDF4 handles variable-length strings natively so we add Python's
         # string type here.)
-        vl_types: dict[type, VLType | type] = {str: str}
-        for fs_name in fieldsets:
-            fs = FieldSet.from_registry(fs_name)
-            for field in fs.values():
-                if field.pointwise and field.field_type not in vl_types:
-                    try:
-                        vl_types[field.field_type] = dataset.createVLType(
-                            field.field_type, f'{field.field_type.__name__}_vlen'
-                        )
-                    except TypeError:
-                        raise ValueError(
-                            f'Unsupported field type {field.field_type} '
-                            f'for variable-length array in field set "{fs_name}"'
-                        )
+        vl_types = _create_vl_types(dataset, fieldsets)
 
         # Iterate over provided field set names.
         for fs_name in fieldsets:
@@ -1015,26 +1057,23 @@ class TrajectoryStore:
             g = dataset.createGroup(fs_name)
             groups[fs_name] = [g]
 
-            # For each variable (per-point or per-trajectory) in the field set,
+            # For each variable in the field set:
             for field_name, metadata in fs.items():
-                if metadata.pointwise:
-                    # if it's a per-point variable, create a variable-length
-                    # array of the apprropriate scalar type, indexed by the
-                    # trajectory dimension.
-                    vl_type = vl_types.get(metadata.field_type, None)
-                    if vl_type is None:
+                # Determine the NetCDF variable type: if it's a per-point
+                # variable, look up the appropriate variable length type
+                # created earlier.
+                field_type = metadata.field_type
+                if Dimension.POINT in metadata.dimensions:
+                    field_type = vl_types.get(metadata.field_type, None)
+                    if field_type is None:
                         raise ValueError(
                             f'Unsupported field type {metadata.field_type} '
                             f'for variable "{field_name}" in field set "{fs_name}"'
                         )
-                    v = g.createVariable(field_name, vl_type, ('trajectory',))
-                else:
-                    # if it's a per-trajectory variable, create a simple
-                    # variable with a normal NetCDF type, indexed by the
-                    # trajectory dimension.
-                    v = g.createVariable(
-                        field_name, metadata.field_type, ('trajectory',)
-                    )
+
+                # Create a variable of the appropriate NetCDF type, indexed by
+                # the calculated dimension set.
+                v = g.createVariable(field_name, field_type, metadata.dimensions.netcdf)
 
                 # Add metadata to variable.
                 v.description = metadata.description
@@ -1066,6 +1105,8 @@ class TrajectoryStore:
             fieldsets=fieldsets,
             dataset=[dataset],
             traj_dim=[traj_dim],
+            traj_var=[traj_var],
+            species=species,
             size_index=None,
             groups=groups,
         )
@@ -1106,8 +1147,8 @@ class TrajectoryStore:
     def _open_nc_file(
         self,
         nc_file: PathType,
-        check_associated: 'TrajectoryStore.NcFiles | None' = None,
-    ) -> 'TrajectoryStore.NcFiles':
+        check_associated: TrajectoryStore.NcFiles | None = None,
+    ) -> TrajectoryStore.NcFiles:
         """Open a single NetCDF file.
 
         This method opens a single NetCDF file that is either a base file or an
@@ -1120,14 +1161,15 @@ class TrajectoryStore:
             raise ValueError(f'Input file {nc_file} does not exist')
 
         # Open NetCDF4 dataset in read or append mode.
-        dataset = Dataset(
+        dataset = nc4.Dataset(
             nc_file,
             mode='r' if self.mode == self.FileMode.READ else 'a',
             keepweakref=True,
         )
 
-        # Retrieve trajectory dimension.
+        # Retrieve trajectory dimension and variable.
         traj_dim = dataset.dimensions['trajectory']
+        traj_var = dataset.variables['trajectory']
 
         # Retrieve global attributes.
         title = getattr(dataset, 'title', None)
@@ -1154,6 +1196,9 @@ class TrajectoryStore:
         # underscore are reserved for internal use, in particular for the
         # flight ID index.
         groups = {k: [g] for k, g in dataset.groups.items() if not k[0] == '_'}
+
+        # Retrieve values of species dimension, if any.
+        species = self._retrieve_nc_species_values(dataset)
 
         # Check consistency.
 
@@ -1205,14 +1250,16 @@ class TrajectoryStore:
                     f'hash of base file {check_associated.path}'
                 )
 
-        # Here, the `path`, `dataset`, `traj_dim` and `size_index` fields are
-        # lists to support merged stores. In this case, we have a single file,
-        # so we put the values into singleton lists.
+        # Here, the `path`, `dataset`, `traj_dim`, `traj_var` and `size_index`
+        # fields are lists to support merged stores. In this case, we have a
+        # single file, so we put the values into singleton lists.
         return TrajectoryStore.NcFiles(
             path=[nc_file],
             fieldsets=set(fieldset_names),
             dataset=[dataset],
             traj_dim=[traj_dim],
+            traj_var=[traj_var],
+            species=species,
             groups=groups,
             size_index=[len(traj_dim)],
             title=title,
@@ -1240,7 +1287,7 @@ class TrajectoryStore:
         # Open index file.
         index_file = Path(self.base_file) / '_index.nc'
         if index_file.exists():
-            self.index_dataset = Dataset(index_file, mode='r', keepweakref=True)
+            self.index_dataset = nc4.Dataset(index_file, mode='r', keepweakref=True)
             self.index_group = self.index_dataset.groups['_index']
             self.indexable = True
 
@@ -1255,8 +1302,8 @@ class TrajectoryStore:
     def _open_merged_store(
         self,
         store_dir: PathType,
-        check_associated: 'TrajectoryStore.NcFiles | None' = None,
-    ) -> 'TrajectoryStore.NcFiles':
+        check_associated: TrajectoryStore.NcFiles | None = None,
+    ) -> TrajectoryStore.NcFiles:
         """Open a merged store.
 
         This method opens multiple NetCDF files in a merged store directory
@@ -1285,10 +1332,13 @@ class TrajectoryStore:
             raise ValueError(f'No stores listed in metadata file {metadata_file}')
 
         # Open NetCDF4 datasets in read mode for each NetCDF file.
-        dataset = [Dataset(nc_file, mode='r', keepweakref=True) for nc_file in nc_files]
+        dataset = [
+            nc4.Dataset(nc_file, mode='r', keepweakref=True) for nc_file in nc_files
+        ]
 
-        # Retrieve trajectory dimensions.
+        # Retrieve trajectory dimensions and variables.
         traj_dim = [ds.dimensions['trajectory'] for ds in dataset]
+        traj_var = [ds.variables['trajectory'] for ds in dataset]
 
         # Retrieve global attributes from JSON data (created when merged store
         # is created).
@@ -1302,7 +1352,7 @@ class TrajectoryStore:
             created = datetime.fromisoformat(created_str)
 
         # Retrieve additional global attributes for consistency checking.
-        def get_list(ds: Dataset, attr: str) -> list[str]:
+        def get_list(ds: nc4.Dataset, attr: str) -> list[str]:
             val = getattr(ds, attr, None)
             if isinstance(val, str):
                 return [val]
@@ -1368,11 +1418,16 @@ class TrajectoryStore:
             if k[0] != '_':
                 groups[k] = [ds.groups[k] for ds in dataset]
 
+        # Retrieve species actually used in the NetCDF files.
+        species = self._retrieve_nc_species_values(dataset[0])
+
         return TrajectoryStore.NcFiles(
             path=nc_files,
             fieldsets=set(fieldset_names),
             dataset=dataset,
             traj_dim=traj_dim,
+            traj_var=traj_var,
+            species=species,
             groups=groups,
             size_index=list(itertools.accumulate([len(td) for td in traj_dim])),
             title=title,
@@ -1414,6 +1469,17 @@ class TrajectoryStore:
                 # Now we can check that the fields in the field set exist in the
                 # relevant NetCDF group and that they have the right types and
                 # shapes.
+                for n in fs.fields:
+                    if n not in netcdf_fs.fields:
+                        raise ValueError(
+                            f'Field "{n}" in FieldSet with name "{fs_name}" not '
+                            f'found in NetCDF file'
+                        )
+                    if fs.fields[n] != netcdf_fs.fields[n]:
+                        raise ValueError(
+                            f'Field "{n}" in FieldSet with name "{fs_name}" is '
+                            f'incompatible with field in NetCDF file'
+                        )
                 if hash(fs) != hash(netcdf_fs):
                     raise ValueError(
                         f'FieldSet with name "{fs_name}" in base NetCDF file is '
@@ -1471,7 +1537,9 @@ class TrajectoryStore:
     def _create_merged_store_index(
         output_store: PathType, input_stores: list[PathType]
     ):
-        index_dataset = Dataset(Path(output_store) / '_index.nc', 'w', keepweakref=True)
+        index_dataset = nc4.Dataset(
+            Path(output_store) / '_index.nc', 'w', keepweakref=True
+        )
         index_dataset.createDimension('trajectory', None)
         index_group = index_dataset.createGroup('_index')
         index_group.createVariable('flight_id', np.int64, ('trajectory',))
@@ -1520,15 +1588,28 @@ class TrajectoryStore:
                 group_index = index - nc_files.size_index[file_index]
             group = nc_files.groups[fs_name][file_index]
 
-            # Write per-point data as variable-length arrays.
+            # Read data from NetCDF variables.
             for name, field in fs.items():
                 if name not in group.variables:
                     raise ValueError(
                         f'Data field "{name}" does not exist in NetCDF file'
                     )
-                data[name] = group.variables[name][group_index]
-                if field.pointwise and npoints is None:
-                    npoints = len(data[name])
+                val = self._read_from_nc_var(
+                    group.variables[name],
+                    group_index,
+                    name,
+                    field,
+                    nc_files.species or [],
+                )
+                data[name] = val
+                if Dimension.POINT in field.dimensions and npoints is None:
+                    if Dimension.SPECIES in field.dimensions:
+                        # Get number of points from arbitrary entry in the
+                        # SpeciesValues dictionary here.
+                        npoints = len(next(iter(data[name].values())))
+                    else:
+                        # Data should be a simple Numpy array here.
+                        npoints = len(data[name])
 
         # Construct the return trajectory.
         assert npoints is not None
@@ -1556,7 +1637,7 @@ class TrajectoryStore:
         index: int,
         traj: Trajectory | None = None,
         data: Any | None = None,
-        single_nc_file: 'TrajectoryStore.NcFiles | None' = None,
+        single_nc_file: TrajectoryStore.NcFiles | None = None,
         fieldsets: list[str] | None = None,
     ) -> None:
         """Write a trajectory at the given index to the NetCDF file(s)."""
@@ -1581,9 +1662,9 @@ class TrajectoryStore:
             nc_file = single_nc_file or self._nc[fs_name]
             group = nc_file.groups[fs_name][0]
 
-            # Write per-point data as variable-length arrays.
             for name in group.variables:
                 field = fs[name]
+                var = group.variables[name]
 
                 # Get data either from the trajectory or the "associated data"
                 # we've been passed.
@@ -1593,21 +1674,102 @@ class TrajectoryStore:
                 elif data is not None:
                     val = getattr(data, name)
 
-                # Save the data to the correct NetCDF4 group.
-                if field.pointwise:
-                    if val is None:
-                        raise ValueError(
-                            f'Per-point data field "{name}" is None at index {index}'
+                self._write_to_nc_var(var, index, name, field, val)
+                nc_file.traj_var[0][index] = index
+
+    def _write_to_nc_var(
+        self,
+        var: nc4.Variable,
+        index: int,
+        name: str,
+        field: FieldMetadata,
+        val: Any,
+    ) -> None:
+        """Write a value to a NetCDF variable at the given index."""
+
+        # Handle missing values.
+        if val is None:
+            if field.required:
+                raise ValueError(f'Data field "{name}" is None at index {index}')
+            return
+
+        # Save data to NetCDF variable, handling species and thrust modes. At
+        # this point, we assume that all the types are correct, since these
+        # will have been checked earlier. Numpy array values are saved as
+        # variable length types of the appropriate base type.
+        has_sp = Dimension.SPECIES in field.dimensions
+        has_tm = Dimension.THRUST_MODE in field.dimensions
+        match (has_sp, has_tm):
+            case (False, False):
+                # float, np.ndarray
+                var[index] = val
+            case (False, True):
+                # ThrustModeValues
+                for ti, tm in enumerate(ThrustMode):
+                    var[index, ti] = val[tm]
+            case (True, False):
+                # SpeciesValues[float], SpeciesValues[np.ndarray]
+                for si, sp in enumerate(Species):
+                    if sp in val:
+                        var[index, si] = val[sp]
+            case (True, True):
+                # SpeciesValues[ThrustModeValues]
+                for si, sp in enumerate(Species):
+                    for ti, tm in enumerate(ThrustMode):
+                        if sp in val and tm in val[sp]:
+                            var[index, si, ti] = val[sp][tm]
+
+    def _read_from_nc_var(
+        self,
+        var: nc4.Variable,
+        index: int,
+        name: str,
+        field: FieldMetadata,
+        species: list[Species],
+    ) -> Any:
+        """Read a value from a NetCDF variable at the given index."""
+
+        # Make sure the netCDF4 package doesn't return masked arrays.
+        var.set_auto_mask(False)
+
+        # Read data from NetCDF variable, handling species and thrust modes.
+        match (
+            Dimension.SPECIES in field.dimensions,
+            Dimension.THRUST_MODE in field.dimensions,
+            Dimension.POINT in field.dimensions,
+        ):
+            case (False, False, False):
+                # float
+                if var[index] == var.get_fill_value():
+                    return None
+                return var[index]
+            case (False, False, True):
+                # np.ndarray
+                if all(var[index] == var.get_fill_value()):
+                    return None
+                return var[index]
+            case (True, False, False) | (True, False, True):
+                # SpeciesValues[float] | SpeciesValues[np.ndarray]
+                return SpeciesValues(
+                    {sp: var[index, si] for si, sp in enumerate(species)}
+                )
+            case (False, True, False):
+                # ThrustModeValues
+                return ThrustModeValues(
+                    {tm: var[index, ti] for ti, tm in enumerate(ThrustMode)}
+                )
+            case (True, True, False):
+                # SpeciesValues[ThrustModeValues]
+                return SpeciesValues[ThrustModeValues](
+                    {
+                        sp: ThrustModeValues(
+                            {tm: var[index, si, ti] for ti, tm in enumerate(ThrustMode)}
                         )
-                    group.variables[name][index] = val
-                else:
-                    if val is None and field.required:
-                        raise ValueError(
-                            f'Per-trajectory data field "{name}" is None '
-                            f'at index {index}'
-                        )
-                    if val is not None:
-                        group.variables[name][index] = val
+                        for si, sp in enumerate(species)
+                    }
+                )
+            case _:
+                raise ValueError(f'Invalid combination of dimensions for field {name}')
 
     def _check_file_paths(self, paths: list[PathType], mode: FileMode) -> None:
         # Ensure all input paths are distinct.
@@ -1842,3 +2004,70 @@ class TrajectoryStore:
             assert isinstance(f[0], PathType)
             check_paths.append(f[0])
         return check_paths
+
+
+def _create_dimensions(
+    dataset: nc4.Dataset, fieldsets: set[str], species: list[Species]
+) -> tuple[nc4.Dimension, nc4.Variable]:
+    # The only dimension we need to keep track of explicitly is the trajectory.
+    # All per-point data is stored using NetCDF4 variable-length arrays and
+    # species and thrust mode dimensions are of fixed size.
+    traj_dim = dataset.createDimension('trajectory', None)
+
+    # Coordinate variable for trajectory dimension.
+    traj_var = dataset.createVariable('trajectory', np.int64, ('trajectory',))
+
+    # Create species and thrust mode dimensions and coordinate variables if
+    # required.
+
+    def create_enum_dimension(
+        name: str, enum_type: type[Enum], values: list | None = None
+    ):
+        dataset.createDimension(
+            name, len(values) if values is not None else len(enum_type)
+        )
+        v = dataset.createVariable(name, str, name)
+        v.set_auto_mask(False)
+        v.set_always_mask(False)
+        for idx, m in enumerate(values if values is not None else enum_type):
+            dataset.variables[name][idx] = m.name
+
+    species_dim_created: bool = False
+    thrust_mode_dim_created: bool = False
+    for fs_name in fieldsets:
+        fs = FieldSet.from_registry(fs_name)
+        dims = fs.dimensions
+        if Dimension.SPECIES in dims and not species_dim_created:
+            # Create species dimension using only species in data to be saved,
+            # not all defined species.
+            create_enum_dimension('species', Species, species)
+            species_dim_created = True
+        if Dimension.THRUST_MODE in dims and not thrust_mode_dim_created:
+            create_enum_dimension('thrust_mode', ThrustMode)
+            thrust_mode_dim_created = True
+
+    return traj_dim, traj_var
+
+
+def _create_vl_types(
+    dataset: nc4.Dataset, fieldsets: set[str]
+) -> dict[type, nc4.VLType | type]:
+    # Variable length types for floating point and integer per-point data.
+    # (NetCDF4 handles variable-length strings natively so we add Python's
+    # string type here.)
+    vl_types: dict[type, nc4.VLType | type] = {str: str}
+    for fs_name in fieldsets:
+        fs = FieldSet.from_registry(fs_name)
+        for field in fs.values():
+            if Dimension.POINT in field.dimensions and field.field_type not in vl_types:
+                try:
+                    vl_types[field.field_type] = dataset.createVLType(
+                        field.field_type, f'{field.field_type.__name__}_vlen'
+                    )
+                except TypeError:
+                    raise ValueError(
+                        f'Unsupported field type {field.field_type} '
+                        f'for variable-length array in field set "{fs_name}"'
+                    )
+
+    return vl_types

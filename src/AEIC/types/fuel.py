@@ -14,18 +14,17 @@ class Fuel(CIBaseModel):
     """Fuel energy content in MJ/kg."""
 
     EI_H2O: float
-    """Emission index for water vapor (g H2O / kg fuel)."""
+    """Emission index for water vapor (g H₂O / kg fuel)."""
 
     EI_CO2: float
-    """Emission index for carbon dioxide (g CO2 / kg fuel)."""
+    """Emission index for carbon dioxide (g CO₂ / kg fuel)."""
 
     non_volatile_carbon_content: float
-    # TODO: Is this the right name?
-    # TODO: Units?
+    # TODO: Is this the right name? What units is this in?
     """Non-volatile carbon content (???)."""
 
     lifecycle_CO2: float | None = None
-    """Life-cycle CO2 emissions (g CO2e / MJ fuel)."""
+    """Life-cycle CO₂ emissions (g CO₂e / MJ fuel)."""
 
     fuel_sulfur_content_nom: float
     """Fuel sulfur content (nominal) in ppm by weight (mg S / kg fuel)."""

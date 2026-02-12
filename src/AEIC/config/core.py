@@ -5,10 +5,10 @@ import os
 import tomllib
 from importlib.resources import as_file, files
 from pathlib import Path
+from typing import Any
 
 from pydantic import ConfigDict, Field, model_validator
 
-from AEIC.utils.helpers import deep_update
 from AEIC.utils.models import CIBaseModel
 
 from .emissions import EmissionsConfig
@@ -142,7 +142,9 @@ class Config(CIBaseModel):
             if file_path.exists():
                 return file_path
 
-        raise FileNotFoundError(f'File {f} not found in AEIC search path.')
+        raise FileNotFoundError(
+            f'File {f} not found in AEIC search path {[str(p) for p in self.path]}.'
+        )
 
     @classmethod
     def get(cls) -> Config:
@@ -213,6 +215,15 @@ class Config(CIBaseModel):
         # Add package data directory as a fallback.
         with as_file(files('AEIC') / 'data') as data_dir:
             object.__setattr__(self, 'path', self.path + [data_dir.resolve()])
+
+
+def deep_update(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    for key, value in overlay.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            deep_update(base[key], value)
+        else:
+            base[key] = value
+    return base
 
 
 # Module property-like access to configuration via a proxy to allow late

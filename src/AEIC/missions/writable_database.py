@@ -6,7 +6,7 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
-from enum import Enum
+from enum import StrEnum
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -14,7 +14,7 @@ import pandas as pd
 import AEIC.utils.airports as airports
 from AEIC.types import DayOfWeek, TimeOfDay
 from AEIC.units import MINUTES_TO_SECONDS
-from AEIC.utils.spatial import great_circle_distance
+from AEIC.utils import GEOD
 
 from .database import Database
 
@@ -44,7 +44,7 @@ class AirportInfo:
 
 @dataclass
 class Warning:
-    class Type(str, Enum):
+    class Type(StrEnum):
         UNKNOWN_AIRPORT = 'unknown airport code'
         TIME_MISORDERING = 'arrival time before departure time'
         SUSPICIOUS_DISTANCE = 'suspicious distance'
@@ -603,13 +603,12 @@ class WritableDatabase(Database):
         """
 
         gc_distance_km = (
-            great_circle_distance(
+            GEOD.inv(
                 origin.airport.latitude,
                 origin.airport.longitude,
                 destination.airport.latitude,
                 destination.airport.longitude,
-                degrees=True,
-            )
+            )[2]
             / 1000.0
         )
 

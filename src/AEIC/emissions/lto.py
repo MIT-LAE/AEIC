@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from AEIC.config import config
 from AEIC.config.emissions import (
     ClimbDescentMode,
@@ -12,16 +10,11 @@ from AEIC.config.emissions import (
     PMnvolMethod,
     PMvolMethod,
 )
+from AEIC.emissions.types import EmissionsSubset
+from AEIC.performance.edb import EDBEntry
 from AEIC.performance.models.base import BasePerformanceModel
-from AEIC.performance.utils.edb import EDBEntry
-from AEIC.types import (
-    EmissionsDict,
-    EmissionsSubset,
-    ModeValues,
-    Species,
-    ThrustLabelArray,
-    ThrustMode,
-)
+from AEIC.performance.types import ThrustMode, ThrustModeArray, ThrustModeValues
+from AEIC.types import Species, SpeciesValues
 from AEIC.units import MINUTES_TO_SECONDS
 
 from .ei.nox import NOx_speciation
@@ -29,23 +22,24 @@ from .ei.pmvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from .utils import constant_species_values, scope11_profile
 
 if TYPE_CHECKING:
-    from AEIC.types import Fuel, LTOPerformance
+    from AEIC.performance.types import LTOPerformance
+    from AEIC.types import Fuel
 
 
 def get_LTO_emissions(
     performance_model: BasePerformanceModel, fuel: Fuel
-) -> EmissionsSubset[ModeValues]:
+) -> EmissionsSubset[ThrustModeValues]:
     """
     Compute Landing-and-Takeoff cycle emission indices and quantities.
     """
-    lto_indices = EmissionsDict[ModeValues]()
-    lto_emissions = EmissionsDict[ModeValues]()
+    lto_indices = SpeciesValues[ThrustModeValues]()
+    lto_emissions = SpeciesValues[ThrustModeValues]()
 
     lto_data = performance_model.lto
 
     for species, value in constant_species_values(fuel).items():
         if species in config.emissions.enabled_species:
-            lto_indices[species] = ModeValues({m: value for m in ThrustMode})
+            lto_indices[species] = ThrustModeValues({m: value for m in ThrustMode})
 
     lto_indices.update(_lto_nox(lto_data))
 
@@ -59,7 +53,7 @@ def get_LTO_emissions(
 
     if Species.PMnvol in config.emissions.enabled_species:
         lto_indices.update(_lto_pmnvol(performance_model.edb))
-    lto_indices[Species.PMnvolGMD] = ModeValues(0.0)
+    lto_indices[Species.PMnvolGMD] = ThrustModeValues(0.0)
 
     lto_fuel_burn = _LTO_TIMS * lto_data.fuel_flow
     if config.emissions.climb_descent_mode != ClimbDescentMode.LTO:
@@ -79,7 +73,7 @@ def get_LTO_emissions(
     return EmissionsSubset(lto_indices, lto_emissions, lto_fuel_burn.sum())
 
 
-_LTO_TIMS = ModeValues(
+_LTO_TIMS = ThrustModeValues(
     {
         ThrustMode.IDLE: 26.0 * MINUTES_TO_SECONDS,
         ThrustMode.APPROACH: 4.0 * MINUTES_TO_SECONDS,
@@ -90,9 +84,9 @@ _LTO_TIMS = ModeValues(
 """ICAO standard time-in-mode vector for Taxi → TO segments."""
 
 
-def _lto_nox(lto_data: LTOPerformance) -> EmissionsDict[ModeValues]:
-    """Fill LTO NOx and species splits while keeping auxiliary arrays in sync."""
-    indices = EmissionsDict[ModeValues]()
+def _lto_nox(lto_data: LTOPerformance) -> SpeciesValues[ThrustModeValues]:
+    """Calculate LTO total NOₓ and NOₓ speciation."""
+    indices = SpeciesValues[ThrustModeValues]()
 
     lto_nox = lto_data.EI_NOx
 
@@ -110,31 +104,28 @@ def _lto_nox(lto_data: LTOPerformance) -> EmissionsDict[ModeValues]:
     return indices
 
 
-def _lto_pmvol(lto_data: LTOPerformance) -> EmissionsDict[ModeValues]:
-    """Set PMvol/OCic EIs for the LTO cycle."""
+def _lto_pmvol(lto_data: LTOPerformance) -> SpeciesValues[ThrustModeValues]:
+    """Calculate LTO PMvol/OCic emission indices."""
 
-    indices = EmissionsDict[ModeValues]()
+    indices = SpeciesValues[ThrustModeValues]()
     if config.emissions.pmvol_method is PMvolMethod.NONE:
-        indices[Species.PMvol] = ModeValues()
-        indices[Species.OCic] = ModeValues()
+        indices[Species.PMvol] = ThrustModeValues()
+        indices[Species.OCic] = ThrustModeValues()
         return indices
 
     match config.emissions.pmvol_method:
         case PMvolMethod.FUEL_FLOW:
-            thrust_labels = ThrustLabelArray(
-                np.array([m.label for m in lto_data.fuel_flow.keys()])
-            )
             tmp_PMvol, tmp_OCic = EI_PMvol_FuelFlow(
-                lto_data.fuel_flow.as_array(), thrust_labels
+                lto_data.fuel_flow.as_array(), ThrustModeArray.modes()
             )
-            LTO_PMvol = ModeValues(tmp_PMvol)
-            LTO_OCic = ModeValues(tmp_OCic)
+            LTO_PMvol = ThrustModeValues(tmp_PMvol)
+            LTO_OCic = ThrustModeValues(tmp_OCic)
         case PMvolMethod.FOA3:
             tmp_PMvol, tmp_OCic = EI_PMvol_FOA3(
                 lto_data.thrust_pct.as_array(), lto_data.EI_HC.as_array()
             )
-            LTO_PMvol = ModeValues(tmp_PMvol)
-            LTO_OCic = ModeValues(tmp_OCic)
+            LTO_PMvol = ThrustModeValues(tmp_PMvol)
+            LTO_OCic = ThrustModeValues(tmp_OCic)
         case _:
             raise NotImplementedError(
                 f"EI_PMvol_method '{config.emissions.pmvol_method.value}' "
@@ -146,9 +137,9 @@ def _lto_pmvol(lto_data: LTOPerformance) -> EmissionsDict[ModeValues]:
     return indices
 
 
-def _lto_pmnvol(edb: EDBEntry) -> EmissionsDict[ModeValues]:
-    """Set PMnvol EIs for the four LTO thrust points."""
-    indices = EmissionsDict[ModeValues]()
+def _lto_pmnvol(edb: EDBEntry) -> SpeciesValues[ThrustModeValues]:
+    """Calculate LTO PMnvol emission indices."""
+    indices = SpeciesValues[ThrustModeValues]()
     PMnvolEIN = None
     match config.emissions.pmnvol_method:
         case PMnvolMethod.FOA3 | PMnvolMethod.MEEM:
@@ -156,14 +147,14 @@ def _lto_pmnvol(edb: EDBEntry) -> EmissionsDict[ModeValues]:
             # PMnvolEI = edb.PMnvolEI_best_ICAOthrust.asarray()
             # TODO: This is just a temporary placeholder until this is
             # implemented properly.
-            PMnvolEI = ModeValues(0.0)
+            PMnvolEI = ThrustModeValues(0.0)
         case PMnvolMethod.SCOPE11:
             profile = scope11_profile(edb)
             PMnvolEI = profile.mass.copy()
             if profile.number is not None:
                 PMnvolEIN = profile.number.copy()
         case PMnvolMethod.NONE:
-            PMnvolEI = ModeValues(0.0)
+            PMnvolEI = ThrustModeValues(0.0)
         case _:
             raise ValueError(
                 f"""Re-define PMnvol estimation method:
