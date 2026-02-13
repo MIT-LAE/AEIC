@@ -1,8 +1,8 @@
 import re
 from dataclasses import dataclass
 
+from AEIC.performance.types import SpeedData, Speeds
 from AEIC.trajectories.phase import FlightPhase
-from AEIC.types import SpeedData, Speeds
 from AEIC.units import FPM_TO_MPS, KNOTS_TO_MPS, MINUTES_TO_SECONDS
 
 

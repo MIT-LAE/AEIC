@@ -1,6 +1,3 @@
-# WARNING: THIS IS NOT REALLY TESTED! IT'S MORE A PLACEHOLDER FOR SOMEONE ELSE
-# (ADI? WYATT?) TO FIX.
-
 from typing import Any
 
 import click
@@ -28,7 +25,7 @@ def lto_from_edb(engine_file, engine_uid, thrust_fractions) -> LTOPerformance:
     return edb_data.make_lto_performance(thrust_fractions)
 
 
-def lto_from_lto_file(lto_file) -> LTOPerformance:
+def lto_from_toml_file(lto_file) -> LTOPerformance:
     if lto_file is None:
         raise click.UsageError(
             '--lto-file must be provided when using "lto-file" as the LTO source.'
@@ -73,7 +70,7 @@ def cli(ctx, output_file):
 
 @click.option(
     '--lto-source',
-    type=click.Choice(['edb', 'lto-file']),
+    type=click.Choice(['edb', 'toml']),
     required=True,
     help='Source of LTO performance data.',
 )
@@ -96,7 +93,7 @@ def cli(ctx, output_file):
 @click.option(
     '--lto-file',
     type=click.Path(exists=True),
-    help='Input BADA LTO file.',
+    help='Input LTO file.',
 )
 @click.option(
     '--ptf-file',
@@ -110,9 +107,8 @@ def cli(ctx, output_file):
     type=click.Choice(['wide', 'narrow', 'small', 'freight']),
 )
 @click.option(
-    # TODO: Limit to reasonable values.
     '--number-of-engines',
-    type=int,
+    type=click.IntRange(1, 8),
     required=True,
     help='Number of engines on the aircraft.',
 )
@@ -142,13 +138,12 @@ def legacy(
 
     toml_data: dict[str, Any] = {'model_type': 'legacy'}
 
-    # LTO data comes either from the engine database (plus explicitly provided
-    # Foo value) or from a BADA LTO file.
+    # LTO data comes either from the Emissions Databank (EDB) or user provided TOML file
     match lto_source:
         case 'edb':
             lto = lto_from_edb(engine_file, engine_uid, thrust_fractions)
-        case 'lto-file':
-            lto = lto_from_lto_file(lto_file)
+        case 'toml':
+            lto = lto_from_toml_file(lto_file)
         case _:
             raise click.UsageError(f'Unsupported LTO source: {lto_source}')
     toml_data['LTO_performance'] = LTOPerformanceInput.from_internal(lto).model_dump()
@@ -174,11 +169,6 @@ def legacy(
 
     with open(ctx.obj['output_file'], 'wb') as fp:
         tomli_w.dump(toml_data, fp)
-
-
-@cli.command()
-def bada():
-    raise NotImplementedError('BADA performance model generation not yet implemented.')
 
 
 @cli.command()
