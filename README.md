@@ -6,7 +6,18 @@ Aviation Emissions Inventory Code (AEIC) is used to estimate aviation emissions 
 
 ## Installation
 
-`AEIC` is not currently available on PyPI. As such, the current best method for simple usage is identical to the local development setup detailed below.
+`AEIC` is not currently available on PyPI, but you can install releases from
+GitHub. The latest available version is v0.2.0. If you are using `pip`, do
+
+```shell
+pip install git+https://github.com/MIT-LAE/AEIC.git@v0.2.0
+```
+
+If you are using `uv`, do
+
+```shell
+uv add git+https://github.com/MIT-LAE/AEIC.git@v0.2.0
+```
 
 ## Local Development
 

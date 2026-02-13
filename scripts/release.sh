@@ -17,6 +17,8 @@ fi
 git checkout main
 git pull upstream main
 
+git checkout -b release-tmp
+
 uv run bump-my-version bump "$PART"
 uv lock
 git add uv.lock
@@ -31,7 +33,7 @@ EOF
 
 BRANCH="release-$VERSION"
 
-git checkout -b "$BRANCH"
+git branch -m releast-tmp "$BRANCH"
 git push origin "$BRANCH"
 
 echo

@@ -79,6 +79,10 @@ commit_args = "--no-verify"
 tag = false
 tag_name = "v{new_version}"
 tag_message = "Release v{new_version}"
+files = [
+  { filename = "README.md" },
+  { filename = "docs/main_page.md" }
+]
 
 [tool.ruff]
 extend-exclude = ["*.ipynb"]
