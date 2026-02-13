@@ -22,10 +22,12 @@ jobs:
           version: "0.7.13"
 
       - name: Set up Python 3.13
-        run: uv python install
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.13"
 
       - name: Install project & dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --locked --all-extras --dev
 
       - name: Verify tag matches version
         run: |
