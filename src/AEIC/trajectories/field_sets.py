@@ -295,6 +295,19 @@ class FieldMetadata:
         ]
         return ','.join(parts)
 
+    def remove_point_dim(self) -> FieldMetadata:
+        if Dimension.POINT not in self.dimensions:
+            raise ValueError('field does not have point dimension')
+        new_dims = self.dimensions.remove(Dimension.POINT)
+        return FieldMetadata(
+            dimensions=new_dims,
+            field_type=self.field_type,
+            description=self.description,
+            units=self.units,
+            required=self.required,
+            default=self.default,
+        )
+
 
 class FieldSet(Mapping):
     """A collection of field definitions.
@@ -329,7 +342,7 @@ class FieldSet(Mapping):
         self.fieldset_name = fieldset_name
 
         # Save the fields.
-        self._fields = dict(fields)
+        self._fields: dict[str, FieldMetadata] = dict(fields)
 
         # Add the `FieldSet` to the registry. "Normal" field sets will be
         # added, but when we merge two field sets, we do not add the merge
@@ -454,6 +467,21 @@ class FieldSet(Mapping):
         for f in self._fields.values():
             dims.update(f.dimensions.dims)
         return dims
+
+    def single_point(self) -> FieldSet:
+        """Return a new `FieldSet` containing only fields that have a point
+        dimension, with the point dimension removed. This makes it possible to
+        derive the equivalent "single point" field set for any field set
+        containing whatever kinds of fields."""
+        return FieldSet(
+            self.fieldset_name + ':point',
+            registered=False,
+            **{
+                fname: f.remove_point_dim()
+                for fname, f in self._fields.items()
+                if Dimension.POINT in f.dimensions
+            },
+        )
 
 
 @runtime_checkable

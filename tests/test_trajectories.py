@@ -1,6 +1,8 @@
 import AEIC.trajectories.builders as tb
 from AEIC.emissions.emission import compute_emissions
 from AEIC.performance.types import ThrustMode
+from AEIC.trajectories import Dimension
+from AEIC.trajectories.trajectory import BASE_FIELDS
 from AEIC.types import Species
 
 
@@ -75,3 +77,14 @@ def test_trajectory_comparison(sample_missions, performance_model, fuel):
     traj_copy.trajectory_emissions[Species.CO2][20] *= 1.1
     assert traj_copy != traj
     assert not traj_copy.approx_eq(traj)
+
+
+def test_single_point_field_set():
+    base_single = BASE_FIELDS.single_point()
+    fields = set(
+        [f for f in BASE_FIELDS if Dimension.POINT in BASE_FIELDS[f].dimensions]
+    )
+    assert fields == set(base_single.fields.keys())
+    assert not any(
+        Dimension.POINT in base_single.fields[f].dimensions for f in base_single.fields
+    )
