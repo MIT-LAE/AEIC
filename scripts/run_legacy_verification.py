@@ -79,6 +79,10 @@ def metrics_page(
     t(0.0, 1, 'New flight time (s):')
     t(0.26, 0, f'{legacy_traj.flight_time[-1]:.1f}')
     t(0.26, 1, f'{new_traj.flight_time[-1]:.1f}')
+    t(0.5, 0, 'Legacy point count:')
+    t(0.5, 1, 'New point count:')
+    t(0.76, 0, f'{len(legacy_traj)}')
+    t(0.76, 1, f'{len(new_traj)}')
 
     col_width = 0.1
 
