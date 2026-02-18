@@ -41,6 +41,7 @@ echo "Release branch created: $BRANCH"
 echo "Open a PR, merge it, then run:"
 echo
 echo "  git checkout main"
-echo "  git pull upstream main"
+echo "  git fetch upstream main"
+echo "  git reset --hard upstream/main"
 echo "  git tag -a v$VERSION -m 'Release v$VERSION'"
 echo "  git push upstream v$VERSION"
