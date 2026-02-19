@@ -7,12 +7,16 @@ from typing import Any
 import numpy as np
 
 from AEIC.performance.types import ThrustModeValues
+from AEIC.storage import (
+    PHASE_FIELDS,
+    Dimension,
+    Dimensions,
+    FieldMetadata,
+    FieldSet,
+    HasFieldSets,
+)
 from AEIC.types import Species, SpeciesValues
 from AEIC.verification.metrics import ComparisonMetrics, ComparisonMetricsCollection
-
-from .dimensions import Dimension, Dimensions
-from .field_sets import FieldMetadata, FieldSet, HasFieldSets
-from .phase import PHASE_FIELDS
 
 BASE_FIELDSET_NAME = 'base'
 
@@ -93,9 +97,53 @@ class Trajectory:
     FIXED_FIELDS = {
         'X_data_dictionary',  # Field definition information.
         'X_fieldsets',  # Names of field sets in this trajectory.
-        'X_data',  # Per-point data fields.
+        'X_data',  # Data fields.
         'X_npoints',  # Number of points in the trajectory.
     }
+
+    def __init__(
+        self, npoints: int, name: str | None = None, fieldsets: list[str] | None = None
+    ):
+        """Initialized with a fixed number of points and an optional name.
+
+        The name is used for labelling trajectories within trajectory sets (and
+        NetCDF files).
+
+        All pointwise data and per-trajectory fields included in every
+        trajectory by default are taken from the `BASE_FIELDS` dictionary
+        above. Other fields may be added using the `add_fields` method."""
+
+        # A trajectory has a fixed number of points, known in advance.
+        # TODO: Lift this restriction? How could we make it so that you can add
+        # points incrementally, in a nice way?
+        self.X_npoints = npoints
+
+        # A trajectory has a set of data fields with specified dimensions. All
+        # of these are defined by a FieldSet, and the total sets of all fields
+        # are stored in a data dictionary.
+        self.X_data_dictionary: FieldSet = BASE_FIELDS
+
+        # Keep track of the FieldSets that contributed to this trajectory.
+        self.X_fieldsets = {BASE_FIELDS.fieldset_name}
+
+        # Data fields. The types of these are determined by the dimensions and
+        # underlying data type of each field.
+        self.X_data: dict[str, Any] = {}
+        for n, f in self.X_data_dictionary.items():
+            self.X_data[n] = f.empty(npoints)
+
+        # A trajectory has an optional name.
+        if name is not None:
+            self.X_data['name'] = name
+
+        # Add any extra field sets named in the constructor.
+        if fieldsets is not None:
+            for fs_name in set(fieldsets) - {BASE_FIELDSET_NAME}:
+                self.add_fields(FieldSet.from_registry(fs_name))
+
+    def __len__(self):
+        """The total number of points in the trajectory."""
+        return self.X_npoints
 
     def __eq__(self, other: object) -> bool:
         """Two trajectories are equal if their data dictionaries are equal and
@@ -153,50 +201,6 @@ class Trajectory:
                 else:
                     raise ValueError('unknown type in trajectory comparison')
         return True
-
-    def __init__(
-        self, npoints: int, name: str | None = None, fieldsets: list[str] | None = None
-    ):
-        """Initialized with a fixed number of points and an optional name.
-
-        The name is used for labelling trajectories within trajectory sets (and
-        NetCDF files).
-
-        All pointwise data and per-trajectory fields included in every
-        trajectory by default are taken from the `BASE_FIELDS` dictionary
-        above. Other fields may be added using the `add_fields` method."""
-
-        # A trajectory has a fixed number of points, known in advance.
-        # TODO: Lift this restriction? How could we make it so that you can add
-        # points incrementally, in a nice way?
-        self.X_npoints = npoints
-
-        # A trajectory has a set of data fields with specified dimensions. All
-        # of these are defined by a FieldSet, and the total sets of all fields
-        # are stored in a data dictionary.
-        self.X_data_dictionary: FieldSet = BASE_FIELDS
-
-        # Keep track of the FieldSets that contributed to this trajectory.
-        self.X_fieldsets = {BASE_FIELDS.fieldset_name}
-
-        # Data fields. The types of these are determined by the dimensions and
-        # underlying data type of each field.
-        self.X_data: dict[str, Any] = {}
-        for n, f in self.X_data_dictionary.items():
-            self.X_data[n] = f.empty(npoints)
-
-        # A trajectory has an optional name.
-        if name is not None:
-            self.X_data['name'] = name
-
-        # Add any extra field sets named in the constructor.
-        if fieldsets is not None:
-            for fs_name in set(fieldsets) - {BASE_FIELDSET_NAME}:
-                self.add_fields(FieldSet.from_registry(fs_name))
-
-    def __len__(self):
-        """The total number of points in the trajectory."""
-        return self.X_npoints
 
     @property
     def nbytes(self) -> int:

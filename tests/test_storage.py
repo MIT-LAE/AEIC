@@ -12,13 +12,8 @@ import numpy as np
 import pytest
 
 from AEIC.performance.types import ThrustModeValues
-from AEIC.trajectories import (
-    Dimension,
-    Dimensions,
-    FieldMetadata,
-    FieldSet,
-    TrajectoryStore,
-)
+from AEIC.storage import Dimension, Dimensions, FieldMetadata, FieldSet
+from AEIC.trajectories import TrajectoryStore
 from AEIC.trajectories.trajectory import Trajectory
 from AEIC.types import Species, SpeciesValues
 

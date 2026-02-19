@@ -6,6 +6,7 @@ from AEIC.config import config
 from AEIC.missions import Mission
 from AEIC.performance.models import LegacyPerformanceModel
 from AEIC.performance.types import AircraftState, SimpleFlightRules
+from AEIC.storage import FlightPhase
 from AEIC.units import (
     FEET_TO_METERS,
     METERS_TO_FL,
@@ -14,7 +15,7 @@ from AEIC.units import (
 )
 from AEIC.weather import Weather
 
-from .. import FlightPhase, GroundTrack, Trajectory
+from .. import GroundTrack, Trajectory
 from .base import Builder, Context, Options
 
 

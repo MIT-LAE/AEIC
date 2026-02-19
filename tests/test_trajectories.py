@@ -1,7 +1,7 @@
 import AEIC.trajectories.builders as tb
 from AEIC.emissions.emission import compute_emissions
 from AEIC.performance.types import ThrustMode
-from AEIC.trajectories import Dimension
+from AEIC.storage import Dimension
 from AEIC.trajectories.trajectory import BASE_FIELDS
 from AEIC.types import Species
 

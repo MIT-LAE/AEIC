@@ -3,9 +3,9 @@ from dataclasses import dataclass
 
 from AEIC.missions import Mission
 from AEIC.performance.models import BasePerformanceModel
+from AEIC.storage import FlightPhase
 
 from ..ground_track import GroundTrack
-from ..phase import FlightPhase
 from ..trajectory import Trajectory
 
 
