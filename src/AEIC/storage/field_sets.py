@@ -319,8 +319,15 @@ class FieldSet(Mapping):
     """Registry of named field sets for reuse."""
 
     def __init__(
-        self, fieldset_name: str, *, registered: bool = True, **fields: FieldMetadata
+        self,
+        fieldset_name: str | None = None,
+        registered: bool = True,
+        **fields: FieldMetadata,
     ):
+        # Don't register anonymous field sets.
+        if fieldset_name is None:
+            registered = False
+
         # Ensure uniqueness in the registry. We do this by comparing hashes of
         # the `FieldSet` contents. (We use the `calc_hash` method for the input
         # fields because we don't yet have a `FieldSet` value to call `hash` on
@@ -335,7 +342,7 @@ class FieldSet(Mapping):
 
         # Disallow names starting with underscore so that we can use them as
         # internal NetCDF group names.
-        if fieldset_name[0] == '_':
+        if fieldset_name is not None and fieldset_name[0] == '_':
             raise ValueError('FieldSet name cannot start with underscore "_"')
 
         # Use an awkward name here to allow "name" as a field name.
@@ -349,7 +356,12 @@ class FieldSet(Mapping):
         # result to the registry because there is no reasonable name to give it
         # and it's private to whatever code called the `merge` method.
         if registered:
+            assert fieldset_name is not None
             FieldSet.REGISTRY[fieldset_name] = self
+
+    @property
+    def anonymous(self) -> bool:
+        return self.fieldset_name is None
 
     @classmethod
     def known(cls, name: str) -> bool:
@@ -418,6 +430,9 @@ class FieldSet(Mapping):
 
     def __hash__(self):
         """Hash based on name and field definitions."""
+
+        if self.fieldset_name is None:
+            raise ValueError('anonymous FieldSets cannot be hashed')
         return self.calc_hash(self.fieldset_name, self._fields)
 
     @cached_property
@@ -427,8 +442,11 @@ class FieldSet(Mapping):
         This MD5-based hash is used for identifying field sets within NetCDF
         files and is used to check the integrity of the link between associated
         NetCDF files and base trajectory NetCDF files in the `TrajectoryStore`
-        class.
-        """
+        class."""
+
+        if self.fieldset_name is None:
+            raise ValueError('anonymous FieldSets do not have a digest')
+
         m = hashlib.md5()
         m.update(self.fieldset_name.encode('utf-8'))
         m.update(b':')
@@ -451,14 +469,15 @@ class FieldSet(Mapping):
             raise ValueError(f'Overlapping field names: {overlap}')
         merged_fields = dict(self._fields)
         merged_fields.update(other._fields)
-        return FieldSet(
-            f'{self.fieldset_name}+{other.fieldset_name}',
-            registered=False,
-            **merged_fields,
-        )
+        if self.fieldset_name is None:
+            name = other.fieldset_name
+        else:
+            name = self.fieldset_name + other.fieldset_name
+        return FieldSet(name, registered=False, **merged_fields)
 
     def __repr__(self):
-        return f'<FieldSet {self.fieldset_name}: {list(self._fields)}>'
+        name = '*anonymous*' if self.anonymous else self.fieldset_name
+        return f'<FieldSet {name}: {list(self._fields)}>'
 
     @property
     def dimensions(self) -> set[Dimension]:
@@ -474,7 +493,7 @@ class FieldSet(Mapping):
         derive the equivalent "single point" field set for any field set
         containing whatever kinds of fields."""
         return FieldSet(
-            self.fieldset_name + ':point',
+            fieldset_name=None,
             registered=False,
             **{
                 fname: f.remove_point_dim()
