@@ -85,9 +85,13 @@ class Trajectory(Container):
     and point index. This is needed to record emissions information.)"""
 
     def __init__(
-        self, npoints: int, name: str | None = None, fieldsets: list[str] | None = None
+        self,
+        npoints: int | None = None,
+        name: str | None = None,
+        fieldsets: list[str] | None = None,
     ):
-        """Initialized with a fixed number of points and an optional name.
+        """Initialized either empty for construction be appending points or
+        with a fixed number of points, and an optional name.
 
         The name is used for labelling trajectories within trajectory sets (and
         NetCDF files).
@@ -100,7 +104,7 @@ class Trajectory(Container):
         # sets specified by the caller.
         if fieldsets is None:
             fieldsets = []
-        super().__init__(npoints, [BASE_FIELDSET_NAME] + fieldsets)
+        super().__init__(npoints=npoints, fieldsets=[BASE_FIELDSET_NAME] + fieldsets)
 
         # A trajectory has an optional name.
         if name is not None:
