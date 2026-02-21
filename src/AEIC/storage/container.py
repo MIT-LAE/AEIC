@@ -181,7 +181,7 @@ class Container:
         """The hash of a container is based on its data dictionary."""
         return hash(self._data_dictionary)
 
-    def __getattr__(self, name: str) -> np.ndarray[tuple[int], Any] | Any:
+    def __getattr__(self, name: str):
         """Override attribute retrieval to access pointwise and per-container
         data fields."""
 
@@ -314,17 +314,28 @@ class Container:
         """Convert an extensible container to a fixed-size container."""
         self._extensible = False
 
-    def make_point(self) -> Container:
+    def make_point(self, idx: int | None = None) -> Container:
         """Make a new container representing a single point of the possible
         multiple points stored in this container. For example, for a
         trajectory, this produces a container representing a single point of
-        the trajectory."""
+        the trajectory. If `idx` is specified, the field values for that point
+        are copied to the new container. If `idx` is not specified, the field
+        values in the new container are left uninitialized."""
 
         # This value is cached. The cache is invalidated if the data dictionary
         # of this container changes.
         if self._single_point_fieldset is None:
             self._single_point_fieldset = self._data_dictionary.single_point()
-        return Container(npoints=1, fieldset=self._single_point_fieldset)
+        pt = Container(npoints=1, fieldset=self._single_point_fieldset)
+        if idx is not None:
+            if idx < -self._size or idx >= self._size:
+                raise IndexError('point index out of range')
+            for name in pt._data_dictionary:
+                if name in self._data:
+                    val = self._data[name]
+                    if isinstance(val, np.ndarray):
+                        pt._data[name] = val[idx]
+        return pt
 
     def _expand_capacity(self) -> None:
         self._capacity += self.CAPACITY_EXPANSION

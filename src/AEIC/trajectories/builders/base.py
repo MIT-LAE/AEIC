@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from AEIC.missions import Mission
 from AEIC.performance.models import BasePerformanceModel
-from AEIC.storage import FlightPhase
+from AEIC.storage import Container, FlightPhase
 
 from ..ground_track import GroundTrack
 from ..trajectory import Trajectory
@@ -53,9 +53,6 @@ class Context:
 
     ground_track: GroundTrack
     """Ground track for the trajectory."""
-
-    npoints: dict[FlightPhase, int]
-    """The number of trajectory points in each flight phase."""
 
     initial_altitude: float
     """Overall starting altitude for the trajectory."""
@@ -135,32 +132,6 @@ class Builder(ABC):
         # For attributes not in the context, use default behavior.
         return super().__setattr__(name, value)
 
-    @property
-    def n_total(self) -> int:
-        """Total number of trajectory points."""
-
-        # Sum counts of trajectory points across all flight phases. Note that
-        # npoints is defined in the context object!
-        return sum(self.npoints.values())
-
-    # TODO: Define methods for other phases? Or just use self.npoints[phase]?
-    # Maybe leave it until we actually have models that model those phases.
-
-    @property
-    def n_climb(self) -> int:
-        """Number of trajectory points in climb phase."""
-        return self.npoints[FlightPhase.CLIMB]
-
-    @property
-    def n_cruise(self) -> int:
-        """Number of trajectory points in cruise phase."""
-        return self.npoints[FlightPhase.CRUISE]
-
-    @property
-    def n_descent(self) -> int:
-        """Number of trajectory points in descent phase."""
-        return self.npoints[FlightPhase.DESCENT]
-
     def fly(
         self,
         ac_performance: BasePerformanceModel,
@@ -214,14 +185,6 @@ class Builder(ABC):
                 self.starting_mass = self.calc_starting_mass()
             assert self.starting_mass is not None
 
-            # Set up trajectory: all initial values are zero, but that's OK,
-            # because we're going to fill those values in before we return from
-            # this function, and we're only going to return this trajectory if
-            # nothing goes wrong along the way. We give the trajectory a name
-            # to identify it in `TrajectoryStore`s and intermediate NetCDF
-            # files.
-            traj = Trajectory(self.n_total, name=mission.label)
-
             # Do the simulation...
 
             # Trajectory optimization.
@@ -232,11 +195,11 @@ class Builder(ABC):
 
             if self.options.iterate_mass:
                 # Iterate on starting mass to minimize mass residual.
-                self._iterate_mass(traj)
+                traj = self._iterate_mass()
             else:
                 # Otherwise, just fly a single iteration with the given starting
                 # mass.
-                self._fly_iteration(traj)
+                traj, _ = self._fly_iteration()
 
             # If everything was OK, we return the filled-in trajectory here,
             # setting up metadata variables before we do.
@@ -244,35 +207,29 @@ class Builder(ABC):
             traj.total_fuel_mass = self.total_fuel_mass
             if mission.flight_id is not None:
                 traj.flight_id = mission.flight_id
-            # TODO: This doesn't seem right. Flying the trajectory should
-            # result in a trajectory with the right numbers of points in each
-            # phase! You shouldn't need to set these things here.
-            traj.n_climb = self.n_climb
-            traj.n_cruise = self.n_climb
-            traj.n_descent = self.n_climb
             return traj
         finally:
             # Remove the context: this only exists during the simulation of a
             # trajectory.
             del self.ctx
 
-    def _iterate_mass(self, traj: Trajectory) -> None:
+    def _iterate_mass(self) -> Trajectory:
         """Iterate on starting mass to minimize residual fuel mass."""
         mass_converged = False
-        mass_res = 0
-
-        for _ in range(self.options.max_mass_iters):
-            mass_res = self._fly_iteration(traj)
-
+        iter = 1
+        traj, mass_res = self._fly_iteration()
+        while not mass_converged and iter < self.options.max_mass_iters:
             # Keep the calculated trajectory if the mass is sufficiently
             # small.
             if abs(mass_res) < self.options.mass_iter_reltol:
                 mass_converged = True
-                break
+            else:
+                # Perform a "dumb" correction of the starting mass.
+                self.starting_mass -= mass_res * self.total_fuel_mass
+                self.total_fuel_mass -= mass_res * self.total_fuel_mass
 
-            # Perform a "dumb" correction of the starting mass.
-            self.starting_mass -= mass_res * self.total_fuel_mass
-            self.total_fuel_mass -= mass_res * self.total_fuel_mass
+                traj, mass_res = self._fly_iteration()
+                iter += 1
 
         if not mass_converged:
             raise RuntimeError(
@@ -280,7 +237,24 @@ class Builder(ABC):
                 f"{mass_res:.2e} > {self.options.mass_iter_reltol:.2e}"
             )
 
-    def _fly_iteration(self, traj: Trajectory):
+        return traj
+
+    def _start_point(self, traj: Trajectory) -> Container:
+        # Set initial values, taking initial position and azimuth from ground
+        # track.
+        pt = traj.make_point()
+        start = self.ground_track[0]
+        pt.longitude = start.location.longitude
+        pt.latitude = start.location.latitude
+        pt.azimuth = start.azimuth
+        pt.altitude = self.initial_altitude
+        pt.flight_time = 0
+        pt.ground_distance = 0
+        pt.aircraft_mass = self.starting_mass
+        pt.fuel_mass = self.total_fuel_mass
+        return pt
+
+    def _fly_iteration(self) -> tuple[Trajectory, float]:
         """Run a single flight iteration. In non-weight-iterating mode, only
         runs once.
 
@@ -291,29 +265,22 @@ class Builder(ABC):
 
         self.current_mass = self.starting_mass
 
-        # Set initial values, taking initial position and azimuth from ground
-        # track.
-        start = self.ground_track[0]
-        traj.longitude[0] = start.location.longitude
-        traj.latitude[0] = start.location.latitude
-        traj.azimuth[0] = start.azimuth
-        traj.altitude[0] = self.initial_altitude
-        traj.flight_time[0] = 0
-        traj.ground_distance[0] = 0
-        traj.aircraft_mass[0] = self.starting_mass
-        traj.fuel_mass[0] = self.total_fuel_mass
+        # Set up extensible trajectory. We give the trajectory a name to
+        # identify it in `TrajectoryStore`s and intermediate NetCDF files.
+        traj = Trajectory(name=self.mission.label)
 
         # Fly the flight segments in order (normally just climb, cruise,
         # descent phases).
         for phase in FlightPhase:
             if hasattr(self, phase.method_name):
                 getattr(self, phase.method_name)(traj)
+        traj.fix()
 
         # Calculate weight residual normalized by total_fuel_mass.
         fuelBurned = self.starting_mass - traj.aircraft_mass[-1]
         mass_residual = (self.total_fuel_mass - fuelBurned) / self.total_fuel_mass
 
-        return mass_residual
+        return traj, mass_residual
 
     @abstractmethod
     def calc_starting_mass(self) -> float:
