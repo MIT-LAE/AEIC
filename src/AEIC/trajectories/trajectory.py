@@ -12,6 +12,7 @@ from AEIC.storage import (
     Dimensions,
     FieldMetadata,
     FieldSet,
+    FlightPhase,
 )
 from AEIC.types import SpeciesValues
 from AEIC.verification.metrics import ComparisonMetrics, ComparisonMetricsCollection
@@ -73,6 +74,10 @@ BASE_FIELDS = FieldSet(
 """Base field set included in every trajectory."""
 
 
+# NOTE: If you add a fixed attribute to the Trajectory class, make sure to
+# update the FIXED_FIELDS list in the Container base class.
+
+
 class Trajectory(Container):
     """Class representing a 1-D trajectory with various data fields and
     metadata.
@@ -109,6 +114,25 @@ class Trajectory(Container):
         # A trajectory has an optional name.
         if name is not None:
             self._data['name'] = name
+
+        self._current_phase = min(FlightPhase)
+
+    def set_phase(self, phase: FlightPhase):
+        """Set the current flight phase for this trajectory.
+
+        This is used by trajectory builders to keep track of which phase of
+        flight they're currently building, so that they can update the correct
+        phase point count field in the trajectory metadata."""
+        if phase < self._current_phase:
+            raise ValueError('cannot set flight phase to an earlier phase')
+        self._current_phase = phase
+        self._data[self._current_phase.field_name] = 0
+
+    def append(self, *args, **kwargs) -> None:
+        """Override the append method to also update the current flight phase
+        point count."""
+        super().append(*args, **kwargs)
+        self._data[self._current_phase.field_name] += 1
 
     @property
     def nbytes(self) -> int:

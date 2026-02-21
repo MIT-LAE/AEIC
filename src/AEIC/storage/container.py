@@ -18,13 +18,12 @@ class Container:
     data fields and metadata."""
 
     # The fixed set of attributes used for implementation of the flexible field
-    # interface. Obscure names are used here to reduce the chance of conflicts
-    # with data and metadata field names because we cannot have fields with the
-    # same names as these fixed infrastructure attributes.
+    # interface. Names with leading underscores will not conflict with field
+    # names from fieldsets, because those are not allowed to have a leading
+    # underscore.
     #
-    # (Unfortunately, because of the flexible field definition approach we're
-    # using here, we can't make these into Python double-underscore private
-    # fields. Using obscure names is the best we can do.)
+    # NOTE: If any fixed attributes are added to classes derived from
+    # Container, they should be added here.
     FIXED_FIELDS = {
         # Field definition information.
         '_data_dictionary',
@@ -41,6 +40,8 @@ class Container:
         '_extensible',
         # Field set for a single point in this container.
         '_single_point_fieldset',
+        # Additional fixed fields in Trajectory class:
+        '_current_phase',
     }
 
     STARTING_CAPACITY = 50

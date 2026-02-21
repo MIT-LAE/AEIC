@@ -12,7 +12,7 @@ Each `Trajectory` records the number of points in each phase using fields with
 names prefixed by `n_` (e.g., `n_climb`, `n_cruise`, `n_descent`).
 """
 
-from enum import Enum, auto
+from enum import IntEnum, auto
 
 import numpy as np
 
@@ -22,7 +22,7 @@ from .field_sets import FieldMetadata
 PHASE_FIELD_PREFIX = 'n_'
 
 
-class FlightPhase(Enum):
+class FlightPhase(IntEnum):
     """Flight phases known to AEIC."""
 
     IDLE_ORIGIN = auto()
