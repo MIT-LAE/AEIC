@@ -858,8 +858,8 @@ def test_create_fixed_size_container():
     # Create a fixed-size Container with a specified field set.
     container_fixed = Container(npoints=10, fieldsets=['test'])
     assert len(container_fixed) == 10
-    assert container_fixed.X_extensible is False
-    assert container_fixed.X_capacity == 10
+    assert container_fixed._extensible is False
+    assert container_fixed._capacity == 10
 
 
 def test_append_to_fixed_size_container():
@@ -874,8 +874,8 @@ def test_create_extensible_container():
     # Create an extensible Container with a specified field set.
     container_extensible = Container(fieldsets=['test'])
     assert len(container_extensible) == 0
-    assert container_extensible.X_extensible is True
-    assert container_extensible.X_capacity == 50
+    assert container_extensible._extensible is True
+    assert container_extensible._capacity == 50
 
 
 def test_append_to_container_by_keywords():
@@ -905,6 +905,6 @@ def test_append_to_container_by_class():
         point.per_point_2 = i * 20
         container_extensible.append(point)
     assert len(container_extensible) == 70
-    assert container_extensible.X_capacity == 100
+    assert container_extensible._capacity == 100
     assert container_extensible.per_point_1.tolist() == list(range(10, 710, 10))
     assert container_extensible.per_point_2.tolist() == list(range(20, 1420, 20))

@@ -27,20 +27,20 @@ class Container:
     # fields. Using obscure names is the best we can do.)
     FIXED_FIELDS = {
         # Field definition information.
-        'X_data_dictionary',
+        '_data_dictionary',
         # Names of field sets in this container.
-        'X_fieldsets',
+        '_fieldsets',
         # Data fields.
-        'X_data',
+        '_data',
         # Number of points in pointwise fields.
-        'X_size',
+        '_size',
         # Space allocated for points in pointwise fields.
-        'X_capacity',
+        '_capacity',
         # Is it possible to extend the container's pointwise fields, or are
         # they fixed in size?
-        'X_extensible',
+        '_extensible',
         # Field set for a single point in this container.
-        'X_single_point_fieldset',
+        '_single_point_fieldset',
     }
 
     STARTING_CAPACITY = 50
@@ -79,30 +79,30 @@ class Container:
         # Extensible containers start empty, fixed containers have a specified
         # size.
         if npoints is None:
-            self.X_extensible = True
-            self.X_capacity = self.STARTING_CAPACITY
-            self.X_size = 0
+            self._extensible = True
+            self._capacity = self.STARTING_CAPACITY
+            self._size = 0
         else:
-            self.X_extensible = False
-            self.X_size = npoints
-            self.X_capacity = npoints
+            self._extensible = False
+            self._size = npoints
+            self._capacity = npoints
 
         # A container has a set of data fields with specified dimensions. All
         # of these are defined by a FieldSet, and the total sets of all fields
         # are stored in a data dictionary. Start with an empty FieldSet unless
         # a specific fieldset is requested.
-        self.X_data_dictionary: FieldSet = FieldSet()
+        self._data_dictionary: FieldSet = FieldSet()
 
         # Data fields. The types of these are determined by the dimensions and
         # underlying data type of each field.
-        self.X_data: dict[str, Any] = {}
+        self._data: dict[str, Any] = {}
 
         # Keep track of the FieldSets that contributed to this container. We
         # start with an empty set.
-        self.X_fieldsets = set()
+        self._fieldsets = set()
 
         # This is calculated lazily as needed.
-        self.X_single_point_fieldset = None
+        self._single_point_fieldset = None
 
         # Add field sets named in the constructor.
         if fieldsets is not None:
@@ -113,19 +113,19 @@ class Container:
 
     def __len__(self):
         """The length of pointwise fields in the container."""
-        return self.X_size
+        return self._size
 
     def __eq__(self, other: object) -> bool:
         """Two containers are equal if their data dictionaries are equal and
         all their field values are equal."""
         if not isinstance(other, Container):
             return False
-        if self.X_data_dictionary != other.X_data_dictionary:
+        if self._data_dictionary != other._data_dictionary:
             return False
-        for name in self.X_data_dictionary:
-            if name in self.X_data:
-                vs = self.X_data[name]
-                vo = other.X_data[name]
+        for name in self._data_dictionary:
+            if name in self._data:
+                vs = self._data[name]
+                vo = other._data[name]
                 if isinstance(
                     vs,
                     str
@@ -139,9 +139,9 @@ class Container:
                     if vs != vo:
                         return False
                 elif isinstance(vs, np.ndarray):
-                    if self.X_size != other.X_size:
+                    if self._size != other._size:
                         return False
-                    if not np.array_equal(vs[: self.X_size], vo[: self.X_size]):
+                    if not np.array_equal(vs[: self._size], vo[: self._size]):
                         return False
                 else:
                     raise ValueError('unknown type in container comparison')
@@ -152,12 +152,12 @@ class Container:
         are equal and all their field values are approximately equal."""
         if not isinstance(other, Container):
             return False
-        if self.X_data_dictionary != other.X_data_dictionary:
+        if self._data_dictionary != other._data_dictionary:
             return False
-        for name in self.X_data_dictionary:
-            if name in self.X_data:
-                vs = self.X_data[name]
-                vo = other.X_data[name]
+        for name in self._data_dictionary:
+            if name in self._data:
+                vs = self._data[name]
+                vo = other._data[name]
                 if isinstance(vs, str | None):
                     if vs != vo:
                         return False
@@ -168,9 +168,9 @@ class Container:
                     if not vs.isclose(vo):
                         return False
                 elif isinstance(vs, np.ndarray):
-                    if self.X_size != other.X_size:
+                    if self._size != other._size:
                         return False
-                    if not np.allclose(vs[: self.X_size], vo[: self.X_size]):
+                    if not np.allclose(vs[: self._size], vo[: self._size]):
                         return False
                 else:
                     raise ValueError('unknown type in container comparison')
@@ -178,7 +178,7 @@ class Container:
 
     def __hash__(self):
         """The hash of a container is based on its data dictionary."""
-        return hash(self.X_data_dictionary)
+        return hash(self._data_dictionary)
 
     def __getattr__(self, name: str) -> np.ndarray[tuple[int], Any] | Any:
         """Override attribute retrieval to access pointwise and per-container
@@ -189,10 +189,10 @@ class Container:
         if name in self.FIXED_FIELDS:
             return super().__getattribute__(name)
 
-        if name in self.X_data:
-            val = self.X_data[name]
+        if name in self._data:
+            val = self._data[name]
             if isinstance(val, np.ndarray):
-                return val[: self.X_size]
+                return val[: self._size]
             else:
                 return val
         else:
@@ -216,11 +216,11 @@ class Container:
         if name in self.FIXED_FIELDS:
             return super().__setattr__(name, value)
 
-        if name in self.X_data:
+        if name in self._data:
             # Check that the type of the assigned value can be safely cast to
             # the field type and cast and assign the value if OK.
-            self.X_data[name] = self.X_data_dictionary[name].convert_in(
-                value, name, self.X_size
+            self._data[name] = self._data_dictionary[name].convert_in(
+                value, name, self._size
             )
         else:
             raise ValueError(f"Container has no attribute '{name}'")
@@ -256,11 +256,11 @@ class Container:
             #     raise ValueError('cannot add anonymous FieldSet to Container')
             # assert fs.fieldset_name is not None
             if fs.fieldset_name is not None:
-                self.X_fieldsets.add(fs.fieldset_name)
-            self.X_data_dictionary = self.X_data_dictionary.merge(fs)
+                self._fieldsets.add(fs.fieldset_name)
+            self._data_dictionary = self._data_dictionary.merge(fs)
 
         # Invalidate this cached value because the data dictionary has changed.
-        self.X_single_point_fieldset = None
+        self._single_point_fieldset = None
 
         # Add pointwise and per-trajectory data fields and set values from the
         # `HasFieldSet` object if there is one.
@@ -273,19 +273,19 @@ class Container:
                     # Check that the type of the assigned value can be
                     # safely cast to the field type and cast and assign
                     # the value if OK.
-                    self.X_data[name] = metadata.convert_in(value, name, self.X_size)
+                    self._data[name] = metadata.convert_in(value, name, self._size)
                 else:
-                    self.X_data[name] = metadata.empty(self.X_capacity)
+                    self._data[name] = metadata.empty(self._capacity)
 
     @property
     def species(self) -> list[Species]:
         """Set of species included in any species-indexed fields in the
         container."""
         species = set()
-        for name, field in self.X_data_dictionary.items():
+        for name, field in self._data_dictionary.items():
             if Dimension.SPECIES in field.dimensions:
-                assert isinstance(self.X_data[name], SpeciesValues)
-                species.update(self.X_data[name].keys())
+                assert isinstance(self._data[name], SpeciesValues)
+                species.update(self._data[name].keys())
         return sorted(species)
 
     def _check_fieldset(self, fieldset: FieldSet):
@@ -294,7 +294,7 @@ class Container:
             raise ValueError('Field name conflicts with Container fixed attribute')
 
         # Field sets can only be added once.
-        if fieldset.fieldset_name in self.X_fieldsets:
+        if fieldset.fieldset_name in self._fieldsets:
             raise ValueError(
                 f'FieldSet with name "{fieldset.fieldset_name}" '
                 'already added to Container'
@@ -303,15 +303,15 @@ class Container:
     def copy(self) -> Self:
         """Create a deep copy of the container. A copy of an extensible
         container is *not* extensible."""
-        new_traj = (self.__class__)(self.X_size, fieldsets=list(self.X_fieldsets))
-        for name in self.X_data_dictionary:
-            if name in self.X_data:
-                new_traj.X_data[name] = deepcopy(self.X_data[name])
+        new_traj = (self.__class__)(self._size, fieldsets=list(self._fieldsets))
+        for name in self._data_dictionary:
+            if name in self._data:
+                new_traj._data[name] = deepcopy(self._data[name])
         return new_traj
 
     def fix(self) -> None:
         """Convert an extensible container to a fixed-size container."""
-        self.X_extensible = False
+        self._extensible = False
 
     def make_point(self) -> Container:
         """Make a new container representing a single point of the possible
@@ -321,19 +321,19 @@ class Container:
 
         # This value is cached. The cache is invalidated if the data dictionary
         # of this container changes.
-        if self.X_single_point_fieldset is None:
-            self.X_single_point_fieldset = self.X_data_dictionary.single_point()
-        return Container(npoints=1, fieldset=self.X_single_point_fieldset)
+        if self._single_point_fieldset is None:
+            self._single_point_fieldset = self._data_dictionary.single_point()
+        return Container(npoints=1, fieldset=self._single_point_fieldset)
 
     def _expand_capacity(self) -> None:
-        self.X_capacity += self.CAPACITY_EXPANSION
-        for name in self.X_data_dictionary:
-            if name in self.X_data:
-                if isinstance(self.X_data[name], np.ndarray):
-                    self.X_data[name] = np.resize(self.X_data[name], (self.X_capacity,))
+        self._capacity += self.CAPACITY_EXPANSION
+        for name in self._data_dictionary:
+            if name in self._data:
+                if isinstance(self._data[name], np.ndarray):
+                    self._data[name] = np.resize(self._data[name], (self._capacity,))
 
     def append(self, point: Container | None = None, **kwargs) -> None:
-        if not self.X_extensible:
+        if not self._extensible:
             raise ValueError('cannot append to fixed-size Container')
         if point is not None and len(kwargs) != 0:
             raise ValueError('cannot specify both point and keyword arguments')
@@ -344,15 +344,15 @@ class Container:
 
     def _append_point(self, point: Container) -> None:
         # TODO: Cache single point fieldset.
-        if point.X_data_dictionary != self.X_data_dictionary.single_point():
+        if point._data_dictionary != self._data_dictionary.single_point():
             raise ValueError('cannot append point with different data dictionary')
         if len(point) != 1:
             raise ValueError('can only append a single point')
-        self._append_from_dict(point.X_data)
+        self._append_from_dict(point._data)
 
     def _append_from_dict(self, data: dict[str, Any]) -> None:
         # Fields should match those in single point field set.
-        field_set = self.X_data_dictionary.single_point()
+        field_set = self._data_dictionary.single_point()
         fields = set(field_set.keys())
         data_fields = set(data.keys())
         if fields != data_fields:
@@ -364,12 +364,12 @@ class Container:
                 raise ValueError(f'extra fields in appended point: {extra}')
 
         # Increase container capacity if needed.
-        if self.X_size == self.X_capacity:
+        if self._size == self._capacity:
             self._expand_capacity()
 
         for name, value in data.items():
             # Check that the type of the assigned value can be safely cast to
             # the field type and cast and assign the value if OK.
-            self.X_data[name][self.X_size] = field_set[name].convert_in(value, name, 0)
+            self._data[name][self._size] = field_set[name].convert_in(value, name, 0)
 
-        self.X_size += 1
+        self._size += 1

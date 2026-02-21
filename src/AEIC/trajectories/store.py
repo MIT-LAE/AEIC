@@ -928,7 +928,7 @@ class TrajectoryStore:
 
         # Determine the field sets stored in the base NetCDF file (those not in
         # associated files).
-        base_nc_fieldsets = proto.X_fieldsets - self.associated_fieldsets
+        base_nc_fieldsets = proto._fieldsets - self.associated_fieldsets
 
         # Create the base NetCDF file.
         assert self.base_file is not None

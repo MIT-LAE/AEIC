@@ -108,7 +108,7 @@ class Trajectory(Container):
 
         # A trajectory has an optional name.
         if name is not None:
-            self.X_data['name'] = name
+            self._data['name'] = name
 
     @property
     def nbytes(self) -> int:
@@ -117,24 +117,24 @@ class Trajectory(Container):
         (This only needs to be approximate because it's just used for sizing
         the `TrajectoryStore` LRU cache.)"""
         size = 0
-        for f in self.X_data_dictionary.values():
-            size += f.nbytes(self.X_size)
+        for f in self._data_dictionary.values():
+            size += f.nbytes(self._size)
         return size
 
     def copy_point(self, from_idx: int, to_idx: int):
         """Copy data from one point to another within the trajectory."""
-        if from_idx < 0 or from_idx >= self.X_size:
+        if from_idx < 0 or from_idx >= self._size:
             raise IndexError('from_idx out of range')
-        if to_idx < 0 or to_idx >= self.X_size:
+        if to_idx < 0 or to_idx >= self._size:
             raise IndexError('to_idx out of range')
-        print(self.X_data_dictionary)
-        for name, field in self.X_data_dictionary.items():
+        print(self._data_dictionary)
+        for name, field in self._data_dictionary.items():
             # Only copy point-wise data.
             if Dimension.POINT in field.dimensions:
                 # TODO: Handle species dimension as well? Or will this never be
                 # called other than when simulating trajectories, where there
                 # are no species-indexed fields?
-                self.X_data[name][to_idx] = self.X_data[name][from_idx]
+                self._data[name][to_idx] = self._data[name][from_idx]
 
     def interpolate_time(self, new_time: np.ndarray) -> Trajectory:
         """Interpolate trajectory data to new time points.
@@ -145,41 +145,41 @@ class Trajectory(Container):
         method returns a new trajectory with all pointwise fields interpolated
         to the new time points."""
 
-        if 'flight_time' not in self.X_data:
+        if 'flight_time' not in self._data:
             raise ValueError(
                 'Trajectory must have a flight_time field for interpolation'
             )
-        orig_time = self.X_data['flight_time']
+        orig_time = self._data['flight_time']
 
-        new_traj = Trajectory(len(new_time), fieldsets=list(self.X_fieldsets))
-        for name, field in self.X_data_dictionary.items():
-            if Dimension.POINT in field.dimensions and name in self.X_data:
+        new_traj = Trajectory(len(new_time), fieldsets=list(self._fieldsets))
+        for name, field in self._data_dictionary.items():
+            if Dimension.POINT in field.dimensions and name in self._data:
                 if Dimension.SPECIES in field.dimensions:
                     # For species-indexed fields, we need to interpolate each
                     # species separately.
-                    assert isinstance(self.X_data[name], SpeciesValues)
+                    assert isinstance(self._data[name], SpeciesValues)
                     new_species_values = SpeciesValues[np.ndarray]()
-                    for sp in self.X_data[name].keys():
+                    for sp in self._data[name].keys():
                         new_species_values[sp] = np.interp(
                             new_time,
                             orig_time,
-                            self.X_data[name][sp],
+                            self._data[name][sp],
                             left=np.nan,
                             right=np.nan,
                         )
-                    new_traj.X_data[name] = new_species_values
+                    new_traj._data[name] = new_species_values
                 else:
                     # Interpolate pointwise data fields.
-                    new_traj.X_data[name] = np.interp(
+                    new_traj._data[name] = np.interp(
                         new_time,
                         orig_time,
-                        self.X_data[name],
+                        self._data[name],
                         left=np.nan,
                         right=np.nan,
                     )
-            elif name in self.X_data:
+            elif name in self._data:
                 # Copy per-trajectory fields.
-                new_traj.X_data[name] = deepcopy(self.X_data[name])
+                new_traj._data[name] = deepcopy(self._data[name])
         return new_traj
 
     def compare(
@@ -194,20 +194,20 @@ class Trajectory(Container):
 
         metrics = {}
 
-        for name, field in self.X_data_dictionary.items():
+        for name, field in self._data_dictionary.items():
             # Only compute metrics for pointwise fields, and only if the field
             # is present in both trajectories.
             if (
                 Dimension.POINT not in field.dimensions
-                or name not in other.X_data_dictionary
-                or name not in self.X_data
-                or name not in other.X_data
+                or name not in other._data_dictionary
+                or name not in self._data
+                or name not in other._data
                 or (fields is not None and name not in fields)
             ):
                 continue
 
-            vs = self.X_data[name]
-            vo = other.X_data[name]
+            vs = self._data[name]
+            vo = other._data[name]
             if Dimension.SPECIES not in field.dimensions:
                 # Simple pointwise field: compute metrics directly.
                 metrics[name] = ComparisonMetrics.compute(vs, vo)
