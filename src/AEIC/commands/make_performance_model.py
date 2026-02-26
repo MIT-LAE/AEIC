@@ -1,3 +1,4 @@
+import tomllib
 from typing import Any
 
 import click
@@ -25,18 +26,18 @@ def lto_from_edb(engine_file, engine_uid, thrust_fractions) -> LTOPerformance:
     return edb_data.make_lto_performance(thrust_fractions)
 
 
-def lto_from_toml_file(lto_file) -> LTOPerformance:
+def lto_from_toml(lto_file) -> LTOPerformance:
     if lto_file is None:
         raise click.UsageError(
             '--lto-file must be provided when using "lto-file" as the LTO source.'
         )
 
-    raise NotImplementedError('LTO file parsing not yet implemented.')
+    with open(lto_file, 'rb') as fp:
+        toml_data = tomllib.load(fp)
 
-    # lto_data = parseLTO(lto_file)
-    # # TODO: Somehow make an LTOPerformance value from this.
-    # result = LTOPerformance()
-    # return result
+    lto_dict = toml_data.get('LTO_performance', toml_data)
+    lto_input = LTOPerformanceInput.model_validate(lto_dict)
+    return lto_input.convert()
 
 
 def build_performance_table(ptf: PTFData) -> dict[str, Any]:
@@ -70,7 +71,7 @@ def cli(ctx, output_file):
 
 @click.option(
     '--lto-source',
-    type=click.Choice(['edb', 'toml']),
+    type=click.Choice(['edb', 'custom']),
     required=True,
     help='Source of LTO performance data.',
 )
@@ -93,7 +94,7 @@ def cli(ctx, output_file):
 @click.option(
     '--lto-file',
     type=click.Path(exists=True),
-    help='Input LTO file.',
+    help='Input LTO TOML file.',
 )
 @click.option(
     '--ptf-file',
@@ -110,7 +111,7 @@ def cli(ctx, output_file):
     '--number-of-engines',
     type=click.IntRange(1, 8),
     required=True,
-    help='Number of engines on the aircraft.',
+    help='Number of engines on the aircraft (1-8).',
 )
 @click.option(
     '--apu-name',
@@ -142,8 +143,8 @@ def legacy(
     match lto_source:
         case 'edb':
             lto = lto_from_edb(engine_file, engine_uid, thrust_fractions)
-        case 'toml':
-            lto = lto_from_toml_file(lto_file)
+        case 'custom':
+            lto = lto_from_toml(lto_file)
         case _:
             raise click.UsageError(f'Unsupported LTO source: {lto_source}')
     toml_data['LTO_performance'] = LTOPerformanceInput.from_internal(lto).model_dump()

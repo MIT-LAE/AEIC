@@ -21,6 +21,7 @@ class Species(IntEnum):
     PMnvolGMD = auto()
     PMvol = auto()
     OCic = auto()
+    SOx = auto()
     SO2 = auto()
     SO4 = auto()
     PMnvolN = auto()
@@ -88,6 +89,9 @@ class SpeciesValues[M]:
 
     def __iter__(self):
         return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)
 
     def keys(self):
         return self._data.keys()

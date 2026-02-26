@@ -73,21 +73,9 @@ def BFFM2_EINOx(
     y_cal = np.log10(ei_cal)
     x_eval = np.log10(ff_eval)
 
-    # 1a. In-range piece-wise linear interpolation
-    y_interp = np.interp(x_eval, x_cal, y_cal)  # left/right handled next
-
-    # 1b. Linear log-log extrapolation below Idle and above Take-off
-    below = x_eval < x_cal[0]
-    if below.any():
-        slope_low = (y_cal[1] - y_cal[0]) / (x_cal[1] - x_cal[0])
-        y_interp[below] = y_cal[0] + slope_low * (x_eval[below] - x_cal[0])
-
-    above = x_eval > x_cal[-1]
-    if above.any():
-        slope_high = (y_cal[-1] - y_cal[-2]) / (x_cal[-1] - x_cal[-2])
-        y_interp[above] = y_cal[-1] + slope_high * (x_eval[above] - x_cal[-1])
-
-    NOxEI_sl = 10.0**y_interp  # back to linear space  g/kg fuel
+    # Single log–log regression
+    slope, intercept = np.polyfit(x_cal, y_cal, 1)
+    NOxEI_sl = 10.0 ** (x_eval * slope + intercept)  # g/kg fuel at SLS-equivalent
 
     # Apply the humidity/θ/δ correction (Eqs. 44–45) [for cruise conditions]
     theta_amb = Tamb / 288.15

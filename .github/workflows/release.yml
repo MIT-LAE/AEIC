@@ -1,0 +1,55 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # required to create GitHub Releases
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.13"
+
+      - name: Set up Python 3.13.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.13.11"
+
+      - name: Install project & dependencies
+        run: uv sync --locked --all-extras --dev
+
+      - name: Verify tag matches version
+        run: |
+          uv run python - <<'EOF'
+          import tomllib, os
+          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          with open("pyproject.toml", "rb") as f:
+              version = tomllib.load(f)["project"]["version"]
+          assert tag == version, f"Tag {tag} != version {version}"
+          EOF
+
+      - name: Set AEIC_DATA_DIR
+        run: echo "AEIC_DATA_DIR=$(pwd)/data" >> "$GITHUB_ENV"
+
+      - name: Run Pytest
+        run: uv run pytest tests/
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

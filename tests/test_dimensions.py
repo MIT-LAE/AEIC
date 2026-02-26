@@ -1,6 +1,6 @@
 import pytest
 
-from AEIC.trajectories.dimensions import Dimension, Dimensions
+from AEIC.storage import Dimension, Dimensions
 
 
 def test_dimension_from_name():

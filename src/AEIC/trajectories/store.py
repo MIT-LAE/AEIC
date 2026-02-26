@@ -21,10 +21,9 @@ import numpy as np
 from cachetools import LRUCache
 
 from AEIC.performance.types import ThrustMode, ThrustModeValues
+from AEIC.storage import Dimension, FieldMetadata, FieldSet, HasFieldSets
 from AEIC.types import Species, SpeciesValues
 
-from .dimensions import Dimension
-from .field_sets import FieldMetadata, FieldSet, HasFieldSets
 from .trajectory import BASE_FIELDSET_NAME, Trajectory
 
 # Python doesn't have a simple way of saying "anything that's acceptable as a
@@ -124,17 +123,16 @@ class TrajectoryStore:
     **Field sets**
 
     Data stored in a `TrajectoryStore` is divided into "field sets"
-    (represented by the `FieldSet` class from the
-    `AEIC.trajectories.field_sets` package). A field set is a collection of
-    pointwise and per-trajectory data fields that are part of a trajectory or
-    data that lives alongside a trajectory (emissions data of one sort or
-    another, for example). "Pointwise data fields" in field sets have values
-    for each point along a trajectory: the length of the data values in each of
-    these fields must match the length of the trajectory. "Per-trajectory data
-    fields" in field sets are per-trajectory values: there is one value of each
-    of these fields for each trajectory. Each field in a field set has a name,
-    a data type and associated information used for serialization to and from
-    NetCDF files.
+    (represented by the `FieldSet` class from the `AEIC.storage.field_sets`
+    package). A field set is a collection of pointwise and per-trajectory data
+    fields that are part of a trajectory or data that lives alongside a
+    trajectory (emissions data of one sort or another, for example). "Pointwise
+    data fields" in field sets have values for each point along a trajectory:
+    the length of the data values in each of these fields must match the length
+    of the trajectory. "Per-trajectory data fields" in field sets are
+    per-trajectory values: there is one value of each of these fields for each
+    trajectory. Each field in a field set has a name, a data type and
+    associated information used for serialization to and from NetCDF files.
 
     A `TrajectoryStore` always contains the "base" field set, which holds the
     basic trajectory data (defined as `BASE_FIELDS` in the
@@ -930,7 +928,7 @@ class TrajectoryStore:
 
         # Determine the field sets stored in the base NetCDF file (those not in
         # associated files).
-        base_nc_fieldsets = proto.X_fieldsets - self.associated_fieldsets
+        base_nc_fieldsets = proto._fieldsets - self.associated_fieldsets
 
         # Create the base NetCDF file.
         assert self.base_file is not None

@@ -70,6 +70,10 @@ class Dimensions:
             raise ValueError('Dimensions cannot include both point and thrust mode')
         return Dimensions(dim, *self.dims)
 
+    def remove(self, dim: Dimension) -> Dimensions:
+        """Remove a dimension."""
+        return Dimensions(*(d for d in self.dims if d != dim))
+
     @property
     def ordered(self) -> list[Dimension]:
         """Return dimensions in standard order."""

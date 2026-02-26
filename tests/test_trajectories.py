@@ -1,7 +1,10 @@
 import AEIC.trajectories.builders as tb
 from AEIC.emissions.emission import compute_emissions
 from AEIC.performance.types import ThrustMode
+from AEIC.storage import Dimension, FlightPhase
+from AEIC.trajectories.trajectory import BASE_FIELDS, Trajectory
 from AEIC.types import Species
+from AEIC.units import METERS_TO_FEET
 
 
 def test_trajectory_comparison(sample_missions, performance_model, fuel):
@@ -75,3 +78,49 @@ def test_trajectory_comparison(sample_missions, performance_model, fuel):
     traj_copy.trajectory_emissions[Species.CO2][20] *= 1.1
     assert traj_copy != traj
     assert not traj_copy.approx_eq(traj)
+
+
+def test_single_point_field_set():
+    base_single = BASE_FIELDS.single_point()
+    fields = set(
+        [f for f in BASE_FIELDS if Dimension.POINT in BASE_FIELDS[f].dimensions]
+    )
+    assert fields == set(base_single.fields.keys())
+    assert not any(
+        Dimension.POINT in base_single.fields[f].dimensions for f in base_single.fields
+    )
+
+
+def test_append_to_trajectory():
+    # Create extensible trajectory, append points, check.
+    ext_traj = Trajectory()
+
+    def add_points(phase, start_alt, delta_alt):
+        ext_traj.set_phase(phase)
+        for i in range(10):
+            alt = start_alt + i * delta_alt
+            p = ext_traj.make_point()
+            p.fuel_flow = 1.4
+            p.aircraft_mass = 60000 - 1.4 * 60 * i
+            p.fuel_mass = 20000 - 1.4 * 60 * i
+            p.ground_distance = i * 10000
+            p.altitude = alt
+            p.flight_level = alt * METERS_TO_FEET / 100
+            p.rate_of_climb = delta_alt / 60
+            p.flight_time = i * 60
+            p.latitude = 41.0 + 0.02 * i
+            p.longitude = -60.0 - 0.02 * i
+            p.azimuth = 135.0
+            p.heading = 135.0
+            p.true_airspeed = 240.0
+            p.ground_speed = 240.0
+            ext_traj.append(p)
+
+    add_points(FlightPhase.CLIMB, 0, 1000)
+    add_points(FlightPhase.CRUISE, 10000, 0)
+    add_points(FlightPhase.DESCENT, 10000, -1000)
+    ext_traj.fix()
+    assert len(ext_traj) == 30
+    assert ext_traj.n_climb == 10
+    assert ext_traj.n_cruise == 10
+    assert ext_traj.n_descent == 10

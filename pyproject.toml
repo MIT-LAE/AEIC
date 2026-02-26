@@ -1,7 +1,7 @@
 [project]
 name = "AEIC"
 
-version = "0!1.0.0a1"
+version = "0.3.0"
 
 authors = [
     {name = "Wyatt Giroux", email = "girouxw@mit.edu"},
@@ -46,14 +46,20 @@ dev = [
     "sphinx>=8.2.3",
     "sphinx-rtd-theme>=3.0.2",
     "myst-parser>=4.0.1",
+    "bump-my-version>=1.2.6",
 ]
+
+[project.scripts]
+convert-oag-data = "AEIC.commands.convert_oag_data:run"
+make-performance-model = "AEIC.commands.make_performance_model:cli"
+make-test-airports = "AEIC.commands.make_test_airports:run"
+make-golden-test-data = "AEIC.commands.make_golden_test_data:run"
 
 [build-system]
 requires = ["uv_build>=0.9.17,<0.10.0"]
 build-backend = "uv_build"
 
 [tool.uv]
-package = true
 # Require that the package is available for macOS ARM.
 required-environments = [
     "sys_platform == 'darwin' and platform_machine == 'arm64'"
@@ -64,11 +70,19 @@ module-name = "AEIC"
 wheel-exclude = ["airports.csv"]
 source-exclude = ["airports.csv"]
 
-[project.scripts]
-convert-oag-data = "AEIC.commands.convert_oag_data:run"
-make-performance-model = "AEIC.commands.make_performance_model:cli"
-make-test-airports = "AEIC.commands.make_test_airports:run"
-make-golden-test-data = "AEIC.commands.make_golden_test_data:run"
+[tool.bumpversion]
+current_version = "0.3.0"
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
+commit = true
+commit_args = "--no-verify"
+tag = false
+tag_name = "v{new_version}"
+tag_message = "Release v{new_version}"
+files = [
+  { filename = "README.md" },
+  { filename = "docs/main_page.md" }
+]
 
 [tool.ruff]
 extend-exclude = ["*.ipynb"]

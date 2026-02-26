@@ -42,6 +42,7 @@ def get_GSE_emissions(
     gse[Species.SO4] = GSE_FSC * KG_TO_GRAMS * GSE_EPS * (MWT_SO4 / MWT_O2)
     # g SO₂ per kg fuel:
     gse[Species.SO2] = GSE_FSC * KG_TO_GRAMS * (1.0 - GSE_EPS) * (MWT_SO2 / MWT_O2)
+    gse[Species.SOx] = gse[Species.SO4] + gse[Species.SO2]
 
     # Subtract sulfate from the core PM₁₀ then split 50:50.
     pm_minus_so4 = pm_core - gse[Species.SO4]

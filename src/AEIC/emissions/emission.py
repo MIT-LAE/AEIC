@@ -10,7 +10,8 @@ from AEIC.config import config
 from AEIC.emissions.types import EmissionsSubset
 from AEIC.performance.models import BasePerformanceModel
 from AEIC.performance.types import ThrustModeValues
-from AEIC.trajectories import Dimension, Dimensions, FieldMetadata, FieldSet, Trajectory
+from AEIC.storage import Dimension, Dimensions, FieldMetadata, FieldSet
+from AEIC.trajectories import Trajectory
 from AEIC.types import Fuel, Species, SpeciesValues
 
 from .apu import get_APU_emissions

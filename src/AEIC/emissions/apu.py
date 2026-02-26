@@ -42,6 +42,7 @@ def get_APU_emissions(
     indices[Species.SO4] = (
         lto_indices[Species.SO4][ThrustMode.IDLE] if apu_running else 0.0
     )
+    indices[Species.SOx] = indices[Species.SO2] + indices[Species.SO4]
 
     # Particulate‐matter breakdown (deterministic BC fraction of 0.95)
     APU_PM10 = max(apu.PM10_g_per_kg - indices[Species.SO4], 0.0)

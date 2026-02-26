@@ -108,7 +108,7 @@ class DummyTrajectory:
         self.n_climb = 2
         self.n_cruise = 2
         self.n_descent = 2
-        self.X_npoints = self.n_climb + self.n_cruise + self.n_descent
+        self._npoints = self.n_climb + self.n_cruise + self.n_descent
         self.fuel_mass = np.array(
             [2000.0, 1994.0, 1987.5, 1975.0, 1960.0, 1945.0], dtype=float
         )
@@ -121,7 +121,7 @@ class DummyTrajectory:
         )
 
     def __len__(self):
-        return self.X_npoints
+        return self._npoints
 
 
 @pytest.fixture

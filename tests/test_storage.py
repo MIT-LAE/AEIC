@@ -12,13 +12,8 @@ import numpy as np
 import pytest
 
 from AEIC.performance.types import ThrustModeValues
-from AEIC.trajectories import (
-    Dimension,
-    Dimensions,
-    FieldMetadata,
-    FieldSet,
-    TrajectoryStore,
-)
+from AEIC.storage import Container, Dimension, Dimensions, FieldMetadata, FieldSet
+from AEIC.trajectories import TrajectoryStore
 from AEIC.trajectories.trajectory import Trajectory
 from AEIC.types import Species, SpeciesValues
 
@@ -841,3 +836,75 @@ def test_create_associated_complex(tmp_path: Path):
             assert isinstance(ts_read[i].tm2, SpeciesValues)
             for sp in ts_read[i].tm2:
                 assert isinstance(ts_read[i].tm2[sp], ThrustModeValues)
+
+
+TEST_FIELDS = FieldSet(
+    'test',
+    per_trajectory_1=FieldMetadata(
+        description='Per-trajectory field #1',
+        dimensions=Dimensions(Dimension.TRAJECTORY),
+    ),
+    per_trajectory_2=FieldMetadata(
+        description='Per-trajectory field #2',
+        dimensions=Dimensions(Dimension.TRAJECTORY),
+        field_type=np.int32,
+    ),
+    per_point_1=FieldMetadata(description='Per-point field #1'),
+    per_point_2=FieldMetadata(description='Per-point field #2'),
+)
+
+
+def test_create_fixed_size_container():
+    # Create a fixed-size Container with a specified field set.
+    container_fixed = Container(npoints=10, fieldsets=['test'])
+    assert len(container_fixed) == 10
+    assert container_fixed._extensible is False
+    assert container_fixed._capacity == 10
+
+
+def test_append_to_fixed_size_container():
+    # Create a fixed-size Container with a specified field set and try to
+    # append to it.
+    container_fixed = Container(npoints=10, fieldsets=['test'])
+    with pytest.raises(ValueError):
+        container_fixed.append(per_point_1=10, per_point_2=20)
+
+
+def test_create_extensible_container():
+    # Create an extensible Container with a specified field set.
+    container_extensible = Container(fieldsets=['test'])
+    assert len(container_extensible) == 0
+    assert container_extensible._extensible is True
+    assert container_extensible._capacity == 50
+
+
+def test_append_to_container_by_keywords():
+    # Create extensible container, append points by keyword, check data.
+    container_extensible = Container(fieldsets=['test'])
+    for i in range(1, 11):
+        container_extensible.append(per_point_1=i * 10, per_point_2=i * 20)
+    assert len(container_extensible) == 10
+    assert container_extensible.per_point_1.tolist() == list(range(10, 110, 10))
+    assert container_extensible.per_point_2.tolist() == list(range(20, 220, 20))
+
+
+def test_append_to_container_by_keywords_bad():
+    # Create extensible container, append points by keyword, check data.
+    container_extensible = Container(fieldsets=['test'])
+    with pytest.raises(ValueError):
+        container_extensible.append(per_point_1=10)
+
+
+def test_append_to_container_by_class():
+    # Create extensible container, append points by single point container
+    # class (enough to trigger capacity expansion), check data.
+    container_extensible = Container(fieldsets=['test'])
+    for i in range(1, 71):
+        point = container_extensible.make_point()
+        point.per_point_1 = i * 10
+        point.per_point_2 = i * 20
+        container_extensible.append(point)
+    assert len(container_extensible) == 70
+    assert container_extensible._capacity == 100
+    assert container_extensible.per_point_1.tolist() == list(range(10, 710, 10))
+    assert container_extensible.per_point_2.tolist() == list(range(20, 1420, 20))

@@ -50,6 +50,8 @@ def constant_species_values(fuel: Fuel) -> SpeciesValues[float]:
         or Species.SO4 in config.emissions.enabled_species
     ):
         sox_result = EI_SOx(fuel)
+        if Species.SOx in config.emissions.enabled_species:
+            constants[Species.SOx] = sox_result.EI_SOx
         if Species.SO2 in config.emissions.enabled_species:
             constants[Species.SO2] = sox_result.EI_SO2
         if Species.SO4 in config.emissions.enabled_species:

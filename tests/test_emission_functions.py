@@ -147,11 +147,22 @@ class TestBFFM2_EINOx:
 
     def setup_method(self):
         """Set up test data"""
-        self.fuelflow_trajectory = np.array([0.5, 1.0, 1.5, 2.0])
+        self.fuelflow_trajectory = np.array(
+            [0.15377735, 0.19154479, 0.36525745, 0.54475802, 0.37317567, 0.17729855]
+        )
         self.EI_NOx_matrix = ThrustModeValues(30.0, 25.0, 20.0, 18.0)
         self.fuelflow_performance = ThrustModeValues(0.4, 0.8, 1.2, 1.8)
-        self.Tamb = np.array([288.15, 250.0, 220.0, 280.0])
-        self.Pamb = np.array([101325.0, 25000.0, 15000.0, 95000.0])
+        self.Tamb = np.array([288.15, 278.4, 249.15, 216.65, 229.65, 275.15])
+        self.Pamb = np.array(
+            [
+                101325.0,
+                84555.9940737564,
+                47181.0021852292,
+                22632.0400950078,
+                30742.4326120969,
+                79495.201934051,
+            ]
+        )
 
     def _components(self, result: BFFM2EINOxResult):
         return (
@@ -262,14 +273,37 @@ class TestBFFM2_EINOx:
             self.Tamb,
             self.Pamb,
         )
+        # The results below were generated in test-cases.ipynb
         expected_arrays = [
-            np.array([28.26762038, 15.01898492, 12.50815229, 18.59189322]),
-            np.array([3.64440296, 12.0482297, 11.48326556, 17.06851997]),
-            np.array([23.3511745, 2.2949009, 0.93107559, 1.38393405]),
-            np.array([1.27204292, 0.67585432, 0.09381114, 0.1394392]),
-            np.array([0.128925, 0.8022, 0.9180625, 0.9180625]),
-            np.array([0.826075, 0.1528, 0.0744375, 0.0744375]),
-            np.array([0.045, 0.045, 0.0075, 0.0075]),
+            np.array(
+                [
+                    42.65302497,
+                    39.87840171,
+                    30.13039678,
+                    22.9420127,
+                    27.77833904,
+                    40.95955377,
+                ]
+            ),
+            np.array(
+                [5.49904124, 5.14132294, 3.88456141, 2.95779899, 3.58132236, 5.28071047]
+            ),
+            np.array(
+                [
+                    35.2345976,
+                    32.94255069,
+                    24.88996752,
+                    18.95182314,
+                    22.94699142,
+                    33.83566338,
+                ]
+            ),
+            np.array(
+                [1.91938612, 1.79452808, 1.35586786, 1.03239057, 1.25002526, 1.84317992]
+            ),
+            np.array([0.128925, 0.128925, 0.128925, 0.128925, 0.128925, 0.128925]),
+            np.array([0.826075, 0.826075, 0.826075, 0.826075, 0.826075, 0.826075]),
+            np.array([0.045, 0.045, 0.045, 0.045, 0.045, 0.045]),
         ]
         for array, expected in zip(self._components(result), expected_arrays):
             np.testing.assert_allclose(array, expected, rtol=1e-6, atol=1e-9)
@@ -602,5 +636,5 @@ class TestIntegration:
         )
 
         assert np.allclose(
-            result.NOxEI, np.array([27.11460822, 14.28251747, 11.92937893])
+            result.NOxEI, np.array([26.75988671, 14.4120521, 11.92014638])
         )
