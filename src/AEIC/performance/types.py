@@ -29,9 +29,10 @@ class ThrustMode(CIStrEnum):
                 return 7.0
             case ThrustMode.APPROACH:
                 return 30.0
-            case ThrustMode.TAKEOFF | ThrustMode.CLIMB:
-                # TODO: Is this right?
+            case ThrustMode.CLIMB:
                 return 85.0
+            case ThrustMode.TAKEOFF:
+                return 100.0
 
 
 @dataclass(frozen=True)
