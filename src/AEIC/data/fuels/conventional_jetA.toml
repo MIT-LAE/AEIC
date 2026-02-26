@@ -6,7 +6,7 @@ energy_MJ_per_kg = 43.2
 EI_H2O = 1233.3865 # gH₂O/kg fuel
 EI_CO2 = 3155.6 # gCO₂/kg fuel
 
-non_volatile_carbon_content = 0.95
+non_volatile_carbon_fraction = 0.95
 
 lifecycle_CO2 = 89 # gCO₂(e)/MJ fuel
 # CI of conventional jet fuel (89 g/MJ) from this source: 89 gCO₂(e)/MJ fuel

@@ -19,9 +19,9 @@ class Fuel(CIBaseModel):
     EI_CO2: float
     """Emission index for carbon dioxide (g CO₂ / kg fuel)."""
 
-    non_volatile_carbon_content: float
-    # TODO: Is this the right name? What units is this in?
-    """Non-volatile carbon content (???)."""
+    non_volatile_carbon_fraction: float
+    """Mass fraction of non-volatile particulate matter (PMnvol)
+    that is carbon by weight (kg C / kg PMnvol)"""
 
     lifecycle_CO2: float | None = None
     """Life-cycle CO₂ emissions (g CO₂e / MJ fuel)."""

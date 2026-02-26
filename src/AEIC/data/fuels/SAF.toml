@@ -6,7 +6,7 @@ energy_MJ_per_kg = 44.1
 EI_H2O = 1356.72515 # gH₂O/kg fuel
 EI_CO2 = 3155.6 # gCO₂/kg fuel
 
-non_volatile_carbon_content = 0.95
+non_volatile_carbon_fraction = 0.95
 
 # Sulfur content and sulfate yield
 fuel_sulfur_content_nom = 0.0    # gS/kg fuel
