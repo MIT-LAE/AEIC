@@ -108,11 +108,10 @@ def cli(ctx, output_file):
     type=click.Choice(['wide', 'narrow', 'small', 'freight']),
 )
 @click.option(
-    # TODO: Limit to reasonable values.
     '--number-of-engines',
-    type=int,
+    type=click.IntRange(1, 8),
     required=True,
-    help='Number of engines on the aircraft.',
+    help='Number of engines on the aircraft (1-8).',
 )
 @click.option(
     '--apu-name',
