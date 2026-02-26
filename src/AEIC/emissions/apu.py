@@ -56,11 +56,10 @@ def get_APU_emissions(
     indices[Species.OCic] = 0.0
 
     # NO/NO₂/HONO speciation.
-    # TODO: Is using the idle values here right?
     nox_speciation = NOx_speciation()
-    indices[Species.NO] = apu.PM10_g_per_kg * nox_speciation.no[ThrustMode.IDLE]
-    indices[Species.NO2] = apu.PM10_g_per_kg * nox_speciation.no2[ThrustMode.IDLE]
-    indices[Species.HONO] = apu.PM10_g_per_kg * nox_speciation.hono[ThrustMode.IDLE]
+    indices[Species.NO] = apu.NOx_g_per_kg * nox_speciation.no[ThrustMode.TAKEOFF]
+    indices[Species.NO2] = apu.NOx_g_per_kg * nox_speciation.no2[ThrustMode.TAKEOFF]
+    indices[Species.HONO] = apu.NOx_g_per_kg * nox_speciation.hono[ThrustMode.TAKEOFF]
 
     indices[Species.NOx] = apu.NOx_g_per_kg
     indices[Species.HC] = apu.HC_g_per_kg
