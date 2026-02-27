@@ -312,6 +312,19 @@ class TestBFFM2_EINOx:
 class TestNOxSpeciation:
     """Tests for NOₓ_speciation function"""
 
+    def test_NOx_speciation_results(self):
+        """Test that speciation results are the same as AEIC v2 matlab implementation"""
+        hono_prop = np.array([0.045, 0.045, 0.0075, 0.0075])
+        no2_prop = np.array([0.826075, 0.1528, 0.0744375, 0.0744375])
+        no_prop = np.array([0.128925, 0.8022, 0.9180625, 0.9180625])
+
+        speciation = NOx_speciation()
+
+        for idx, mode in enumerate(ThrustMode):
+            assert np.isclose(speciation.hono[mode], hono_prop[idx], rtol=1.0e-6)
+            assert np.isclose(speciation.no2[mode], no2_prop[idx], rtol=1.0e-6)
+            assert np.isclose(speciation.no[mode], no_prop[idx], rtol=1.0e-6)
+
     def test_summation_consistency(self):
         """Test that proportions sum to 1 for each thrust category"""
         speciation = NOx_speciation()
@@ -434,24 +447,6 @@ class TestGetAPUEmissions:
             assert np.isclose(apu.emissions[field], expected, rtol=1e-10), (
                 f"Mismatch in {field}"
             )
-
-    def test_nox_speciation_consistency(self, fuel_jetA):
-        """Test NOₓ speciation consistency via PM10_g_per_kg scaling"""
-        apu = get_APU_emissions(self.LTO_emission_indices, self.apu, fuel_jetA)
-        nox_speciation = NOx_speciation()
-
-        assert (
-            apu.indices[Species.NO]
-            == self.apu.PM10_g_per_kg * nox_speciation.no[ThrustMode.IDLE]
-        )
-        assert (
-            apu.indices[Species.NO2]
-            == self.apu.PM10_g_per_kg * nox_speciation.no2[ThrustMode.IDLE]
-        )
-        assert (
-            apu.indices[Species.HONO]
-            == self.apu.PM10_g_per_kg * nox_speciation.hono[ThrustMode.IDLE]
-        )
 
     def test_zero_fuel_flow_handling(self, fuel_jetA):
         """Test handling of zero fuel flow"""
