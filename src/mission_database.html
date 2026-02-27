@@ -1,0 +1,1326 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mission database &mdash; AEIC 1.0.0a1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=a480e030"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="OAG flight data" href="oag.html" />
+    <link rel="prev" title="Missions" href="missions.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            AEIC
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../main_page.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../main_page.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../main_page.html#units">Units</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">AEIC modules</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">System configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#file-paths">File paths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#configuration-initialization-and-access">Configuration initialization and access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#configuration-uniqueness-and-immutability">Configuration uniqueness and immutability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#main-configuration-class">Main configuration class</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#AEIC.config.Config"><code class="docutils literal notranslate"><span class="pre">Config</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.data_file_location"><code class="docutils literal notranslate"><span class="pre">Config.data_file_location</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.data_path_overrides"><code class="docutils literal notranslate"><span class="pre">Config.data_path_overrides</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.default_data_file_location"><code class="docutils literal notranslate"><span class="pre">Config.default_data_file_location</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.emissions"><code class="docutils literal notranslate"><span class="pre">Config.emissions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.engine_file"><code class="docutils literal notranslate"><span class="pre">Config.engine_file</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.file_location"><code class="docutils literal notranslate"><span class="pre">Config.file_location</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.get"><code class="docutils literal notranslate"><span class="pre">Config.get</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.load"><code class="docutils literal notranslate"><span class="pre">Config.load</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.normalize_search_paths"><code class="docutils literal notranslate"><span class="pre">Config.normalize_search_paths</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.path"><code class="docutils literal notranslate"><span class="pre">Config.path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.performance_model"><code class="docutils literal notranslate"><span class="pre">Config.performance_model</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.reset"><code class="docutils literal notranslate"><span class="pre">Config.reset</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.Config.weather"><code class="docutils literal notranslate"><span class="pre">Config.weather</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#emissions-module-configuration-classes">Emissions module configuration classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.DEFAULT_METHOD"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.DEFAULT_METHOD</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.apu_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.apu_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.climb_descent_mode"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.climb_descent_mode</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.co2_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.co2_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.co_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.co_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.co_method"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.co_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.fuel"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.fuel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.fuel_file"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.fuel_file</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.gse_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.gse_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.h2o_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.h2o_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.hc_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.hc_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.hc_method"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.hc_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.lifecycle_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.lifecycle_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.nox_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.nox_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.nox_method"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.nox_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.pmnvol_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.pmnvol_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.pmnvol_method"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.pmnvol_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.pmvol_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.pmvol_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.pmvol_method"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.pmvol_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EmissionsConfig.sox_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.sox_enabled</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#AEIC.config.emissions.ClimbDescentMode"><code class="docutils literal notranslate"><span class="pre">ClimbDescentMode</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.ClimbDescentMode.TRAJECTORY"><code class="docutils literal notranslate"><span class="pre">ClimbDescentMode.TRAJECTORY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.ClimbDescentMode.LTO"><code class="docutils literal notranslate"><span class="pre">ClimbDescentMode.LTO</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EINOxMethod"><code class="docutils literal notranslate"><span class="pre">EINOxMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EINOxMethod.BFFM2"><code class="docutils literal notranslate"><span class="pre">EINOxMethod.BFFM2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EINOxMethod.P3T3"><code class="docutils literal notranslate"><span class="pre">EINOxMethod.P3T3</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.EINOxMethod.NONE"><code class="docutils literal notranslate"><span class="pre">EINOxMethod.NONE</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#AEIC.config.emissions.PMvolMethod"><code class="docutils literal notranslate"><span class="pre">PMvolMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.PMvolMethod.FUEL_FLOW"><code class="docutils literal notranslate"><span class="pre">PMvolMethod.FUEL_FLOW</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.PMvolMethod.FOA3"><code class="docutils literal notranslate"><span class="pre">PMvolMethod.FOA3</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.PMvolMethod.NONE"><code class="docutils literal notranslate"><span class="pre">PMvolMethod.NONE</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#AEIC.config.emissions.PMnvolMethod"><code class="docutils literal notranslate"><span class="pre">PMnvolMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.PMnvolMethod.MEEM"><code class="docutils literal notranslate"><span class="pre">PMnvolMethod.MEEM</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.PMnvolMethod.SCOPE11"><code class="docutils literal notranslate"><span class="pre">PMnvolMethod.SCOPE11</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.PMnvolMethod.FOA3"><code class="docutils literal notranslate"><span class="pre">PMnvolMethod.FOA3</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.emissions.PMnvolMethod.NONE"><code class="docutils literal notranslate"><span class="pre">PMnvolMethod.NONE</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#weather-module-configuration-class">Weather module configuration class</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#AEIC.config.weather.WeatherConfig"><code class="docutils literal notranslate"><span class="pre">WeatherConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.weather.WeatherConfig.use_weather"><code class="docutils literal notranslate"><span class="pre">WeatherConfig.use_weather</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="configuration.html#AEIC.config.weather.WeatherConfig.weather_data_dir"><code class="docutils literal notranslate"><span class="pre">WeatherConfig.weather_data_dir</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="performance_models/performance_models.html">Performance models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="performance_models/performance_model_api.html">Performance model API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/performance_model_api.html#loading-performance-models">Loading performance models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/performance_model_api.html#performance-evaluation">Performance evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/performance_model_api.html#usage-example">Usage example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/performance_model_api.html#performance-model-members">Performance model members</a></li>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/performance_model_api.html#api-reference">API reference</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/performance_model_api.html#AEIC.performance.models.BasePerformanceModel"><code class="docutils literal notranslate"><span class="pre">BasePerformanceModel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/performance_model_api.html#AEIC.performance.models.PerformanceModel"><code class="docutils literal notranslate"><span class="pre">PerformanceModel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/performance_model_api.html#AEIC.performance.types.AircraftState"><code class="docutils literal notranslate"><span class="pre">AircraftState</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/performance_model_api.html#AEIC.performance.types.Performance"><code class="docutils literal notranslate"><span class="pre">Performance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/performance_model_api.html#AEIC.performance.types.SimpleFlightRules"><code class="docutils literal notranslate"><span class="pre">SimpleFlightRules</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/performance_model_api.html#AEIC.performance.types.LTOPerformance"><code class="docutils literal notranslate"><span class="pre">LTOPerformance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/performance_model_api.html#AEIC.performance.types.ThrustMode"><code class="docutils literal notranslate"><span class="pre">ThrustMode</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/performance_model_api.html#AEIC.performance.apu.APU"><code class="docutils literal notranslate"><span class="pre">APU</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/performance_model_api.html#AEIC.performance.types.Speeds"><code class="docutils literal notranslate"><span class="pre">Speeds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/performance_model_api.html#AEIC.performance.types.SpeedData"><code class="docutils literal notranslate"><span class="pre">SpeedData</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="performance_models/legacy_performance_model.html">Legacy performance model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/legacy_performance_model.html#input-file-format">Input file format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/legacy_performance_model.html#performance-table">Performance table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/legacy_performance_model.html#performance-evaluation">Performance evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/legacy_performance_model.html#api-reference">API reference</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/legacy_performance_model.html#AEIC.performance.models.LegacyPerformanceModel"><code class="docutils literal notranslate"><span class="pre">LegacyPerformanceModel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/legacy_performance_model.html#AEIC.performance.models.legacy.PerformanceTable"><code class="docutils literal notranslate"><span class="pre">PerformanceTable</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/legacy_performance_model.html#AEIC.performance.models.legacy.ROCDFilter"><code class="docutils literal notranslate"><span class="pre">ROCDFilter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/legacy_performance_model.html#AEIC.performance.models.legacy.Interpolator"><code class="docutils literal notranslate"><span class="pre">Interpolator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="performance_models/legacy_performance_model.html#AEIC.performance.models.legacy.PerformanceTableInput"><code class="docutils literal notranslate"><span class="pre">PerformanceTableInput</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="performance_models/performance_model_files.html">Performance model files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/performance_model_files.html#creating-performance-model-files">Creating performance model files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="performance_models/performance_model_files.html#example-file">Example file</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="trajectories/trajectories.html">Trajectories</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="trajectories/trajectory_data.html">Trajectory data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.trajectories.trajectory.BASE_FIELDS"><code class="docutils literal notranslate"><span class="pre">BASE_FIELDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.emissions.emission.EMISSIONS_FIELDS"><code class="docutils literal notranslate"><span class="pre">EMISSIONS_FIELDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.trajectories.trajectory.Trajectory"><code class="docutils literal notranslate"><span class="pre">Trajectory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.__init__"><code class="docutils literal notranslate"><span class="pre">Trajectory.__init__</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.append"><code class="docutils literal notranslate"><span class="pre">Trajectory.append</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.compare"><code class="docutils literal notranslate"><span class="pre">Trajectory.compare</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.copy_point"><code class="docutils literal notranslate"><span class="pre">Trajectory.copy_point</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.interpolate_time"><code class="docutils literal notranslate"><span class="pre">Trajectory.interpolate_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.nbytes"><code class="docutils literal notranslate"><span class="pre">Trajectory.nbytes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.set_phase"><code class="docutils literal notranslate"><span class="pre">Trajectory.set_phase</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="trajectories/trajectory_data.html#field-sets">Field sets</a></li>
+<li class="toctree-l3"><a class="reference internal" href="trajectories/trajectory_data.html#flight-phases">Flight phases</a></li>
+<li class="toctree-l3"><a class="reference internal" href="trajectories/trajectory_data.html#ground-tracks">Ground tracks</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_data.html#AEIC.trajectories.ground_track.GroundTrack"><code class="docutils literal notranslate"><span class="pre">GroundTrack</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="trajectories/trajectory_builders.html">Trajectory builders</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="trajectories/trajectory_builders.html#AEIC.trajectories.builders.base.Builder"><code class="docutils literal notranslate"><span class="pre">Builder</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_builders.html#AEIC.trajectories.builders.base.Builder.options"><code class="docutils literal notranslate"><span class="pre">Builder.options</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_builders.html#AEIC.trajectories.builders.base.Builder.CONTEXT_CLASS"><code class="docutils literal notranslate"><span class="pre">Builder.CONTEXT_CLASS</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_builders.html#AEIC.trajectories.builders.base.Builder.calc_starting_mass"><code class="docutils literal notranslate"><span class="pre">Builder.calc_starting_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_builders.html#AEIC.trajectories.builders.base.Builder.fly"><code class="docutils literal notranslate"><span class="pre">Builder.fly</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="trajectories/trajectory_builders.html#legacy-trajectory-builder">Legacy trajectory builder</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_builders.html#AEIC.trajectories.builders.legacy.LegacyBuilder"><code class="docutils literal notranslate"><span class="pre">LegacyBuilder</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_builders.html#AEIC.trajectories.builders.legacy.LegacyContext"><code class="docutils literal notranslate"><span class="pre">LegacyContext</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_builders.html#AEIC.trajectories.builders.legacy.LegacyOptions"><code class="docutils literal notranslate"><span class="pre">LegacyOptions</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="trajectories/trajectory_stores.html">Trajectory stores</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.FileMode"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.FileMode</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.NcFiles"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.NcFiles</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.active_in_thread"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.active_in_thread</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.add"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.add</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.append"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.append</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.close"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.close</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.create"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.create</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.create_associated"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.create_associated</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.files"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.files</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.get_flight"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.get_flight</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.merge"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.merge</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.nc_linked"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.nc_linked</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.open"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.open</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.save"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.save</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectories/trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.sync"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.sync</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="emission.html">Emissions module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="emission.html#usage-example">Usage example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="emission.html#computation-workflow">Computation workflow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.compute_emissions"><code class="docutils literal notranslate"><span class="pre">compute_emissions</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="emission.html#types">Types</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#chemical-species">Chemical species</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="emission.html#AEIC.types.Species"><code class="docutils literal notranslate"><span class="pre">Species</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#emissions-output">Emissions output</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="emission.html#AEIC.emissions.emission.Emissions"><code class="docutils literal notranslate"><span class="pre">Emissions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="emission.html#AEIC.types.species.SpeciesValues"><code class="docutils literal notranslate"><span class="pre">SpeciesValues</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="emission.html#AEIC.performance.types.ThrustModeValues"><code class="docutils literal notranslate"><span class="pre">ThrustModeValues</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="emission.html#helper-functions">Helper functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.trajectory.get_trajectory_emissions"><code class="docutils literal notranslate"><span class="pre">get_trajectory_emissions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.lto.get_LTO_emissions"><code class="docutils literal notranslate"><span class="pre">get_LTO_emissions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.apu.get_APU_emissions"><code class="docutils literal notranslate"><span class="pre">get_APU_emissions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.gse.get_GSE_emissions"><code class="docutils literal notranslate"><span class="pre">get_GSE_emissions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.ei.sox.EI_SOx"><code class="docutils literal notranslate"><span class="pre">EI_SOx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.ei.sox.SOxEmissionResult"><code class="docutils literal notranslate"><span class="pre">SOxEmissionResult</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.ei.hcco.EI_HCCO"><code class="docutils literal notranslate"><span class="pre">EI_HCCO</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.ei.nox.BFFM2EINOxResult"><code class="docutils literal notranslate"><span class="pre">BFFM2EINOxResult</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.ei.nox.BFFM2_EINOx"><code class="docutils literal notranslate"><span class="pre">BFFM2_EINOx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.ei.nox.NOXSpeciation"><code class="docutils literal notranslate"><span class="pre">NOXSpeciation</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="emission.html#AEIC.emissions.ei.nox.NOXSpeciation.hono"><code class="docutils literal notranslate"><span class="pre">NOXSpeciation.hono</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="emission.html#AEIC.emissions.ei.nox.NOXSpeciation.no"><code class="docutils literal notranslate"><span class="pre">NOXSpeciation.no</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="emission.html#AEIC.emissions.ei.nox.NOXSpeciation.no2"><code class="docutils literal notranslate"><span class="pre">NOXSpeciation.no2</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.ei.pmnvol.PMnvol_MEEM"><code class="docutils literal notranslate"><span class="pre">PMnvol_MEEM</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.ei.pmnvol.calculate_PMnvolEI_scope11"><code class="docutils literal notranslate"><span class="pre">calculate_PMnvolEI_scope11</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.ei.pmvol.EI_PMvol_FOA3"><code class="docutils literal notranslate"><span class="pre">EI_PMvol_FOA3</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.ei.pmvol.EI_PMvol_FuelFlow"><code class="docutils literal notranslate"><span class="pre">EI_PMvol_FuelFlow</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.utils.Scope11Profile"><code class="docutils literal notranslate"><span class="pre">Scope11Profile</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.utils.constant_species_values"><code class="docutils literal notranslate"><span class="pre">constant_species_values</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.utils.get_SLS_equivalent_fuel_flow"><code class="docutils literal notranslate"><span class="pre">get_SLS_equivalent_fuel_flow</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="emission.html#AEIC.emissions.utils.get_thrust_cat_cruise"><code class="docutils literal notranslate"><span class="pre">get_thrust_cat_cruise</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="bada.html">BADA methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="bada.html#engine-and-fuel-burn-models">Engine and fuel burn models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3EngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_descent_thrust_app"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_app</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_descent_thrust_high"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_high</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_descent_thrust_land"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_land</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_descent_thrust_low"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_low</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_max_climb_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_max_climb_thrust</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_max_cruise_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_max_cruise_thrust</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3JetEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3JetEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_cruise_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3JetEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_max_climb_thrust_isa</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3JetEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_nominal_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3JetEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_specific_fuel_consumption</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3TurbopropEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3TurbopropEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_cruise_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3TurbopropEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_max_climb_thrust_isa</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3TurbopropEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_nominal_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3TurbopropEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_specific_fuel_consumption</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3PistonEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3PistonEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_cruise_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3PistonEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_max_climb_thrust_isa</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3PistonEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_nominal_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3PistonEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_specific_fuel_consumption</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_cd"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_cd</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_cl"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_cl</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_drag"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_drag</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_specific_ground_range"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_specific_ground_range</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_thrust</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_thrust_by_total_energy"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_thrust_by_total_energy</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_constant_final_mass"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_constant_final_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_constant_initial_mass"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_constant_initial_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_fraction"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_fraction</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_value"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_value</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bada.html#aircraft-parameters">Aircraft parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.aircraft_parameters.Bada3AircraftParameters"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.aircraft_parameters.Bada3AircraftParameters.assign_parameters_fromdict"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters.assign_parameters_fromdict</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bada.html#AEIC.BADA.aircraft_parameters.Bada3AircraftParameters.get_params_asdict"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters.get_params_asdict</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bada.html#fuel-burn-base-classes">Fuel burn base classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.fuel_burn_base.BaseAircraftParameters"><code class="docutils literal notranslate"><span class="pre">BaseAircraftParameters</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.fuel_burn_base.BaseFuelBurnModel"><code class="docutils literal notranslate"><span class="pre">BaseFuelBurnModel</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bada.html#module-AEIC.BADA.helper_functions">Helper functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.helper_functions.get_aircraft_params_for_all_aircraft_types"><code class="docutils literal notranslate"><span class="pre">get_aircraft_params_for_all_aircraft_types</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.helper_functions.get_all_available_aircraft_types"><code class="docutils literal notranslate"><span class="pre">get_all_available_aircraft_types</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.helper_functions.get_directly_available_aircraft_types"><code class="docutils literal notranslate"><span class="pre">get_directly_available_aircraft_types</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.helper_functions.get_models_for_all_implemented_aircraft_types"><code class="docutils literal notranslate"><span class="pre">get_models_for_all_implemented_aircraft_types</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bada.html#AEIC.BADA.helper_functions.read_synonym_file_to_dict"><code class="docutils literal notranslate"><span class="pre">read_synonym_file_to_dict</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gridding.html">Gridding module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="missions.html">Missions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="missions.html#AEIC.missions.Mission"><code class="docutils literal notranslate"><span class="pre">Mission</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.aircraft_type"><code class="docutils literal notranslate"><span class="pre">Mission.aircraft_type</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.arrival"><code class="docutils literal notranslate"><span class="pre">Mission.arrival</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.departure"><code class="docutils literal notranslate"><span class="pre">Mission.departure</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.destination"><code class="docutils literal notranslate"><span class="pre">Mission.destination</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.destination_position"><code class="docutils literal notranslate"><span class="pre">Mission.destination_position</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.flight_id"><code class="docutils literal notranslate"><span class="pre">Mission.flight_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.from_query_result"><code class="docutils literal notranslate"><span class="pre">Mission.from_query_result</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.from_toml"><code class="docutils literal notranslate"><span class="pre">Mission.from_toml</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.gc_distance"><code class="docutils literal notranslate"><span class="pre">Mission.gc_distance</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.label"><code class="docutils literal notranslate"><span class="pre">Mission.label</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.load_factor"><code class="docutils literal notranslate"><span class="pre">Mission.load_factor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.origin"><code class="docutils literal notranslate"><span class="pre">Mission.origin</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="missions.html#AEIC.missions.Mission.origin_position"><code class="docutils literal notranslate"><span class="pre">Mission.origin_position</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Mission database</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#usage-example">Usage example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reference-documentation">Reference documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#database-class">Database class</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#AEIC.missions.Database"><code class="docutils literal notranslate"><span class="pre">Database</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#queries">Queries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#base-query-class">Base query class</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#scheduled-flight-queries">Scheduled flight queries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#frequent-flights-queries">Frequent flights queries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#count-queries">Count queries</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#filters">Filters</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#AEIC.missions.Filter"><code class="docutils literal notranslate"><span class="pre">Filter</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#database-schema">Database schema</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="oag.html">OAG flight data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="oag.html#database-creation">Database creation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="oag.html#input-record-filtering">Input record filtering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="oag.html#file-sizes">File sizes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parsers.html">Available parsers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utilities.html">Utilities</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html#custom-types">Custom types</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.types.Location"><code class="docutils literal notranslate"><span class="pre">Location</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Location.latitude"><code class="docutils literal notranslate"><span class="pre">Location.latitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Location.longitude"><code class="docutils literal notranslate"><span class="pre">Location.longitude</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.types.Position"><code class="docutils literal notranslate"><span class="pre">Position</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Position.altitude"><code class="docutils literal notranslate"><span class="pre">Position.altitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Position.latitude"><code class="docutils literal notranslate"><span class="pre">Position.latitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Position.location"><code class="docutils literal notranslate"><span class="pre">Position.location</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Position.longitude"><code class="docutils literal notranslate"><span class="pre">Position.longitude</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.types.DayOfWeek"><code class="docutils literal notranslate"><span class="pre">DayOfWeek</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.DayOfWeek.from_pandas"><code class="docutils literal notranslate"><span class="pre">DayOfWeek.from_pandas</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.types.TimeOfDay"><code class="docutils literal notranslate"><span class="pre">TimeOfDay</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.TimeOfDay.hour"><code class="docutils literal notranslate"><span class="pre">TimeOfDay.hour</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.TimeOfDay.minute"><code class="docutils literal notranslate"><span class="pre">TimeOfDay.minute</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.types.AircraftClass"><code class="docutils literal notranslate"><span class="pre">AircraftClass</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.AircraftClass.WIDE"><code class="docutils literal notranslate"><span class="pre">AircraftClass.WIDE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.AircraftClass.NARROW"><code class="docutils literal notranslate"><span class="pre">AircraftClass.NARROW</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.AircraftClass.SMALL"><code class="docutils literal notranslate"><span class="pre">AircraftClass.SMALL</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.AircraftClass.FREIGHT"><code class="docutils literal notranslate"><span class="pre">AircraftClass.FREIGHT</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html#airport-handling">Airport handling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Airport"><code class="docutils literal notranslate"><span class="pre">Airport</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Airport.country"><code class="docutils literal notranslate"><span class="pre">Airport.country</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Airport.elevation"><code class="docutils literal notranslate"><span class="pre">Airport.elevation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Airport.iata_code"><code class="docutils literal notranslate"><span class="pre">Airport.iata_code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Airport.latitude"><code class="docutils literal notranslate"><span class="pre">Airport.latitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Airport.longitude"><code class="docutils literal notranslate"><span class="pre">Airport.longitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Airport.municipality"><code class="docutils literal notranslate"><span class="pre">Airport.municipality</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Airport.name"><code class="docutils literal notranslate"><span class="pre">Airport.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Airport.position"><code class="docutils literal notranslate"><span class="pre">Airport.position</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Country"><code class="docutils literal notranslate"><span class="pre">Country</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Country.code"><code class="docutils literal notranslate"><span class="pre">Country.code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Country.continent"><code class="docutils literal notranslate"><span class="pre">Country.continent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.airports.Country.name"><code class="docutils literal notranslate"><span class="pre">Country.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.airports.airport"><code class="docutils literal notranslate"><span class="pre">airport</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.airports.country"><code class="docutils literal notranslate"><span class="pre">country</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html#unit-conversion">Unit conversion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.FEET_TO_METERS"><code class="docutils literal notranslate"><span class="pre">FEET_TO_METERS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.FL_TO_METERS"><code class="docutils literal notranslate"><span class="pre">FL_TO_METERS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.FPM_TO_MPS"><code class="docutils literal notranslate"><span class="pre">FPM_TO_MPS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.KG_TO_GRAMS"><code class="docutils literal notranslate"><span class="pre">KG_TO_GRAMS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.KNOTS_TO_MPS"><code class="docutils literal notranslate"><span class="pre">KNOTS_TO_MPS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.METERS_TO_FEET"><code class="docutils literal notranslate"><span class="pre">METERS_TO_FEET</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.METERS_TO_FL"><code class="docutils literal notranslate"><span class="pre">METERS_TO_FL</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.MINUTES_TO_SECONDS"><code class="docutils literal notranslate"><span class="pre">MINUTES_TO_SECONDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.MPS_TO_KNOTS"><code class="docutils literal notranslate"><span class="pre">MPS_TO_KNOTS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.NAUTICAL_MILES_TO_METERS"><code class="docutils literal notranslate"><span class="pre">NAUTICAL_MILES_TO_METERS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.PPM"><code class="docutils literal notranslate"><span class="pre">PPM</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.units.STATUTE_MILES_TO_KM"><code class="docutils literal notranslate"><span class="pre">STATUTE_MILES_TO_KM</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html#geospatial-utilities">Geospatial utilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.GEOD"><code class="docutils literal notranslate"><span class="pre">GEOD</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html#module-AEIC.utils.files">File handling functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.files.download"><code class="docutils literal notranslate"><span class="pre">download</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html#module-AEIC.utils.standard_atmosphere">Standard atmosphere</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.standard_atmosphere.altitude_from_pressure_isa_bada4"><code class="docutils literal notranslate"><span class="pre">altitude_from_pressure_isa_bada4</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.standard_atmosphere.calculate_air_density"><code class="docutils literal notranslate"><span class="pre">calculate_air_density</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.standard_atmosphere.calculate_speed_of_sound"><code class="docutils literal notranslate"><span class="pre">calculate_speed_of_sound</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.standard_atmosphere.pressure_at_altitude_isa_bada4"><code class="docutils literal notranslate"><span class="pre">pressure_at_altitude_isa_bada4</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.standard_atmosphere.speed_of_sound_at_altitude"><code class="docutils literal notranslate"><span class="pre">speed_of_sound_at_altitude</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.standard_atmosphere.temperature_at_altitude_isa_bada4"><code class="docutils literal notranslate"><span class="pre">temperature_at_altitude_isa_bada4</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html#fuel">Fuel</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.types.Fuel"><code class="docutils literal notranslate"><span class="pre">Fuel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Fuel.EI_CO2"><code class="docutils literal notranslate"><span class="pre">Fuel.EI_CO2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Fuel.EI_H2O"><code class="docutils literal notranslate"><span class="pre">Fuel.EI_H2O</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Fuel.energy_MJ_per_kg"><code class="docutils literal notranslate"><span class="pre">Fuel.energy_MJ_per_kg</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Fuel.fuel_sulfur_content_nom"><code class="docutils literal notranslate"><span class="pre">Fuel.fuel_sulfur_content_nom</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Fuel.lifecycle_CO2"><code class="docutils literal notranslate"><span class="pre">Fuel.lifecycle_CO2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Fuel.model_config"><code class="docutils literal notranslate"><span class="pre">Fuel.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Fuel.name"><code class="docutils literal notranslate"><span class="pre">Fuel.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Fuel.non_volatile_carbon_fraction"><code class="docutils literal notranslate"><span class="pre">Fuel.non_volatile_carbon_fraction</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.types.Fuel.sulfate_yield_nom"><code class="docutils literal notranslate"><span class="pre">Fuel.sulfate_yield_nom</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html#module-AEIC.utils.models">Data modeling utility classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.models.CIBaseModel"><code class="docutils literal notranslate"><span class="pre">CIBaseModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="utilities.html#AEIC.utils.models.CIBaseModel.model_config"><code class="docutils literal notranslate"><span class="pre">CIBaseModel.model_config</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="utilities.html#AEIC.utils.models.CIStrEnum"><code class="docutils literal notranslate"><span class="pre">CIStrEnum</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="weather.html">Weather</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="weather.html#class-members">Class members</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="weather.html#AEIC.weather.Weather"><code class="docutils literal notranslate"><span class="pre">Weather</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="weather.html#AEIC.weather.Weather.get_ground_speed"><code class="docutils literal notranslate"><span class="pre">Weather.get_ground_speed</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="developer/tools.html">Setup and tools</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="developer/tools.html#project-setup-and-dependency-management">Project setup and dependency management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="developer/tools.html#local-development">Local Development</a></li>
+<li class="toctree-l2"><a class="reference internal" href="developer/tools.html#uv">uv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="developer/tools.html#pre-commit">pre-commit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="developer/tools.html#testing">Testing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="developer/conventions.html">Conventions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="developer/conventions.html#coding-standards">Coding standards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="developer/conventions.html#units">Units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="developer/conventions.html#data-dictionary">Data dictionary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="developer/releases.html">Releases</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">AEIC</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Mission database</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/src/mission_database.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="mission-database">
+<h1>Mission database<a class="headerlink" href="#mission-database" title="Link to this heading"></a></h1>
+<p>The <a class="reference internal" href="#AEIC.missions.Database" title="AEIC.missions.Database"><code class="xref py py-class docutils literal notranslate"><span class="pre">Database</span></code></a>, <a class="reference internal" href="#AEIC.missions.Query" title="AEIC.missions.Query"><code class="xref py py-class docutils literal notranslate"><span class="pre">Query</span></code></a> and <a class="reference internal" href="#AEIC.missions.Filter" title="AEIC.missions.Filter"><code class="xref py py-class docutils literal notranslate"><span class="pre">Filter</span></code></a> classes
+in the <code class="docutils literal notranslate"><span class="pre">AEIC.missions</span></code> package give access to flight schedule data for mission
+planning. Currently this is primarily intended for use with OAG data converted
+from CSV files. The database files use a schema optimized for the query
+patterns used in AEIC. This optimization is important because the flight
+schedule data tends to contain a large number of records, and we want to be
+able to filter them in several different ways.</p>
+<p>To understand the way the database is organized, it helps to distinguish
+between <strong>flights</strong> and <strong>flight instances</strong>. A <strong>flight instance</strong> is a
+single flight between an origin and a destination airport departing at a given
+time on a given date. A <strong>flight</strong> represents a sequence of <strong>flight
+instances</strong> by defining a schedule of days of the week and departure time
+between a pair of effective dates. A <strong>flight</strong> corresponds to a single row in
+an input OAG CSV file, and each <strong>flight</strong> may have multiple <strong>flight
+instances</strong>. The <strong>flight instances</strong> are reified in the SQLite database to
+make querying the schedule of flights more efficient.</p>
+<section id="usage-example">
+<h2>Usage example<a class="headerlink" href="#usage-example" title="Link to this heading"></a></h2>
+<p>Here’s a basic usage example to give an idea of how the API works:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">AEIC</span><span class="w"> </span><span class="kn">import</span> <span class="n">missions</span>
+
+<span class="c1"># Open the database.</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">Database</span><span class="p">(</span><span class="s1">&#39;oag-2019.sqlite&#39;</span><span class="p">)</span>
+
+<span class="c1"># Build a scheduled flight query.</span>
+<span class="n">query</span> <span class="o">=</span> <span class="n">missions</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span>
+    <span class="c1"># Filter on flight characteristics.</span>
+    <span class="nb">filter</span><span class="o">=</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span>
+        <span class="c1"># Flight distance between 9500 and 10000 kilometers.</span>
+        <span class="n">min_distance</span><span class="o">=</span><span class="mi">9500</span><span class="p">,</span> <span class="n">max_distance</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+        <span class="c1"># Seat capacity &gt;= 500.</span>
+        <span class="n">min_seat_capacity</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+        <span class="c1"># Flight origin or destination in US or Canada.</span>
+        <span class="n">country</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;US&#39;</span><span class="p">,</span> <span class="s1">&#39;CA&#39;</span><span class="p">]</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Iterate over the flight results: there are only 46 from this query...</span>
+<span class="k">for</span> <span class="n">flight</span> <span class="ow">in</span> <span class="n">db</span><span class="p">(</span><span class="n">query</span><span class="p">):</span>
+    <span class="c1"># ... so it&#39;s practical just to print some data.</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">flight</span><span class="o">.</span><span class="n">departure</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span> <span class="n">flight</span><span class="o">.</span><span class="n">carrier</span> <span class="o">+</span> <span class="n">flight</span><span class="o">.</span><span class="n">flight_number</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="reference-documentation">
+<h2>Reference documentation<a class="headerlink" href="#reference-documentation" title="Link to this heading"></a></h2>
+<p>The main classes of interest in the API are:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#AEIC.missions.Database" title="AEIC.missions.Database"><code class="xref py py-class docutils literal notranslate"><span class="pre">Database</span></code></a>: the main database class;</p></li>
+<li><p><a class="reference internal" href="#AEIC.missions.Query" title="AEIC.missions.Query"><code class="xref py py-class docutils literal notranslate"><span class="pre">Query</span></code></a>: a query that returns a sequence of
+<strong>flight instances</strong>;</p></li>
+<li><p><a class="reference internal" href="#AEIC.missions.query.QueryResult" title="AEIC.missions.query.QueryResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryResult</span></code></a>: a single result
+from an <a class="reference internal" href="#AEIC.missions.Query" title="AEIC.missions.Query"><code class="xref py py-class docutils literal notranslate"><span class="pre">Query</span></code></a> query;</p></li>
+<li><p><a class="reference internal" href="#AEIC.missions.FrequentFlightQuery" title="AEIC.missions.FrequentFlightQuery"><code class="xref py py-class docutils literal notranslate"><span class="pre">FrequentFlightQuery</span></code></a>: a query
+that returns most frequent origin/destination pairs appearing in <strong>flight
+instances</strong>;</p></li>
+<li><p><a class="reference internal" href="#AEIC.missions.query.FrequentFlightQueryResult" title="AEIC.missions.query.FrequentFlightQueryResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">FrequentFlightQueryResult</span></code></a>: a single result from an
+<a class="reference internal" href="#AEIC.missions.FrequentFlightQuery" title="AEIC.missions.FrequentFlightQuery"><code class="xref py py-class docutils literal notranslate"><span class="pre">FrequentFlightQuery</span></code></a> query;</p></li>
+<li><p><a class="reference internal" href="#AEIC.missions.CountQuery" title="AEIC.missions.CountQuery"><code class="xref py py-class docutils literal notranslate"><span class="pre">CountQuery</span></code></a>: a query that counts
+<strong>flight instances</strong> matching given conditions;</p></li>
+<li><p><a class="reference internal" href="#AEIC.missions.Filter" title="AEIC.missions.Filter"><code class="xref py py-class docutils literal notranslate"><span class="pre">Filter</span></code></a>: a filter on <strong>flight</strong> characteristics usable with all query
+types.</p></li>
+</ul>
+<section id="database-class">
+<h3>Database class<a class="headerlink" href="#database-class" title="Link to this heading"></a></h3>
+<p>The <a class="reference internal" href="#AEIC.missions.Database" title="AEIC.missions.Database"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.Database</span></code></a> class is a wrapper around a connection
+to an SQLite database file (using the Python standard library’s
+<a class="reference external" href="https://docs.python.org/3/library/sqlite3.html"><code class="docutils literal notranslate"><span class="pre">sqlite3</span></code></a> package). The
+<a class="reference internal" href="#AEIC.missions.Database" title="AEIC.missions.Database"><code class="xref py py-class docutils literal notranslate"><span class="pre">Database</span></code></a> class hides the details of both
+the database structure and the underlying SQL interface to SQLite, instead
+exposing a simple application-specific query API.</p>
+<p>The <a class="reference internal" href="#AEIC.missions.Database" title="AEIC.missions.Database"><code class="xref py py-class docutils literal notranslate"><span class="pre">Database</span></code></a> class is oriented towards
+read-only access to a mission database. There is a derived class called
+<code class="docutils literal notranslate"><span class="pre">WritableDatabase</span></code> for applications that construct flight databases.</p>
+<p>The normal workflow for querying the mission database is to create a
+<a class="reference internal" href="#AEIC.missions.Database" title="AEIC.missions.Database"><code class="xref py py-class docutils literal notranslate"><span class="pre">Database</span></code></a> instance, passing the path to
+the SQLite database file to the constructor:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">db</span> <span class="o">=</span> <span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Database</span><span class="p">(</span><span class="s1">&#39;oag-2019.sqlite&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="#AEIC.missions.Database" title="AEIC.missions.Database"><code class="xref py py-class docutils literal notranslate"><span class="pre">Database</span></code></a> object is callable, and when
+you call it with query objects (see below), it returns a Python
+<a class="reference external" href="https://realpython.com/introduction-to-python-generators/">generator</a> that
+you can iterate over to get individual results:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">flight</span> <span class="ow">in</span> <span class="n">db</span><span class="p">(</span><span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Query</span><span class="p">()):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">flight</span><span class="o">.</span><span class="n">carrier</span> <span class="o">+</span> <span class="n">flight</span><span class="o">.</span><span class="n">flight_id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(Don’t try to run this code! It will iterate through <em>every</em> <strong>flight
+instance</strong> in the database in departure time order. An empty <a class="reference internal" href="#AEIC.missions.Query" title="AEIC.missions.Query"><code class="xref py py-class docutils literal notranslate"><span class="pre">Query</span></code></a> selects all <strong>flight instances</strong>.)</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.missions.Database">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.missions.</span></span><span class="sig-name descname"><span class="pre">Database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.missions.Database" title="Link to this definition"></a></dt>
+<dd><p>Flight schedule database.</p>
+<p>Represents a database of flight schedule entries, stored in an SQLite
+database file, using a schema optimized for common AEIC query use cases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>db_path</strong> (<em>str</em>)</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.missions.Database.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.missions.Database.__call__" title="Link to this definition"></a></dt>
+<dd><p>Execute a query against the database.</p>
+<p>Results are returned via a generator that yields instances of the
+result class for the corresponding query type.</p>
+<p>Supported query types are subclasses of <cite>QueryBase</cite>: <cite>Query</cite> is a
+“normal” scheduled flight query, <cite>FrequentFlightQuery</cite> determines the
+most frequently occurring airport origin/destination pairs, and
+<cite>CountQuery</cite> counts the number of scheduled flights matching filter
+conditions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<a class="reference internal" href="#AEIC.missions.query.QueryBase" title="AEIC.missions.query.QueryBase"><em>QueryBase</em></a><em>[</em><em>T</em><em>]</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Generator</em>[<em>T</em>] | <em>T</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.missions.Database.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.missions.Database.__init__" title="Link to this definition"></a></dt>
+<dd><p>Open a flight database file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>db_path</strong> (<em>str</em>) – Path to the SQLite database file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="queries">
+<h3>Queries<a class="headerlink" href="#queries" title="Link to this heading"></a></h3>
+<p>Database queries come in three flavors. <strong>Flight instance</strong> queries,
+represented by the <a class="reference internal" href="#AEIC.missions.Query" title="AEIC.missions.Query"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.Query</span></code></a> class, return <strong>flight
+instances</strong> in departure time order, filtered by various criteria. Frequent
+flight queries, represented by the
+<a class="reference internal" href="#AEIC.missions.FrequentFlightQuery" title="AEIC.missions.FrequentFlightQuery"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.FrequentFlightQuery</span></code></a> class, return pairs of origin
+and destination airports that have the most flights between them, again
+filtered by various criteria. Count queries, represented by the
+<a class="reference internal" href="#AEIC.missions.CountQuery" title="AEIC.missions.CountQuery"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.CountQuery</span></code></a> class, count the number of <strong>flight
+instances</strong> that match given conditions.</p>
+<p>The filtering criteria for the different query types share some features in
+common, so the query classes are derived from a <a class="reference internal" href="#AEIC.missions.query.QueryBase" title="AEIC.missions.query.QueryBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryBase</span></code></a> base class. Each of the query classes has a
+<a class="reference internal" href="#AEIC.missions.query.QueryBase.RESULT_TYPE" title="AEIC.missions.query.QueryBase.RESULT_TYPE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">RESULT_TYPE</span></code></a> member that
+gives the type of the results returned when you run one of these queries.</p>
+<section id="base-query-class">
+<h4>Base query class<a class="headerlink" href="#base-query-class" title="Link to this heading"></a></h4>
+<p>The base query class includes filter parameters for the <strong>flight instance</strong>
+start and end dates to consider, as well as an
+<a class="reference internal" href="#AEIC.missions.Filter" title="AEIC.missions.Filter"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.Filter</span></code></a> value that filters on <strong>flight</strong>
+characteristics (like origin and destination, distance, etc.).</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryBase">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.missions.query.</span></span><span class="sig-name descname"><span class="pre">QueryBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">_args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">_kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.missions.query.QueryBase" title="Link to this definition"></a></dt>
+<dd><p>Abstract base class for queries against the mission database.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryBase.PROCESS_RESULT">
+<span class="sig-name descname"><span class="pre">PROCESS_RESULT</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.query.QueryBase.PROCESS_RESULT" title="Link to this definition"></a></dt>
+<dd><p>Special processing function for results, or None if not needed.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryBase.RESULT_TYPE">
+<span class="sig-name descname"><span class="pre">RESULT_TYPE</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">type</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#AEIC.missions.query.QueryBase.RESULT_TYPE" title="Link to this definition"></a></dt>
+<dd><p>Result type returned by a given query class.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryBase.end_date">
+<span class="sig-name descname"><span class="pre">end_date</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.query.QueryBase.end_date" title="Link to this definition"></a></dt>
+<dd><p>Include only flights on or before this date.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryBase.filter">
+<span class="sig-name descname"><span class="pre">filter</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#AEIC.missions.Filter" title="AEIC.missions.filter.Filter"><span class="pre">Filter</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.query.QueryBase.filter" title="Link to this definition"></a></dt>
+<dd><p>Flight filter to apply, or None for no filtering.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryBase.start_date">
+<span class="sig-name descname"><span class="pre">start_date</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">date</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.query.QueryBase.start_date" title="Link to this definition"></a></dt>
+<dd><p>Include only flights on or after this date.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="scheduled-flight-queries">
+<h4>Scheduled flight queries<a class="headerlink" href="#scheduled-flight-queries" title="Link to this heading"></a></h4>
+<p>The <a class="reference internal" href="#AEIC.missions.Query" title="AEIC.missions.Query"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.Query</span></code></a> class returns individual <strong>flight
+instances</strong> in departure time order, corresponding to a given set of filter
+conditions. This query type supports <strong>flight</strong> characteristics filtering
+(using <a class="reference internal" href="#AEIC.missions.Filter" title="AEIC.missions.Filter"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.Filter</span></code></a>), start and end date filtering (from
+<code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.QueryBase</span></code>) and random and “every nth day”
+sub-sampling (using the <code class="docutils literal notranslate"><span class="pre">sample</span></code> and <code class="docutils literal notranslate"><span class="pre">every_nth</span></code> parameters).</p>
+<p>These queries return results as a generator of
+<a class="reference internal" href="#AEIC.missions.query.QueryResult" title="AEIC.missions.query.QueryResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.query.QueryResult</span></code></a> values, each of which basically
+contains all of the known information about the <strong>flight instances</strong>.</p>
+<p>The following examples illustrate some uses of
+<a class="reference internal" href="#AEIC.missions.Query" title="AEIC.missions.Query"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.Query</span></code></a>.</p>
+<p>Return all <strong>flight instances</strong> for all <strong>flights</strong> with a distance between
+1000 and 5000 kilometers:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">q</span> <span class="o">=</span> <span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="n">min_distance</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">max_distance</span><span class="o">=</span><span class="mi">5000</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Return a random 5% sample of <strong>flight instances</strong> for all flights between
+France and China:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">q</span> <span class="o">=</span> <span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="n">country</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FR&#39;</span><span class="p">,</span> <span class="s1">&#39;CN&#39;</span><span class="p">]),</span> <span class="n">sample</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Return all 787 <strong>flight instances</strong> from France to China departing every 8th
+day starting on March 1 2019:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">q</span> <span class="o">=</span> <span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span>
+    <span class="nb">filter</span><span class="o">=</span><span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span>
+        <span class="n">origin_country</span><span class="o">=</span><span class="s1">&#39;FR&#39;</span><span class="p">,</span>
+        <span class="n">destination_country</span><span class="o">=</span><span class="s1">&#39;CN&#39;</span><span class="p">,</span>
+        <span class="n">aircraft_type</span><span class="o">=</span><span class="s1">&#39;787&#39;</span>
+    <span class="p">),</span>
+    <span class="n">start_date</span><span class="o">=</span><span class="n">date</span><span class="p">(</span><span class="mi">2019</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">every_nth</span><span class="o">=</span><span class="mi">8</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.missions.Query">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.missions.</span></span><span class="sig-name descname"><span class="pre">Query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">every_nth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.missions.Query" title="Link to this definition"></a></dt>
+<dd><p>Query for scheduled flights.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filter</strong> (<a class="reference internal" href="#AEIC.missions.Filter" title="AEIC.missions.filter.Filter"><em>Filter</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>start_date</strong> (<em>date</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>end_date</strong> (<em>date</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>every_nth</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>sample</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>limit</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>offset</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Query.RESULT_TYPE">
+<span class="sig-name descname"><span class="pre">RESULT_TYPE</span></span><a class="headerlink" href="#AEIC.missions.Query.RESULT_TYPE" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference internal" href="#AEIC.missions.query.QueryResult" title="AEIC.missions.query.QueryResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryResult</span></code></a></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Query.every_nth">
+<span class="sig-name descname"><span class="pre">every_nth</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Query.every_nth" title="Link to this definition"></a></dt>
+<dd><p>Include flights only from every nth day.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Query.limit">
+<span class="sig-name descname"><span class="pre">limit</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Query.limit" title="Link to this definition"></a></dt>
+<dd><p>Maximum number of results to return.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Query.offset">
+<span class="sig-name descname"><span class="pre">offset</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Query.offset" title="Link to this definition"></a></dt>
+<dd><p>Number of results to skip before returning results.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Query.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Query.sample" title="Link to this definition"></a></dt>
+<dd><p>Randomly sample a fraction of the results (0.0 &lt; sample &lt;= 1.0).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.missions.query.</span></span><span class="sig-name descname"><span class="pre">QueryResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">departure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrival</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carrier</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flight_number</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_country</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_country</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">service_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aircraft_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">engine_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seat_capacity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flight_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.missions.query.QueryResult" title="Link to this definition"></a></dt>
+<dd><p>A single flight query result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>departure</strong> (<em>Timestamp</em>)</p></li>
+<li><p><strong>arrival</strong> (<em>Timestamp</em>)</p></li>
+<li><p><strong>carrier</strong> (<em>str</em>)</p></li>
+<li><p><strong>flight_number</strong> (<em>str</em>)</p></li>
+<li><p><strong>origin</strong> (<em>str</em>)</p></li>
+<li><p><strong>origin_country</strong> (<em>str</em>)</p></li>
+<li><p><strong>destination</strong> (<em>str</em>)</p></li>
+<li><p><strong>destination_country</strong> (<em>str</em>)</p></li>
+<li><p><strong>service_type</strong> (<em>str</em>)</p></li>
+<li><p><strong>aircraft_type</strong> (<em>str</em>)</p></li>
+<li><p><strong>engine_type</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>distance</strong> (<em>int</em>)</p></li>
+<li><p><strong>seat_capacity</strong> (<em>int</em>)</p></li>
+<li><p><strong>id</strong> (<em>int</em>)</p></li>
+<li><p><strong>flight_id</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.aircraft_type">
+<span class="sig-name descname"><span class="pre">aircraft_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.aircraft_type" title="Link to this definition"></a></dt>
+<dd><p>Aircraft type (ICAO code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.arrival">
+<span class="sig-name descname"><span class="pre">arrival</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Timestamp</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.arrival" title="Link to this definition"></a></dt>
+<dd><p>Flight arrival timestamp (UTC).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.carrier">
+<span class="sig-name descname"><span class="pre">carrier</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.carrier" title="Link to this definition"></a></dt>
+<dd><p>Airline (IATA code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.departure">
+<span class="sig-name descname"><span class="pre">departure</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Timestamp</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.departure" title="Link to this definition"></a></dt>
+<dd><p>Flight departure timestamp (UTC).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.destination">
+<span class="sig-name descname"><span class="pre">destination</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.destination" title="Link to this definition"></a></dt>
+<dd><p>Destination airport (IATA code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.destination_country">
+<span class="sig-name descname"><span class="pre">destination_country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.destination_country" title="Link to this definition"></a></dt>
+<dd><p>Destination country (ISO 3166-1 alpha-2 code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.distance">
+<span class="sig-name descname"><span class="pre">distance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.distance" title="Link to this definition"></a></dt>
+<dd><p>Flight distance in kilometers.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.engine_type">
+<span class="sig-name descname"><span class="pre">engine_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.engine_type" title="Link to this definition"></a></dt>
+<dd><p>Engine type, or None if not known.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.flight_id">
+<span class="sig-name descname"><span class="pre">flight_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.flight_id" title="Link to this definition"></a></dt>
+<dd><p>Unique flight ID.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.flight_number">
+<span class="sig-name descname"><span class="pre">flight_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.flight_number" title="Link to this definition"></a></dt>
+<dd><p>Flight number.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.id">
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.id" title="Link to this definition"></a></dt>
+<dd><p>Unique flight instance ID.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.origin">
+<span class="sig-name descname"><span class="pre">origin</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.origin" title="Link to this definition"></a></dt>
+<dd><p>Origin airport (IATA code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.origin_country">
+<span class="sig-name descname"><span class="pre">origin_country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.origin_country" title="Link to this definition"></a></dt>
+<dd><p>Origin country (ISO 3166-1 alpha-2 code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.seat_capacity">
+<span class="sig-name descname"><span class="pre">seat_capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.seat_capacity" title="Link to this definition"></a></dt>
+<dd><p>Seat capacity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.QueryResult.service_type">
+<span class="sig-name descname"><span class="pre">service_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#AEIC.missions.query.QueryResult.service_type" title="Link to this definition"></a></dt>
+<dd><p>Service type (IATA single-letter code, documented <a class="reference external" href="https://knowledge.oag.com/v1/docs/iata-service-type-codes">here</a>).</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="frequent-flights-queries">
+<h4>Frequent flights queries<a class="headerlink" href="#frequent-flights-queries" title="Link to this heading"></a></h4>
+<p>The <a class="reference internal" href="#AEIC.missions.FrequentFlightQuery" title="AEIC.missions.FrequentFlightQuery"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.FrequentFlightQuery</span></code></a> class returns airport pairs
+(discounting the direction, i.e., BOS → LHR is the same as LHR → BOS) and
+counts of flights between them matching a given filter condition. The filter
+conditions supported are the same as for <strong>flight instance</strong> queries, i.e.
+represented by an <a class="reference internal" href="#AEIC.missions.Filter" title="AEIC.missions.Filter"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.Filter</span></code></a> instance. Results are
+returned as a generator of
+<a class="reference internal" href="#AEIC.missions.query.FrequentFlightQueryResult" title="AEIC.missions.query.FrequentFlightQueryResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.query.FrequentFlightQueryResult</span></code></a> values, which
+contain the airport codes and a count of the number of <strong>flight instances</strong>.</p>
+<p>For example, if we want to find the ten most common routes flown by 787s, we
+can do:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">AEIC</span><span class="w"> </span><span class="kn">import</span> <span class="n">missions</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span> <span class="o">=</span> <span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Database</span><span class="p">(</span><span class="s1">&#39;oag-2019.sqlite&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">q</span> <span class="o">=</span> <span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">FrequentFlightQuery</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="n">aircraft_type</span><span class="o">=</span><span class="s1">&#39;787&#39;</span><span class="p">),</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">db</span><span class="p">(</span><span class="n">q</span><span class="p">):</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">airport1</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">airport2</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">number_of_flights</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>with output</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">HAN</span> <span class="n">SGN</span> <span class="mi">3167</span>
+<span class="n">HND</span> <span class="n">MYJ</span> <span class="mi">2663</span>
+<span class="n">FUK</span> <span class="n">HND</span> <span class="mi">2200</span>
+<span class="n">HND</span> <span class="n">ITM</span> <span class="mi">1857</span>
+<span class="n">BKK</span> <span class="n">SIN</span> <span class="mi">1726</span>
+<span class="n">HIJ</span> <span class="n">HND</span> <span class="mi">1649</span>
+<span class="n">ITM</span> <span class="n">OKA</span> <span class="mi">1382</span>
+<span class="n">DPS</span> <span class="n">SIN</span> <span class="mi">1216</span>
+<span class="n">KIX</span> <span class="n">SIN</span> <span class="mi">1164</span>
+<span class="n">DPS</span> <span class="n">MEL</span> <span class="mi">1082</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.missions.FrequentFlightQuery">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.missions.</span></span><span class="sig-name descname"><span class="pre">FrequentFlightQuery</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.missions.FrequentFlightQuery" title="Link to this definition"></a></dt>
+<dd><p>Query for the most frequent flight routes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filter</strong> (<a class="reference internal" href="#AEIC.missions.Filter" title="AEIC.missions.filter.Filter"><em>Filter</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>start_date</strong> (<em>date</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>end_date</strong> (<em>date</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>limit</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.FrequentFlightQuery.RESULT_TYPE">
+<span class="sig-name descname"><span class="pre">RESULT_TYPE</span></span><a class="headerlink" href="#AEIC.missions.FrequentFlightQuery.RESULT_TYPE" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference internal" href="#AEIC.missions.query.FrequentFlightQueryResult" title="AEIC.missions.query.FrequentFlightQueryResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">FrequentFlightQueryResult</span></code></a></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.FrequentFlightQuery.limit">
+<span class="sig-name descname"><span class="pre">limit</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">20</span></em><a class="headerlink" href="#AEIC.missions.FrequentFlightQuery.limit" title="Link to this definition"></a></dt>
+<dd><p>Maximum number of results to return (default 20).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.missions.query.FrequentFlightQueryResult">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.missions.query.</span></span><span class="sig-name descname"><span class="pre">FrequentFlightQueryResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">airport1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">airport2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_flights</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.missions.query.FrequentFlightQueryResult" title="Link to this definition"></a></dt>
+<dd><p>A single frequent flight query result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>airport1</strong> (<em>str</em>)</p></li>
+<li><p><strong>airport2</strong> (<em>str</em>)</p></li>
+<li><p><strong>number_of_flights</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.FrequentFlightQueryResult.airport1">
+<span class="sig-name descname"><span class="pre">airport1</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#AEIC.missions.query.FrequentFlightQueryResult.airport1" title="Link to this definition"></a></dt>
+<dd><p>First airport (IATA code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.FrequentFlightQueryResult.airport2">
+<span class="sig-name descname"><span class="pre">airport2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#AEIC.missions.query.FrequentFlightQueryResult.airport2" title="Link to this definition"></a></dt>
+<dd><p>Second airport (IATA code).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.query.FrequentFlightQueryResult.number_of_flights">
+<span class="sig-name descname"><span class="pre">number_of_flights</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#AEIC.missions.query.FrequentFlightQueryResult.number_of_flights" title="Link to this definition"></a></dt>
+<dd><p>Number of flights between the two airports.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="count-queries">
+<h4>Count queries<a class="headerlink" href="#count-queries" title="Link to this heading"></a></h4>
+<p>Sometimes we just want a count of the number of <strong>flight instances</strong> matching
+a filter. For example, before running some long computation on each <strong>flight
+instance</strong>, it’s useful to know if there are millions of them… Running an
+<a class="reference internal" href="#AEIC.missions.CountQuery" title="AEIC.missions.CountQuery"><code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.CountQuery</span></code></a> query returns a single integer count
+value, i.e., there is no generator involved.</p>
+<p>For example, if we want to count the total number of 777 <strong>flight instances</strong>
+in the database, we can do:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">AEIC</span><span class="w"> </span><span class="kn">import</span> <span class="n">missions</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span> <span class="o">=</span> <span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Database</span><span class="p">(</span><span class="s1">&#39;oag-2019.sqlite&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">db</span><span class="p">(</span><span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">CountQuery</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">AEIC</span><span class="o">.</span><span class="n">missions</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="n">aircraft_type</span><span class="o">=</span><span class="s1">&#39;777&#39;</span><span class="p">)))</span>
+<span class="go">108906</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.missions.CountQuery">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.missions.</span></span><span class="sig-name descname"><span class="pre">CountQuery</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.missions.CountQuery" title="Link to this definition"></a></dt>
+<dd><p>Count scheduled flights.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filter</strong> (<a class="reference internal" href="#AEIC.missions.Filter" title="AEIC.missions.filter.Filter"><em>Filter</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>start_date</strong> (<em>date</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>end_date</strong> (<em>date</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.CountQuery.RESULT_TYPE">
+<span class="sig-name descname"><span class="pre">RESULT_TYPE</span></span><a class="headerlink" href="#AEIC.missions.CountQuery.RESULT_TYPE" title="Link to this definition"></a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="filters">
+<h3>Filters<a class="headerlink" href="#filters" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.missions.Filter">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.missions.</span></span><span class="sig-name descname"><span class="pre">Filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_distance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_distance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_seat_capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_seat_capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">airport</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_airport</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_airport</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_country</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_country</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">continent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_continent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_continent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounding_box</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_bounding_box</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination_bounding_box</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">service_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aircraft_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.missions.Filter" title="Link to this definition"></a></dt>
+<dd><p>A filter for narrowing down mission flight schedule entries.</p>
+<p>This supports filtering by various criteria such as distance, seat
+capacity, aircraft type, and by geographic location using country,
+continent, or a bounding box.</p>
+<p>All conditions are combined with <strong>AND</strong> logic.</p>
+<p>Spatial filters come in two flavors, “combined” and “origin/destination”,
+and four region types, “airport”, “country”, “continent”, and “bounding
+box”.</p>
+<p>Combined spatial filters apply to both the origin and destination of
+flights and express conditions like “flight departs or arrives from an
+airport in Malaysia”. Origin/destination spatial filters apply only to
+either the origin or destination of flights. Applying both an origin and a
+destination filter makes it possible to represent conditions like “flight
+departs from an airport in France AND arrives at an airport in South
+America”.</p>
+<p>A combined spatial filter cannot be used together with either an origin or
+destination spatial filter. It is valid to specify either:</p>
+<ul class="simple">
+<li><p>a single combined spatial filter, or</p></li>
+<li><p>one (optional) spatial filter for the origin and/or one (optional) one
+for the destination.</p></li>
+</ul>
+<p>This means that, for example, you can specify either: <cite>country</cite> <strong>or</strong>
+<cite>origin_country</cite> and/or <cite>destination_country</cite> for country-based filtering,
+but you may not specify both <cite>country</cite> and either of <cite>origin_country</cite> or
+<cite>destination_country</cite>. And similarly for airport, continent and bounding
+box filtering.</p>
+<p>Here are some examples:</p>
+<ul class="simple">
+<li><p><cite>country=’US’</cite> means flights originating <strong>or</strong> terminating in the US.</p></li>
+<li><p><cite>origin_country=’FR’</cite> means flights originating in France.</p></li>
+<li><p><cite>destination_country=’AT’</cite> means flights terminating in Austria.</p></li>
+<li><p><cite>origin_country=[‘US’, ‘CA’], destination_country=’MX’</cite> means flights
+originating in the US or Canada <strong>and</strong> terminating in Mexico.</p></li>
+<li><p><cite>origin_country=[‘DE’, ‘CH’, ‘AT’]</cite>, <cite>destination_continent=’SA’</cite> means
+flights originating in either Germany, Switzerland, or Austria <strong>and</strong>
+terminating at any airport in South America.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>min_distance</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>max_distance</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>min_seat_capacity</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>max_seat_capacity</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>airport</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>origin_airport</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>destination_airport</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>country</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>origin_country</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>destination_country</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>continent</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>origin_continent</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>destination_continent</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>bounding_box</strong> (<em>BoundingBox</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>origin_bounding_box</strong> (<em>BoundingBox</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>destination_bounding_box</strong> (<em>BoundingBox</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>service_type</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>aircraft_type</strong> (<em>str</em><em> | </em><em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.aircraft_type">
+<span class="sig-name descname"><span class="pre">aircraft_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.aircraft_type" title="Link to this definition"></a></dt>
+<dd><p>Aircraft type(s) (e.g., ‘737’, ‘320’).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.airport">
+<span class="sig-name descname"><span class="pre">airport</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.airport" title="Link to this definition"></a></dt>
+<dd><p>Originating or terminating airport code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.bounding_box">
+<span class="sig-name descname"><span class="pre">bounding_box</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">BoundingBox</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.bounding_box" title="Link to this definition"></a></dt>
+<dd><p>Bounding box for originating or terminating airports.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.continent">
+<span class="sig-name descname"><span class="pre">continent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.continent" title="Link to this definition"></a></dt>
+<dd><p>Originating or terminating continent code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.country">
+<span class="sig-name descname"><span class="pre">country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.country" title="Link to this definition"></a></dt>
+<dd><p>Originating or terminating country code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.destination_airport">
+<span class="sig-name descname"><span class="pre">destination_airport</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.destination_airport" title="Link to this definition"></a></dt>
+<dd><p>Terminating airport code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.destination_bounding_box">
+<span class="sig-name descname"><span class="pre">destination_bounding_box</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">BoundingBox</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.destination_bounding_box" title="Link to this definition"></a></dt>
+<dd><p>Bounding box for terminating airports.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.destination_continent">
+<span class="sig-name descname"><span class="pre">destination_continent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.destination_continent" title="Link to this definition"></a></dt>
+<dd><p>Terminating continent code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.destination_country">
+<span class="sig-name descname"><span class="pre">destination_country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.destination_country" title="Link to this definition"></a></dt>
+<dd><p>Terminating country code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.max_distance">
+<span class="sig-name descname"><span class="pre">max_distance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.max_distance" title="Link to this definition"></a></dt>
+<dd><p>Maximum flight distance in kilometers.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.max_seat_capacity">
+<span class="sig-name descname"><span class="pre">max_seat_capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.max_seat_capacity" title="Link to this definition"></a></dt>
+<dd><p>Maximum seat capacity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.min_distance">
+<span class="sig-name descname"><span class="pre">min_distance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.min_distance" title="Link to this definition"></a></dt>
+<dd><p>Minimum flight distance in kilometers.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.min_seat_capacity">
+<span class="sig-name descname"><span class="pre">min_seat_capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.min_seat_capacity" title="Link to this definition"></a></dt>
+<dd><p>Minimum seat capacity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.origin_airport">
+<span class="sig-name descname"><span class="pre">origin_airport</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.origin_airport" title="Link to this definition"></a></dt>
+<dd><p>Originating airport code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.origin_bounding_box">
+<span class="sig-name descname"><span class="pre">origin_bounding_box</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">BoundingBox</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.origin_bounding_box" title="Link to this definition"></a></dt>
+<dd><p>Bounding box for originating airports.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.origin_continent">
+<span class="sig-name descname"><span class="pre">origin_continent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.origin_continent" title="Link to this definition"></a></dt>
+<dd><p>Originating continent code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.origin_country">
+<span class="sig-name descname"><span class="pre">origin_country</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.origin_country" title="Link to this definition"></a></dt>
+<dd><p>Originating country code(s).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.missions.Filter.service_type">
+<span class="sig-name descname"><span class="pre">service_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.missions.Filter.service_type" title="Link to this definition"></a></dt>
+<dd><p>Service type(s) (using IATA single-letter codes, documented <a class="reference external" href="https://knowledge.oag.com/v1/docs/iata-service-type-codes">here</a>).</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="database-schema">
+<h2>Database schema<a class="headerlink" href="#database-schema" title="Link to this heading"></a></h2>
+<p>The database schema for the mission database is described <a class="reference external" href="https://github.com/MIT-LAE/AEIC/wiki/OAG-database">on the GitHub
+wiki</a> for AEIC. (The wiki
+page is slightly outdated: the definitive documentation for the database
+schema is <code class="xref py py-attr docutils literal notranslate"><span class="pre">_ensure_schema</span></code> method of the
+<code class="xref py py-class docutils literal notranslate"><span class="pre">AEIC.missions.WritableDatabase</span></code> class.)</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="missions.html" class="btn btn-neutral float-left" title="Missions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="oag.html" class="btn btn-neutral float-right" title="OAG flight data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Wyatt Giroux, Prashanth Prakash, Prateek Ranjan, Aditeya Shukla, Raymond Speth.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
