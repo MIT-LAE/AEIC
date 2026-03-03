@@ -330,6 +330,8 @@ class Container:
         if idx is not None:
             if idx < -self._size or idx >= self._size:
                 raise IndexError('point index out of range')
+            if idx < 0:
+                idx += self._size
             for name in pt._data_dictionary:
                 if name in self._data:
                     val = self._data[name]
@@ -344,25 +346,27 @@ class Container:
                 if isinstance(self._data[name], np.ndarray):
                     self._data[name] = np.resize(self._data[name], (self._capacity,))
 
-    def append(self, point: Container | None = None, **kwargs) -> None:
+    def append(
+        self, point: Container | None = None, replace: bool = False, **kwargs
+    ) -> None:
         if not self._extensible:
             raise ValueError('cannot append to fixed-size Container')
         if point is not None and len(kwargs) != 0:
             raise ValueError('cannot specify both point and keyword arguments')
         if point is not None:
-            self._append_point(point)
+            self._append_point(point, replace)
         else:
-            self._append_from_dict(kwargs)
+            self._append_from_dict(kwargs, replace)
 
-    def _append_point(self, point: Container) -> None:
+    def _append_point(self, point: Container, replace: bool = False) -> None:
         # TODO: Cache single point fieldset.
         if point._data_dictionary != self._data_dictionary.single_point():
             raise ValueError('cannot append point with different data dictionary')
         if len(point) != 1:
             raise ValueError('can only append a single point')
-        self._append_from_dict(point._data)
+        self._append_from_dict(point._data, replace)
 
-    def _append_from_dict(self, data: dict[str, Any]) -> None:
+    def _append_from_dict(self, data: dict[str, Any], replace: bool = False) -> None:
         # Fields should match those in single point field set.
         field_set = self._data_dictionary.single_point()
         fields = set(field_set.keys())
@@ -375,13 +379,23 @@ class Container:
             if extra:
                 raise ValueError(f'extra fields in appended point: {extra}')
 
-        # Increase container capacity if needed.
-        if self._size == self._capacity:
-            self._expand_capacity()
+        if not replace:
+            # Increase container capacity if needed.
+            if self._size == self._capacity:
+                self._expand_capacity()
 
-        for name, value in data.items():
-            # Check that the type of the assigned value can be safely cast to
-            # the field type and cast and assign the value if OK.
-            self._data[name][self._size] = field_set[name].convert_in(value, name, 0)
+            for name, value in data.items():
+                # Check that the type of the assigned value can be safely cast to
+                # the field type and cast and assign the value if OK.
+                self._data[name][self._size] = field_set[name].convert_in(
+                    value, name, 0
+                )
 
-        self._size += 1
+            self._size += 1
+        else:
+            for name, value in data.items():
+                # Check that the type of the assigned value can be safely cast to
+                # the field type and cast and assign the value if OK.
+                self._data[name][self._size - 1] = field_set[name].convert_in(
+                    value, name, 0
+                )

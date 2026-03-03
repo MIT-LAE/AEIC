@@ -25,18 +25,21 @@ from AEIC.verification.metrics import (
 )
 
 TRAJ_FIELDS = [
-    'fuel_flow',
-    'aircraft_mass',
+    'flight_time',
     'ground_distance',
     'latitude',
     'longitude',
+    'altitude',
+    'fuel_flow',
+    'aircraft_mass',
     'azimuth',
     'true_airspeed',
-    'altitude',
     'rate_of_climb',
 ]
 
 COMPARISON_FIELDS = TRAJ_FIELDS + ['trajectory_indices']
+
+SKIP_FINAL_POINT_FIELDS = set(['true_airspeed'])
 
 
 def metrics_page(
@@ -64,7 +67,11 @@ def metrics_page(
     # Title: mission ID.
     fig.text(0.5, 0.9, mission_id, ha='center', va='center', fontsize=24, weight='bold')
 
-    def t(x, line, txt):
+    def t(x, line, txt, error=False):
+        kwargs = {}
+        if error:
+            kwargs['color'] = 'red'
+            kwargs['weight'] = 'bold'
         fig.text(
             lmargin + x,
             tmargin - line * line_height,
@@ -72,6 +79,7 @@ def metrics_page(
             ha='left',
             va='center',
             fontsize=14,
+            **kwargs,
         )
 
     # Display flight times.
@@ -82,7 +90,7 @@ def metrics_page(
     t(0.5, 0, 'Legacy point count:')
     t(0.5, 1, 'New point count:')
     t(0.76, 0, f'{len(legacy_traj)}')
-    t(0.76, 1, f'{len(new_traj)}')
+    t(0.76, 1, f'{len(new_traj)}', error=len(new_traj) != len(legacy_traj))
 
     col_width = 0.1
 
@@ -103,9 +111,23 @@ def metrics_page(
 
     # Table row headers.
     for idx, field in enumerate(TRAJ_FIELDS):
-        cell(0, idx + 1, field, bold=True, left=True)
+        cell(
+            0,
+            idx + 1,
+            field + ('*' if field in SKIP_FINAL_POINT_FIELDS else ''),
+            bold=True,
+            left=True,
+        )
     for idx, sp in enumerate(species):
         cell(0, idx + len(TRAJ_FIELDS) + 1, f'EI_{sp.name}', bold=True, left=True)
+
+    cell(
+        0,
+        len(TRAJ_FIELDS) + len(species) + 2,
+        "* Omit final point from comparison "
+        "(MATLAB code doesn't fill in the last point)",
+        left=True,
+    )
 
     # Table values.
     for idx, field in enumerate(TRAJ_FIELDS):
@@ -277,14 +299,17 @@ def run(report_file) -> None:
             new_traj = builder.fly(pm, mission)
             new_traj.add_fields(compute_emissions(pm, fuel, new_traj))
 
-            # For comparison, we need to interpolate the new AEIC trajectory onto
-            # the same time points as the legacy trajectory, since they may not
-            # match.
-            interp_traj = new_traj.interpolate_time(legacy_traj.flight_time)
+            # For comparison, we do *not* interpolate the new AEIC trajectory
+            # onto the same time points as the legacy trajectory. The match
+            # should be close enough that we can compare corresponding points
+            # along the trajectories. The number of points in the trajectories
+            # should match exactly.
 
             # Compute comparison metrics.
             # dict[str, ComparisonMetrics | SpeciesValues[ComparisonMetrics]]
-            metrics = legacy_traj.compare(interp_traj, COMPARISON_FIELDS)
+            metrics = legacy_traj.compare(
+                new_traj, COMPARISON_FIELDS, SKIP_FINAL_POINT_FIELDS
+            )
 
             # Record any metrics that are outside tolerance.
             bad_metrics = out_of_tolerance(metrics, rtol=0.05, atol=1.0e-3)

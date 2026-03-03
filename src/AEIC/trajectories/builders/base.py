@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from AEIC.missions import Mission
 from AEIC.performance.models import BasePerformanceModel
 from AEIC.storage import Container, FlightPhase
+from AEIC.units import METERS_TO_FL
 
 from ..ground_track import GroundTrack
 from ..trajectory import Trajectory
@@ -247,11 +248,21 @@ class Builder(ABC):
         pt.longitude = start.location.longitude
         pt.latitude = start.location.latitude
         pt.azimuth = start.azimuth
+        pt.heading = start.azimuth
         pt.altitude = self.initial_altitude
+        pt.flight_level = pt.altitude * METERS_TO_FL
         pt.flight_time = 0
         pt.ground_distance = 0
+        pt.ground_speed = 0
         pt.aircraft_mass = self.starting_mass
         pt.fuel_mass = self.total_fuel_mass
+
+        # Placeholder values: replaced by feasible values in first call to
+        # performance model.
+        pt.true_airspeed = min(self.ac_performance.performance_table.tas)
+        pt.rate_of_climb = max(self.ac_performance.performance_table.rocd)
+        pt.fuel_flow = 0.0
+
         return pt
 
     def _fly_iteration(self) -> tuple[Trajectory, float]:

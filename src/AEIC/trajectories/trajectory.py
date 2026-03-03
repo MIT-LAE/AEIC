@@ -207,7 +207,10 @@ class Trajectory(Container):
         return new_traj
 
     def compare(
-        self, other: Trajectory, fields: list[str] | None = None
+        self,
+        other: Trajectory,
+        fields: list[str] | None = None,
+        skip_final: set[str] | None = None,
     ) -> ComparisonMetricsCollection:
         """Compare this trajectory to another trajectory and compute comparison
         metrics.
@@ -232,15 +235,18 @@ class Trajectory(Container):
 
             vs = self._data[name]
             vo = other._data[name]
+            n = min(len(vs), len(vo))
+            if name in skip_final:
+                n -= 1
             if Dimension.SPECIES not in field.dimensions:
                 # Simple pointwise field: compute metrics directly.
-                metrics[name] = ComparisonMetrics.compute(vs, vo)
+                metrics[name] = ComparisonMetrics.compute(vs[:n], vo[:n])
             else:
                 # Per-species pointwise field: compute metrics for each species
                 # separately.
                 metrics[name] = SpeciesValues[ComparisonMetrics](
                     {
-                        sp: ComparisonMetrics.compute(vs[sp], vo[sp])
+                        sp: ComparisonMetrics.compute(vs[sp][:n], vo[sp][:n])
                         for sp in vs.keys()
                         if sp in vo.keys()
                     }
