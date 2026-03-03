@@ -11,7 +11,7 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
 import AEIC.trajectories.builders as tb
-from AEIC.config import Config, config
+from AEIC.config import Config
 from AEIC.emissions import compute_emissions
 from AEIC.missions import Mission
 from AEIC.performance.models import PerformanceModel
@@ -267,8 +267,9 @@ def run(report_file) -> None:
     # Set up paths to test data.
     data_dir = Path(__file__).parent.parent / 'tests/data/verification/legacy'
     legacy_dir = data_dir / 'matlab-output'
-    missions_file = data_dir / 'legacy_verf_missions.toml'
-    perf_path = data_dir / 'legacy_verification.toml'
+    missions_file = data_dir / 'missions.toml'
+    fuel_file = data_dir / 'fuel.toml'
+    perf_path = data_dir / 'performance-model.toml'
 
     # Set up AEIC configuration and set the AEIC_PATH to include the test data
     # directory.
@@ -280,7 +281,7 @@ def run(report_file) -> None:
     with open(missions_file, 'rb') as fp:
         mission_dict = tomllib.load(fp)
     missions = Mission.from_toml(mission_dict)
-    with open(config.emissions.fuel_file, 'rb') as fp:
+    with open(fuel_file, 'rb') as fp:
         fuel = Fuel.model_validate(tomllib.load(fp))
 
     # Create a single trajectory builder to fly all missions.

@@ -136,12 +136,12 @@ def EI_HCCO(
     #       xEI_acrp = xEI * [1 + (–52) * (ff_eval – ff_cal[0])]
     #    Then overwrite those points with xEI_acrp.
     # ----------------------------------------------------------------------------
-    ACRP_slope = -52.0
-    low_thrust_mask = ff_eval < ff_cal[ThrustMode.IDLE]
-    if np.any(low_thrust_mask):
-        delta_ff = ff_eval[low_thrust_mask] - ff_cal[ThrustMode.IDLE]
-        xEI_acrp = xEI_out[low_thrust_mask] * (1.0 + ACRP_slope * delta_ff)
-        xEI_out[low_thrust_mask] = xEI_acrp
+    # ACRP_slope = -52.0
+    # low_thrust_mask = ff_eval < ff_cal[ThrustMode.IDLE]
+    # if np.any(low_thrust_mask):
+    #     delta_ff = ff_eval[low_thrust_mask] - ff_cal[ThrustMode.IDLE]
+    #     xEI_acrp = xEI_out[low_thrust_mask] * (1.0 + ACRP_slope * delta_ff)
+    #     xEI_out[low_thrust_mask] = xEI_acrp
 
     # ----------------------------------------------------------------------------
     # 7. Cruise correction:

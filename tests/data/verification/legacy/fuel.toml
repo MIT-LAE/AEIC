@@ -1,0 +1,17 @@
+# Fuel and emissions properties.
+name = "Jet-A"
+
+energy_MJ_per_kg = 43.2
+
+EI_H2O = 1230 # gH₂O/kg fuel
+EI_CO2 = 3160 # gCO₂/kg fuel
+
+non_volatile_carbon_fraction = 0.95
+
+lifecycle_CO2 = 89 # gCO₂(e)/MJ fuel
+# CI of conventional jet fuel (89 g/MJ) from this source: 89 gCO₂(e)/MJ fuel
+# https://www.icao.int/environmental-protection/CORSIA/Documents/CORSIA%20Supporting%20Document_CORSIA%20Eligible%20Fuels_LCA%20Methodology.pdf
+
+# Sulfur content and sulfate yield.
+fuel_sulfur_content_nom = 600.0    # mg S / kg fuel or ppm
+sulfate_yield_nom = 0.02     # fraction converted to sulfate
