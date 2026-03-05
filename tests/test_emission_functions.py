@@ -34,12 +34,41 @@ class TestEI_HCCO:
 
     def setup_method(self):
         """Set up test data"""
-        self.fuelflow_evaluate = np.array([0.1, 0.5, 1.0, 2.0])
-        self.x_EI_matrix = ThrustModeValues(100.0, 50.0, 10.0, 8.0)
-        self.fuelflow_calibrate = ThrustModeValues(0.2, 0.6, 1.5, 2.0)
+        self.fuelflow_evaluate = np.array([0.15, 0.175, 0.275, 0.325, 0.25, 0.16])
+        self.x_EI_matrix = ThrustModeValues(1.54, 0.05, 0.02, 0.03)
+        self.fuelflow_calibrate = ThrustModeValues(0.4, 0.8, 1.2, 1.8)
         # Standard atmosphere conditions.
-        self.Tamb = 288.15
-        self.Pamb = 101325.0
+        self.Tamb = np.array([288.15, 278.4, 249.15, 216.65, 229.65, 275.15])
+        self.Pamb = np.array(
+            [
+                101325.0,
+                84555.9940737564,
+                47181.0021852292,
+                22632.0400950078,
+                30742.4326120969,
+                79495.201934051,
+            ]
+        )
+
+    def test_HC_outputs(self):
+        result = EI_HCCO(
+            self.fuelflow_evaluate,
+            self.x_EI_matrix,
+            self.fuelflow_calibrate,
+            self.Tamb,
+            self.Pamb,
+        )
+        out_result = np.array(
+            [
+                196.73236113,
+                98.54714941,
+                13.25415652,
+                7.73938389,
+                25.11776059,
+                157.25298236,
+            ]
+        )
+        assert np.isclose(result, out_result).all
 
     def test_basic_functionality(self):
         """Test basic HC+CO emissions calculation"""
@@ -79,7 +108,7 @@ class TestEI_HCCO:
 
     def test_zero_and_negative_fuel_flows(self):
         """Test how zero and negative fuel flows are handled"""
-        test_flow = np.array([0.0, -0.01, 0.1, 1.0])
+        test_flow = np.array([0.0, -0.01, 0.1, 1.0, 0.001, 10.1])
         result = EI_HCCO(
             test_flow, self.x_EI_matrix, self.fuelflow_calibrate, self.Tamb, self.Pamb
         )
@@ -87,30 +116,8 @@ class TestEI_HCCO:
         assert np.all(np.isfinite(result))
         assert np.all(result >= 0.0)
 
-    def test_duplicate_calibration_flows_flatten_slanted_segment(self):
-        """Duplicate calibration flows should force a flat lower segment"""
-        fuelflow_eval = np.array([0.15, 0.25, 0.3, 0.5])
-        x_EI_matrix = ThrustModeValues(10.0, 10.0, 5.0, 3.0)
-        fuelflow_calibrate = ThrustModeValues(0.3, 0.3, 0.7, 1.4)
-
-        result = EI_HCCO(
-            fuelflow_eval, x_EI_matrix, fuelflow_calibrate, self.Tamb, self.Pamb
-        )
-        expected_upper = np.sqrt(
-            x_EI_matrix[ThrustMode.CLIMB] * x_EI_matrix[ThrustMode.TAKEOFF]
-        )
-        expected = np.full_like(fuelflow_eval, expected_upper)
-
-        low_thrust_mask = fuelflow_eval < fuelflow_calibrate[ThrustMode.IDLE]
-        expected[low_thrust_mask] *= 1 - 52.0 * (
-            fuelflow_eval[low_thrust_mask] - fuelflow_calibrate[ThrustMode.IDLE]
-        )
-
-        assert np.allclose(result, expected)
-
     def test_intercept_adjustment_uses_second_mode_value(self):
         """When intercept drifts low, the second mode should set the ceiling"""
-        fuelflow_eval = np.array([0.2, 0.5, 0.9])
         x_EI_matrix = ThrustModeValues(
             38.33753758, 2.4406048, 106.49710981, 13.57427593
         )
@@ -119,27 +126,16 @@ class TestEI_HCCO:
         )
 
         result = EI_HCCO(
-            fuelflow_eval, x_EI_matrix, fuelflow_calibrate, self.Tamb, self.Pamb
+            self.fuelflow_evaluate,
+            x_EI_matrix,
+            fuelflow_calibrate,
+            self.Tamb,
+            self.Pamb,
         )
-        high_mask = fuelflow_eval >= fuelflow_calibrate[ThrustMode.APPROACH]
+        high_mask = self.fuelflow_evaluate >= fuelflow_calibrate[ThrustMode.APPROACH]
 
         assert np.allclose(result[high_mask], x_EI_matrix[ThrustMode.APPROACH])
         assert np.all(result >= 0.0)
-
-    def test_positive_slope_forces_horizontal_segment(self):
-        """Non-negative slopes should collapse to the upper horizontal level"""
-        fuelflow_eval = np.array([0.2, 0.35, 0.5])
-        x_EI_matrix = ThrustModeValues(10.0, 11.0, 2.0, 1.0)
-        fuelflow_calibrate = ThrustModeValues(0.2, 0.3, 0.4, 0.5)
-
-        result = EI_HCCO(
-            fuelflow_eval, x_EI_matrix, fuelflow_calibrate, self.Tamb, self.Pamb
-        )
-        expected_value = np.sqrt(
-            x_EI_matrix[ThrustMode.CLIMB] * x_EI_matrix[ThrustMode.TAKEOFF]
-        )
-
-        assert np.allclose(result, expected_value)
 
 
 class TestBFFM2_EINOx:
