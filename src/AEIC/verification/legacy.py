@@ -94,8 +94,6 @@ class LegacyTrajectory:
         emissions_indices[Species.HC] = self.df.EI_HC.values
         emissions_indices[Species.CO] = self.df.EI_CO.values
         emissions_indices[Species.NOx] = self.df.EI_NOx.values
-        emissions_indices[Species.PMnvol] = self.df.EI_PMnvol.values
-        emissions_indices[Species.PMvol] = self.df.EI_PMvol.values
         emissions_indices[Species.SOx] = self.df.EI_SOx.values
         retval.trajectory_indices = emissions_indices
 
