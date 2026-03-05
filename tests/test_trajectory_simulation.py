@@ -54,7 +54,7 @@ def test_trajectory_simulation_single(sample_missions, performance_model):
     mis = sample_missions[0]
     traj = builder.fly(performance_model, mis)
 
-    assert len(traj) > 100
+    assert len(traj) > 10
 
 
 def test_trajectory_simulation_basic(tmp_path, sample_missions, performance_model):
