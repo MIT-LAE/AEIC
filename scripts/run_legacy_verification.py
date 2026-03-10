@@ -37,6 +37,16 @@ TRAJ_FIELDS = [
     'rate_of_climb',
 ]
 
+TRAJ_FIELD_UNITS = {
+    'flight_time': 's',
+    'ground_distance': 'm',
+    'altitude': 'm',
+    'fuel_flow': 'kg s⁻¹',
+    'aircraft_mass': 'kg',
+    'true_airspeed': 'm s⁻¹',
+    'rate_of_climb': 'm s⁻¹',
+}
+
 COMPARISON_FIELDS = TRAJ_FIELDS + ['trajectory_indices']
 
 SKIP_FINAL_POINT_FIELDS = set(['true_airspeed'])
@@ -107,19 +117,28 @@ def metrics_page(
 
     # Table column headers.
     for idx, label in enumerate(['RMSE', 'MAE', 'MAPE%', 'Max Err', 'Corr', 'R²']):
-        cell(idx + 2.5, 0, label, bold=True)
+        cell(idx + 2.75, 0, label, bold=True)
 
     # Table row headers.
     for idx, field in enumerate(TRAJ_FIELDS):
+        label = field + ('*' if field in SKIP_FINAL_POINT_FIELDS else '')
+        if field in TRAJ_FIELD_UNITS:
+            label += f' [{TRAJ_FIELD_UNITS[field]}]'
         cell(
             0,
             idx + 1,
-            field + ('*' if field in SKIP_FINAL_POINT_FIELDS else ''),
+            label,
             bold=True,
             left=True,
         )
     for idx, sp in enumerate(species):
-        cell(0, idx + len(TRAJ_FIELDS) + 1, f'EI_{sp.name}', bold=True, left=True)
+        cell(
+            0,
+            idx + len(TRAJ_FIELDS) + 1,
+            f'EI_{sp.name} [g kg⁻¹ fuel]',
+            bold=True,
+            left=True,
+        )
 
     cell(
         0,
@@ -136,7 +155,7 @@ def metrics_page(
         for col_idx, val in enumerate(
             [ms.rmse, ms.mae, ms.mape_pct, ms.max_error, ms.corr, ms.r2]
         ):
-            cell(col_idx + 2.5, idx + 1, f'{val:.2f}')
+            cell(col_idx + 2.75, idx + 1, f'{val:.2f}')
     for idx, sp in enumerate(species):
         mss = metrics['trajectory_indices']
         assert isinstance(mss, SpeciesValues)
@@ -145,7 +164,7 @@ def metrics_page(
         for col_idx, val in enumerate(
             [ms.rmse, ms.mae, ms.mape_pct, ms.max_error, ms.corr, ms.r2]
         ):
-            cell(col_idx + 2.5, idx + len(TRAJ_FIELDS) + 1, f'{val:.2f}')
+            cell(col_idx + 2.75, idx + len(TRAJ_FIELDS) + 1, f'{val:.2f}')
 
     pdf.savefig(fig)
     plt.close(fig)
