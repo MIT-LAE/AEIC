@@ -174,7 +174,7 @@ class LegacyBuilder(Builder):
         )
 
         lowest_cruise_altitude = (
-            self.ac_performance.performance_table.subset(ROCDFilter.ZERO).fl[0]
+            min(self.ac_performance.performance_table.subset(ROCDFilter.ZERO).fl)
             * FL_TO_METERS
         )
 
