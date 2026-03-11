@@ -330,30 +330,37 @@ class LegacyBuilder(Builder):
             pt.latitude = gpt.location.latitude
             pt.azimuth = gpt.azimuth
 
-            # Account for acceleration/deceleration over the segment using
-            # end-of-segment tas approximated using start of segment TAS, ROCD
-            # and mass and end-of-segment altitude.
-            perf_end = self.ac_performance.evaluate(
-                AircraftState(
-                    altitude=end_altitude,  # type: ignore
-                    true_airspeed=pt.true_airspeed,  # type: ignore
-                    rate_of_climb=pt.rate_of_climb,  # type: ignore
-                    aircraft_mass=pt.aircraft_mass,  # type: ignore
-                ),
-                flight_rule,
-            )
+            # Calculate fuel required for acceleration.
+            match flight_phase:
+                case FlightPhase.CLIMB:
+                    # Account for acceleration/deceleration over the segment
+                    # using end-of-segment tas approximated using start of
+                    # segment TAS, ROCD and mass and end-of-segment altitude.
+                    perf_end = self.ac_performance.evaluate(
+                        AircraftState(
+                            altitude=end_altitude,  # type: ignore
+                            true_airspeed=pt.true_airspeed,  # type: ignore
+                            rate_of_climb=pt.rate_of_climb,  # type: ignore
+                            aircraft_mass=pt.aircraft_mass,  # type: ignore
+                        ),
+                        flight_rule,
+                    )
 
-            kinetic_energy_chg = (
-                0.5
-                * pt.aircraft_mass
-                * (perf_end.true_airspeed**2 - perf.true_airspeed**2)
-            )
+                    kinetic_energy_chg = (
+                        0.5
+                        * pt.aircraft_mass
+                        * (perf_end.true_airspeed**2 - perf.true_airspeed**2)
+                    )
 
-            # Calculate fuel required for acceleration
-            # NOTE: I have no idea where AEIC v2 got the efficiency of 0.15 from
-            accel_fuel = kinetic_energy_chg / self.fuel_LHV / 0.15
-
-            seg_fuel += accel_fuel
+                    # NOTE: I have no idea where AEIC v2 got the efficiency of
+                    # 0.15 from.
+                    efficiency = 0.15
+                    accel_fuel = kinetic_energy_chg / self.fuel_LHV / efficiency
+                    seg_fuel += accel_fuel
+                case FlightPhase.DESCENT:
+                    # For descent, assumed fuel flow is essentially just engine
+                    # at idle.
+                    pass
 
             # We cannot gain fuel by decelerating in a conventional fuel
             # aircraft.
