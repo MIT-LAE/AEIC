@@ -22,6 +22,7 @@ from cachetools import LRUCache
 
 from AEIC.performance.types import ThrustMode, ThrustModeValues
 from AEIC.storage import Dimension, FieldMetadata, FieldSet, HasFieldSets
+from AEIC.storage.reproducibility import ReproducibilityData
 from AEIC.types import Species, SpeciesValues
 
 from .trajectory import BASE_FIELDSET_NAME, Trajectory
@@ -401,6 +402,11 @@ class TrajectoryStore:
         # or close.
         self.index_stale = False
 
+        # Additional special NetCDF group for reproduction information: this is
+        # separate from the main NcFiles mechanism because it's not directly
+        # related to any particular field set.
+        self.reproducibility_group: nc4.Group | None = None
+
         # Default values for other attributes.
         self.global_attributes = {}
         self.merged_store = False
@@ -652,8 +658,35 @@ class TrajectoryStore:
         """Is a NetCDF file (or files) associated with the trajectory store?"""
         return len(self._nc_files) != 0
 
+    def _write_reproducibility_info(self, ds: nc4.Dataset, repro: ReproducibilityData):
+        """Write reproducibility information to a NetCDF dataset."""
+
+        # Create reproducibility group.
+        g = ds.createGroup('_reproducibility')
+        g.createVariable('python_version', str, ())
+        g.createVariable('software_version', str, ())
+        g.createVariable('git_commit', str, ())
+        g.createVariable('git_branch', str, ())
+        g.createVariable('git_dirty', np.uint8, ())
+        g.createVariable('accessed_files', str, ())
+
+        # Write reproducibility information.
+        g.variables['python_version'][...] = repro.python_version
+        g.variables['software_version'][...] = repro.software_version
+        g.variables['git_commit'][...] = repro.git_commit
+        g.variables['git_branch'][...] = repro.git_branch
+        g.variables['git_dirty'][...] = repro.git_dirty
+        g.variables['accessed_files'][...] = json.dumps([str(p) for p in repro.files])
+
     def close(self):
         """Close any open NetCDF files associated with the trajectory store."""
+
+        # Save simulation reproducibility information.
+        if self.mode in (self.FileMode.CREATE, self.FileMode.APPEND):
+            repro = ReproducibilityData.build()
+            for nc in self._nc_files:
+                for ds in nc.dataset:
+                    self._write_reproducibility_info(ds, repro)
 
         # If we have an index and it's stale, reindex before closing to ensure
         # consistency.
