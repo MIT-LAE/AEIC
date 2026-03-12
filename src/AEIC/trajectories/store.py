@@ -682,7 +682,7 @@ class TrajectoryStore:
         """Close any open NetCDF files associated with the trajectory store."""
 
         # Save simulation reproducibility information.
-        if self.mode in (self.FileMode.CREATE, self.FileMode.APPEND):
+        if self.mode == self.FileMode.CREATE:
             repro = ReproducibilityData.build()
             for nc in self._nc_files:
                 for ds in nc.dataset:

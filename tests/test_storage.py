@@ -939,9 +939,9 @@ def test_file_access_recorder():
         safe_open('file2.nc')
         safe_open('file3.nc')
         safe_sqlite3_connect('tmp.sqlite')
-    assert access_recorder.paths == {
-        str(Path.cwd() / 'file1.nc'),
-        str(Path.cwd() / 'file2.nc'),
-        str(Path.cwd() / 'file3.nc'),
-        str(Path.cwd() / 'tmp.sqlite'),
-    }
+    assert access_recorder.paths == [
+        Path.cwd() / 'file1.nc',
+        Path.cwd() / 'file2.nc',
+        Path.cwd() / 'file3.nc',
+        Path.cwd() / 'tmp.sqlite',
+    ]
