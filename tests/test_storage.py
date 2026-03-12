@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import random
+import sqlite3
 import threading
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,7 +13,15 @@ import numpy as np
 import pytest
 
 from AEIC.performance.types import ThrustModeValues
-from AEIC.storage import Container, Dimension, Dimensions, FieldMetadata, FieldSet
+from AEIC.storage import (
+    Container,
+    Dimension,
+    Dimensions,
+    FieldMetadata,
+    FieldSet,
+    access_recorder,
+    track_file_accesses,
+)
 from AEIC.trajectories import TrajectoryStore
 from AEIC.trajectories.trajectory import Trajectory
 from AEIC.types import Species, SpeciesValues
@@ -908,3 +917,31 @@ def test_append_to_container_by_class():
     assert container_extensible._capacity == 100
     assert container_extensible.per_point_1.tolist() == list(range(10, 710, 10))
     assert container_extensible.per_point_2.tolist() == list(range(20, 1420, 20))
+
+
+def test_file_access_recorder():
+    # Create a FileAccessRecorder, record some accesses, check that they were
+    # recorded correctly.
+    def safe_open(f):
+        try:
+            return open(f)
+        except FileNotFoundError:
+            return None
+
+    def safe_sqlite3_connect(f):
+        try:
+            return sqlite3.connect(f)
+        except FileNotFoundError:
+            return None
+
+    with track_file_accesses():
+        safe_open('file1.nc')
+        safe_open('file2.nc')
+        safe_open('file3.nc')
+        safe_sqlite3_connect('tmp.sqlite')
+    assert access_recorder.paths == [
+        Path.cwd() / 'file1.nc',
+        Path.cwd() / 'file2.nc',
+        Path.cwd() / 'file3.nc',
+        Path.cwd() / 'tmp.sqlite',
+    ]

@@ -216,6 +216,14 @@ class Builder(ABC):
             if mission.flight_id is not None:
                 traj.flight_id = mission.flight_id
             return traj
+        except Exception as e:
+            # If anything went wrong, we want to make sure to clean up the
+            # context before we raise the exception.
+            print(
+                'Error during trajectory simulation for flight '
+                f'{mission.flight_id} ({mission.origin} -> {mission.destination}): {e}'
+            )
+            raise
         finally:
             # Remove the context: this only exists during the simulation of a
             # trajectory.

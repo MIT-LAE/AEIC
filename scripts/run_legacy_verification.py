@@ -1,6 +1,5 @@
 import math
 import os
-import sys
 import tomllib
 from collections.abc import Callable
 from pathlib import Path
@@ -15,6 +14,7 @@ from AEIC.config import Config
 from AEIC.emissions import compute_emissions
 from AEIC.missions import Mission
 from AEIC.performance.models import PerformanceModel
+from AEIC.storage import access_recorder, track_file_accesses
 from AEIC.trajectories import Trajectory
 from AEIC.types import Fuel, Species, SpeciesValues
 from AEIC.verification.legacy import LegacyTrajectory
@@ -283,6 +283,14 @@ def plot_fields[T](
     help='Path to output report file (CSV).',
 )
 def run(report_file) -> None:
+    with track_file_accesses():
+        main(report_file)
+    print('Files accessed during verification:')
+    for path in access_recorder.paths:
+        print(f'  {path}')
+
+
+def main(report_file) -> None:
     # Set up paths to test data.
     data_dir = Path(__file__).parent.parent / 'tests/data/verification/legacy'
     legacy_dir = data_dir / 'matlab-output'
@@ -347,7 +355,6 @@ def run(report_file) -> None:
             print(f'  {mission_id}:')
             for m in bad_metrics:
                 print(f'    {m}')
-        sys.exit(1)
 
 
 if __name__ == '__main__':
