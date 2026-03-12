@@ -88,7 +88,11 @@ class Interpolator:
 
         # Coordinate values.
         fls = sorted(float(fl) for fl in df.fl.unique())
+        self.min_fl = min(fls)
+        self.max_fl = max(fls)
         masses = sorted(float(m) for m in df.mass.unique())
+        self.min_mass = min(masses)
+        self.max_mass = max(masses)
 
         # If there is only one mass value, we need to do linear interpolation
         # in flight level. Otherwise we will be doing bilinear interpolation in
@@ -123,9 +127,12 @@ class Interpolator:
         flight level and aircraft mass."""
 
         if self.n_masses > 1:
-            x = (fl, mass)
+            x = (
+                np.clip(fl, self.min_fl, self.max_fl),
+                np.clip(mass, self.min_mass, self.max_mass),
+            )
         else:
-            x = np.array([fl])
+            x = np.array([np.clip(fl, self.min_fl, self.max_fl)])
 
         return Performance(
             true_airspeed=float(interpn(self.xs, self.tas, x, method='linear')[0]),
