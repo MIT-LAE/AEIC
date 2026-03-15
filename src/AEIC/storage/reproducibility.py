@@ -9,6 +9,8 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from pathlib import Path
 
+from AEIC.config import Config
+
 
 @dataclass
 class ReproducibilityData:
@@ -33,6 +35,10 @@ class ReproducibilityData:
     """True if there are uncommitted changes in the Git repository, False if
        clean or not in a Git repository."""
 
+    config: str
+    """String representation of the AEIC configuration used during
+       simulations."""
+
     files: list[Path] = field(default_factory=list)
     """List of file paths accessed during simulations, captured by the
        AccessRecorder."""
@@ -52,6 +58,7 @@ class ReproducibilityData:
             git_branch=GIT_BRANCH,
             git_dirty=GIT_DIRTY,
             files=access_recorder.paths,
+            config=Config.get().model_dump_json(),
         )
 
 

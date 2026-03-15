@@ -402,11 +402,6 @@ class TrajectoryStore:
         # or close.
         self.index_stale = False
 
-        # Additional special NetCDF group for reproduction information: this is
-        # separate from the main NcFiles mechanism because it's not directly
-        # related to any particular field set.
-        self.reproducibility_group: nc4.Group | None = None
-
         # Default values for other attributes.
         self.global_attributes = {}
         self.merged_store = False
@@ -664,19 +659,25 @@ class TrajectoryStore:
         # Create reproducibility group.
         g = ds.createGroup('_reproducibility')
         g.createVariable('python_version', str, ())
-        g.createVariable('software_version', str, ())
+        g.createVariable('aeic_version', str, ())
         g.createVariable('git_commit', str, ())
         g.createVariable('git_branch', str, ())
         g.createVariable('git_dirty', np.uint8, ())
-        g.createVariable('accessed_files', str, ())
+        g.createVariable('files_accessed', str, ())
+        g.createVariable('config', str, ())
 
         # Write reproducibility information.
         g.variables['python_version'][...] = repro.python_version
-        g.variables['software_version'][...] = repro.software_version
-        g.variables['git_commit'][...] = repro.git_commit
-        g.variables['git_branch'][...] = repro.git_branch
+        g.variables['aeic_version'][...] = repro.software_version
+        g.variables['git_commit'][...] = (
+            repro.git_commit if repro.git_commit is not None else ''
+        )
+        g.variables['git_branch'][...] = (
+            repro.git_branch if repro.git_branch is not None else ''
+        )
         g.variables['git_dirty'][...] = repro.git_dirty
-        g.variables['accessed_files'][...] = json.dumps([str(p) for p in repro.files])
+        g.variables['files_accessed'][...] = json.dumps([str(p) for p in repro.files])
+        g.variables['config'][...] = repro.config
 
     def close(self):
         """Close any open NetCDF files associated with the trajectory store."""
