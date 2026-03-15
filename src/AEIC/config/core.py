@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import tomllib
+from contextlib import contextmanager
 from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,10 @@ from AEIC.utils.models import CIBaseModel
 
 from .emissions import EmissionsConfig
 from .weather import WeatherConfig
+
+# Nasty hack to allow us to bypass singleton restrictions for reading
+# configuration information from reproducibility data in trajectory stores.
+_config_singleton_escaped = False
 
 
 class Config(CIBaseModel):
@@ -38,6 +43,9 @@ class Config(CIBaseModel):
     """List of paths to search for data files. If not initialized explicitly,
     this is taken from the AEIC_PATH environment variable if set, or defaults
     to the current working directory only."""
+
+    default_data_path: Path = ''
+    """Path to the default data directory."""
 
     data_path_overrides: list[Path] = Field(default_factory=list)
     """List of paths used for overriding the normal data directory search. Used
@@ -69,13 +77,14 @@ class Config(CIBaseModel):
         """Resolve search paths and initialize the global configuration
         singleton."""
 
-        global _config
-        if _config is not None:
+        global _config, _config_singleton_escaped
+        if not _config_singleton_escaped and _config is not None:
             raise RuntimeError('Config has already been initialized.')
         try:
             self._normalize_path()
         finally:
-            _config = self
+            if not _config_singleton_escaped:
+                _config = self
 
         return self
 
@@ -198,6 +207,21 @@ class Config(CIBaseModel):
         global _config
         _config = None
 
+    @contextmanager
+    @staticmethod
+    def escape_singleton():
+        """Context manager to allow temporary bypass of singleton restrictions.
+
+        This is used for reading configuration information from reproducibility
+        data in trajectory stores, where we want to create a temporary
+        configuration instance without modifying the global singleton instance."""
+        global _config_singleton_escaped
+        _config_singleton_escaped = True
+        try:
+            yield
+        finally:
+            _config_singleton_escaped = False
+
     def _normalize_path(self) -> None:
         # Path was explicitly set when constructing the instance.
         if len(self.path) > 0:
@@ -214,6 +238,7 @@ class Config(CIBaseModel):
 
         # Add package data directory as a fallback.
         with as_file(files('AEIC') / 'data') as data_dir:
+            object.__setattr__(self, 'default_data_path', data_dir.resolve())
             object.__setattr__(self, 'path', self.path + [data_dir.resolve()])
 
 

@@ -9,7 +9,7 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from pathlib import Path
 
-from AEIC.config import Config
+from AEIC.config import Config, config
 
 
 @dataclass
@@ -51,13 +51,20 @@ class ReproducibilityData:
             f'{sys.version_info.micro}'
         )
 
+        def simplify(p: Path) -> Path:
+            if p.is_relative_to(config.default_data_path):
+                return Path('...') / p.relative_to(config.default_data_path)
+            return p
+
+        files = [simplify(f) for f in access_recorder.paths]
+
         return cls(
             python_version=python_version,
             software_version=VERSION,
             git_commit=GIT_COMMIT,
             git_branch=GIT_BRANCH,
             git_dirty=GIT_DIRTY,
-            files=access_recorder.paths,
+            files=files,
             config=Config.get().model_dump_json(),
         )
 

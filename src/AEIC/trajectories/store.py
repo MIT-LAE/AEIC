@@ -20,6 +20,7 @@ import netCDF4 as nc4
 import numpy as np
 from cachetools import LRUCache
 
+from AEIC.config import Config
 from AEIC.performance.types import ThrustMode, ThrustModeValues
 from AEIC.storage import Dimension, FieldMetadata, FieldSet, HasFieldSets
 from AEIC.storage.reproducibility import ReproducibilityData
@@ -462,6 +463,14 @@ class TrajectoryStore:
         # Whether writing is enabled (CREATE or APPEND mode).
         self._write_enabled = mode in (self.FileMode.CREATE, self.FileMode.APPEND)
 
+        # Set this to nothing to start with: it gets populated when we open an
+        # existing file or files, or when we close a new file or files.
+        self._reproducibility_data: ReproducibilityData | None = None
+
+        # User comments to be added to the NetCDF file when it's created or
+        # closed.
+        self._user_comments: list[str] = []
+
         # Open an existing file or files.
         if mode in (self.FileMode.READ, self.FileMode.APPEND):
             try:
@@ -472,6 +481,17 @@ class TrajectoryStore:
             except Exception:
                 self.close()
                 raise
+
+    def add_comment(self, comment: str):
+        """Add a comment to the trajectory store.
+
+        This comment will be added to the NetCDF file when it's created or
+        closed. This is intended for use in cases where a store is created in
+        memory and then saved to disk later using the `save` method: in this
+        case, the comment can be added before saving, and it will be included in
+        the NetCDF file when it's created by the `save` method.
+        """
+        self._user_comments.append(comment)
 
     @classmethod
     def create(cls, *args, **kwargs) -> TrajectoryStore:
@@ -511,6 +531,15 @@ class TrajectoryStore:
         files follow.
         """
         return self._nc_files
+
+    @property
+    def reproducibility_data(self) -> ReproducibilityData | None:
+        """Reproducibility data for the trajectory store."""
+        return self._reproducibility_data
+
+    @property
+    def comments(self) -> list[str]:
+        return self._user_comments
 
     def save(
         self, base_file: PathType, associated_files: AssociatedFiles | None = None
@@ -653,41 +682,17 @@ class TrajectoryStore:
         """Is a NetCDF file (or files) associated with the trajectory store?"""
         return len(self._nc_files) != 0
 
-    def _write_reproducibility_info(self, ds: nc4.Dataset, repro: ReproducibilityData):
-        """Write reproducibility information to a NetCDF dataset."""
-
-        # Create reproducibility group.
-        g = ds.createGroup('_reproducibility')
-        g.createVariable('python_version', str, ())
-        g.createVariable('aeic_version', str, ())
-        g.createVariable('git_commit', str, ())
-        g.createVariable('git_branch', str, ())
-        g.createVariable('git_dirty', np.uint8, ())
-        g.createVariable('files_accessed', str, ())
-        g.createVariable('config', str, ())
-
-        # Write reproducibility information.
-        g.variables['python_version'][...] = repro.python_version
-        g.variables['aeic_version'][...] = repro.software_version
-        g.variables['git_commit'][...] = (
-            repro.git_commit if repro.git_commit is not None else ''
-        )
-        g.variables['git_branch'][...] = (
-            repro.git_branch if repro.git_branch is not None else ''
-        )
-        g.variables['git_dirty'][...] = repro.git_dirty
-        g.variables['files_accessed'][...] = json.dumps([str(p) for p in repro.files])
-        g.variables['config'][...] = repro.config
-
     def close(self):
         """Close any open NetCDF files associated with the trajectory store."""
 
         # Save simulation reproducibility information.
         if self.mode == self.FileMode.CREATE:
-            repro = ReproducibilityData.build()
+            self._reproducibility_data = ReproducibilityData.build()
             for nc in self._nc_files:
                 for ds in nc.dataset:
-                    self._write_reproducibility_info(ds, repro)
+                    _write_reproducibility_info(
+                        ds, self._reproducibility_data, self._user_comments
+                    )
 
         # If we have an index and it's stale, reindex before closing to ensure
         # consistency.
@@ -1281,6 +1286,11 @@ class TrajectoryStore:
                     f'Associated file hash in NetCDF file {nc_file} does not match '
                     f'hash of base file {check_associated.path}'
                 )
+
+        if self._reproducibility_data is None:
+            self._reproducibility_data, self._user_comments = (
+                _read_reproducibility_info(dataset)
+            )
 
         # Here, the `path`, `dataset`, `traj_dim`, `traj_var` and `size_index`
         # fields are lists to support merged stores. In this case, we have a
@@ -2103,3 +2113,67 @@ def _create_vl_types(
                     )
 
     return vl_types
+
+
+def _write_reproducibility_info(
+    ds: nc4.Dataset, repro: ReproducibilityData, comments: list[str]
+):
+    """Write reproducibility information to a NetCDF dataset."""
+
+    # Create reproducibility group.
+    g = ds.createGroup('_reproducibility')
+    g.createVariable('python_version', str, ())
+    g.createVariable('aeic_version', str, ())
+    g.createVariable('git_commit', str, ())
+    g.createVariable('git_branch', str, ())
+    g.createVariable('git_dirty', np.uint8, ())
+    g.createVariable('files_accessed', str, ())
+    g.createVariable('config', str, ())
+    g.createVariable('comments', str, ())
+
+    # Write reproducibility information.
+    g.variables['python_version'][...] = repro.python_version
+    g.variables['aeic_version'][...] = repro.software_version
+    g.variables['git_commit'][...] = (
+        repro.git_commit if repro.git_commit is not None else ''
+    )
+    g.variables['git_branch'][...] = (
+        repro.git_branch if repro.git_branch is not None else ''
+    )
+    g.variables['git_dirty'][...] = repro.git_dirty
+    g.variables['files_accessed'][...] = json.dumps([str(p) for p in repro.files])
+    g.variables['config'][...] = repro.config
+    g.variables['comments'][...] = json.dumps(comments)
+
+
+def _read_reproducibility_info(
+    ds: nc4.Dataset,
+) -> tuple[ReproducibilityData | None, list[str]]:
+    """Read reproducibility information from a NetCDF dataset."""
+
+    if '_reproducibility' not in ds.groups:
+        return None, []
+
+    # Read reproducibility information.
+    g = ds.groups['_reproducibility']
+    python_version = g.variables['python_version'][...]
+    software_version = g.variables['aeic_version'][...]
+    git_commit = g.variables['git_commit'][...]
+    git_branch = g.variables['git_branch'][...]
+    git_dirty = g.variables['git_dirty'][...].item() != 0
+    file_accessed = json.loads(g.variables['files_accessed'][...])
+    with Config.escape_singleton():
+        config = Config.model_validate_json(g.variables['config'][...])
+    comments = json.loads(g.variables['comments'][...])
+
+    repro_data = ReproducibilityData(
+        python_version=python_version,
+        software_version=software_version,
+        git_commit=git_commit if git_commit != '' else None,
+        git_branch=git_branch if git_branch != '' else None,
+        git_dirty=git_dirty,
+        files=file_accessed,
+        config=config,
+    )
+
+    return repro_data, comments
