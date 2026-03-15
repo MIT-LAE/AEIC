@@ -2162,7 +2162,7 @@ def _read_reproducibility_info(
     git_branch = g.variables['git_branch'][...]
     git_dirty = g.variables['git_dirty'][...].item() != 0
     file_accessed = json.loads(g.variables['files_accessed'][...])
-    with Config.escape_singleton():
+    with Config.escape():
         config = Config.model_validate_json(g.variables['config'][...])
     comments = json.loads(g.variables['comments'][...])
 

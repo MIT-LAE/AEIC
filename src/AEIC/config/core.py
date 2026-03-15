@@ -90,33 +90,49 @@ class Config(CIBaseModel):
 
     @model_validator(mode='after')
     def resolve_paths(self):
+        global _config_singleton_escaped
         if getattr(self, 'performance_model') is not None:
             object.__setattr__(
                 self,
                 'performance_model',
-                Path(self.file_location(getattr(self, 'performance_model'))).resolve(),
+                Path(
+                    self.file_location(
+                        getattr(self, 'performance_model'),
+                        slack=_config_singleton_escaped,
+                    )
+                ).resolve(),
             )
         if getattr(self, 'engine_file') is not None:
             object.__setattr__(
                 self,
                 'engine_file',
-                Path(self.file_location(getattr(self, 'engine_file'))).resolve(),
+                Path(
+                    self.file_location(
+                        getattr(self, 'engine_file'), slack=_config_singleton_escaped
+                    )
+                ).resolve(),
             )
         if self.weather.weather_data_dir is not None:
             object.__setattr__(
                 self.weather,
                 'weather_data_dir',
-                Path(self.file_location(self.weather.weather_data_dir)).resolve(),
+                Path(
+                    self.file_location(
+                        self.weather.weather_data_dir, slack=_config_singleton_escaped
+                    )
+                ).resolve(),
             )
         return self
 
-    def file_location(self, f: Path | str) -> Path:
+    def file_location(self, f: Path | str, slack: bool = False) -> Path:
         """Get path to a file, checking local and configured paths."""
 
         f = f if isinstance(f, Path) else Path(f)
 
         if f.exists():
             return f.resolve()
+        if slack:
+            return f
         return self.data_file_location(f)
 
     def default_data_file_location(
@@ -209,12 +225,14 @@ class Config(CIBaseModel):
 
     @contextmanager
     @staticmethod
-    def escape_singleton():
-        """Context manager to allow temporary bypass of singleton restrictions.
+    def escape():
+        """Context manager to allow temporary bypass of singleton and
+        validation restrictions.
 
         This is used for reading configuration information from reproducibility
         data in trajectory stores, where we want to create a temporary
-        configuration instance without modifying the global singleton instance."""
+        configuration instance without modifying the global singleton
+        instance."""
         global _config_singleton_escaped
         _config_singleton_escaped = True
         try:
