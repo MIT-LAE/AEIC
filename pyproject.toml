@@ -52,10 +52,7 @@ dev = [
 ]
 
 [project.scripts]
-convert-oag-data = "AEIC.commands.convert_oag_data:run"
-make-performance-model = "AEIC.commands.make_performance_model:cli"
-make-test-airports = "AEIC.commands.make_test_airports:run"
-make-golden-test-data = "AEIC.commands.make_golden_test_data:run"
+aeic = "AEIC.cli:cli_safe"
 
 [build-system]
 requires = ["uv_build>=0.9.17,<0.10.0"]

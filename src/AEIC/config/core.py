@@ -52,7 +52,8 @@ class Config(CIBaseModel):
     for testing."""
 
     performance_model: Path
-    """Path to performance model data file."""
+    """Path to performance model data file or performance model selector
+    directory."""
 
     engine_file: Path
     """Path to engine database file."""
