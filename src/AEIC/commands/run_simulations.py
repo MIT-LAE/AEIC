@@ -16,6 +16,7 @@ from AEIC.performance.model_selector import (
     SimplePerformanceModelSelector,
 )
 from AEIC.performance.models import BasePerformanceModel, PerformanceModel
+from AEIC.storage import track_file_accesses
 from AEIC.trajectories import TrajectoryStore
 from AEIC.types import Fuel
 
@@ -32,7 +33,6 @@ def simulate_slice(
     fuel: Fuel,
     builder: tb.Builder,
 ):
-
     # There is one output file per slice. We'll merge them into a merged
     # trajectory store when we're done.
     output_file = Path(f'{str(output_store)}-{slice_idx:03d}.nc')
@@ -76,7 +76,18 @@ def simulate_slice(
             logger.info(f'Slice {slice_idx} complete: {nfailed} failed simulations.')
 
 
-@click.command()
+@click.command(
+    short_help='Simulate trajectories for missions in a database.',
+    help="""Run trajectory simulations for missions in a database. The missions
+    are retrieved from the given database file, and the resulting trajectories
+    are saved to a trajectory store. The performance model used for the
+    simulations can be specified either as a directory containing multiple
+    performance models (one per mission), or as a single performance model file
+    to use for all missions. The simulations can be run in parallel by
+    splitting the missions into slices, and running each slice separately. The
+    output trajectory stores for each slice can be merged together after all
+    slices are complete.""",
+)
 @click.option(
     '--config-file',
     type=click.Path(exists=True, path_type=Path),
@@ -130,47 +141,48 @@ def run_simulations(
         )
     logging.basicConfig(level=logging.INFO)
 
-    # Load given configuration file.
-    Config.load(config_file)
+    with track_file_accesses():
+        # Load given configuration file.
+        Config.load(config_file)
 
-    # Count flights to be simulated. We do this once to decide how many
-    # flights to allocate to each worker process.
-    with Database(mission_db_file) as db:
-        nflights = db(CountQuery())
-    assert isinstance(nflights, int)
-    logger.info('Total flights to process: %s', nflights)
+        # Count flights to be simulated. We do this once to decide how many
+        # flights to run in this slice.
+        with Database(mission_db_file) as db:
+            nflights = db(CountQuery())
+        assert isinstance(nflights, int)
+        logger.info('Total flights to process: %s', nflights)
 
-    # Limit and offset values to use based on slice information. These are used
-    # directly in the LIMIT and OFFSET clauses in an SQL query. This splits the
-    # query results into more or less equally sized groups. The limit for the
-    # last slice is adjusted to fit the number of flights.
-    limit = math.ceil(nflights / slice_count)
-    offset = limit * slice_index
-    if slice_index == slice_count - 1:
-        limit = min(limit, nflights - offset)
-    logger.info('Flights to process in slice: %s', limit)
+        # Limit and offset values to use based on slice information. These are
+        # used directly in the LIMIT and OFFSET clauses in an SQL query. This
+        # splits the query results into more or less equally sized groups. The
+        # limit for the last slice is adjusted to fit the number of flights.
+        limit = math.ceil(nflights / slice_count)
+        offset = limit * slice_index
+        if slice_index == slice_count - 1:
+            limit = min(limit, nflights - offset)
+        logger.info('Flights to process in slice: %s', limit)
 
-    # Load single performance model to use for all simulations.
-    if performance_selector_dir is not None:
-        performance_model = SimplePerformanceModelSelector(performance_selector_dir)
-    else:
-        assert performance_model_file is not None
-        performance_model = PerformanceModel.load(performance_model_file)
+        # Load single performance model to use for all simulations.
+        if performance_selector_dir is not None:
+            performance_model = SimplePerformanceModelSelector(performance_selector_dir)
+        else:
+            assert performance_model_file is not None
+            performance_model = PerformanceModel.load(performance_model_file)
 
-    # Load fuel data.
-    with open(config.emissions.fuel_file, 'rb') as fp:
-        fuel = Fuel.model_validate(tomllib.load(fp))
+        # Load fuel data.
+        with open(config.emissions.fuel_file, 'rb') as fp:
+            fuel = Fuel.model_validate(tomllib.load(fp))
 
-    # Make trajectory builder.
-    builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+        # Make trajectory builder.
+        builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
 
-    simulate_slice(
-        slice_index,
-        limit,
-        offset,
-        output_store,
-        mission_db_file,
-        performance_model,
-        fuel,
-        builder,
-    )
+        simulate_slice(
+            slice_index,
+            limit,
+            offset,
+            output_store,
+            mission_db_file,
+            performance_model,
+            fuel,
+            builder,
+        )

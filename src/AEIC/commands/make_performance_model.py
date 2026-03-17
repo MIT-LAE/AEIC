@@ -54,7 +54,16 @@ def build_performance_table(ptf: PTFData) -> dict[str, Any]:
     return dict(cols=cols, data=sorted(data, key=lambda x: (x[1], x[0], -x[3])))
 
 
-@click.group()
+@click.group(
+    short_help='Create a performance model from legacy data sources.',
+    help="""Generate a performance model from legacy data sources.
+    This command extracts performance data from the Emissions Databank (EDB) and
+    BADA performance tables, and compiles it into a TOML file for use in the
+    legacy performance model. The LTO data can come either from the EDB or from
+    a user-provided TOML file. The BADA performance data is extracted from a
+    PTF file. The resulting TOML file contains all necessary data to define the
+    performance model for a given aircraft class and engine configuration.""",
+)
 @click.option(
     '--output-file',
     type=click.Path(),

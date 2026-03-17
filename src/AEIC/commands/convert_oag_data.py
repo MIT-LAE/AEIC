@@ -8,7 +8,15 @@ import AEIC.missions.oag as oag
 logger = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command(
+    short_help='Convert OAG data to SQLite database.',
+    help="""Convert OAG data from a CSV file to an SQLite database format used
+    by AEIC. The input CSV file should have the same format as the original OAG
+    data files, with columns for origin. The output SQLite database will
+    contain tables for airports, flights, and individual scheduled flight
+    instances, which can be used for trajectory generation and analysis in
+    AEIC. """,
+)
 @click.option(
     '-w',
     '--warnings-file',
