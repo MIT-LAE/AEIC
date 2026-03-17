@@ -5,6 +5,7 @@ import logging
 import click
 
 from AEIC.commands.convert_oag_data import convert_oag_data
+from AEIC.commands.make_file_bundle import make_file_bundle
 from AEIC.commands.make_performance_model import make_performance_model
 from AEIC.commands.run_simulations import run_simulations
 
@@ -27,5 +28,6 @@ def cli():
 
 
 cli.add_command(convert_oag_data, name='convert-oag-data')
+cli.add_command(make_file_bundle, name='make-file-bundle')
 cli.add_command(make_performance_model, name='make-performance-model')
 cli.add_command(run_simulations, name='run')
