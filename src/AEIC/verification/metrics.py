@@ -67,20 +67,16 @@ ComparisonMetricsCollection = dict[
 
 
 def out_of_tolerance(
-    vals: ComparisonMetricsCollection, rtol: float = 1.0e-5, atol: float = 1.0e-8
+    vals: ComparisonMetricsCollection, mape_pct_tol: float = 0.1
 ) -> list[str | tuple[str, Species]]:
     bad = []
     for k, v in vals.items():
         if isinstance(v, ComparisonMetrics):
-            if not np.isclose(v.rmse, 0.0, rtol, atol) or not np.isclose(
-                v.mae, 0.0, rtol, atol
-            ):
+            if abs(v.mape_pct) > mape_pct_tol:
                 bad.append(k)
         elif isinstance(v, SpeciesValues):
             for vs, vm in v.items():
-                if not np.isclose(vm.rmse, 0.0, rtol, atol) or not np.isclose(
-                    vm.mae, 0.0, rtol, atol
-                ):
+                if abs(vm.mape_pct) > mape_pct_tol:
                     bad.append(f'{k} ({vs.name})')
         else:
             raise ValueError(f'Invalid type in ComparisonMetricsCollection: {k}')

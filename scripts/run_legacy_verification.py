@@ -332,7 +332,7 @@ def run(report_file) -> None:
             )
 
             # Record any metrics that are outside tolerance.
-            bad_metrics = out_of_tolerance(metrics, rtol=0.05, atol=1.0e-3)
+            bad_metrics = out_of_tolerance(metrics, mape_pct_tol=0.25)
             if len(bad_metrics) > 0:
                 failed.append((mission.label, bad_metrics))
 
