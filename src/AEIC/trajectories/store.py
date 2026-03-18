@@ -19,6 +19,7 @@ from typing import Any, Protocol
 import netCDF4 as nc4
 import numpy as np
 from cachetools import LRUCache
+from tqdm import tqdm
 
 from AEIC.config import Config
 from AEIC.performance.types import ThrustMode, ThrustModeValues
@@ -687,7 +688,8 @@ class TrajectoryStore:
 
         # Save simulation reproducibility information.
         if self.mode == self.FileMode.CREATE:
-            self._reproducibility_data = ReproducibilityData.build()
+            if self._reproducibility_data is None:
+                self._reproducibility_data = ReproducibilityData.build()
             for nc in self._nc_files:
                 for ds in nc.dataset:
                     _write_reproducibility_info(
@@ -796,6 +798,88 @@ class TrajectoryStore:
             self.index_stale = True
 
         return saved_index
+
+    @staticmethod
+    def combine(
+        output_store: PathType,
+        input_stores: list[PathType] | None = None,
+        input_stores_pattern: PathType | None = None,
+        input_stores_index_range: tuple[int, int] | None = None,
+        title: str | None = None,
+        comment: str | None = None,
+        history: str | None = None,
+        source: str | None = None,
+    ) -> None:
+        """Combine multiple `TrajectoryStore` files into a single-file store.
+
+        Combining is done by creating a new NetCDF file and copying data from
+        the input stores. This is slower than using `merge` to create a merged
+        store, but the resulting combined store is a single NetCDF file, which
+        can be more convenient and less vulnerable to NetCDF library problems.
+        The resulting combined store can then be opened in READ mode like any
+        other `TrajectoryStore`. Combined stores must have extension `.nc`."""
+
+        # Check parameters and normalize input stores list.
+        input_stores = _check_merge_arguments(
+            output_store,
+            input_stores,
+            input_stores_pattern,
+            input_stores_index_range,
+            merge=False,
+        )
+
+        # Collect metadata and check that the field sets match.
+        fieldset_names: set[str] | None = None
+        index_groups = []
+        repro_data: list[ReproducibilityData] = []
+        comments: list[str] = []
+        stores: list[TrajectoryStore] = []
+        assert input_stores is not None
+        for input_store in input_stores:
+            p = Path(input_store)
+            ts = TrajectoryStore.open(base_file=p)
+            stores.append(ts)
+            if fieldset_names is None:
+                fieldset_names = set(ts._nc.keys())
+            if fieldset_names != set(ts._nc.keys()):
+                raise ValueError(
+                    'All input TrajectoryStore files must have the same field sets'
+                )
+            index_groups.append(ts.index_group)
+            if ts.reproducibility_data is not None:
+                repro_data.append(ts.reproducibility_data)
+            for comment in ts.comments:
+                if comment not in comments:
+                    comments.append(comment)
+
+        # Check indexability consistency.
+        indexable = all(g is not None for g in index_groups)
+        if indexable != any(g is not None for g in index_groups):
+            raise ValueError('Either all or none of the input stores must be indexable')
+
+        # Generate combined reproducibility data for the merged store.
+        reproducibility_data = None
+        if len(repro_data) > 0:
+            reproducibility_data = ReproducibilityData.union(*repro_data)
+
+        # Create output store.
+        with TrajectoryStore.create(
+            base_file=output_store,
+            title=title,
+            comment=comment,
+            history=history,
+            source=source,
+        ) as out:
+            out._reproducibility_data = reproducibility_data
+
+            # Copy trajectories.
+            for ts in tqdm(stores, unit='Store'):
+                for traj in tqdm(ts, total=len(ts), unit='Trajectory', leave=False):
+                    out.add(traj)
+
+        # Reindex merged store.
+        if indexable:
+            out._reindex()
 
     @staticmethod
     def merge(
@@ -2074,6 +2158,7 @@ def _check_merge_arguments(
     input_stores: list[PathType] | None = None,
     input_stores_pattern: PathType | None = None,
     input_stores_index_range: tuple[int, int] | None = None,
+    merge: bool = True,
 ) -> list[PathType]:
     # Parameter checks and normalization.
     if input_stores is not None and input_stores_pattern is not None:
@@ -2097,10 +2182,14 @@ def _check_merge_arguments(
             raise ValueError(f'Input TrajectoryStore file "{p}" does not exist')
         if Path(p).suffix != '.nc':
             raise ValueError(f'Merge input "{p}" is not a NetCDF file')
-    if not str(output_store).endswith('.aeic-store'):
-        raise ValueError(
-            'Output TrajectoryStore file must have ".aeic-store" extension'
-        )
+    if merge:
+        if not str(output_store).endswith('.aeic-store'):
+            raise ValueError(
+                'Output TrajectoryStore file must have ".aeic-store" extension'
+            )
+    else:
+        if not str(output_store).endswith('.nc'):
+            raise ValueError('Output TrajectoryStore file must have ".nc" extension')
     if Path(output_store).exists():
         raise ValueError(f'Output TrajectoryStore file "{output_store}" already exists')
     return input_stores
