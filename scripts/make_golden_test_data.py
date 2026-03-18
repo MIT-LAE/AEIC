@@ -9,7 +9,7 @@ from AEIC.missions import Mission
 from AEIC.performance.models import PerformanceModel
 from AEIC.trajectories import TrajectoryStore
 
-TEST_DIR = Path(__file__).parent.parent.parent.parent / 'tests'
+TEST_DIR = Path(__file__).parent.parent / 'tests'
 TEST_DATA_DIR = TEST_DIR / 'data'
 
 # We need to add the test data directory as a data path override so that the
