@@ -3,12 +3,20 @@ import os
 
 import click
 
-from AEIC.missions.oag import convert_oag_data
+import AEIC.missions.oag as oag
 
 logger = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command(
+    short_help='Convert OAG data to SQLite database.',
+    help="""Convert OAG data from a CSV file to an SQLite database format used
+    by AEIC. The input CSV file should have the same format as the original OAG
+    data files, with columns for origin. The output SQLite database will
+    contain tables for airports, flights, and individual scheduled flight
+    instances, which can be used for trajectory generation and analysis in
+    AEIC. """,
+)
 @click.option(
     '-w',
     '--warnings-file',
@@ -33,15 +41,11 @@ logger = logging.getLogger(__name__)
     required=True,
     help='Output SQLite database file.',
 )
-def run(warnings_file, year, in_file, db_file):
+def convert_oag_data(warnings_file, year, in_file, db_file):
     if os.environ.get('AEIC_PATH') is None:
         raise RuntimeError('AEIC_PATH environment variable is not set.')
     if os.path.exists(db_file):
         raise RuntimeError(f'Database file {db_file} already exists.')
 
     logging.basicConfig(level=logging.INFO)
-    convert_oag_data(in_file, year, db_file, warnings_file)
-
-
-if __name__ == '__main__':
-    run()
+    oag.convert_oag_data(in_file, year, db_file, warnings_file)

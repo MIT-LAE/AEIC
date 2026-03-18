@@ -13,8 +13,6 @@ from AEIC.performance.edb import EDBEntry
 from AEIC.performance.models.base import LTOPerformanceInput
 from AEIC.performance.types import LTOPerformance
 
-Config.load()
-
 
 def lto_from_edb(engine_file, engine_uid, thrust_fractions) -> LTOPerformance:
     if engine_file is None or engine_uid is None:
@@ -56,7 +54,16 @@ def build_performance_table(ptf: PTFData) -> dict[str, Any]:
     return dict(cols=cols, data=sorted(data, key=lambda x: (x[1], x[0], -x[3])))
 
 
-@click.group()
+@click.group(
+    short_help='Create a performance model from legacy data sources.',
+    help="""Generate a performance model from legacy data sources.
+    This command extracts performance data from the Emissions Databank (EDB) and
+    BADA performance tables, and compiles it into a TOML file for use in the
+    legacy performance model. The LTO data can come either from the EDB or from
+    a user-provided TOML file. The BADA performance data is extracted from a
+    PTF file. The resulting TOML file contains all necessary data to define the
+    performance model for a given aircraft class and engine configuration.""",
+)
 @click.option(
     '--output-file',
     type=click.Path(),
@@ -64,7 +71,7 @@ def build_performance_table(ptf: PTFData) -> dict[str, Any]:
     help='Output TOML file to write extracted data.',
 )
 @click.pass_context
-def cli(ctx, output_file):
+def make_performance_model(ctx, output_file):
     ctx.ensure_object(dict)
     ctx.obj['output_file'] = output_file
 
@@ -118,7 +125,7 @@ def cli(ctx, output_file):
     required=False,
     help='Name of the APU used on the aircraft.',
 )
-@cli.command()
+@make_performance_model.command()
 @click.pass_context
 def legacy(
     ctx,
@@ -132,6 +139,8 @@ def legacy(
     number_of_engines,
     apu_name,
 ):
+    Config.load()
+
     if apu_name is not None and lookup_apu(apu_name) is None:
         raise click.UsageError(f'APU "{apu_name}" not found in APU database.')
     if engine_file is not None:
@@ -172,12 +181,8 @@ def legacy(
         tomli_w.dump(toml_data, fp)
 
 
-@cli.command()
+@make_performance_model.command()
 def tasopt():
     raise NotImplementedError(
         'TASOPT performance model generation not yet implemented.'
     )
-
-
-if __name__ == '__main__':
-    cli()

@@ -399,6 +399,11 @@ class LegacyBuilder(Builder):
         # Cruise end distance based on estimated descent distance.
         end_dist = self.ground_track.total_distance - self.descent_dist_approx
 
+        # If there is not enough distance to fly before starting descent, skip
+        # cruise phase.
+        if pt.ground_distance >= end_dist:
+            return
+
         # Cruise is discretized into ground distance steps with a possible
         # extra "short step" at the end to reach the target distance.
         distances = np.arange(pt.ground_distance, end_dist, self.cruise_step)

@@ -19,9 +19,12 @@ from typing import Any, Protocol
 import netCDF4 as nc4
 import numpy as np
 from cachetools import LRUCache
+from tqdm import tqdm
 
+from AEIC.config import Config
 from AEIC.performance.types import ThrustMode, ThrustModeValues
 from AEIC.storage import Dimension, FieldMetadata, FieldSet, HasFieldSets
+from AEIC.storage.reproducibility import ReproducibilityData
 from AEIC.types import Species, SpeciesValues
 
 from .trajectory import BASE_FIELDSET_NAME, Trajectory
@@ -461,6 +464,14 @@ class TrajectoryStore:
         # Whether writing is enabled (CREATE or APPEND mode).
         self._write_enabled = mode in (self.FileMode.CREATE, self.FileMode.APPEND)
 
+        # Set this to nothing to start with: it gets populated when we open an
+        # existing file or files, or when we close a new file or files.
+        self._reproducibility_data: ReproducibilityData | None = None
+
+        # User comments to be added to the NetCDF file when it's created or
+        # closed.
+        self._user_comments: list[str] = []
+
         # Open an existing file or files.
         if mode in (self.FileMode.READ, self.FileMode.APPEND):
             try:
@@ -471,6 +482,17 @@ class TrajectoryStore:
             except Exception:
                 self.close()
                 raise
+
+    def add_comment(self, comment: str):
+        """Add a comment to the trajectory store.
+
+        This comment will be added to the NetCDF file when it's created or
+        closed. This is intended for use in cases where a store is created in
+        memory and then saved to disk later using the `save` method: in this
+        case, the comment can be added before saving, and it will be included in
+        the NetCDF file when it's created by the `save` method.
+        """
+        self._user_comments.append(comment)
 
     @classmethod
     def create(cls, *args, **kwargs) -> TrajectoryStore:
@@ -510,6 +532,15 @@ class TrajectoryStore:
         files follow.
         """
         return self._nc_files
+
+    @property
+    def reproducibility_data(self) -> ReproducibilityData | None:
+        """Reproducibility data for the trajectory store."""
+        return self._reproducibility_data
+
+    @property
+    def comments(self) -> list[str]:
+        return self._user_comments
 
     def save(
         self, base_file: PathType, associated_files: AssociatedFiles | None = None
@@ -655,6 +686,16 @@ class TrajectoryStore:
     def close(self):
         """Close any open NetCDF files associated with the trajectory store."""
 
+        # Save simulation reproducibility information.
+        if self.mode == self.FileMode.CREATE:
+            if self._reproducibility_data is None:
+                self._reproducibility_data = ReproducibilityData.build()
+            for nc in self._nc_files:
+                for ds in nc.dataset:
+                    _write_reproducibility_info(
+                        ds, self._reproducibility_data, self._user_comments
+                    )
+
         # If we have an index and it's stale, reindex before closing to ensure
         # consistency.
         if self.indexable and self.index_stale:
@@ -759,6 +800,88 @@ class TrajectoryStore:
         return saved_index
 
     @staticmethod
+    def combine(
+        output_store: PathType,
+        input_stores: list[PathType] | None = None,
+        input_stores_pattern: PathType | None = None,
+        input_stores_index_range: tuple[int, int] | None = None,
+        title: str | None = None,
+        comment: str | None = None,
+        history: str | None = None,
+        source: str | None = None,
+    ) -> None:
+        """Combine multiple `TrajectoryStore` files into a single-file store.
+
+        Combining is done by creating a new NetCDF file and copying data from
+        the input stores. This is slower than using `merge` to create a merged
+        store, but the resulting combined store is a single NetCDF file, which
+        can be more convenient and less vulnerable to NetCDF library problems.
+        The resulting combined store can then be opened in READ mode like any
+        other `TrajectoryStore`. Combined stores must have extension `.nc`."""
+
+        # Check parameters and normalize input stores list.
+        input_stores = _check_merge_arguments(
+            output_store,
+            input_stores,
+            input_stores_pattern,
+            input_stores_index_range,
+            merge=False,
+        )
+
+        # Collect metadata and check that the field sets match.
+        fieldset_names: set[str] | None = None
+        index_groups = []
+        repro_data: list[ReproducibilityData] = []
+        comments: list[str] = []
+        stores: list[TrajectoryStore] = []
+        assert input_stores is not None
+        for input_store in input_stores:
+            p = Path(input_store)
+            ts = TrajectoryStore.open(base_file=p)
+            stores.append(ts)
+            if fieldset_names is None:
+                fieldset_names = set(ts._nc.keys())
+            if fieldset_names != set(ts._nc.keys()):
+                raise ValueError(
+                    'All input TrajectoryStore files must have the same field sets'
+                )
+            index_groups.append(ts.index_group)
+            if ts.reproducibility_data is not None:
+                repro_data.append(ts.reproducibility_data)
+            for comment in ts.comments:
+                if comment not in comments:
+                    comments.append(comment)
+
+        # Check indexability consistency.
+        indexable = all(g is not None for g in index_groups)
+        if indexable != any(g is not None for g in index_groups):
+            raise ValueError('Either all or none of the input stores must be indexable')
+
+        # Generate combined reproducibility data for the merged store.
+        reproducibility_data = None
+        if len(repro_data) > 0:
+            reproducibility_data = ReproducibilityData.union(*repro_data)
+
+        # Create output store.
+        with TrajectoryStore.create(
+            base_file=output_store,
+            title=title,
+            comment=comment,
+            history=history,
+            source=source,
+        ) as out:
+            out._reproducibility_data = reproducibility_data
+
+            # Copy trajectories.
+            for ts in tqdm(stores, unit='Store'):
+                for traj in tqdm(ts, total=len(ts), unit='Trajectory', leave=False):
+                    out.add(traj)
+
+        # Reindex merged store.
+        if indexable:
+            out._reindex()
+
+    @staticmethod
     def merge(
         output_store: PathType,
         input_stores: list[PathType] | None = None,
@@ -780,7 +903,7 @@ class TrajectoryStore:
         extension `.aeic-store`."""
 
         # Check parameters and normalize input stores list.
-        input_stores = TrajectoryStore._check_merge_arguments(
+        input_stores = _check_merge_arguments(
             output_store, input_stores, input_stores_pattern, input_stores_index_range
         )
 
@@ -791,6 +914,8 @@ class TrajectoryStore:
         store_data = []
         fieldset_names: set[str] | None = None
         index_groups = []
+        repro_data: list[ReproducibilityData] = []
+        comments: list[str] = []
         assert input_stores is not None
         for input_store in input_stores:
             p = Path(input_store)
@@ -803,11 +928,21 @@ class TrajectoryStore:
                 )
             store_data.append((p.name, len(ts)))
             index_groups.append(ts.index_group)
+            if ts.reproducibility_data is not None:
+                repro_data.append(ts.reproducibility_data)
+            for comment in ts.comments:
+                if comment not in comments:
+                    comments.append(comment)
 
         # Check indexability consistency.
         indexable = all(g is not None for g in index_groups)
         if indexable != any(g is not None for g in index_groups):
             raise ValueError('Either all or none of the input stores must be indexable')
+
+        # Generate combined reproducibility data for the merged store.
+        reproducibility_data = None
+        if len(repro_data) > 0:
+            reproducibility_data = ReproducibilityData.union(*repro_data)
 
         # Move input stores to output directory.
         for input_store in input_stores:
@@ -817,7 +952,13 @@ class TrajectoryStore:
 
         # Create merged index.
         if indexable:
-            TrajectoryStore._create_merged_store_index(output_store, input_stores)
+            _create_merged_store_index(output_store, input_stores)
+
+        # Create merged reproducibility data.
+        if reproducibility_data is not None:
+            _create_merged_store_reproducibility(
+                output_store, reproducibility_data, comments
+            )
 
         # Write metadata JSON file to output directory.
         data = dict(stores=store_data, created=datetime.now(tz=UTC).isoformat())
@@ -1248,6 +1389,11 @@ class TrajectoryStore:
                     f'hash of base file {check_associated.path}'
                 )
 
+        if self._reproducibility_data is None:
+            self._reproducibility_data, self._user_comments = (
+                _read_reproducibility_info(dataset)
+            )
+
         # Here, the `path`, `dataset`, `traj_dim`, `traj_var` and `size_index`
         # fields are lists to support merged stores. In this case, we have a
         # single file, so we put the values into singleton lists.
@@ -1288,6 +1434,16 @@ class TrajectoryStore:
             self.index_dataset = nc4.Dataset(index_file, mode='r', keepweakref=True)
             self.index_group = self.index_dataset.groups['_index']
             self.indexable = True
+
+        # Open reproducibility file.
+        reproducibility_file = Path(self.base_file) / '_reproducibility.nc'
+        if reproducibility_file.exists():
+            with nc4.Dataset(
+                reproducibility_file, mode='r', keepweakref=True
+            ) as dataset:
+                self._reproducibility_data, self._user_comments = (
+                    _read_reproducibility_info(dataset)
+                )
 
         # Open any associated NetCDF files.
         for name in self.associated_files:
@@ -1530,36 +1686,6 @@ class TrajectoryStore:
 
         # We've just remade the index, so it's definitely not stale.
         self.index_stale = False
-
-    @staticmethod
-    def _create_merged_store_index(
-        output_store: PathType, input_stores: list[PathType]
-    ):
-        index_dataset = nc4.Dataset(
-            Path(output_store) / '_index.nc', 'w', keepweakref=True
-        )
-        index_dataset.createDimension('trajectory', None)
-        index_group = index_dataset.createGroup('_index')
-        index_group.createVariable('flight_id', np.int64, ('trajectory',))
-        index_group.createVariable('trajectory_index', np.int64, ('trajectory',))
-        flight_ids = []
-        trajectory_indexes = []
-        index_offset = 0
-        for input_store in input_stores:
-            ts = TrajectoryStore.open(
-                base_file=Path(output_store) / Path(input_store).name
-            )
-            assert ts.index_group is not None
-            vs = ts.index_group.variables
-            flight_ids += list(vs['flight_id'][:])
-            trajectory_indexes += [
-                idx + index_offset for idx in vs['trajectory_index'][:]
-            ]
-            index_offset += len(ts)
-        id_pairs = sorted(zip(trajectory_indexes, flight_ids), key=lambda x: x[1])
-        index_group.variables['flight_id'][:] = [id for _, id in id_pairs]
-        index_group.variables['trajectory_index'][:] = [idx for idx, _ in id_pairs]
-        index_dataset.close()
 
     def _load_trajectory(self, index: int) -> None:
         """Load a trajectory at the given index from the NetCDF file(s)."""
@@ -1916,58 +2042,6 @@ class TrajectoryStore:
         # creation).
         self._check_file_paths(check_paths, mode)
 
-    @staticmethod
-    def _check_merge_arguments(
-        output_store: PathType,
-        input_stores: list[PathType] | None = None,
-        input_stores_pattern: PathType | None = None,
-        input_stores_index_range: tuple[int, int] | None = None,
-    ) -> list[PathType]:
-        # Parameter checks and normalization.
-        if input_stores is not None and input_stores_pattern is not None:
-            raise ValueError(
-                'Specify either input_stores or input_stores_pattern, not both'
-            )
-        if input_stores_pattern is not None and input_stores_index_range is None:
-            raise ValueError(
-                'When specifying input_stores_pattern, '
-                'input_stores_index_range must also be specified'
-            )
-        if input_stores_pattern is not None:
-            assert input_stores_index_range is not None
-            input_stores = [
-                Path(str(input_stores_pattern).format(index=i))
-                for i in range(
-                    input_stores_index_range[0], input_stores_index_range[1] + 1
-                )
-            ]
-        assert input_stores is not None
-        for p in input_stores:
-            if not Path(p).exists():
-                raise ValueError(f'Input TrajectoryStore file "{p}" does not exist')
-            if Path(p).suffix != '.nc':
-                raise ValueError(f'Merge input "{p}" is not a NetCDF file')
-        if not str(output_store).endswith('.aeic-store'):
-            raise ValueError(
-                'Output TrajectoryStore file must have ".aeic-store" extension'
-            )
-        if Path(output_store).exists():
-            raise ValueError(
-                f'Output TrajectoryStore file "{output_store}" already exists'
-            )
-        return input_stores
-
-    @staticmethod
-    def _valid_associated_file_tuple(t) -> bool:
-        """Check if t is a tuple[str, list[str]]."""
-        if not isinstance(t, tuple) or len(t) != 2:
-            return False
-        if not isinstance(t[0], PathType) or not isinstance(t[1], list):
-            return False
-        if any(not isinstance(name, str) for name in t[1]):
-            return False
-        return True
-
     def _calc_associated_fieldsets(self) -> None:
         """Determine field sets in associated files."""
 
@@ -1989,10 +2063,7 @@ class TrajectoryStore:
 
         if self.associated_files is None:
             return []
-        if any(
-            not TrajectoryStore._valid_associated_file_tuple(f)
-            for f in self.associated_files
-        ):
+        if any(not _valid_associated_file_tuple(f) for f in self.associated_files):
             raise ValueError(
                 f'associated_files must be tuple[PathType, list[str]] in {label}'
             )
@@ -2002,6 +2073,17 @@ class TrajectoryStore:
             assert isinstance(f[0], PathType)
             check_paths.append(f[0])
         return check_paths
+
+
+def _valid_associated_file_tuple(t) -> bool:
+    """Check if t is a tuple[str, list[str]]."""
+    if not isinstance(t, tuple) or len(t) != 2:
+        return False
+    if not isinstance(t[0], PathType) or not isinstance(t[1], list):
+        return False
+    if any(not isinstance(name, str) for name in t[1]):
+        return False
+    return True
 
 
 def _create_dimensions(
@@ -2069,3 +2151,141 @@ def _create_vl_types(
                     )
 
     return vl_types
+
+
+def _check_merge_arguments(
+    output_store: PathType,
+    input_stores: list[PathType] | None = None,
+    input_stores_pattern: PathType | None = None,
+    input_stores_index_range: tuple[int, int] | None = None,
+    merge: bool = True,
+) -> list[PathType]:
+    # Parameter checks and normalization.
+    if input_stores is not None and input_stores_pattern is not None:
+        raise ValueError(
+            'Specify either input_stores or input_stores_pattern, not both'
+        )
+    if input_stores_pattern is not None and input_stores_index_range is None:
+        raise ValueError(
+            'When specifying input_stores_pattern, '
+            'input_stores_index_range must also be specified'
+        )
+    if input_stores_pattern is not None:
+        assert input_stores_index_range is not None
+        input_stores = [
+            Path(str(input_stores_pattern).format(index=i))
+            for i in range(input_stores_index_range[0], input_stores_index_range[1] + 1)
+        ]
+    assert input_stores is not None
+    for p in input_stores:
+        if not Path(p).exists():
+            raise ValueError(f'Input TrajectoryStore file "{p}" does not exist')
+        if Path(p).suffix != '.nc':
+            raise ValueError(f'Merge input "{p}" is not a NetCDF file')
+    if merge:
+        if not str(output_store).endswith('.aeic-store'):
+            raise ValueError(
+                'Output TrajectoryStore file must have ".aeic-store" extension'
+            )
+    else:
+        if not str(output_store).endswith('.nc'):
+            raise ValueError('Output TrajectoryStore file must have ".nc" extension')
+    if Path(output_store).exists():
+        raise ValueError(f'Output TrajectoryStore file "{output_store}" already exists')
+    return input_stores
+
+
+def _create_merged_store_index(output_store: PathType, input_stores: list[PathType]):
+    index_dataset = nc4.Dataset(Path(output_store) / '_index.nc', 'w', keepweakref=True)
+    index_dataset.createDimension('trajectory', None)
+    index_group = index_dataset.createGroup('_index')
+    index_group.createVariable('flight_id', np.int64, ('trajectory',))
+    index_group.createVariable('trajectory_index', np.int64, ('trajectory',))
+    flight_ids = []
+    trajectory_indexes = []
+    index_offset = 0
+    for input_store in input_stores:
+        ts = TrajectoryStore.open(base_file=Path(output_store) / Path(input_store).name)
+        assert ts.index_group is not None
+        vs = ts.index_group.variables
+        flight_ids += list(vs['flight_id'][:])
+        trajectory_indexes += [idx + index_offset for idx in vs['trajectory_index'][:]]
+        index_offset += len(ts)
+    id_pairs = sorted(zip(trajectory_indexes, flight_ids), key=lambda x: x[1])
+    index_group.variables['flight_id'][:] = [id for _, id in id_pairs]
+    index_group.variables['trajectory_index'][:] = [idx for idx, _ in id_pairs]
+    index_dataset.close()
+
+
+def _create_merged_store_reproducibility(
+    output_store: PathType, repro: ReproducibilityData, comments: list[str]
+):
+    reproducibility_dataset = nc4.Dataset(
+        Path(output_store) / '_reproducibility.nc', 'w', keepweakref=True
+    )
+    _write_reproducibility_info(reproducibility_dataset, repro, comments)
+    reproducibility_dataset.close()
+
+
+def _write_reproducibility_info(
+    ds: nc4.Dataset, repro: ReproducibilityData, comments: list[str]
+):
+    """Write reproducibility information to a NetCDF dataset."""
+
+    # Create reproducibility group.
+    g = ds.createGroup('_reproducibility')
+    g.createVariable('python_version', str, ())
+    g.createVariable('aeic_version', str, ())
+    g.createVariable('git_commit', str, ())
+    g.createVariable('git_branch', str, ())
+    g.createVariable('git_dirty', np.uint8, ())
+    g.createVariable('files_accessed', str, ())
+    g.createVariable('config', str, ())
+    g.createVariable('comments', str, ())
+
+    # Write reproducibility information.
+    g.variables['python_version'][...] = repro.python_version
+    g.variables['aeic_version'][...] = repro.software_version
+    g.variables['git_commit'][...] = (
+        repro.git_commit if repro.git_commit is not None else ''
+    )
+    g.variables['git_branch'][...] = (
+        repro.git_branch if repro.git_branch is not None else ''
+    )
+    g.variables['git_dirty'][...] = repro.git_dirty
+    g.variables['files_accessed'][...] = json.dumps([str(p) for p in repro.files])
+    g.variables['config'][...] = repro.config
+    g.variables['comments'][...] = json.dumps(comments)
+
+
+def _read_reproducibility_info(
+    ds: nc4.Dataset,
+) -> tuple[ReproducibilityData | None, list[str]]:
+    """Read reproducibility information from a NetCDF dataset."""
+
+    if '_reproducibility' not in ds.groups:
+        return None, []
+
+    # Read reproducibility information.
+    g = ds.groups['_reproducibility']
+    python_version = g.variables['python_version'][...]
+    software_version = g.variables['aeic_version'][...]
+    git_commit = g.variables['git_commit'][...]
+    git_branch = g.variables['git_branch'][...]
+    git_dirty = g.variables['git_dirty'][...].item() != 0
+    file_accessed = json.loads(g.variables['files_accessed'][...])
+    with Config.escape():
+        config = Config.model_validate_json(g.variables['config'][...])
+    comments = json.loads(g.variables['comments'][...])
+
+    repro_data = ReproducibilityData(
+        python_version=python_version,
+        software_version=software_version,
+        git_commit=git_commit if git_commit != '' else None,
+        git_branch=git_branch if git_branch != '' else None,
+        git_dirty=git_dirty,
+        files=file_accessed,
+        config=Config.model_dump_json(config),
+    )
+
+    return repro_data, comments

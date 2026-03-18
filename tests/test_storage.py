@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import random
+import sqlite3
 import threading
 from dataclasses import dataclass
 from datetime import datetime
@@ -11,11 +12,21 @@ from typing import ClassVar
 import numpy as np
 import pytest
 
+from AEIC.config import Config
 from AEIC.performance.types import ThrustModeValues
-from AEIC.storage import Container, Dimension, Dimensions, FieldMetadata, FieldSet
+from AEIC.storage import (
+    Container,
+    Dimension,
+    Dimensions,
+    FieldMetadata,
+    FieldSet,
+    access_recorder,
+    track_file_accesses,
+)
 from AEIC.trajectories import TrajectoryStore
 from AEIC.trajectories.trajectory import Trajectory
 from AEIC.types import Species, SpeciesValues
+from tests.subproc import run_in_subprocess
 
 
 @dataclass
@@ -218,6 +229,7 @@ def simple_check_ts(path: Path | str, title: str, lengths: list[int]):
             assert len(ts_read[i]) == lengths[i]
 
 
+@pytest.mark.forked
 def test_create_reopen(tmp_path: Path):
     # Create a small TrajectoryStore, save to NetCDF, disabling further
     # appending (closes NetCDF file), reload from NetCDF.
@@ -234,6 +246,7 @@ def test_create_reopen(tmp_path: Path):
             ts_read[10]
 
 
+@pytest.mark.forked
 def test_create_append_reopen(tmp_path: Path):
     # Create a TrajectoryStore, save to NetCDF, close, reopen file in append
     # mode, add another trajectory, close NetCDF file and reload from NetCDF.
@@ -249,6 +262,7 @@ def test_create_append_reopen(tmp_path: Path):
 
 
 @pytest.mark.skip(reason='long test case, enable manually')
+@pytest.mark.forked
 def test_create_reopen_large(tmp_path: Path):
     # Create large TrajectoryStore linked with NetCDF file (~13 Gb) for
     # writing, close the NetCDF file, reopen for reading and check contents.
@@ -268,6 +282,7 @@ def test_create_reopen_large(tmp_path: Path):
         assert len(ts_read[999999]) == 100
 
 
+@pytest.mark.forked
 def test_read_nulls(tmp_path: Path):
     # Check re-reading of null values from trajectory store.
 
@@ -293,6 +308,7 @@ def test_read_nulls(tmp_path: Path):
         assert len(t1.fuel_flow) == 15
 
 
+@pytest.mark.forked
 def test_multi_threading(tmp_path: Path):
     result = None
 
@@ -313,6 +329,7 @@ def test_multi_threading(tmp_path: Path):
     assert result == 'FAILED'
 
 
+@pytest.mark.forked
 def test_extra_fields_in_base_nc(tmp_path: Path):
     # Create TrajectoryStore with additional field set saved in base file.
     # (This should result in a file with a "base" group and a "simple_extras"
@@ -330,6 +347,7 @@ def test_extra_fields_in_base_nc(tmp_path: Path):
         assert ts_read[2].mf is not None
 
 
+@pytest.mark.forked
 def test_extra_fields_in_base_nc_bad(tmp_path: Path):
     # (BAD VERSION OF ABOVE TEST): create TrajectoryStore with additional field
     # set saved in base file. (This should result in a file with a "base" group
@@ -348,6 +366,7 @@ def test_extra_fields_in_base_nc_bad(tmp_path: Path):
                 ts.add(t)
 
 
+@pytest.mark.forked
 def test_extra_fields_in_associated_nc(tmp_path: Path):
     # Same thing as last (good) case, except save additional field set in an
     # associated file.
@@ -386,6 +405,7 @@ def test_extra_fields_in_associated_nc(tmp_path: Path):
         assert ts2_read[2].mf is not None
 
 
+@pytest.mark.forked
 def test_extra_fields_in_associated_nc_bad(tmp_path: Path):
     # Same idea as last case, except try to open associated file that doesn't
     # match the base file.
@@ -412,6 +432,7 @@ def test_extra_fields_in_associated_nc_bad(tmp_path: Path):
         TrajectoryStore.open(base_file=base2, associated_files=[extra1])
 
 
+@pytest.mark.forked
 def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
     # Equivalent of last (good) case with appending to the files in between
     # creating and reading the store.
@@ -455,6 +476,7 @@ def test_extra_fields_in_associated_nc_with_append(tmp_path: Path):
         assert ts2_read[2].mf is not None
 
 
+@pytest.mark.forked
 def test_save(tmp_path: Path):
     # Test saving TrajectoryStore to a different NetCDF file.
 
@@ -479,6 +501,7 @@ def test_save(tmp_path: Path):
         assert ts_read[2].mf is not None
 
 
+@pytest.mark.forked
 def test_create_associated(tmp_path: Path):
     # Create associated file from existing TrajectoryStore.
 
@@ -504,6 +527,7 @@ def test_create_associated(tmp_path: Path):
         assert ts_read[1].mf is not None
 
 
+@pytest.mark.forked
 def test_fieldset_override(tmp_path: Path):
     # For this test, we need to create a base file with some extra fields, then
     # we need to create an associated file with the same extra fields but
@@ -565,6 +589,7 @@ def test_fieldset_override(tmp_path: Path):
         assert ts_read3[1].mf == 12345
 
 
+@pytest.mark.forked
 def test_basic_merging(tmp_path: Path):
     # Create a number of trajectory stores with names following a pattern.
     paths = []
@@ -593,26 +618,22 @@ def test_basic_merging(tmp_path: Path):
         assert ts_merged[4].flight_time.shape == (5,)
 
 
-def test_pattern_merging(tmp_path: Path):
-    # Create a number of trajectory stores with names following a pattern.
-    paths = []
+# Split test into subprocesses to avoid issues with NetCDF libraries.
+
+
+def pattern_merge_create_stores(tmp_path, test_data_dir):
+    Config.load(data_path_overrides=[test_data_dir])
     for i in range(10):
         path = tmp_path / f'test_{i:03d}.nc'
-        paths.append(path)
+
         with TrajectoryStore.create(base_file=path, title=f'store {i}') as ts:
             for j in range(2):
                 t = make_test_trajectory((j + 1) * 5, j + i * 10)
                 ts.add(t)
 
-    # Merge the stores into a new store.
-    merged_path = tmp_path / 'merged.aeic-store'
-    TrajectoryStore.merge(
-        input_stores_pattern=tmp_path / 'test_{index:03d}.nc',
-        input_stores_index_range=(0, 9),
-        output_store=merged_path,
-    )
 
-    # Open the merged store and check contents.
+def pattern_merge_check_merged_store(merged_path, test_data_dir):
+    Config.load(data_path_overrides=[test_data_dir])
     with TrajectoryStore.open(base_file=merged_path) as ts_merged:
         assert ts_merged.nc_linked is True
         assert len(ts_merged) == 20
@@ -621,19 +642,28 @@ def test_pattern_merging(tmp_path: Path):
         assert ts_merged[4].flight_time.shape == (5,)
 
 
-def test_merging_with_associated_files(tmp_path: Path):
-    # How should this work? If you merge a set of base files that have
-    # associated files, you should then be able to merge the associated files
-    # and open the "base merged store" with the "associated merged store" to
-    # get what you would hope for.
+def test_pattern_merging(test_data_dir, tmp_path):
+    # PART 1 in subprocess
+    run_in_subprocess(pattern_merge_create_stores, tmp_path, test_data_dir)
 
-    # TODO: Think about what can go wrong here and add some error checking to
-    # the code that opens the merged stores.
+    merged_path = tmp_path / "merged.aeic-store"
 
+    TrajectoryStore.merge(
+        input_stores_pattern=tmp_path / 'test_{index:03d}.nc',
+        input_stores_index_range=(0, 9),
+        output_store=merged_path,
+    )
+
+    # PART 2 in subprocess
+    run_in_subprocess(pattern_merge_check_merged_store, merged_path, test_data_dir)
+
+
+# Split test into subprocesses to avoid issues with NetCDF libraries.
+
+
+def associated_files_merge_create_stores(tmp_path, test_data_dir):
     #  1. Create stores with base + associated files.
-    base_paths = []
-    simple_extra_paths = []
-    complex_extra_paths = []
+    Config.load(data_path_overrides=[test_data_dir])
     for j in range(10):
         base_path = tmp_path / f'base{j}.nc'
         simple_extra_path = tmp_path / f'simple{j}.nc'
@@ -650,25 +680,13 @@ def test_merging_with_associated_files(tmp_path: Path):
                 t.add_fields(SimpleExtras.random(i * 5))
                 t.add_fields(ComplexExtras.random(i * 5))
                 ts.add(t)
-        base_paths.append(base_path)
-        simple_extra_paths.append(simple_extra_path)
-        complex_extra_paths.append(complex_extra_path)
 
-    #  2. Merge base files.
-    merged_base = tmp_path / 'merged_base.aeic-store'
-    TrajectoryStore.merge(input_stores=base_paths, output_store=merged_base)
 
-    #  3. Merge associated files.
-    merged_simple_associated = tmp_path / 'merged_simple_extra.aeic-store'
-    merged_complex_associated = tmp_path / 'merged_complex_extra.aeic-store'
-    TrajectoryStore.merge(
-        input_stores=simple_extra_paths, output_store=merged_simple_associated
-    )
-    TrajectoryStore.merge(
-        input_stores=complex_extra_paths, output_store=merged_complex_associated
-    )
-
+def associated_files_merge_check_merged_stores(
+    merged_base, merged_simple_associated, merged_complex_associated, test_data_dir
+):
     #  4. Open merged base + merged associated and check contents.
+    Config.load(data_path_overrides=[test_data_dir])
     with TrajectoryStore.open(
         base_file=merged_base,
         associated_files=[merged_simple_associated, merged_complex_associated],
@@ -687,6 +705,50 @@ def test_merging_with_associated_files(tmp_path: Path):
         _check_complex(ts_merged, repeats=10)
 
 
+def test_merging_with_associated_files(tmp_path, test_data_dir):
+    # How should this work? If you merge a set of base files that have
+    # associated files, you should then be able to merge the associated files
+    # and open the "base merged store" with the "associated merged store" to
+    # get what you would hope for.
+
+    # TODO: Think about what can go wrong here and add some error checking to
+    # the code that opens the merged stores.
+
+    #  1. Create stores with base + associated files.
+    run_in_subprocess(associated_files_merge_create_stores, tmp_path, test_data_dir)
+    base_paths = []
+    simple_extra_paths = []
+    complex_extra_paths = []
+    for j in range(10):
+        base_paths.append(tmp_path / f'base{j}.nc')
+        simple_extra_paths.append(tmp_path / f'simple{j}.nc')
+        complex_extra_paths.append(tmp_path / f'complex{j}.nc')
+
+    #  2. Merge base files.
+    merged_base = tmp_path / 'merged_base.aeic-store'
+    TrajectoryStore.merge(input_stores=base_paths, output_store=merged_base)
+
+    #  3. Merge associated files.
+    merged_simple_associated = tmp_path / 'merged_simple_extra.aeic-store'
+    merged_complex_associated = tmp_path / 'merged_complex_extra.aeic-store'
+    TrajectoryStore.merge(
+        input_stores=simple_extra_paths, output_store=merged_simple_associated
+    )
+    TrajectoryStore.merge(
+        input_stores=complex_extra_paths, output_store=merged_complex_associated
+    )
+
+    #  4. Open merged base + merged associated and check contents.
+    run_in_subprocess(
+        associated_files_merge_check_merged_stores,
+        merged_base,
+        merged_simple_associated,
+        merged_complex_associated,
+        test_data_dir,
+    )
+
+
+@pytest.mark.forked
 def test_indexing(tmp_path: Path):
     # 1. Create a unique set of flight IDs.
     ntrajs = 100
@@ -707,10 +769,8 @@ def test_indexing(tmp_path: Path):
             assert traj.flight_id == s
 
 
-def test_merged_store_indexing(tmp_path: Path):
-    # 1. Create a unique set of flight IDs.
-    ntrajs = 1000
-    seeds = random.sample(range(10000, 100000), ntrajs)
+def merged_store_indexing_create_stores(seeds, tmp_path, test_data_dir):
+    Config.load(data_path_overrides=[test_data_dir])
 
     # 2. Create individual trajectory stores containing those flight IDs.
     paths = []
@@ -721,9 +781,9 @@ def test_merged_store_indexing(tmp_path: Path):
             for s in seeds[i * 100 : (i + 1) * 100]:
                 ts.add(make_test_trajectory(50, s))
 
-    # 3. Merge the stores.
-    merged_path = tmp_path / 'merged.aeic-store'
-    TrajectoryStore.merge(input_stores=paths, output_store=merged_path)
+
+def merged_store_indexing_check_stores(seeds, merged_path, test_data_dir):
+    Config.load(data_path_overrides=[test_data_dir])
 
     # 4. Open the merged store.
     with TrajectoryStore.open(base_file=merged_path) as ts_read:
@@ -732,6 +792,29 @@ def test_merged_store_indexing(tmp_path: Path):
             traj = ts_read.get_flight(s)
             assert traj is not None
             assert traj.flight_id == s
+
+
+def test_merged_store_indexing(tmp_path, test_data_dir):
+    # 1. Create a unique set of flight IDs.
+    ntrajs = 1000
+    seeds = random.sample(range(10000, 100000), ntrajs)
+
+    # 2. Create individual trajectory stores containing those flight IDs.
+    run_in_subprocess(
+        merged_store_indexing_create_stores, seeds, tmp_path, test_data_dir
+    )
+    paths = []
+    for i in range(10):
+        paths.append(tmp_path / f'test{i}.nc')
+
+    # 3. Merge the stores.
+    merged_path = tmp_path / 'merged.aeic-store'
+    TrajectoryStore.merge(input_stores=paths, output_store=merged_path)
+
+    # 4. Open the merged store.
+    run_in_subprocess(
+        merged_store_indexing_check_stores, seeds, merged_path, test_data_dir
+    )
 
 
 def _check_complex(ts_read: TrajectoryStore, repeats: int = 1):
@@ -751,6 +834,7 @@ def _check_complex(ts_read: TrajectoryStore, repeats: int = 1):
             assert isinstance(ts_read[i].tm2[sp], ThrustModeValues)
 
 
+@pytest.mark.forked
 def test_complex_extra_fields_in_base_nc(tmp_path: Path):
     # Create TrajectoryStore with additional field set involving complex
     # variables saved in base file. (This should result in a file with a "base"
@@ -766,6 +850,7 @@ def test_complex_extra_fields_in_base_nc(tmp_path: Path):
         _check_complex(ts_read)
 
 
+@pytest.mark.forked
 def test_complex_extra_fields_in_associated_nc(tmp_path: Path):
     # Same thing as last case, except save additional field set in an
     # associated file.
@@ -802,6 +887,7 @@ def test_complex_extra_fields_in_associated_nc(tmp_path: Path):
         _check_complex(ts2_read)
 
 
+@pytest.mark.forked
 def test_create_associated_complex(tmp_path: Path):
     # Create associated file from existing TrajectoryStore.
 
@@ -908,3 +994,31 @@ def test_append_to_container_by_class():
     assert container_extensible._capacity == 100
     assert container_extensible.per_point_1.tolist() == list(range(10, 710, 10))
     assert container_extensible.per_point_2.tolist() == list(range(20, 1420, 20))
+
+
+def test_file_access_recorder():
+    # Create a FileAccessRecorder, record some accesses, check that they were
+    # recorded correctly.
+    def safe_open(f):
+        try:
+            return open(f)
+        except FileNotFoundError:
+            return None
+
+    def safe_sqlite3_connect(f):
+        try:
+            return sqlite3.connect(f)
+        except FileNotFoundError:
+            return None
+
+    with track_file_accesses():
+        safe_open('file1.nc')
+        safe_open('file2.nc')
+        safe_open('file3.nc')
+        safe_sqlite3_connect('tmp.sqlite')
+    assert access_recorder.paths == [
+        Path.cwd() / 'file1.nc',
+        Path.cwd() / 'file2.nc',
+        Path.cwd() / 'file3.nc',
+        Path.cwd() / 'tmp.sqlite',
+    ]

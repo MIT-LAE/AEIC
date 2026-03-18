@@ -1,8 +1,8 @@
 import logging
-import os
 import sqlite3
 import weakref
 from collections.abc import Generator
+from pathlib import Path
 from typing import TypeVar
 
 from .query import QueryBase
@@ -20,7 +20,7 @@ class Database:
     database file, using a schema optimized for common AEIC query use cases.
     """
 
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str | Path):
         """Open a flight database file.
 
         Parameters
@@ -29,6 +29,9 @@ class Database:
         db_path : str
             Path to the SQLite database file.
         """
+
+        if isinstance(db_path, str):
+            db_path = Path(db_path)
 
         # Check that the database file exists if we're opening an existing
         # database in read-only mode. Overridden in derived WriteDatabase
@@ -56,9 +59,9 @@ class Database:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _check_path(self, db_path: str):
+    def _check_path(self, db_path: Path):
         """Check that the database file exists."""
-        if not os.path.exists(db_path):
+        if not db_path.exists():
             raise RuntimeError(f'Database file {db_path} does not exist.')
 
     def __call__(self, query: QueryBase[T]) -> Generator[T] | T:
