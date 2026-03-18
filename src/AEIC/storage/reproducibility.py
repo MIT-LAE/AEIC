@@ -1,6 +1,7 @@
 # TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations
 
+import functools
 import subprocess
 import sys
 from contextlib import contextmanager
@@ -42,6 +43,42 @@ class ReproducibilityData:
     files: list[Path] = field(default_factory=list)
     """List of file paths accessed during simulations, captured by the
        AccessRecorder."""
+
+    def __or__(self, other: ReproducibilityData) -> ReproducibilityData:
+        """Combine two ReproducibilityData instances by merging their file lists
+        and ensuring other fields match (or are compatible)."""
+        if self.python_version != other.python_version:
+            raise ValueError('ReproducibilityData: Python version mismatch')
+        if self.software_version != other.software_version:
+            raise ValueError('ReproducibilityData: software version mismatch')
+        if self.git_commit != other.git_commit:
+            raise ValueError('ReproducibilityData: Git commit mismatch')
+        if self.git_branch != other.git_branch:
+            raise ValueError('ReproducibilityData: Git branch mismatch')
+        if self.git_dirty != other.git_dirty:
+            raise ValueError('ReproducibilityData: Git dirty state mismatch')
+        if self.config != other.config:
+            raise ValueError('ReproducibilityData: configuration mismatch')
+
+        combined_files = sorted(set(self.files) | set(other.files))
+        return ReproducibilityData(
+            python_version=self.python_version,
+            software_version=self.software_version,
+            git_commit=self.git_commit,
+            git_branch=self.git_branch,
+            git_dirty=self.git_dirty,
+            config=self.config,
+            files=combined_files,
+        )
+
+    @classmethod
+    def union(cls, *data_list: ReproducibilityData) -> ReproducibilityData:
+        """Combine a list of ReproducibilityData instances by merging their file
+        lists and ensuring other fields match (or are compatible)."""
+        if not data_list:
+            raise ValueError('ReproducibilityData.union: empty data list')
+
+        return functools.reduce(lambda a, b: a | b, data_list)
 
     @classmethod
     def build(cls) -> ReproducibilityData:
