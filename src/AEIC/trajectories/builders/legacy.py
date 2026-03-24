@@ -283,7 +283,7 @@ class LegacyBuilder(Builder):
             if flight_phase == FlightPhase.CLIMB
             else -self.altitude_step,
         )
-        if altitudes[-1] != final_altitude:
+        if not np.isclose(altitudes[-1], final_altitude):
             altitudes = np.append(altitudes, final_altitude)
 
         # Loop over altitude change segments.
@@ -398,6 +398,11 @@ class LegacyBuilder(Builder):
 
         # Cruise end distance based on estimated descent distance.
         end_dist = self.ground_track.total_distance - self.descent_dist_approx
+
+        # If there is not enough distance to fly before starting descent, skip
+        # cruise phase.
+        if pt.ground_distance >= end_dist:
+            return
 
         # Cruise is discretized into ground distance steps with a possible
         # extra "short step" at the end to reach the target distance.
