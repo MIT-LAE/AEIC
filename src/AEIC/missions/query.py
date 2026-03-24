@@ -190,10 +190,12 @@ class Query(QueryBase[QueryResult]):
         self._common_conditions()
 
         # Random sampling: generate a random number in (0, 1) based on the
-        # specification of SQLite's random() function.
+        # specification of SQLite's random() function. (But use the
+        # deterministic random function we defined in the database class, so
+        # that results are reproducible when a seed is set.)
         if self.sample is not None:
             self._conditions.append(
-                '(random() + 9223372036854775808) / 18446744073709551615.0 < ?'
+                '(det_random() + 9223372036854775808) / 18446744073709551615.0 < ?'
             )
             self._params.append(self.sample)
 

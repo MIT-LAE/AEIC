@@ -283,7 +283,9 @@ class LegacyBuilder(Builder):
             if flight_phase == FlightPhase.CLIMB
             else -self.altitude_step,
         )
-        if altitudes[-1] != final_altitude:
+        if (flight_phase == FlightPhase.CLIMB and altitudes[-1] < final_altitude) or (
+            flight_phase == FlightPhase.DESCENT and altitudes[-1] > final_altitude
+        ):
             altitudes = np.append(altitudes, final_altitude)
 
         # Loop over altitude change segments.

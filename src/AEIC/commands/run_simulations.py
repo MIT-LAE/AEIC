@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 def simulate_slice(
     slice_idx: int,
+    sample: float | None,
+    seed: int | None,
     limit: int,
     offset: int,
     output_store: Path,
@@ -41,12 +43,18 @@ def simulate_slice(
 
     with TrajectoryStore.create(base_file=output_file) as ts:
         with Database(mission_db_file) as db:
+            if seed is not None:
+                db.set_random_seed(seed)
+            if sample is not None or seed is not None:
+                ts.set_sampling_info(sample=sample, seed=seed)
+
             # Record failure information for final report.
             nfailed = 0
 
             # Retrieve all flights in this slice and simulate them one by one.
             with logging_redirect_tqdm():
-                for flight in tqdm(db(Query(limit=limit, offset=offset)), total=limit):  # type: ignore
+                q = Query(limit=limit, offset=offset, sample=sample)
+                for flight in tqdm(db(q), total=limit):  # type: ignore
                     # Create a mission from the flight database result. (We fix
                     # the load factor here.)
                     mission = Mission.from_query_result(flight, load_factor=1.0)
@@ -117,6 +125,16 @@ def simulate_slice(
     help='Output trajectory store path prefix.',
 )
 @click.option(
+    '--sample',
+    type=click.FloatRange(0.0, 1.0),
+    help='Fraction of missions to simulate. Must be between 0 and 1.',
+)
+@click.option(
+    '--seed',
+    type=int,
+    help='Random seed to use when sampling missions.',
+)
+@click.option(
     '--slice-count', type=int, default=1, help='Number of parallel processing slices.'
 )
 @click.option(
@@ -131,6 +149,8 @@ def run_simulations(
     performance_model_file: Path | None,
     mission_db_file: Path,
     output_store: Path,
+    sample: float | None,
+    seed: int | None,
     slice_count: int,
     slice_index: int,
 ):
@@ -151,6 +171,11 @@ def run_simulations(
             nflights = db(CountQuery())
         assert isinstance(nflights, int)
         logger.info('Total flights to process: %s', nflights)
+        if sample is not None:
+            nflights = math.ceil(nflights * sample)
+            logger.info(
+                'Sampling enabled: %s flights to process after sampling.', nflights
+            )
 
         # Limit and offset values to use based on slice information. These are
         # used directly in the LIMIT and OFFSET clauses in an SQL query. This
@@ -178,6 +203,8 @@ def run_simulations(
 
         simulate_slice(
             slice_index,
+            sample,
+            seed,
             limit,
             offset,
             output_store,

@@ -36,6 +36,12 @@ class ReproducibilityData:
     """True if there are uncommitted changes in the Git repository, False if
        clean or not in a Git repository."""
 
+    sample_fraction: float | None
+    """Optional sample fraction used during simulations, if applicable."""
+
+    sample_seed: int | None
+    """Optional random seed used during simulations, if applicable."""
+
     config: str
     """String representation of the AEIC configuration used during
        simulations."""
@@ -59,6 +65,10 @@ class ReproducibilityData:
             raise ValueError('ReproducibilityData: Git dirty state mismatch')
         if self.config != other.config:
             raise ValueError('ReproducibilityData: configuration mismatch')
+        if self.sample_fraction != other.sample_fraction:
+            raise ValueError('ReproducibilityData: sample fraction mismatch')
+        if self.sample_seed != other.sample_seed:
+            raise ValueError('ReproducibilityData: sample seed mismatch')
 
         combined_files = sorted(set(self.files) | set(other.files))
         return ReproducibilityData(
@@ -68,6 +78,8 @@ class ReproducibilityData:
             git_branch=self.git_branch,
             git_dirty=self.git_dirty,
             config=self.config,
+            sample_fraction=self.sample_fraction,
+            sample_seed=self.sample_seed,
             files=combined_files,
         )
 
@@ -81,7 +93,9 @@ class ReproducibilityData:
         return functools.reduce(lambda a, b: a | b, data_list)
 
     @classmethod
-    def build(cls) -> ReproducibilityData:
+    def build(
+        cls, sample_fraction: float | None = None, sample_seed: int | None = None
+    ) -> ReproducibilityData:
         python_version = (
             f'{sys.version_info.major}.'
             f'{sys.version_info.minor}.'
@@ -102,6 +116,8 @@ class ReproducibilityData:
             git_branch=GIT_BRANCH,
             git_dirty=GIT_DIRTY,
             files=files,
+            sample_fraction=sample_fraction,
+            sample_seed=sample_seed,
             config=Config.get().model_dump_json(),
         )
 

@@ -1,4 +1,5 @@
 import logging
+import random
 import sqlite3
 import weakref
 from collections.abc import Generator
@@ -44,9 +45,24 @@ class Database:
         self._conn = sqlite3.connect(db_path)
         self._finalizer = weakref.finalize(self, self.close)
 
+        # Create a deterministic random function for use in random sampling
+        # queries. This is needed to ensure reproducibility because SQLite's
+        # random() function is not deterministic across different runs.
+        self._rng = random.Random()
+
+        def det_random():
+            # Mimic SQLite random(): signed 64-bit integer.
+            return self._rng.randint(-(2**63), 2**63 - 1)
+
+        self._conn.create_function('det_random', 0, det_random)
+
         # Foreign key constraints are enabled at the connection level, so this
         # needs to be done every time we connect to the database.
-        self._conn.cursor().execute("PRAGMA foreign_keys = ON")
+        self._conn.cursor().execute('PRAGMA foreign_keys = ON')
+
+    def set_random_seed(self, seed: int):
+        """Set the random seed for deterministic sampling queries."""
+        self._rng.seed(seed)
 
     def close(self):
         """Close the database connection."""
