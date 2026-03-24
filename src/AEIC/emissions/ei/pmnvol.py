@@ -183,11 +183,11 @@ def PMnvol_MEEM(
 
 
 @functools.cache
-def calculate_PMnvolEI_scope11(
+def calculate_nvPM_scope11_LTO(
     SN_matrix: ThrustModeValues, engine_type: str, BP_Ratio: float
 ) -> ThrustModeValues:
     """
-    Calculate PM non-volatile Emission Index (EI) using SCOPE11 methodology.
+    Calculate PM non-volatile Emission Index (EI) using SCOPE11 methodology (2019).
 
     Parameters
     ----------
@@ -205,14 +205,19 @@ def calculate_PMnvolEI_scope11(
         including 0% thrust extrapolation as first column.
     """
 
-    # FoverF00 = np.array([0.07, 0.30, 0.85, 1.00])
+    # Air to fuel ration at four LTO points, estimated by Wayson et al. (2009)
     AFR = ThrustModeValues(106, 83, 51, 45)
-    # num_engines = SN_matrix.shape[0]
 
-    CI_best = ThrustModeValues(0.0, mutable=True)
+    # Geometrical mean diameter estimations at LTO points (nm)
+    GMD = ThrustModeValues(20.0, 20.0, 40.0, 40.0)
+
+    # EI nvPM mass (g/kg)
+    nvPM_EI_mass_g_per_kg = ThrustModeValues(0.0, mutable=True)
+    # EI nvPM particle number (particles/kg)
+    nvPM_EI_num_particle_per_kg = ThrustModeValues(0.0, mutable=True)
+    # --- Volumetric Fuel Flow Q [m³/kg_fuel]
     Q = ThrustModeValues(0.0, mutable=True)
 
-    # for i in range(num_engines):
     for mode in ThrustMode:
         SN = SN_matrix[mode]
 
@@ -220,44 +225,41 @@ def calculate_PMnvolEI_scope11(
         if SN == -1 or SN == 0:
             continue
 
-        # --- Exit Plane BC Concentration C_BC,e [mg/m3]
+        # --- Exit Plane BC Concentration C_BC,e [ug/m3]
         SN = min(SN, 40)
-        CBC_i = 0.6484 * np.exp(0.0766 * SN) / (1 + np.exp(-1.098 * (SN - 3.064)))
+        CI_mass = 648.4 * np.exp(0.0766 * SN) / (1 + np.exp(-1.099 * (SN - 3.064)))
 
         # --- System loss multiplier (kslm)
-        if engine_type == 'MTF':
+        if engine_type == 'MTF' or engine_type == 'TF':
             kslm = np.log(
-                (3.219 * CBC_i * (1 + BP_Ratio) * 1000 + 312.5)
-                / (CBC_i * (1 + BP_Ratio) * 1000 + 42.6)
+                (3.219 * CI_mass * (1.0 + BP_Ratio) + 312.5)
+                / (CI_mass * (1.0 + BP_Ratio) + 42.6)
             )
-        else:  # includes 'TF' or others
-            kslm = np.log((3.219 * CBC_i * 1000 + 312.5) / (CBC_i * 1000 + 42.6))
-
-        CI_best[mode] = kslm * CBC_i  # mg/m³
-
-        # --- Combustor density
-        # P4_LTO = 101325 * (1 + (PR[i] - 1) * FoverF00[i])
-        # T3_LTO = 288.15 * (PR[i] ** 0.3175)
-        # T4_LTO = (AFR[i] * 1.005 * T3_LTO + 43200) / (1.25 * (1 + AFR[i]))
-        # RHO4_LTO = P4_LTO / (287.058 * T4_LTO)
-
-        # --- Volumetric Fuel Flow Q [m³/kg_fuel]
-        if engine_type == 'MTF':
-            Q[mode] = 0.776 * AFR[mode] * (1 + BP_Ratio) + 0.767
-        elif engine_type == 'TF':
-            Q[mode] = 0.776 * AFR[mode] + 0.767
         else:
-            Q[mode] = 0  # default if unknown engine type
+            kslm = 0.0
 
-    # --- PMnvolEI [mg/kg_fuel] = CI * Q
-    PMnvolEI_best = CI_best * Q
+        Q[mode] = 0.776 * AFR[mode] * (1.0 + BP_Ratio) + 0.767
 
-    # --- Add 0% thrust extrapolation (same as 7%)
-    # PMnvolEI_best = np.hstack([PMnvolEI_best[:, [0]], PMnvolEI_best])  # shape (n x 5)
+        # Unit change: μg/m^3 -> mg/m^3
+        EI_mass_mg_per_kg = (CI_mass * Q[mode] * kslm) * 1e-3
 
-    # Convert mg/kg to g/kg
-    profile = PMnvolEI_best / 1000.0
-
+        gmd_nm = GMD[mode]
+        mean_particle_mass_mg = (
+            (np.pi / 6.0)
+            * 1.0e9  # 1 g/cm^3 = 1e9 mg/m^3, as used implicitly in the paper's Eq. (5)
+            * (gmd_nm / 1.0e9) ** 3
+            * np.exp(4.5 * (np.log(1.8) ** 2))
+        )
+        nvPM_EI_num_particle_per_kg[mode] = (
+            EI_mass_mg_per_kg / mean_particle_mass_mg
+            if mean_particle_mass_mg > 0
+            else 0.0
+        )
+        nvPM_EI_mass_g_per_kg[mode] = EI_mass_mg_per_kg / 1000
     # Freeze the return value because we're caching.
-    profile.freeze()
-    return profile
+    nvPM_EI_num_particle_per_kg.freeze()
+    nvPM_EI_mass_g_per_kg.freeze()
+    return (
+        nvPM_EI_num_particle_per_kg,
+        nvPM_EI_mass_g_per_kg,
+    )  # TODO: make a nvPM struct
