@@ -8,7 +8,7 @@ from AEIC.config.emissions import ClimbDescentMode, PMnvolMethod, PMvolMethod
 from AEIC.emissions import compute_emissions
 from AEIC.emissions.ei.hcco import EI_HCCO
 from AEIC.emissions.ei.nox import BFFM2_EINOx, NOx_speciation
-from AEIC.emissions.ei.pmnvol import calculate_PMnvolEI_scope11
+from AEIC.emissions.ei.pmnvol import calculate_nvPM_scope11_LTO
 from AEIC.emissions.ei.pmvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from AEIC.emissions.gse import get_GSE_emissions
 from AEIC.emissions.trajectory import (
@@ -145,12 +145,9 @@ def test_emissions_species(emissions):
 
 def _expected_scope11_mapping(perf_model, thrust_categories):
     edb = perf_model.edb
-    mass_modes = calculate_PMnvolEI_scope11(
+    mass_modes, number_modes = calculate_nvPM_scope11_LTO(
         edb.SN_matrix, edb.engine_type, edb.BP_Ratio
     )
-    # TODO: This doesn't exist. Where is this supposed to be coming from?
-    # number_modes = edb.PMnvolEIN_best_ICAOthrust
-    number_modes = None
     mass = mass_modes.broadcast(thrust_categories)
     number = (
         number_modes.broadcast(thrust_categories) if number_modes is not None else None

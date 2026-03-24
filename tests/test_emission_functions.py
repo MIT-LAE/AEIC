@@ -8,7 +8,7 @@ from AEIC.config import config
 from AEIC.emissions.apu import get_APU_emissions
 from AEIC.emissions.ei.hcco import EI_HCCO
 from AEIC.emissions.ei.nox import BFFM2_EINOx, BFFM2EINOxResult, NOx_speciation
-from AEIC.emissions.ei.pmnvol import PMnvol_MEEM, calculate_PMnvolEI_scope11
+from AEIC.emissions.ei.pmnvol import PMnvol_MEEM, calculate_nvPM_scope11_LTO
 from AEIC.emissions.ei.pmvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from AEIC.emissions.ei.sox import EI_SOx, SOxEmissionResult
 from AEIC.performance.apu import APU
@@ -549,14 +549,14 @@ class TestPMnvolMEEM:
 
 
 class TestCalculatePMnvolScope11:
-    """Tests for calculate_PMnvolEI_scope11"""
+    """Tests for calculate_nvPM_scope11_LTO"""
 
     def test_engine_type_scaling_and_invalid_smoke_numbers(self):
         SN_matrix = ThrustModeValues(5.0, 50.0, -1.0, 0.0)
         BP_Ratio = 2.0
 
-        mtf = calculate_PMnvolEI_scope11(SN_matrix, 'MTF', BP_Ratio)
-        tf = calculate_PMnvolEI_scope11(SN_matrix, 'TF', BP_Ratio)
+        mtf, _ = calculate_nvPM_scope11_LTO(SN_matrix, 'MTF', BP_Ratio)
+        tf, _ = calculate_nvPM_scope11_LTO(SN_matrix, 'TF', BP_Ratio)
 
         SN0 = min(SN_matrix[ThrustMode.IDLE], 40.0)
         CBC0 = 0.6484 * np.exp(0.0766 * SN0) / (1 + np.exp(-1.098 * (SN0 - 3.064)))

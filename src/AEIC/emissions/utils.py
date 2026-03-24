@@ -12,7 +12,7 @@ from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import ThrustMode, ThrustModeArray, ThrustModeValues
 from AEIC.types import Species, SpeciesValues
 
-from .ei.pmnvol import calculate_PMnvolEI_scope11
+from .ei.pmnvol import calculate_nvPM_scope11_LTO
 from .ei.sox import EI_SOx
 
 if TYPE_CHECKING:
@@ -27,13 +27,12 @@ class Scope11Profile:
 
 @functools.cache
 def scope11_profile(edb: EDBEntry) -> Scope11Profile:
-    mass = calculate_PMnvolEI_scope11(edb.SN_matrix, edb.engine_type, edb.BP_Ratio)
-    # TODO: Fix.
-    # number = edb.PMnvolEIN_best_ICAOthrust
-    number = None
+    mass, number = calculate_nvPM_scope11_LTO(
+        edb.SN_matrix, edb.engine_type, edb.BP_Ratio
+    )
     return Scope11Profile(
         mass,
-        None if number is None else ThrustModeValues(number),
+        number,
     )
 
 
