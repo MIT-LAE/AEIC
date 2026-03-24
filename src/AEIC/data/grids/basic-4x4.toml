@@ -1,0 +1,13 @@
+[longitude]
+resolution = 4.0
+offset = 2.0
+
+[latitude]
+resolution = 4.0
+offset = 2.0
+
+[altitude]
+mode = "height"
+resolution = 1000
+bottom = 0
+top = 16000
