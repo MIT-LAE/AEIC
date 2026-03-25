@@ -2252,8 +2252,6 @@ def _write_reproducibility_info(
     g.createVariable('git_branch', str, ())
     g.createVariable('git_dirty', np.uint8, ())
     g.createVariable('files_accessed', str, ())
-    g.createVariable('sample_fraction', np.float64, ())
-    g.createVariable('sample_seed', np.int64, ())
     g.createVariable('config', str, ())
     g.createVariable('comments', str, ())
 
@@ -2271,8 +2269,10 @@ def _write_reproducibility_info(
     g.variables['config'][...] = repro.config
     g.variables['comments'][...] = json.dumps(comments)
     if repro.sample_fraction is not None:
+        g.createVariable('sample_fraction', np.float64, ())
         g.variables['sample_fraction'][...] = repro.sample_fraction
     if repro.sample_seed is not None:
+        g.createVariable('sample_seed', np.int64, ())
         g.variables['sample_seed'][...] = repro.sample_seed
 
 
@@ -2295,8 +2295,12 @@ def _read_reproducibility_info(
     with Config.escape():
         config = Config.model_validate_json(g.variables['config'][...])
     comments = json.loads(g.variables['comments'][...])
-    sample_fraction = g.variables['sample_fraction'][...]
-    sample_seed = g.variables['sample_seed'][...]
+    sample_fraction = None
+    if 'sample_fraction' in g.variables:
+        sample_fraction = g.variables['sample_fraction'][...]
+    sample_seed = None
+    if 'sample_seed' in g.variables:
+        sample_seed = g.variables['sample_seed'][...]
 
     repro_data = ReproducibilityData(
         python_version=python_version,
@@ -2306,8 +2310,8 @@ def _read_reproducibility_info(
         git_dirty=git_dirty,
         files=file_accessed,
         config=Config.model_dump_json(config),
-        sample_fraction=sample_fraction if not np.isnan(sample_fraction) else None,
-        sample_seed=sample_seed if sample_seed != 0 else None,
+        sample_fraction=sample_fraction,
+        sample_seed=sample_seed,
     )
 
     return repro_data, comments
