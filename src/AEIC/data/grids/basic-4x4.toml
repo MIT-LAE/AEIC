@@ -9,5 +9,4 @@ offset = 2.0
 [altitude]
 mode = "height"
 resolution = 1000
-bottom = 0
-top = 16000
+range = [0, 16000]

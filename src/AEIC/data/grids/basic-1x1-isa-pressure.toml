@@ -7,6 +7,5 @@ resolution = 1.0
 offset = 0.5
 
 [altitude]
-mode = "height"
-resolution = 500
-range = [0, 15500]
+mode = "isa_pressure"
+levels = [1000, 850, 700, 500, 300, 200, 100]
