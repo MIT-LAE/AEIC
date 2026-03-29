@@ -109,6 +109,7 @@ class DummyTrajectory:
         self.altitude = np.array(
             [0.0, 1500.0, 6000.0, 11000.0, 9000.0, 2000.0], dtype=float
         )
+        self.rate_of_climb = np.array([0.0, 6.0, 6.0, 6.0, -6.0, -6.0], dtype=float)
         self.true_airspeed = np.array(
             [120.0, 150.0, 190.0, 210.0, 180.0, 140.0], dtype=float
         )
@@ -286,7 +287,9 @@ def test_lto_nox_split_matches_speciation(emissions):
 @pytest.mark.config_updates(emissions__nvpm_method='meem')
 def test_calculate_nvpm_meem_populates_fields(perf_model, trajectory):
     atmos = AtmosphericState(trajectory.altitude, trajectory.true_airspeed)
-    result = _calculate_EI_nvPM(perf_model, trajectory.altitude, atmos)
+    result = _calculate_EI_nvPM(
+        perf_model, trajectory.altitude, trajectory.rate_of_climb, atmos
+    )
     expected_mass = np.array(
         [
             0.008296638,
@@ -315,7 +318,9 @@ def test_calculate_nvpm_meem_populates_fields(perf_model, trajectory):
 @pytest.mark.config_updates(emissions__nvpm_method='none')
 def test_calculate_nvpm_none_disables_outputs(perf_model, trajectory):
     atmos = AtmosphericState(trajectory.altitude, trajectory.true_airspeed)
-    result = _calculate_EI_nvPM(perf_model, trajectory.altitude, atmos)
+    result = _calculate_EI_nvPM(
+        perf_model, trajectory.altitude, trajectory.rate_of_climb, atmos
+    )
     assert Species.nvPM not in result
     assert Species.nvPM_N not in result
 
