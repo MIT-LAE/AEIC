@@ -1,7 +1,10 @@
 # TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations
 
+import math
+from collections import defaultdict
 from copy import deepcopy
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -14,7 +17,7 @@ from AEIC.storage import (
     FieldSet,
     FlightPhase,
 )
-from AEIC.types import SpeciesValues
+from AEIC.types import Species, SpeciesValues
 from AEIC.verification.metrics import ComparisonMetrics, ComparisonMetricsCollection
 
 BASE_FIELDSET_NAME = 'base'
@@ -72,6 +75,29 @@ BASE_FIELDS = FieldSet(
     ),
 )
 """Base field set included in every trajectory."""
+
+
+@dataclass
+class SubTrajectory:
+    """Class representing a portion of a trajectory that does not cross the
+    dateline. This is used to handle trajectories that cross the dateline,
+    which can cause issues with longitude values jumping from +180 to -180
+    degrees. The class contains only those trajectory fields that are needed
+    for mapping trajectories to grid cells, which is the main use case for
+    sub-trajectories."""
+
+    longitude: np.ndarray
+    """Longitude values for the trajectory points, in degrees."""
+
+    latitude: np.ndarray
+    """Latitude values for the trajectory points, in degrees."""
+
+    altitude: np.ndarray
+    """Altitude values for the trajectory points, in meters."""
+
+    trajectory_emissions: SpeciesValues[np.ndarray]
+    """Emissions values for the trajectory points, indexed by chemical
+    species."""
 
 
 # NOTE: If you add a fixed attribute to the Trajectory class, make sure to
@@ -151,7 +177,6 @@ class Trajectory(Container):
             raise IndexError('from_idx out of range')
         if to_idx < 0 or to_idx >= self._size:
             raise IndexError('to_idx out of range')
-        print(self._data_dictionary)
         for name, field in self._data_dictionary.items():
             # Only copy point-wise data.
             if Dimension.POINT in field.dimensions:
@@ -159,6 +184,116 @@ class Trajectory(Container):
                 # called other than when simulating trajectories, where there
                 # are no species-indexed fields?
                 self._data[name][to_idx] = self._data[name][from_idx]
+
+    def dateline_split(self) -> list[SubTrajectory]:
+        # Check that we have all the required fields for dateline splitting.
+        assert hasattr(self, 'longitude')
+        assert hasattr(self, 'latitude')
+        assert hasattr(self, 'altitude')
+        assert hasattr(self, 'trajectory_emissions')
+        assert isinstance(self.trajectory_emissions, SpeciesValues)
+
+        # Determine locations of dateline crossings by looking for large jumps
+        # in longitude values. The crosses_dateline array has one less element
+        # than the longitude array and will have values of -1 for points where
+        # the longitude jumps from just below +180 to just above -180, and +1
+        # for points where it jumps from just above -180 to just below +180
+        # (with those values being on the position of the longitude value just
+        # before the jump).
+        diff = self.longitude[1:] - self.longitude[:-1]
+        cross = (np.abs(diff) > 180.0).astype(int)
+        crosses_dateline = np.sign(diff) * cross
+
+        # Deal with no-crossing case right away.
+        if np.all(crosses_dateline == 0):
+            return [
+                SubTrajectory(
+                    longitude=self.longitude,
+                    latitude=self.latitude,
+                    altitude=self.altitude,
+                    trajectory_emissions=self.trajectory_emissions,
+                )
+            ]
+
+        sub_trajectories = []
+        last_split: tuple[float, float, float, SpeciesValues[float]] | None = None
+        seg_start_idx = 0
+        split_idxs = np.nonzero(crosses_dateline)[0].tolist() + [-1]
+        for idx in split_idxs:
+            seg_lons: list[float] = []
+            seg_lats: list[float] = []
+            seg_alts: list[float] = []
+            seg_emissions: dict[Species, list[float]] = defaultdict(list)
+
+            if last_split is not None:
+                seg_lons.append(last_split[0])
+                seg_lats.append(last_split[1])
+                seg_alts.append(last_split[2])
+                for sp, val in last_split[3].items():
+                    seg_emissions[sp].append(val)
+                last_split = None
+
+            if idx > -1:
+                # TODO: Do all the following using great circles instead?
+
+                # Interpolate to find the exact point of crossing.
+                cross_lat, cross_alt, frac = self._interpolate_to_dateline(idx)
+
+                # Split the emissions.
+                emissionsm, emissionsp = _split_emissions(
+                    self.trajectory_emissions, idx, frac
+                )
+
+                last_split = (
+                    float(180.0 * crosses_dateline[idx]),
+                    cross_lat,
+                    cross_alt,
+                    emissionsp,
+                )
+
+                degenerate = np.abs(self.longitude[idx]) == 180.0
+
+                seg_lons += self.longitude[seg_start_idx : idx + 1].tolist()
+                if not degenerate:
+                    seg_lons.append(-float(180.0 * crosses_dateline[idx]))
+                seg_lats += self.latitude[seg_start_idx : idx + 1].tolist()
+                if not degenerate:
+                    seg_lats.append(cross_lat)
+                seg_alts += self.altitude[seg_start_idx : idx + 1].tolist()
+                if not degenerate:
+                    seg_alts.append(cross_alt)
+                for sp in self.trajectory_emissions.keys():
+                    seg_emissions[sp] += self.trajectory_emissions[sp][
+                        seg_start_idx : idx + 1
+                    ].tolist()
+                    if not degenerate:
+                        seg_emissions[sp][-1] = emissionsm[sp]
+                        seg_emissions[sp].append(0.0)
+                    else:
+                        seg_emissions[sp][-1] = 0.0
+            else:
+                seg_lons += self.longitude[seg_start_idx:].tolist()
+                seg_lats += self.latitude[seg_start_idx:].tolist()
+                seg_alts += self.altitude[seg_start_idx:].tolist()
+                for sp in self.trajectory_emissions.keys():
+                    seg_emissions[sp] += self.trajectory_emissions[sp][
+                        seg_start_idx:
+                    ].tolist()
+
+            sub_trajectories.append(
+                SubTrajectory(
+                    longitude=np.array(seg_lons),
+                    latitude=np.array(seg_lats),
+                    altitude=np.array(seg_alts),
+                    trajectory_emissions=SpeciesValues[np.ndarray](
+                        {sp: np.array(vals) for sp, vals in seg_emissions.items()}
+                    ),
+                )
+            )
+
+            seg_start_idx = idx + 1
+
+        return sub_trajectories
 
     def interpolate_time(self, new_time: np.ndarray) -> Trajectory:
         """Interpolate trajectory data to new time points.
@@ -253,3 +388,64 @@ class Trajectory(Container):
                 )
 
         return metrics
+
+    def _interpolate_to_dateline(self, idx: int) -> tuple[float, float, float]:
+        """Interpolate to find the exact point of dateline crossing."""
+
+        # Normalize longitudes to [0, 360) range to make interpolation easier.
+        lons = [
+            math.fmod(self.longitude[idx] + 360.0, 360.0),
+            math.fmod(self.longitude[idx + 1] + 360.0, 360.0),
+        ]
+
+        # Extract latitudes and altitudes for the two points around the
+        # crossing.
+        lats = [self.latitude[idx], self.latitude[idx + 1]]
+        alts = [self.altitude[idx], self.altitude[idx + 1]]
+
+        # The np.interp function requires the x values to be in increasing
+        # order, so we need to check the order of the longitudes and reverse
+        # the arrays if necessary. We also keep track of which point is the
+        # "base" point for interpolation (the first in trajectory order) so
+        # that we can compute the fraction along the segment where the crossing
+        # occurs.
+        base = 0
+        if lons[0] > lons[1]:
+            lons = lons[::-1]
+            lats = lats[::-1]
+            alts = alts[::-1]
+            base = 1
+
+        # Do the interpolation to find the latitude and altitude at the
+        # crossing point.
+        cross_latitude = np.interp(180.0, lons, lats)
+        cross_altitude = np.interp(180.0, lons, alts)
+
+        # Determine the fraction along the segment where the crossing occurs,
+        # so that we can split emissions values into "before split" and "after
+        # split".
+        fraction = math.hypot(
+            abs(180.0 - lons[base]), abs(cross_latitude - self.latitude[idx])
+        ) / math.hypot(
+            abs(lons[1] - lons[0]), abs(self.latitude[idx] - self.latitude[idx + 1])
+        )
+
+        return cross_latitude, cross_altitude, fraction
+
+
+def _split_emissions(
+    emissions: SpeciesValues[np.ndarray],
+    idx: int,
+    fraction: float,
+) -> tuple[SpeciesValues[float], SpeciesValues[float]]:
+    """Split trajectory emissions values for a segment into two parts based on
+    a given fractional allocation to before and after the split."""
+
+    emissionsm = SpeciesValues[float]()
+    emissionsp = SpeciesValues[float]()
+
+    for sp, values in emissions.items():
+        emissionsm[sp] = values[idx] * fraction
+        emissionsp[sp] = values[idx] * (1.0 - fraction)
+
+    return emissionsm, emissionsp

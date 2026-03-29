@@ -1,3 +1,5 @@
+import numpy as np
+
 import AEIC.trajectories.builders as tb
 from AEIC.emissions.emission import compute_emissions
 from AEIC.performance.types import ThrustMode
@@ -5,6 +7,7 @@ from AEIC.storage import Dimension, FlightPhase
 from AEIC.trajectories.trajectory import BASE_FIELDS, Trajectory
 from AEIC.types import Species
 from AEIC.units import METERS_TO_FEET
+from tests.utils import make_test_trajectory
 
 
 def test_trajectory_comparison(sample_missions, performance_model, fuel):
@@ -124,3 +127,143 @@ def test_append_to_trajectory():
     assert ext_traj.n_climb == 10
     assert ext_traj.n_cruise == 10
     assert ext_traj.n_descent == 10
+
+
+def test_dateline_splitting_no_split(performance_model, fuel):
+    # Create trajectory that does not cross the dateline and check that it is
+    # not split into sub-trajectories.
+    traj = make_test_trajectory(5, 1)
+    traj.longitude = np.array([-140.0, -139.5, -139.0, -138.5, -138.0])
+    emissions = compute_emissions(performance_model, fuel, traj)
+    traj.add_fields(emissions)
+    sub_trajs = traj.dateline_split()
+    assert len(sub_trajs) == 1
+    assert sub_trajs[0].longitude.min() > -180.0
+
+
+def dateline_check(st, lons, lats, alts, co2):
+    assert len(st.longitude) == len(lons)
+    assert len(st.latitude) == len(lats)
+    assert len(st.altitude) == len(alts)
+    assert len(st.trajectory_emissions[Species.CO2]) == len(co2)
+    assert np.allclose(st.longitude, lons)
+    assert np.allclose(st.latitude, lats)
+    assert np.allclose(st.altitude, alts)
+    assert np.allclose(st.trajectory_emissions[Species.CO2], co2)
+
+
+def test_dateline_splitting_two_point_1(performance_model, fuel):
+    # Create two-point trajectory that crosses the dateline and check that it
+    # is split correctly.
+    traj = make_test_trajectory(2, 1)
+    traj.longitude = np.array([179.0, -179.0])
+    traj.latitude = np.array([40.0, 41.0])
+    traj.altitude = np.array([8000.0, 8100.0])
+    traj.add_fields(compute_emissions(performance_model, fuel, traj))
+    traj.trajectory_emissions[Species.CO2] = np.array([100.0, 0.0])
+    sub_trajs = traj.dateline_split()
+
+    assert len(sub_trajs) == 2
+    dateline_check(
+        sub_trajs[0], [179.0, 180.0], [40.0, 40.5], [8000.0, 8050.0], [50.0, 0.0]
+    )
+    dateline_check(
+        sub_trajs[1], [-180.0, -179.0], [40.5, 41.0], [8050.0, 8100.0], [50.0, 0.0]
+    )
+
+
+def test_dateline_splitting_two_point_2(performance_model, fuel):
+    # Create two-point trajectory that crosses the dateline and check that it
+    # is split correctly (including correct proportional allocation of
+    # emissions).
+    traj = make_test_trajectory(2, 1)
+    traj.longitude = np.array([179.5, -178.5])
+    traj.latitude = np.array([40.0, 41.0])
+    traj.altitude = np.array([8000.0, 8100.0])
+    traj.add_fields(compute_emissions(performance_model, fuel, traj))
+    traj.trajectory_emissions[Species.CO2] = np.array([100.0, 0.0])
+    sub_trajs = traj.dateline_split()
+
+    assert len(sub_trajs) == 2
+    dateline_check(
+        sub_trajs[0], [179.5, 180.0], [40.0, 40.25], [8000.0, 8025.0], [25.0, 0.0]
+    )
+    dateline_check(
+        sub_trajs[1], [-180.0, -178.5], [40.25, 41.0], [8025.0, 8100.0], [75.0, 0.0]
+    )
+
+
+def test_dateline_splitting_degenerate_1(performance_model, fuel):
+    # Check on degenerate trajectory with three points where middle point is
+    # exactly on the dateline.
+    traj = make_test_trajectory(3, 1)
+    traj.longitude = np.array([179.0, 180.0, -179.0])
+    traj.latitude = np.array([40.0, 40.5, 41.0])
+    traj.altitude = np.array([8000.0, 8050.0, 8100.0])
+    traj.add_fields(compute_emissions(performance_model, fuel, traj))
+    traj.trajectory_emissions[Species.CO2] = np.array([50.0, 50.0, 0.0])
+    sub_trajs = traj.dateline_split()
+
+    assert len(sub_trajs) == 2
+    dateline_check(
+        sub_trajs[0], [179.0, 180.0], [40.0, 40.5], [8000.0, 8050.0], [50.0, 0.0]
+    )
+    dateline_check(
+        sub_trajs[1], [-180.0, -179.0], [40.5, 41.0], [8050.0, 8100.0], [50.0, 0.0]
+    )
+
+
+def test_dateline_splitting_2(performance_model, fuel):
+    # Create trajectory that crosses the dateline and check that it is split into
+    # two sub-trajectories with points in the correct hemispheres.
+    traj = make_test_trajectory(5, 1)
+    traj.longitude = np.array([179.0, 179.75, -179.5, -178.75, -178.0])
+    emissions = compute_emissions(performance_model, fuel, traj)
+    traj.add_fields(emissions)
+    sub_trajs = traj.dateline_split()
+    assert len(sub_trajs) == 2
+    assert np.all(sub_trajs[0].longitude > 0.0)
+    assert sub_trajs[0].longitude.max() == 180.0
+    assert np.all(sub_trajs[1].longitude < 0.0)
+    assert sub_trajs[1].longitude.min() == -180.0
+
+
+def test_dateline_splitting_4(performance_model, fuel):
+    # Create trajectory that repeatedly crosses the dateline and check that it
+    # is split into four sub-trajectories with the correct points.
+    traj = make_test_trajectory(18, 1)
+    traj.latitude = np.array([40 + i * 0.1 for i in range(18)])
+    traj.longitude = np.array(
+        [
+            178.5,
+            179.0,
+            179.5,
+            180.0,
+            -179.5,
+            -179.0,
+            -178.75,
+            -178.75,
+            -179.0,
+            -179.5,
+            -180.0,
+            -179.5,
+            180.0,
+            -179.5,
+            -179.0,
+            -178.5,
+            -178.0,
+            -177.5,
+        ]
+    )
+    emissions = compute_emissions(performance_model, fuel, traj)
+    traj.add_fields(emissions)
+    sub_trajs = traj.dateline_split()
+    assert len(sub_trajs) == 4
+    assert np.all(sub_trajs[0].longitude > 0.0)
+    assert sub_trajs[0].longitude.max() == 180.0
+    assert np.all(sub_trajs[1].longitude < 0.0)
+    assert sub_trajs[1].longitude.min() == -180.0
+    assert np.all(sub_trajs[2].longitude > 0.0)
+    assert sub_trajs[2].longitude.min() == 180.0
+    assert np.all(sub_trajs[3].longitude < 0.0)
+    assert sub_trajs[3].longitude.min() == -180.0
