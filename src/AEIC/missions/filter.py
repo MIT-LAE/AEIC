@@ -1,8 +1,7 @@
-from dataclasses import dataclass
+from AEIC.utils.models import CIBaseModel
 
 
-@dataclass
-class BoundingBox:
+class BoundingBox(CIBaseModel):
     """A bounding box defined by latitude and longitude ranges.
 
     Used for filtering airports within a specific geographic area."""
@@ -13,8 +12,7 @@ class BoundingBox:
     max_longitude: float
 
 
-@dataclass
-class Filter:
+class Filter(CIBaseModel):
     """A filter for narrowing down mission flight schedule entries.
 
     This supports filtering by various criteria such as distance, seat
