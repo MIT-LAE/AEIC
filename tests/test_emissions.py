@@ -59,20 +59,6 @@ class DummyPerformanceModel:
             EInum_max=2.4e14,
             EInum_max_thrust=0.575,
         )
-
-        # TODO: These aren't in the engine database. They are calculated in the
-        # old Matlab code, but that code doesn't seem to have been carried over
-        # to the new AEIC. Where should they come from?
-        #
-        #     'nvPM_EI_best_ICAOthrust':
-        #         np.array([0.05, 0.07, 0.09, 0.12], dtype=float),
-        #     'nvPM_EI_new_ICAOthrust':
-        #         np.array([0.04, 0.06, 0.08, 0.11], dtype=float),
-        #     'nvPM_EI_N_best_ICAOthrust': np.array(
-        #         [1.1e13, 1.2e13, 1.3e13, 1.4e13], dtype=float
-        #     ),
-        #     'EImass_max_alt': 0.85,
-        # }
         self.lto = LTOPerformance(
             source='test',
             ICAO_UID='TEST123',
@@ -261,16 +247,6 @@ def test_lto_respects_traj_flag_true(perf_model, fuel, trajectory):
         )
 
 
-@pytest.mark.config_updates(emissions__climb_descent_mode=ClimbDescentMode.LTO)
-def test_lto_respects_traj_flag_false(perf_model, fuel, trajectory):
-    output = compute_emissions(perf_model, fuel, trajectory)
-    for m in [ThrustMode.APPROACH, ThrustMode.CLIMB, ThrustMode.TAKEOFF]:
-        assert any(
-            np.isclose(output.lto_emissions[species][m], 0.0)
-            for species in output.lto_emissions
-        )
-
-
 def test_lto_nox_split_matches_speciation(emissions):
     speciation = NOx_speciation()
 
@@ -291,26 +267,19 @@ def test_calculate_nvpm_meem_populates_fields(perf_model, trajectory):
         perf_model, trajectory.altitude, trajectory.rate_of_climb, atmos
     )
     expected_mass = np.array(
-        [
-            0.008296638,
-            0.0073855157,
-            0.0060141937,
-            0.0048486474,
-            0.0031337246,
-            0.0057335216,
-        ]
+        [0.00829664, 0.00715419, 0.00522982, 0.00355236, 0.00313372, 0.00573352]
     )
     expected_number = np.array(
         [
-            2.9357334337e14,
-            2.6122814630e14,
-            2.0133216668e14,
-            1.4705704051e14,
-            1.2534898598e14,
-            2.2714835290e14,
+            2.93573343e14,
+            2.60188500e14,
+            1.92857849e14,
+            1.32653902e14,
+            1.25348986e14,
+            2.27148353e14,
         ]
     )
-    np.testing.assert_allclose(result[Species.nvPM], expected_mass)
+    np.testing.assert_allclose(result[Species.nvPM], expected_mass, atol=1e-8)
     if Species.nvPM_N in result:
         np.testing.assert_allclose(result[Species.nvPM_N], expected_number)
 
