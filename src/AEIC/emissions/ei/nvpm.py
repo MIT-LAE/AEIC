@@ -123,7 +123,7 @@ def nvPM_MEEM(
     pressure_coef = np.where(
         rocd > 0,
         pressure_coef_climb,  # climb
-        np.where(np.isclose(rocd, 0.0), 0.95, 0.12),  # cruise / descent
+        np.where(rocd == 0.0, 0.95, 0.12),  # cruise / descent
     )
 
     # Step 1a: total (stagnation) ambient temperature and pressure.

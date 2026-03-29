@@ -8,9 +8,10 @@ from AEIC.config import config
 from AEIC.emissions.apu import get_APU_emissions
 from AEIC.emissions.ei.hcco import EI_HCCO
 from AEIC.emissions.ei.nox import BFFM2_EINOx, BFFM2EINOxResult, NOx_speciation
-from AEIC.emissions.ei.nvpm import calculate_nvPM_scope11_LTO
+from AEIC.emissions.ei.nvpm import calculate_nvPM_scope11_LTO, nvPM_MEEM
 from AEIC.emissions.ei.sox import EI_SOx, SOxEmissionResult
 from AEIC.performance.apu import APU
+from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import ThrustMode, ThrustModeValues
 from AEIC.types import Fuel, Species, SpeciesValues
 
@@ -474,75 +475,42 @@ def make_edb_lto_values(x0: float, x1: float, x2: float, x3: float) -> ThrustMod
     )
 
 
-# class TestNvPMMEEM:
-#     """Tests for the nvPM_MEEM cruise methodology."""
+class TestNvPMMEEM:
+    """Tests for the nvPM_MEEM cruise methodology."""
 
-#     def test_reconstructs_missing_mode_data_and_interpolates(self):
-#         """Negative mode inputs should be rebuilt and yield finite cruise profiles"""
-#         edb_data = EDBEntry(
-#             engine='Test',
-#             uid='TEST000',
-#             engine_type='MTF',
-#             BP_Ratio=5.0,
-#             rated_thrust=100.0,
-#             fuel_flow=make_edb_lto_values(0, 0, 0, 0),
-#             CO_EI_matrix=make_edb_lto_values(0, 0, 0, 0),
-#             HC_EI_matrix=make_edb_lto_values(0, 0, 0, 0),
-#             EI_NOx_matrix=make_edb_lto_values(0, 0, 0, 0),
-#             SN_matrix=make_edb_lto_values(10, 20, 25, 30),
-#             nvPM_mass_matrix=make_edb_lto_values(-1, -1, -1, -1),
-#             nvPM_num_matrix=make_edb_lto_values(-1, -1, -1, -1),
-#             PR=make_edb_lto_values(25, 25, 25, 25),
-#             EImass_max=50.0,
-#             EImass_max_thrust=0.575,
-#             EInum_max=4.5e15,
-#             EInum_max_thrust=0.925,
-#         )
-#         altitudes = np.array([0.0, 6000.0, 12000.0])
-#         Tamb = np.array([288.15, 250.0, 220.0])
-#         Pamb = np.array([101325.0, 54000.0, 26500.0])
-#         mach = np.array([0.0, 0.7, 0.8])
-#         rocd = np.array([0.0, 1.0, 1.0])
+    def test_MEEM_using_test_cases_data(self):
+        edb_data = EDBEntry(
+            engine='Test',
+            uid='TEST000',
+            engine_type='TF',
+            BP_Ratio=5.1,
+            rated_thrust=120.0,
+            fuel_flow=make_edb_lto_values(0, 0, 0, 0),
+            CO_EI_matrix=make_edb_lto_values(0, 0, 0, 0),
+            HC_EI_matrix=make_edb_lto_values(0, 0, 0, 0),
+            EI_NOx_matrix=make_edb_lto_values(0, 0, 0, 0),
+            SN_matrix=make_edb_lto_values(10, 20, 25, 30),
+            nvPM_mass_matrix=make_edb_lto_values(1.1, 2.7, 53.2, 82.1),
+            nvPM_num_matrix=make_edb_lto_values(26.6e12, 71e12, 433e12, 402e12),
+            PR=make_edb_lto_values(25, 25, 25, 25),
+            EImass_max=50.0,
+            EImass_max_thrust=0.575,
+            EInum_max=4.5e15,
+            EInum_max_thrust=0.925,
+        )
+        altitudes = np.array([6000.0, 33000.0, 12000.0]) / 3.28084
+        Tamb = np.array([288.15, 250.0, 220.0])
+        Pamb = np.array([101325.0, 54000.0, 26500.0])
+        mach = np.array([0.1, 0.8, 0.6])
+        rocd = np.array([1.0, 0.0, -1.0])
 
-#         mass, num = nvPM_MEEM(edb_data, altitudes, rocd, Tamb, Pamb, mach)
+        EI_mass, EI_num = nvPM_MEEM(edb_data, altitudes, rocd, Tamb, Pamb, mach)
 
-#         assert mass.shape == altitudes.shape
-#         assert num.shape == altitudes.shape
-#         assert np.all(mass > 0.0)
-#         assert np.all(num > 0.0)
-#         assert np.all(np.isfinite(mass))
+        ref_EI_mass = np.array([76.38765062, 62.55814195, 0.66317982]) * 1e-3
+        ref_EI_num = np.array([5.40274545e14, 4.50516868e14, 1.60368938e13])
 
-#     def test_invalid_smoke_numbers_zero_results(self):
-#         """All-negative smoke numbers should zero out the trajectory"""
-#         edb_data = EDBEntry(
-#             engine='Test',
-#             uid='TEST000',
-#             engine_type='TF',
-#             BP_Ratio=0.0,
-#             rated_thrust=100.0,
-#             fuel_flow=make_edb_lto_values(0, 0, 0, 0),
-#             CO_EI_matrix=make_edb_lto_values(0, 0, 0, 0),
-#             HC_EI_matrix=make_edb_lto_values(0, 0, 0, 0),
-#             EI_NOx_matrix=make_edb_lto_values(0, 0, 0, 0),
-#             SN_matrix=make_edb_lto_values(-5, -5, -5, -5),
-#             nvPM_mass_matrix=make_edb_lto_values(1, 2, 3, 4),
-#             nvPM_num_matrix=make_edb_lto_values(1, 2, 3, 4),
-#             PR=make_edb_lto_values(20, 20, 20, 20),
-#             EImass_max=10.0,
-#             EImass_max_thrust=float('nan'),
-#             EInum_max=1.0e12,
-#             EInum_max_thrust=float('nan'),
-#         )
-#         altitudes = np.array([3000.0, 3500.0])
-#         Tamb = np.array([260.0, 250.0])
-#         Pamb = np.array([70000.0, 65000.0])
-#         mach = np.array([0.3, 0.4])
-#         rocd = np.array([0.0, 1.0])
-
-#         mass, num = nvPM_MEEM(edb_data, altitudes, rocd, Tamb, Pamb, mach)
-
-#         assert np.all(mass == 0.0)
-#         assert np.all(num == 0.0)
+        assert np.allclose(EI_mass, ref_EI_mass)
+        assert np.allclose(EI_num, ref_EI_num)
 
 
 class Test_nvPMScope11:
