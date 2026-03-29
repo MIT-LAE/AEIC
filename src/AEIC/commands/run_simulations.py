@@ -4,8 +4,6 @@ import tomllib
 from pathlib import Path
 
 import click
-from tqdm import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
 
 import AEIC.trajectories.builders as tb
 from AEIC.config import Config, config
@@ -19,6 +17,7 @@ from AEIC.performance.models import BasePerformanceModel, PerformanceModel
 from AEIC.storage import track_file_accesses
 from AEIC.trajectories import TrajectoryStore
 from AEIC.types import Fuel
+from AEIC.utils.progress import Progress
 
 logger = logging.getLogger(__name__)
 
@@ -52,33 +51,37 @@ def simulate_slice(
             nfailed = 0
 
             # Retrieve all flights in this slice and simulate them one by one.
-            with logging_redirect_tqdm():
-                q = Query(limit=limit, offset=offset, sample=sample)
-                for flight in tqdm(db(q), total=limit):  # type: ignore
-                    # Create a mission from the flight database result. (We fix
-                    # the load factor here.)
-                    mission = Mission.from_query_result(flight, load_factor=1.0)
+            q = Query(limit=limit, offset=offset, sample=sample)
+            p = Progress(total=limit, desc='Flights')
+            for flight in db(q):  # type: ignore
+                # Create a mission from the flight database result. (We fix
+                # the load factor here.)
+                mission = Mission.from_query_result(flight, load_factor=1.0)
 
-                    # Fly the mission, catching exceptions.
-                    try:
-                        pm = performance_model
-                        if isinstance(performance_model, PerformanceModelSelector):
-                            pm = performance_model(mission)
-                        assert isinstance(pm, BasePerformanceModel)
-                        traj = builder.fly(pm, mission)
-                        traj.add_fields(compute_emissions(pm, fuel, traj))
-                    except Exception:
-                        # General exception from trajectory builder.
-                        logger.exception(
-                            'Error simulating mission '
-                            f'{mission.origin} -> {mission.destination} '
-                            f'({mission.gc_distance / 1000:0.2f} km):'
-                        )
-                        nfailed += 1
-                        continue
+                # Fly the mission, catching exceptions.
+                try:
+                    pm = performance_model
+                    if isinstance(performance_model, PerformanceModelSelector):
+                        pm = performance_model(mission)
+                    assert isinstance(pm, BasePerformanceModel)
+                    traj = builder.fly(pm, mission)
+                    traj.add_fields(compute_emissions(pm, fuel, traj))
+                except Exception:
+                    # General exception from trajectory builder.
+                    logger.exception(
+                        'Error simulating mission '
+                        f'{mission.origin} -> {mission.destination} '
+                        f'({mission.gc_distance / 1000:0.2f} km):'
+                    )
+                    nfailed += 1
+                    continue
+                finally:
+                    p.update()
 
-                    # Save the trajectory.
-                    ts.add(traj)
+                # Save the trajectory.
+                ts.add(traj)
+
+            p.close()
 
             # Return information passed back through the process pool future.
             logger.info(f'Slice {slice_idx} complete: {nfailed} failed simulations.')
