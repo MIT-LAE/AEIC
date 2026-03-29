@@ -6,6 +6,7 @@ import numpy as np
 from AEIC.constants import T0, kappa, p0
 from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import ThrustMode, ThrustModeValues
+from AEIC.units import METERS_TO_FEET
 
 
 @dataclass
@@ -17,6 +18,7 @@ class nvPMProfile:
 def nvPM_MEEM(
     edb_data: EDBEntry,
     altitudes: np.ndarray,
+    rocd: np.ndarray,
     amb_temperature: np.ndarray,
     amb_pressure: np.ndarray,
     mach_number: np.ndarray,
@@ -32,6 +34,9 @@ def nvPM_MEEM(
         Engine database data for the selected engine.
     altitudes : ndarray
         Array of flight altitudes [m] over the mission trajectory.
+    rocd : ndarray
+        Rate of climb/descent [m/s]. Positive = climb, zero = cruise,
+        negative = descent.
     amb_temperature : ndarray
         Ambient temperature [K] at each point in the trajectory.
     amb_pressure : ndarray
@@ -44,134 +49,152 @@ def nvPM_MEEM(
     EI_nvPM : ndarray
         Emission index of non-volatile PM mass [g/kg fuel] along the trajectory.
     EI_nvPM_N : ndarray
-        Emission index of non-volatile PM number [#/kg fuel] along the trajectory.
+        Emission index of non-volatile PM particle number [#/kg fuel]
+        along the trajectory.
 
     Notes
     -----
-    - If `nvPM_mass_matrix` or `nvPM_num_matrix` is undefined or negative in the
-      `edb_data`, this function reconstructs the values using the SN matrix and
-      correlations from the literature.
-    - Adjustments for altitude and in-flight thermodynamic conditions are made using
-      combustor inlet temperature and pressure estimates derived from ambient
-      conditions and engine pressure ratio.
-    - Interpolated values account for max thrust EI values where provided.
+    - Step 3 uses the 4-point linear interpolation method only (2.4): EI values at
+      the four ICAO LTO thrust settings (7/30/85/100%) with no peak point inserted.
     - Results with invalid SN or negative EI are set to zero with a warning.
     """
-    # ---------------------------------------------------------------------
-    # CONSTANTS & LOOK-UP TABLES
-    # ---------------------------------------------------------------------
-    GMD_mode = np.array([20, 20, 40, 40])  # nm  (idle-app-climb-TO)
-    AFR_mode = np.array([106, 83, 51, 45])  # Wayson
-
-    # ---------------------------------------------------------------------
-    # (0)  MODE EIs (mg kg⁻¹ or # kg⁻¹)
-    # ---------------------------------------------------------------------
-    SN = edb_data.SN_matrix.as_array()
-    EI_mass_mode = edb_data.nvPM_mass_matrix.as_array()
-    EI_num_mode = edb_data.nvPM_num_matrix.as_array()
-
-    if np.min(EI_mass_mode) < 0:
-        # Smoke->mass correlation
-        CI_mass = 0.6484 * np.exp(0.0766 * SN) / (1 + np.exp(-1.098 * (SN - 3.064)))
-
-        bypass_ratio = edb_data.BP_Ratio if edb_data.engine_type == "MTF" else 0.0
-        Q_mode = 0.776 * AFR_mode * (1 + bypass_ratio) + 0.767
-        kslm = np.log(
-            (3.219 * CI_mass * (1 + bypass_ratio) * 1e3 + 312.5)
-            / (CI_mass * (1 + bypass_ratio) * 1e3 + 42.6)
-        )
-
-        EI_mass_mode = CI_mass * Q_mode * kslm  # mg kg⁻¹
-
-    if np.min(EI_num_mode) < 0:
-        EI_num_mode = (6.0 * EI_mass_mode) / (
-            np.pi * 1e9 * (GMD_mode * 1e-9) ** 3 * np.exp(4.5 * (np.log(1.8) ** 2))
-        )
-
-    # ---------------------------------------------------------------------
-    # (1)  COMBUSTOR INLET CONDITIONS ALONG TRAJECTORY
-    # ---------------------------------------------------------------------
-    max_pr = edb_data.PR[ThrustMode.IDLE]
-
-    # climb (+) / level (0) / descent (–)
-    alt_rate = np.diff(altitudes, prepend=altitudes[0])
-    eta_comp = np.where(alt_rate >= 0, 0.88, 0.70)
-
-    max_alt = altitudes.max()
-    lin_vary_alt = (altitudes - 3_000.0) / max(1.0, max_alt - 3_000.0)
-    pressure_coef = np.where(
-        alt_rate > 0,
-        0.85 + (1.15 - 0.85) * lin_vary_alt,
-        np.where(alt_rate == 0, 0.95, 0.12),
+    # -------------------------------------------------------------------------
+    # (0)  MODE EIs  —  Section 2.1 (Step 0)
+    #
+    # MEEM requires EImass [mg/kg] and EInum [#/kg] at the four ICAO LTO
+    # thrust settings (7/30/85/100 %).  Two sources are available:
+    #   (a) Direct EDB nvPM measurements: used when all four mode
+    #       values are positive and therefore valid.
+    #   (b) SCOPE11 fallback: when the engine only has smoke-number (SN) data,
+    #       calculate_nvPM_scope11_LTO() converts SN → EImass/EInum via the
+    #       SCOPE11 correlations (Eqs. 1–5 in the paper, Fig. 2).
+    # -------------------------------------------------------------------------
+    use_edb_nvpm = all(
+        edb_data.nvPM_mass_matrix[mode] > 0.0 and edb_data.nvPM_num_matrix[mode] > 0.0
+        for mode in ThrustMode
     )
 
-    # convert ambient -> *total* T/P first
+    if use_edb_nvpm:
+        # Path (a): use EDB nvPM data directly.
+        EI_mass_mode = edb_data.nvPM_mass_matrix.as_array()  # mg/kg
+        EI_num_mode = edb_data.nvPM_num_matrix.as_array()  # #/kg
+    else:
+        # Path (b): SCOPE11 fallback — derives EI from smoke numbers.
+        # Returns mass in g/kg; convert to mg/kg (* 1000) to keep units
+        profile = calculate_nvPM_scope11_LTO(
+            edb_data.SN_matrix,
+            edb_data.engine_type,
+            edb_data.BP_Ratio,
+        )
+        EI_mass_mode = 1000.0 * profile.mass.as_array()  # g/kg → mg/kg
+        EI_num_mode = (
+            profile.number.as_array()
+            if profile.number is not None
+            else np.zeros_like(EI_mass_mode)
+        )
+
+    # -------------------------------------------------------------------------
+    # (1)  IN-FLIGHT THERMODYNAMIC CONDITIONS  —  Section 2.2 (Step 1)
+    #
+    # Estimate combustor inlet pressure P3 and temperature T3 at each
+    # trajectory point.  The paper's approach (Eqs. 6–9, Fig. 4, Table 3)
+    # -------------------------------------------------------------------------
+    opr_pi00 = edb_data.PR[ThrustMode.TAKEOFF]
+
+    # Compressor efficiency (Table 3): 0.88 for climb/cruise, 0.70 for descent.
+    eta_comp = np.where(rocd < 0, 0.70, 0.88)
+
+    altitudes_ft = altitudes * METERS_TO_FEET
+    # TODO: Implement better way to get cruise altitude
+    cruise_altitude_ft = altitudes_ft.max()
+
+    # Linear interpolation weight for climb: goes 0→1 as altitude rises from
+    # 3000 ft to cruise altitude, implementing Eq. (9).
+    lin_vary_alt = (altitudes_ft - 3_000.0) / max(1.0, cruise_altitude_ft - 3_000.0)
+    pressure_coef_climb = np.clip(
+        0.85 + (1.15 - 0.85) * lin_vary_alt,
+        0.85,
+        1.15,
+    )
+    # Altitude pressure coefficient (Table 3 / Eq. 9):
+    #   Climb  → varies linearly 0.85→1.15 with altitude (Eq. 9)
+    #   Cruise → fixed at 0.95
+    #   Descent→ fixed at 0.12
+    pressure_coef = np.where(
+        rocd > 0,
+        pressure_coef_climb,  # climb
+        np.where(np.isclose(rocd, 0.0), 0.95, 0.12),  # cruise / descent
+    )
+
+    # Step 1a: total (stagnation) ambient temperature and pressure.
+    # These account for ram compression at the engine face at Mach > 0.
     Tt_amb = amb_temperature * (1 + (kappa - 1) / 2 * mach_number**2)
     Pt_amb = amb_pressure * (1 + (kappa - 1) / 2 * mach_number**2) ** (
         kappa / (kappa - 1)
     )
 
-    P3 = Pt_amb * (1 + pressure_coef * (max_pr - 1))
+    # Step 1b: combustor inlet pressure at altitude (Eq. 7).
+    P3 = Pt_amb * (1 + pressure_coef * (opr_pi00 - 1))
+
+    # Step 1c: combustor inlet temperature at altitude (Eq. 8).
     T3 = Tt_amb * (1 + (1 / eta_comp) * ((P3 / Pt_amb) ** ((kappa - 1) / kappa) - 1))
 
-    # ---------------------------------------------------------------------
-    # (2)  GROUND / REFERENCE
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # (2)  GROUND REFERENCE CONDITIONS  —  Section 2.3 (Step 2)
+    #
+    # The Ground Reference (GR) state is defined as the sea-level static
+    # operating point that produces the same T3 as the current altitude point
+    # (T3GR ≡ T3Alt)
+    # -------------------------------------------------------------------------
+
+    # T3GR = T3Alt.
     T3_ref = T3.copy()
+
+    # P3GR from Eq. (11): inverse compressor map at sea-level conditions.
+    # p0 and T0 are standard sea-level values (101325 Pa, 288.15 K).
     P3_ref = p0 * (1 + eta_comp * (T3_ref / T0 - 1)) ** (kappa / (kappa - 1))
 
-    FG_over_Foo = (P3_ref / p0 - 1) / (max_pr - 1)  # (N,)
+    # FGR/F00 from Eq. (12): normalised ground-reference thrust fraction.
+    # This locates the operating point on the 0–1 thrust axis used in Step 3.
+    FG_over_Foo_raw = (P3_ref / p0 - 1) / (opr_pi00 - 1)  # shape: (N,)
 
-    # ---------------------------------------------------------------------
-    # (3)  INTERPOLATION VERSUS THRUST SETTING
-    # ---------------------------------------------------------------------
-    def build_interp(arr_mode, Tmax: float, Tmax_thrust: float):
-        if np.isnan(Tmax_thrust) or Tmax_thrust < 0:
-            # four-point
-            arr = np.concatenate(([arr_mode[0]], arr_mode, [arr_mode[-1]]))
-            tgrid = np.array([-10, 0.07, 0.3, 0.85, 1.0, 100])
-        else:
-            if np.isclose(Tmax_thrust, 0.575):
-                arr = np.concatenate(
-                    ([arr_mode[0]], arr_mode[0:2], [Tmax], arr_mode[2:], [arr_mode[-1]])
-                )
-                tgrid = np.array([-10, 0.07, 0.3, 0.575, 0.85, 1.0, 100])
-            elif np.isclose(Tmax_thrust, 0.925):
-                arr = np.concatenate(
-                    ([arr_mode[0]], arr_mode[0:3], [Tmax], arr_mode[3:], [arr_mode[-1]])
-                )
-                tgrid = np.array([-10, 0.07, 0.3, 0.85, 0.925, 1.0, 100])
-            else:
-                raise ValueError("Unrecognised *_max_thrust value.")
-        return tgrid, arr
+    # -------------------------------------------------------------------------
+    # (3)  INTERPOLATION VS. THRUST SETTING  —  Section 2.4 (Step 3, Fig. 11)
+    #
+    # Linearly interpolate EImass and EInum across the four
+    # ICAO LTO thrust settings — Idle (7%), Approach (30%), Climb (85%),
+    # Take-Off (100%) — to obtain ground-reference EI at the FGR/F00 computed
+    # in Step 2.
+    # -------------------------------------------------------------------------
 
-    t_mass, arr_mass = build_interp(
-        EI_mass_mode, edb_data.EImass_max, edb_data.EImass_max_thrust
-    )
-    t_num, arr_num = build_interp(
-        EI_num_mode, edb_data.EInum_max, edb_data.EInum_max_thrust
+    # Thurst fractions at each ThrustMode
+    tgrid = (
+        np.array([mode.thrust_percentage for mode in ThrustMode], dtype=float) / 100.0
     )
 
-    EI_ref_mass = np.interp(FG_over_Foo, t_mass, arr_mass)  # mg kg⁻¹
-    EI_ref_num = np.interp(FG_over_Foo, t_num, arr_num)  # # kg⁻¹
+    # Clamp thrust fraction to the valid LTO range to avoid extrapolation.
+    FG_over_Foo = np.clip(FG_over_Foo_raw, 0.07, 1.0)
 
-    # ---------------------------------------------------------------------
-    # (4)  ALTITUDE ADJUSTMENT
-    # ---------------------------------------------------------------------
-    EI_mass = 1e-3 * EI_ref_mass * (P3 / P3_ref) ** 1.35 * (1.1**2.5)  # g kg⁻¹
-    EI_num = EI_ref_num * EI_mass / (1e-3 * EI_ref_mass)  # # kg⁻¹
+    # Linear interpolation on the 4-point thrust–EI grid.
+    EI_ref_mass = np.interp(FG_over_Foo, tgrid, EI_mass_mode)  # mg/kg at GR
+    EI_ref_num = np.interp(FG_over_Foo, tgrid, EI_num_mode)  # #/kg  at GR
 
-    # ---------------------------------------------------------------------
-    # (5)  SANITY CHECKS
-    # ---------------------------------------------------------------------
-    if np.max(SN) < 0:  # no valid smoke numbers
-        EI_mass.fill(0.0)
-        EI_num.fill(0.0)
+    # -------------------------------------------------------------------------
+    # (4)  ALTITUDE ADJUSTMENT  —  Section 2.5 (Step 4, Eqs. 15–16, Fig. 15)
+    #
+    # Transpose the ground-reference EI to actual altitude conditions.
+    # -------------------------------------------------------------------------
 
-    neg = EI_mass < 0
-    if neg.any():
-        print("Warning: negative EI_mass set to zero at", np.where(neg)[0])
-        EI_mass[neg] = 0.0
+    # EImass at altitude [g/kg]: convert from mg/kg (*1e-3), apply pressure
+    # scaling and enrichment factor.
+    EI_mass = 1e-3 * EI_ref_mass * (P3 / P3_ref) ** 1.35 * (1.1**2.5)  # g/kg
+
+    # EInum at altitude [#/kg]: preserve the GR number-to-mass ratio (Eq. 16).
+    EI_num = np.zeros_like(EI_ref_num)
+    valid_mass = EI_ref_mass > 0.0
+    EI_num[valid_mass] = (
+        EI_ref_num[valid_mass] * EI_mass[valid_mass] / (1e-3 * EI_ref_mass[valid_mass])
+    )
 
     return EI_mass, EI_num
 

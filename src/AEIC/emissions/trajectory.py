@@ -79,7 +79,9 @@ def get_trajectory_emissions(
         )
 
     if config.emissions.nvpm_enabled:
-        indices.update(_calculate_EI_nvPM(pm, traj.altitude, atmos_state))
+        indices.update(
+            _calculate_EI_nvPM(pm, traj.altitude, traj.rate_of_climb, atmos_state)
+        )
 
     for species in indices.keys():
         emissions[species] = indices[species] * fuel_burn_per_segment
@@ -133,6 +135,7 @@ def compute_EI_NOx(
 def _calculate_EI_nvPM(
     pm: BasePerformanceModel,
     altitudes: np.ndarray,
+    rocd: np.ndarray,
     atmos_state: AtmosphericState | None = None,
 ) -> SpeciesValues[np.ndarray]:
     """Populate nvPM indices for trajectory points."""
@@ -152,6 +155,7 @@ def _calculate_EI_nvPM(
             ) = nvPM_MEEM(
                 pm.edb,
                 altitudes,
+                rocd,
                 atmos_state.temperature,
                 atmos_state.pressure,
                 atmos_state.mach,
