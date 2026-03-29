@@ -111,7 +111,7 @@ def _lto_nvpm(edb: EDBEntry) -> SpeciesValues[ThrustModeValues]:
                 for mode in ThrustMode
             )
             if use_edb_nvpm:
-                nvpm_mass = edb.nvPM_mass_matrix.copy()
+                nvpm_mass = edb.nvPM_mass_matrix.copy() * 1e-3  # mg/kg to g/kg
                 nvpm_num = edb.nvPM_num_matrix.copy()
             else:
                 profile = scope11_profile(edb)
