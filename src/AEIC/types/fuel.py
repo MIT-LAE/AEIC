@@ -20,8 +20,8 @@ class Fuel(CIBaseModel):
     """Emission index for carbon dioxide (g CO₂ / kg fuel)."""
 
     non_volatile_carbon_fraction: float
-    """Mass fraction of non-volatile particulate matter (PMnvol)
-    that is carbon by weight (kg C / kg PMnvol)"""
+    """Mass fraction of non-volatile particulate matter (nvPM)
+    that is carbon by weight (kg C / kg nvPM)"""
 
     lifecycle_CO2: float | None = None
     """Life-cycle CO₂ emissions (g CO₂e / MJ fuel)."""

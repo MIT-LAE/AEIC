@@ -1,5 +1,4 @@
 from AEIC.config import config
-from AEIC.config.emissions import PMnvolMethod
 from AEIC.emissions.types import EmissionsSubset
 from AEIC.performance.apu import APU
 from AEIC.performance.types import ThrustMode, ThrustModeValues
@@ -44,16 +43,14 @@ def get_APU_emissions(
     )
     indices[Species.SOx] = indices[Species.SO2] + indices[Species.SO4]
 
-    # Particulate‐matter breakdown (deterministic BC fraction of 0.95)
+    # Non-volatile PM estimate (deterministic BC fraction of 0.95).
     APU_PM10 = max(apu.PM10_g_per_kg - indices[Species.SO4], 0.0)
     bc_prop = 0.95
-    indices[Species.PMnvol] = APU_PM10 * bc_prop
-    indices[Species.PMvol] = APU_PM10 - indices[Species.PMnvol]
-
-    if config.emissions.pmnvol_method in (PMnvolMethod.SCOPE11, PMnvolMethod.MEEM):
-        indices[Species.PMnvolN] = 0.0
-    indices[Species.PMnvolGMD] = 0.0
-    indices[Species.OCic] = 0.0
+    nvpm_ei = APU_PM10 * bc_prop
+    if Species.nvPM in config.emissions.enabled_species:
+        indices[Species.nvPM] = nvpm_ei
+    if Species.nvPM_N in config.emissions.enabled_species:
+        indices[Species.nvPM_N] = 0.0
 
     # NO/NO₂/HONO speciation.
     nox_speciation = NOx_speciation()
@@ -76,8 +73,7 @@ def get_APU_emissions(
         co2 = co2_ei_nom
         co2 -= (44 / 28) * indices[Species.CO]
         co2 -= (44 / (82 / 5)) * indices[Species.HC]
-        co2 -= (44 / (55 / 4)) * indices[Species.PMvol]
-        co2 -= (44 / 12) * nvol_carb_cont * indices[Species.PMnvol]
+        co2 -= (44 / 12) * nvol_carb_cont * nvpm_ei
         indices[Species.CO2] = co2
     else:
         indices[Species.CO2] = 0.0

@@ -166,7 +166,7 @@ def compute_emissions(
     Emission results from all sources are returned in a single `Emissions`
     object."""
 
-    # Calculate cruise trajectory emissions (CO₂, H₂O, SOₓ, NOₓ, HC, CO, PM).
+    # Calculate cruise trajectory emissions (CO₂, H₂O, SOₓ, NOₓ, HC, CO, nvPM).
     fuel_burn_per_segment = np.zeros_like(traj.fuel_mass)
     fuel_burn_per_segment[1:] = traj.fuel_mass[:-1] - traj.fuel_mass[1:]
     trajectory = get_trajectory_emissions(pm, traj, fuel_burn_per_segment, fuel)

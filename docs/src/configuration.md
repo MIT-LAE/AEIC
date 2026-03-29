@@ -126,11 +126,7 @@ you should not be doing it in "normal" AEIC code!
 ```
 
 ```{eval-rst}
-.. autoenum:: AEIC.config.emissions.PMvolMethod
-```
-
-```{eval-rst}
-.. autoenum:: AEIC.config.emissions.PMnvolMethod
+.. autoenum:: AEIC.config.emissions.nvpmMethod
 ```
 
 ## Weather module configuration class

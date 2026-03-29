@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import functools
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -12,28 +11,17 @@ from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import ThrustMode, ThrustModeArray, ThrustModeValues
 from AEIC.types import Species, SpeciesValues
 
-from .ei.pmnvol import calculate_nvPM_scope11_LTO
+from .ei.nvpm import calculate_nvPM_scope11_LTO, nvPMProfile
 from .ei.sox import EI_SOx
 
 if TYPE_CHECKING:
     from AEIC.types import Fuel
 
 
-@dataclass
-class Scope11Profile:
-    mass: ThrustModeValues
-    number: ThrustModeValues | None
-
-
 @functools.cache
-def scope11_profile(edb: EDBEntry) -> Scope11Profile:
-    mass, number = calculate_nvPM_scope11_LTO(
-        edb.SN_matrix, edb.engine_type, edb.BP_Ratio
-    )
-    return Scope11Profile(
-        mass,
-        number,
-    )
+def scope11_profile(edb: EDBEntry) -> nvPMProfile:
+    profile = calculate_nvPM_scope11_LTO(edb.SN_matrix, edb.engine_type, edb.BP_Ratio)
+    return profile
 
 
 def constant_species_values(fuel: Fuel) -> SpeciesValues[float]:

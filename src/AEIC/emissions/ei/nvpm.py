@@ -1,4 +1,5 @@
 import functools
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -7,50 +8,48 @@ from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import ThrustMode, ThrustModeValues
 
 
-def PMnvol_MEEM(
-    EDB_data: EDBEntry,
+@dataclass
+class nvPMProfile:
+    mass: ThrustModeValues
+    number: ThrustModeValues | None
+
+
+def nvPM_MEEM(
+    edb_data: EDBEntry,
     altitudes: np.ndarray,
-    Tamb_cruise: np.ndarray,
-    Pamb_cruise: np.ndarray,
-    machFlight: np.ndarray,
-):
+    amb_temperature: np.ndarray,
+    amb_pressure: np.ndarray,
+    mach_number: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Estimate non-volatile particulate matter (nvPM) emissions at cruise using the
     Mission Emissions Estimation Methodology (MEEM) based on Ahrens et al. (2022),
     SCOPE11, and the methodology of Peck et al. (2013).
 
-    This function computes:
-    - Geometric mean diameter (GMD) of emitted particles
-    - Mass-based emissions index (EI) in g/kg of fuel
-    - Number-based emissions index (EI) in #/kg of fuel
-
     Parameters
     ----------
-    EDB_data : dict
-        EDB data containing engine type, bypass ratio, pressure ratio,
-        smoke number (SN) matrix, and emission indices (mass and number).
+    edb_data : EDBEntry
+        Engine database data for the selected engine.
     altitudes : ndarray
         Array of flight altitudes [m] over the mission trajectory.
-    Tamb_cruise : ndarray
+    amb_temperature : ndarray
         Ambient temperature [K] at each point in the trajectory.
-    Pamb_cruise : ndarray
+    amb_pressure : ndarray
         Ambient pressure [Pa] at each point in the trajectory.
-    machFlight : ndarray
+    mach_number : ndarray
         Mach number at each point in the trajectory.
 
     Returns
     -------
-    EI_PMnvol_GMD : ndarray
-        Geometric mean diameter of particles [nm], constant along the trajectory.
-    EI_PMnvol : ndarray
-        Emissions index of non-volatile PM mass [g/kg fuel] along the trajectory.
-    EI_PMnvolN : ndarray
-        Emissions index of non-volatile PM number [#/kg fuel] along the trajectory.
+    EI_nvPM : ndarray
+        Emission index of non-volatile PM mass [g/kg fuel] along the trajectory.
+    EI_nvPM_N : ndarray
+        Emission index of non-volatile PM number [#/kg fuel] along the trajectory.
 
     Notes
     -----
     - If `nvPM_mass_matrix` or `nvPM_num_matrix` is undefined or negative in the
-      `EDB_data`, this function reconstructs the values using the SN matrix and
+      `edb_data`, this function reconstructs the values using the SN matrix and
       correlations from the literature.
     - Adjustments for altitude and in-flight thermodynamic conditions are made using
       combustor inlet temperature and pressure estimates derived from ambient
@@ -67,15 +66,15 @@ def PMnvol_MEEM(
     # ---------------------------------------------------------------------
     # (0)  MODE EIs (mg kg⁻¹ or # kg⁻¹)
     # ---------------------------------------------------------------------
-    SN = EDB_data.SN_matrix.as_array()
-    EI_mass_mode = EDB_data.nvPM_mass_matrix.as_array()
-    EI_num_mode = EDB_data.nvPM_num_matrix.as_array()
+    SN = edb_data.SN_matrix.as_array()
+    EI_mass_mode = edb_data.nvPM_mass_matrix.as_array()
+    EI_num_mode = edb_data.nvPM_num_matrix.as_array()
 
     if np.min(EI_mass_mode) < 0:
         # Smoke->mass correlation
         CI_mass = 0.6484 * np.exp(0.0766 * SN) / (1 + np.exp(-1.098 * (SN - 3.064)))
 
-        bypass_ratio = EDB_data.BP_Ratio if EDB_data.engine_type == "MTF" else 0.0
+        bypass_ratio = edb_data.BP_Ratio if edb_data.engine_type == "MTF" else 0.0
         Q_mode = 0.776 * AFR_mode * (1 + bypass_ratio) + 0.767
         kslm = np.log(
             (3.219 * CI_mass * (1 + bypass_ratio) * 1e3 + 312.5)
@@ -92,7 +91,7 @@ def PMnvol_MEEM(
     # ---------------------------------------------------------------------
     # (1)  COMBUSTOR INLET CONDITIONS ALONG TRAJECTORY
     # ---------------------------------------------------------------------
-    max_pr = EDB_data.PR[ThrustMode.IDLE]
+    max_pr = edb_data.PR[ThrustMode.IDLE]
 
     # climb (+) / level (0) / descent (–)
     alt_rate = np.diff(altitudes, prepend=altitudes[0])
@@ -107,8 +106,8 @@ def PMnvol_MEEM(
     )
 
     # convert ambient -> *total* T/P first
-    Tt_amb = Tamb_cruise * (1 + (kappa - 1) / 2 * machFlight**2)
-    Pt_amb = Pamb_cruise * (1 + (kappa - 1) / 2 * machFlight**2) ** (
+    Tt_amb = amb_temperature * (1 + (kappa - 1) / 2 * mach_number**2)
+    Pt_amb = amb_pressure * (1 + (kappa - 1) / 2 * mach_number**2) ** (
         kappa / (kappa - 1)
     )
 
@@ -147,18 +146,14 @@ def PMnvol_MEEM(
         return tgrid, arr
 
     t_mass, arr_mass = build_interp(
-        EI_mass_mode, EDB_data.EImass_max, EDB_data.EImass_max_thrust
+        EI_mass_mode, edb_data.EImass_max, edb_data.EImass_max_thrust
     )
     t_num, arr_num = build_interp(
-        EI_num_mode, EDB_data.EInum_max, EDB_data.EInum_max_thrust
+        EI_num_mode, edb_data.EInum_max, edb_data.EInum_max_thrust
     )
-
-    t_GMD = np.array([-10, 0.07, 0.3, 0.85, 1.0, 100])
-    arr_GMD = np.concatenate(([GMD_mode[0]], GMD_mode, [GMD_mode[-1]]))
 
     EI_ref_mass = np.interp(FG_over_Foo, t_mass, arr_mass)  # mg kg⁻¹
     EI_ref_num = np.interp(FG_over_Foo, t_num, arr_num)  # # kg⁻¹
-    GMD_ref = np.interp(FG_over_Foo, t_GMD, arr_GMD)  # nm
 
     # ---------------------------------------------------------------------
     # (4)  ALTITUDE ADJUSTMENT
@@ -172,20 +167,19 @@ def PMnvol_MEEM(
     if np.max(SN) < 0:  # no valid smoke numbers
         EI_mass.fill(0.0)
         EI_num.fill(0.0)
-        GMD_ref.fill(0.0)
 
     neg = EI_mass < 0
     if neg.any():
         print("Warning: negative EI_mass set to zero at", np.where(neg)[0])
         EI_mass[neg] = 0.0
 
-    return GMD_ref, EI_mass, EI_num
+    return EI_mass, EI_num
 
 
 @functools.cache
 def calculate_nvPM_scope11_LTO(
     SN_matrix: ThrustModeValues, engine_type: str, BP_Ratio: float
-) -> ThrustModeValues:
+) -> nvPMProfile:
     """
     Calculate PM non-volatile Emission Index (EI) using SCOPE11 methodology (2019).
 
@@ -200,9 +194,8 @@ def calculate_nvPM_scope11_LTO(
 
     Returns
     -------
-    PMnvolEI_best_ICAOthrust : ThrustModeValues
-        Emission index of non-volatile PM mass [g/kg_fuel],
-        including 0% thrust extrapolation as first column.
+    nvPMProfile
+        nvPM mass and number emission indices [g/kg and #/kg fuel].
     """
 
     # Air to fuel ration at four LTO points, estimated by Wayson et al. (2009)
@@ -230,15 +223,22 @@ def calculate_nvPM_scope11_LTO(
         CI_mass = 648.4 * np.exp(0.0766 * SN) / (1 + np.exp(-1.099 * (SN - 3.064)))
 
         # --- System loss multiplier (kslm)
+        if engine_type == 'MTF':
+            bypass_factor = 1.0 + BP_Ratio
+        elif engine_type == 'TF':
+            bypass_factor = 1.0
+        else:
+            bypass_factor = 1.0
+
         if engine_type == 'MTF' or engine_type == 'TF':
             kslm = np.log(
-                (3.219 * CI_mass * (1.0 + BP_Ratio) + 312.5)
-                / (CI_mass * (1.0 + BP_Ratio) + 42.6)
+                (3.219 * CI_mass * bypass_factor + 312.5)
+                / (CI_mass * bypass_factor + 42.6)
             )
         else:
             kslm = 0.0
 
-        Q[mode] = 0.776 * AFR[mode] * (1.0 + BP_Ratio) + 0.767
+        Q[mode] = 0.776 * AFR[mode] * bypass_factor + 0.767
 
         # Unit change: μg/m^3 -> mg/m^3
         EI_mass_mg_per_kg = (CI_mass * Q[mode] * kslm) * 1e-3
@@ -259,7 +259,7 @@ def calculate_nvPM_scope11_LTO(
     # Freeze the return value because we're caching.
     nvPM_EI_num_particle_per_kg.freeze()
     nvPM_EI_mass_g_per_kg.freeze()
-    return (
-        nvPM_EI_num_particle_per_kg,
+    return nvPMProfile(
         nvPM_EI_mass_g_per_kg,
-    )  # TODO: make a nvPM struct
+        nvPM_EI_num_particle_per_kg,
+    )

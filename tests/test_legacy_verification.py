@@ -43,8 +43,7 @@ EMISSIONS_FIELDS = [
     'EI_HC',
     'EI_CO',
     'EI_NOx',
-    'EI_PMnvol',
-    'EI_PMvol',
+    'EI_nvPM',
     'EI_SOx',
 ]
 
@@ -145,8 +144,7 @@ def make_emissions_legacy_fields(emissions, npoints: int) -> dict[str, np.ndarra
         'EI_HC': _emission_array(indices, Species.HC, npoints),
         'EI_CO': _emission_array(indices, Species.CO, npoints),
         'EI_NOx': _emission_array(indices, Species.NOx, npoints),
-        'EI_PMnvol': _emission_array(indices, Species.PMnvol, npoints),
-        'EI_PMvol': _emission_array(indices, Species.PMvol, npoints),
+        'EI_nvPM': _emission_array(indices, Species.nvPM, npoints),
         'EI_SOx': so2 + so4,
     }
 

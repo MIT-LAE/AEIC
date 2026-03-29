@@ -18,20 +18,10 @@ class EINOxMethod(CIStrEnum):
     NONE = 'none'
 
 
-class PMvolMethod(CIStrEnum):
-    """PMvol emissions calculation methods."""
-
-    FUEL_FLOW = 'fuel_flow'
-    FOA3 = 'foa3'
-    NONE = 'none'
-
-
-class PMnvolMethod(CIStrEnum):
-    """PMnvol emissions calculation methods."""
+class nvpmMethod(CIStrEnum):
+    """nvPM emissions calculation methods."""
 
     MEEM = 'meem'
-    SCOPE11 = 'scope11'
-    FOA3 = 'foa3'
     NONE = 'none'
 
 
@@ -80,7 +70,7 @@ class EmissionsConfig(CIBaseModel):
     sox_enabled: bool = True
     """Toggle fuel-dependency SOₓ (SO₂ and SO₄) emission calculation."""
 
-    # Emission calculation method options for all other emmisions
+    # Emission calculation method options for all other emissions.
 
     nox_method: EINOxMethod = DEFAULT_METHOD
     """NOₓ emission calculation method. ("None" disables NOₓ emissions.)"""
@@ -91,11 +81,8 @@ class EmissionsConfig(CIBaseModel):
     co_method: EINOxMethod = DEFAULT_METHOD
     """CO emission calculation method. ("None" disables CO emissions.)"""
 
-    pmvol_method: PMvolMethod = PMvolMethod.FUEL_FLOW
-    """PMvol emission calculation method. ("None" disables PMvol emissions.)"""
-
-    pmnvol_method: PMnvolMethod = PMnvolMethod.MEEM
-    """PMnvol emission calculation method. ("None" disables PMnvol emissions.)"""
+    nvpm_method: nvpmMethod = nvpmMethod.MEEM
+    """nvPM emission calculation method. ("None" disables nvPM emissions.)"""
 
     # Non trajectory emission calculation flags.
 
@@ -133,14 +120,9 @@ class EmissionsConfig(CIBaseModel):
         return self.co_method != EINOxMethod.NONE
 
     @property
-    def pmvol_enabled(self) -> bool:
-        """PMvol emission calculation flag."""
-        return self.pmvol_method != PMvolMethod.NONE
-
-    @property
-    def pmnvol_enabled(self) -> bool:
-        """PMnvol emission calculation flag."""
-        return self.pmnvol_method != PMnvolMethod.NONE
+    def nvpm_enabled(self) -> bool:
+        """nvPM emission calculation flag."""
+        return self.nvpm_method != nvpmMethod.NONE
 
     @cached_property
     def enabled_species(self) -> set[Species]:
@@ -158,10 +140,7 @@ class EmissionsConfig(CIBaseModel):
         add(Species.HC)
         add(Species.CO)
         add(Species.NOx, Species.NO, Species.NO2, Species.HONO)
-        add(Species.PMvol, Species.OCic)
-        add(Species.PMnvol, Species.PMnvolGMD)
-        if self.pmnvol_method in (PMnvolMethod.SCOPE11, PMnvolMethod.MEEM):
-            add(Species.PMnvolN, label='pmnvol')
+        add(Species.nvPM, Species.nvPM_N, label='nvpm')
         add(Species.SOx, Species.SO2, Species.SO4)
 
         return result

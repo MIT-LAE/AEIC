@@ -8,12 +8,11 @@ from AEIC.config import config
 from AEIC.emissions.apu import get_APU_emissions
 from AEIC.emissions.ei.hcco import EI_HCCO
 from AEIC.emissions.ei.nox import BFFM2_EINOx, BFFM2EINOxResult, NOx_speciation
-from AEIC.emissions.ei.pmnvol import PMnvol_MEEM, calculate_nvPM_scope11_LTO
-from AEIC.emissions.ei.pmvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
+from AEIC.emissions.ei.nvpm import calculate_nvPM_scope11_LTO, nvPM_MEEM
 from AEIC.emissions.ei.sox import EI_SOx, SOxEmissionResult
 from AEIC.performance.apu import APU
 from AEIC.performance.edb import EDBEntry
-from AEIC.performance.types import ThrustMode, ThrustModeArray, ThrustModeValues
+from AEIC.performance.types import ThrustMode, ThrustModeValues
 from AEIC.types import Fuel, Species, SpeciesValues
 
 
@@ -455,13 +454,13 @@ class TestGetAPUEmissions:
         assert apu.indices[Species.CO2] == 0.0
         assert apu.emissions[Species.CO2] == 0.0
 
-    @pytest.mark.config_updates(emissions__pmnvol_method='scope11')
+    @pytest.mark.config_updates(emissions__nvpm_method='meem')
     def test_nvpm_method_enables_number_channel(self, fuel_jetA):
         """PM number index should be emitted when nvpm_method requests it"""
         apu = get_APU_emissions(self.LTO_emission_indices, self.apu, fuel_jetA)
 
-        assert Species.PMnvolN in apu.indices
-        assert apu.indices[Species.PMnvolN] == 0.0
+        assert Species.nvPM_N in apu.indices
+        assert apu.indices[Species.nvPM_N] == 0.0
 
 
 def make_edb_lto_values(x0: float, x1: float, x2: float, x3: float) -> ThrustModeValues:
@@ -476,12 +475,12 @@ def make_edb_lto_values(x0: float, x1: float, x2: float, x3: float) -> ThrustMod
     )
 
 
-class TestPMnvolMEEM:
-    """Tests for the PMnvol_MEEM cruise methodology"""
+class TestNvPMMEEM:
+    """Tests for the nvPM_MEEM cruise methodology."""
 
     def test_reconstructs_missing_mode_data_and_interpolates(self):
         """Negative mode inputs should be rebuilt and yield finite cruise profiles"""
-        EDB_data = EDBEntry(
+        edb_data = EDBEntry(
             engine='Test',
             uid='TEST000',
             engine_type='MTF',
@@ -505,19 +504,17 @@ class TestPMnvolMEEM:
         Pamb = np.array([101325.0, 54000.0, 26500.0])
         mach = np.array([0.0, 0.7, 0.8])
 
-        gmd, mass, num = PMnvol_MEEM(EDB_data, altitudes, Tamb, Pamb, mach)
+        mass, num = nvPM_MEEM(edb_data, altitudes, Tamb, Pamb, mach)
 
-        assert gmd.shape == altitudes.shape
         assert mass.shape == altitudes.shape
         assert num.shape == altitudes.shape
-        assert np.all(gmd > 0.0)
         assert np.all(mass > 0.0)
         assert np.all(num > 0.0)
         assert np.all(np.isfinite(mass))
 
     def test_invalid_smoke_numbers_zero_results(self):
         """All-negative smoke numbers should zero out the trajectory"""
-        EDB_data = EDBEntry(
+        edb_data = EDBEntry(
             engine='Test',
             uid='TEST000',
             engine_type='TF',
@@ -541,22 +538,21 @@ class TestPMnvolMEEM:
         Pamb = np.array([70000.0, 65000.0])
         mach = np.array([0.3, 0.4])
 
-        gmd, mass, num = PMnvol_MEEM(EDB_data, altitudes, Tamb, Pamb, mach)
+        mass, num = nvPM_MEEM(edb_data, altitudes, Tamb, Pamb, mach)
 
-        assert np.all(gmd == 0.0)
         assert np.all(mass == 0.0)
         assert np.all(num == 0.0)
 
 
-class TestCalculatePMnvolScope11:
+class TestCalculateNvPMScope11:
     """Tests for calculate_nvPM_scope11_LTO"""
 
     def test_engine_type_scaling_and_invalid_smoke_numbers(self):
         SN_matrix = ThrustModeValues(5.0, 50.0, -1.0, 0.0)
         BP_Ratio = 2.0
 
-        mtf, _ = calculate_nvPM_scope11_LTO(SN_matrix, 'MTF', BP_Ratio)
-        tf, _ = calculate_nvPM_scope11_LTO(SN_matrix, 'TF', BP_Ratio)
+        mtf = calculate_nvPM_scope11_LTO(SN_matrix, 'MTF', BP_Ratio)
+        tf = calculate_nvPM_scope11_LTO(SN_matrix, 'TF', BP_Ratio)
 
         SN0 = min(SN_matrix[ThrustMode.IDLE], 40.0)
         CBC0 = 0.6484 * np.exp(0.0766 * SN0) / (1 + np.exp(-1.098 * (SN0 - 3.064)))
@@ -568,46 +564,18 @@ class TestCalculatePMnvolScope11:
         )
         Q_mtf = 0.776 * AFR[ThrustMode.IDLE] * bypass + 0.767
         expected_mtf = (kslm_mtf * CBC0 * Q_mtf) / 1000.0
-        assert np.isclose(mtf[ThrustMode.IDLE], expected_mtf)
+        assert np.isclose(mtf.mass[ThrustMode.IDLE], expected_mtf)
 
         kslm_tf = np.log((3.219 * CBC0 * 1000 + 312.5) / (CBC0 * 1000 + 42.6))
         Q_tf = 0.776 * AFR[ThrustMode.IDLE] + 0.767
         expected_tf = (kslm_tf * CBC0 * Q_tf) / 1000.0
-        assert np.isclose(tf[ThrustMode.IDLE], expected_tf)
+        assert np.isclose(tf.mass[ThrustMode.IDLE], expected_tf)
 
-        assert mtf[ThrustMode.IDLE] > tf[ThrustMode.IDLE]
-        assert mtf[ThrustMode.CLIMB] == 0.0
-        assert tf[ThrustMode.TAKEOFF] == 0.0
-
-
-class TestEI_PMvol:
-    """Tests for EI_PMvol helper functions"""
-
-    def test_fuel_flow_path_uses_lube_contributions(self):
-        fuelflow = np.ones((2, 4))
-        thrustModes = ThrustModeArray(np.array([ThrustMode.IDLE, ThrustMode.APPROACH]))
-
-        pmvol, ocic = EI_PMvol_FuelFlow(fuelflow, thrustModes)
-
-        assert pmvol.shape == thrustModes.shape
-        assert ocic.shape == fuelflow.shape
-        assert np.isclose(pmvol[0], 0.02 / (1 - 0.15))
-        assert np.isclose(pmvol[1], 0.02 / (1 - 0.50))
-        assert np.allclose(ocic, 0.02)
-
-    def test_foa3_interpolation_matches_reference_curve(self):
-        thrusts = np.array([[7.0, 30.0, 85.0, 100.0], [50.0, 70.0, 90.0, 100.0]])
-        HCEI = np.array([[1.0, 2.0, 3.0, 4.0], [0.5, 0.75, 1.0, 1.5]])
-
-        pmvol, ocic = EI_PMvol_FOA3(thrusts, HCEI)
-
-        ICAO_thrust = np.array([7.0, 30.0, 85.0, 100.0])
-        delta = np.array([6.17, 56.25, 76.0, 115.0])
-        expected_delta = np.interp(thrusts, ICAO_thrust, delta)
-        expected_pmvol = expected_delta * HCEI / 1000.0
-
-        assert np.allclose(pmvol, expected_pmvol)
-        assert np.allclose(ocic, expected_pmvol)
+        assert mtf.mass[ThrustMode.IDLE] > tf.mass[ThrustMode.IDLE]
+        assert mtf.mass[ThrustMode.CLIMB] == 0.0
+        assert tf.mass[ThrustMode.TAKEOFF] == 0.0
+        assert mtf.number is not None
+        assert tf.number is not None
 
 
 # Integration tests

@@ -17,14 +17,11 @@ class Species(IntEnum):
     NO = auto()
     NO2 = auto()
     HONO = auto()
-    PMnvol = auto()
-    PMnvolGMD = auto()
-    PMvol = auto()
-    OCic = auto()
     SOx = auto()
     SO2 = auto()
     SO4 = auto()
-    PMnvolN = auto()
+    nvPM = auto()
+    nvPM_N = auto()
 
 
 class SpeciesValues[M]:

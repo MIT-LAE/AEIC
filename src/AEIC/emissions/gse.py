@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from AEIC.config import config
 from AEIC.emissions.types import EmissionsSubset
 from AEIC.types import AircraftClass, Species, SpeciesValues
 from AEIC.units import KG_TO_GRAMS, PPM
@@ -44,15 +45,12 @@ def get_GSE_emissions(
     gse[Species.SO2] = GSE_FSC * KG_TO_GRAMS * (1.0 - GSE_EPS) * (MWT_SO2 / MWT_O2)
     gse[Species.SOx] = gse[Species.SO4] + gse[Species.SO2]
 
-    # Subtract sulfate from the core PM₁₀ then split 50:50.
+    # Subtract sulfate from core PM₁₀ and map remainder to nvPM.
     pm_minus_so4 = pm_core - gse[Species.SO4]
-    gse[Species.PMvol] = pm_minus_so4 * 0.5
-    gse[Species.PMnvol] = pm_minus_so4 * 0.5
-
-    # No PMnvolN or PMnvolGMD or OCic.
-    gse[Species.PMnvolN] = 0.0
-    gse[Species.PMnvolGMD] = 0.0
-    gse[Species.OCic] = 0.0
+    if Species.nvPM in config.emissions.enabled_species:
+        gse[Species.nvPM] = pm_minus_so4
+    if Species.nvPM_N in config.emissions.enabled_species:
+        gse[Species.nvPM_N] = 0.0
 
     return EmissionsSubset(emissions=gse, fuel_burn=gse_fuel)
 

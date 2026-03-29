@@ -53,7 +53,7 @@ output = compute_emissions(perf, fuel, traj)
 
 print("Total CO2 (g)", output.total[Species.CO2])
 print("Taxi NOx (g)", output.lto[Species.NOx][ThrustMode.IDLE])
-print("Per-segment PM number", output.trajectory[Species.PMnvol])
+print("Per-segment nvPM EI", output.trajectory[Species.nvPM])
 ```
 
 ## Computation workflow
@@ -71,8 +71,8 @@ steps:
    of the flight.)
    - For some species (CO₂, H₂O, SO₂, SO₄), constant fuel-dependent emission
      index values are used.
-   - For other species (NOₓ, volatile and non-volatile particular matter),
-     emissions are calculated using the user-specified calculation method.
+   - For other species (NOₓ and non-volatile particulate matter), emissions
+     are calculated using the user-specified calculation method.
    - NOₓ emissions are divided into NO₂, NO and HONO emissions using fixed
      speciation ratios.
 3. Calls the `AEIC.emissions.lto.get_LTO_emissions` function to calculate
@@ -169,12 +169,7 @@ different types of per-species emissions from the different sources.
 ```
 
 ```{eval-rst}
-.. automodule:: AEIC.emissions.ei.pmnvol
-   :members:
-```
-
-```{eval-rst}
-.. automodule:: AEIC.emissions.ei.pmvol
+.. automodule:: AEIC.emissions.ei.nvpm
    :members:
 ```
 

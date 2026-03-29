@@ -46,17 +46,10 @@ hc_method = "BFFM2"
 co_method = "BFFM2"
 
 # Options:
-#   fuel_flow: Calculate EI(PMvolo) and OCicEI based on fuel flow;
-#   FOA3: Using the FOA3.0 method (Wayson et al., 2009);
-#   none: Do not compute PMvol emissions.
-pmvol_method = "fuel_flow"
-
-# Options:
 #   MEEM:    Mission Emissions Estimation Methodology (MEEM) based on Ahrens et
 #            al. (2022), SCOPE11, and the methodology of Peck et al. (2013);
-#   SCOPE11: SCOPE11 methodology;
-#   none:    Do not compute PMnvol emissions.
-pmnvol_method = "MEEM"
+#   none:    Do not compute nvPM emissions.
+nvpm_method = "MEEM"
 
 # Options:
 #   trajectory: emissions calculated for entire trajectory (takeoff, climb,

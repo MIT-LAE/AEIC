@@ -9,8 +9,7 @@ from AEIC.config import config
 from AEIC.config.emissions import (
     ClimbDescentMode,
     EINOxMethod,
-    PMnvolMethod,
-    PMvolMethod,
+    nvpmMethod,
 )
 from AEIC.performance.models import BasePerformanceModel
 from AEIC.trajectories.trajectory import Trajectory
@@ -18,18 +17,15 @@ from AEIC.types import Species, SpeciesValues
 
 from .ei.hcco import EI_HCCO
 from .ei.nox import BFFM2_EINOx
-from .ei.pmnvol import PMnvol_MEEM
-from .ei.pmvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
+from .ei.nvpm import nvPM_MEEM
 from .types import AtmosphericState, EmissionsSubset
 from .utils import (
     constant_species_values,
     get_SLS_equivalent_fuel_flow,
-    get_thrust_cat_cruise,
-    scope11_profile,
 )
 
 if TYPE_CHECKING:
-    from AEIC.performance.types import LTOPerformance, ThrustModeArray
+    from AEIC.performance.types import LTOPerformance
     from AEIC.types import Fuel
 
 
@@ -64,21 +60,14 @@ def get_trajectory_emissions(
     if Species.NOx in config.emissions.enabled_species:
         indices.update(compute_EI_NOx(pm.lto, atmos_state, sls_equiv_fuel_flow))
 
-    hc_ei = None
-    needs_hc = Species.HC in config.emissions.enabled_species or (
-        Species.PMvol in config.emissions.enabled_species
-        and config.emissions.pmvol_method is PMvolMethod.FOA3
-    )
-    if needs_hc:
-        hc_ei = EI_HCCO(
+    if Species.HC in config.emissions.enabled_species:
+        indices[Species.HC] = EI_HCCO(
             sls_equiv_fuel_flow,
             pm.lto.EI_HC,
             pm.lto.fuel_flow,
             Tamb=atmos_state.temperature,
             Pamb=atmos_state.pressure,
         )
-        if Species.HC in config.emissions.enabled_species:
-            indices[Species.HC] = hc_ei
 
     if Species.CO in config.emissions.enabled_species:
         indices[Species.CO] = EI_HCCO(
@@ -89,15 +78,8 @@ def get_trajectory_emissions(
             Pamb=atmos_state.pressure,
         )
 
-    # Thrust mode along trajectory, using LTO fuel flows for calibration.
-    thrust_modes = get_thrust_cat_cruise(traj.fuel_flow, pm.lto.fuel_flow)
-
-    indices.update(_calculate_EI_PMvol(thrust_modes, traj.fuel_flow, hc_ei))
-
-    if config.emissions.pmnvol_enabled:
-        indices.update(
-            _calculate_EI_PMnvol(pm, thrust_modes, traj.altitude, atmos_state)
-        )
+    if config.emissions.nvpm_enabled:
+        indices.update(_calculate_EI_nvPM(pm, traj.altitude, atmos_state))
 
     for species in indices.keys():
         emissions[species] = indices[species] * fuel_burn_per_segment
@@ -148,87 +130,42 @@ def compute_EI_NOx(
     return indices
 
 
-def _calculate_EI_PMvol(
-    thrust_modes: ThrustModeArray,
-    fuel_flow: np.ndarray,
-    hc_ei: np.ndarray | None,
-) -> SpeciesValues[np.ndarray]:
-    """Populate PMvol/OCic trajectory indices according to the configured method."""
-    indices = SpeciesValues[np.ndarray]()
-    if (
-        not config.emissions.pmvol_enabled
-        or config.emissions.pmvol_method is PMvolMethod.NONE
-    ):
-        return indices
-    if config.emissions.pmvol_method is PMvolMethod.FUEL_FLOW:
-        pmvol_ei, ocic_ei = EI_PMvol_FuelFlow(fuel_flow, thrust_modes)
-    elif config.emissions.pmvol_method is PMvolMethod.FOA3:
-        if hc_ei is None:
-            raise RuntimeError("FOA3 PMvol calculation requires HC EIs.")
-        thrust_pct = _thrust_percentages_from_categories(thrust_modes)
-        pmvol_ei, ocic_ei = EI_PMvol_FOA3(thrust_pct, hc_ei)
-    else:
-        raise NotImplementedError(
-            f"EI_PMvol_method '{config.emissions.pmvol_method.value}' is not supported."
-        )
-    indices[Species.PMvol] = pmvol_ei
-    indices[Species.OCic] = ocic_ei
-    return indices
-
-
-def _calculate_EI_PMnvol(
+def _calculate_EI_nvPM(
     pm: BasePerformanceModel,
-    thrust_modes: ThrustModeArray,
     altitudes: np.ndarray,
     atmos_state: AtmosphericState | None = None,
 ) -> SpeciesValues[np.ndarray]:
-    """Populate PMnvol indices for trajectory points."""
+    """Populate nvPM indices for trajectory points."""
     indices = SpeciesValues[np.ndarray]()
 
-    match config.emissions.pmnvol_method:
-        case PMnvolMethod.NONE:
+    match config.emissions.nvpm_method:
+        case nvpmMethod.NONE:
             pass
 
-        case PMnvolMethod.MEEM:
+        case nvpmMethod.MEEM:
             assert atmos_state is not None, (
-                'Atmospheric state is required for MEEM PMnvol.'
+                'Atmospheric state is required for MEEM nvPM.'
             )
             (
-                indices[Species.PMnvolGMD],
-                indices[Species.PMnvol],
-                pmnvol_num,
-            ) = PMnvol_MEEM(
+                indices[Species.nvPM],
+                nvpm_num,
+            ) = nvPM_MEEM(
                 pm.edb,
                 altitudes,
                 atmos_state.temperature,
                 atmos_state.pressure,
                 atmos_state.mach,
             )
-            if Species.PMnvolN in config.emissions.enabled_species:
-                indices[Species.PMnvolN] = pmnvol_num
-
-        case PMnvolMethod.SCOPE11:
-            profile = scope11_profile(pm.edb)
-            indices[Species.PMnvol] = profile.mass.broadcast(thrust_modes)
-            indices[Species.PMnvolGMD] = np.zeros(len(altitudes))
-            if (
-                profile.number is not None
-                and Species.PMnvolN in config.emissions.enabled_species
-            ):
-                indices[Species.PMnvolN] = profile.number.broadcast(thrust_modes)
+            if Species.nvPM_N in config.emissions.enabled_species:
+                indices[Species.nvPM_N] = nvpm_num
 
         case _:
             raise NotImplementedError(
-                f"EI_PMnvol_method '{config.emissions.pmnvol_method.value}' "
+                f"EI_nvPM_method '{config.emissions.nvpm_method.value}' "
                 "is not supported."
             )
 
     return indices
-
-
-def _thrust_percentages_from_categories(thrust_modes: ThrustModeArray):
-    """Convert thrust codes into representative ICAO mode percentages."""
-    return np.asarray([c.thrust_percentage for c in thrust_modes])
 
 
 def _trajectory_slice(traj: Trajectory) -> slice:

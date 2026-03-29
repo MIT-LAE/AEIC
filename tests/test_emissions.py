@@ -3,24 +3,18 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from AEIC.config import config
-from AEIC.config.emissions import ClimbDescentMode, PMnvolMethod, PMvolMethod
+from AEIC.config.emissions import ClimbDescentMode
 from AEIC.emissions import compute_emissions
 from AEIC.emissions.ei.hcco import EI_HCCO
 from AEIC.emissions.ei.nox import BFFM2_EINOx, NOx_speciation
-from AEIC.emissions.ei.pmnvol import calculate_nvPM_scope11_LTO
-from AEIC.emissions.ei.pmvol import EI_PMvol_FOA3, EI_PMvol_FuelFlow
 from AEIC.emissions.gse import get_GSE_emissions
 from AEIC.emissions.trajectory import (
-    _calculate_EI_PMnvol,
-    _calculate_EI_PMvol,
-    _thrust_percentages_from_categories,
+    _calculate_EI_nvPM,
     _trajectory_slice,
 )
 from AEIC.emissions.types import AtmosphericState
 from AEIC.emissions.utils import (
     get_SLS_equivalent_fuel_flow,
-    get_thrust_cat_cruise,
     scope11_profile,
 )
 from AEIC.missions import Mission
@@ -30,7 +24,6 @@ from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import (
     LTOPerformance,
     ThrustMode,
-    ThrustModeArray,
     ThrustModeValues,
 )
 from AEIC.types import AircraftClass, Species, SpeciesValues
@@ -71,11 +64,11 @@ class DummyPerformanceModel:
         # old Matlab code, but that code doesn't seem to have been carried over
         # to the new AEIC. Where should they come from?
         #
-        #     'PMnvolEI_best_ICAOthrust':
+        #     'nvPM_EI_best_ICAOthrust':
         #         np.array([0.05, 0.07, 0.09, 0.12], dtype=float),
-        #     'PMnvolEI_new_ICAOthrust':
+        #     'nvPM_EI_new_ICAOthrust':
         #         np.array([0.04, 0.06, 0.08, 0.11], dtype=float),
-        #     'PMnvolEIN_best_ICAOthrust': np.array(
+        #     'nvPM_EI_N_best_ICAOthrust': np.array(
         #         [1.1e13, 1.2e13, 1.3e13, 1.4e13], dtype=float
         #     ),
         #     'EImass_max_alt': 0.85,
@@ -143,24 +136,11 @@ def test_emissions_species(emissions):
     assert len(emissions.species) == len(Species)
 
 
-def _expected_scope11_mapping(perf_model, thrust_categories):
-    edb = perf_model.edb
-    mass_modes, number_modes = calculate_nvPM_scope11_LTO(
-        edb.SN_matrix, edb.engine_type, edb.BP_Ratio
-    )
-    mass = mass_modes.broadcast(thrust_categories)
-    number = (
-        number_modes.broadcast(thrust_categories) if number_modes is not None else None
-    )
-    return mass, number
-
-
 def _expected_trajectory_indices(perf_model, trajectory):
     idx_slice = _trajectory_slice(trajectory)
     lto_inputs = perf_model.lto
 
     fuel_flow = trajectory.fuel_flow[idx_slice]
-    thrust_categories = get_thrust_cat_cruise(fuel_flow, lto_inputs.fuel_flow)
 
     altitudes = trajectory.altitude[idx_slice]
     tas = trajectory.true_airspeed[idx_slice]
@@ -210,27 +190,10 @@ def _expected_trajectory_indices(perf_model, trajectory):
         Pamb=atmos.pressure,
     )
 
-    if config.emissions.pmvol_method is PMvolMethod.FUEL_FLOW:
-        pmvol, ocic = EI_PMvol_FuelFlow(fuel_flow, thrust_categories)
-    else:
-        thrust_pct = _thrust_percentages_from_categories(thrust_categories)
-        pmvol, ocic = EI_PMvol_FOA3(thrust_pct, expected[Species.HC])
-    expected[Species.PMvol] = pmvol
-    expected[Species.OCic] = ocic
-
-    if config.emissions.pmnvol_method is PMnvolMethod.SCOPE11:
-        mass, number = _expected_scope11_mapping(perf_model, thrust_categories)
-        expected[Species.PMnvol] = mass
-        expected[Species.PMnvolGMD] = np.zeros_like(fuel_flow)
-        if Species.PMnvolN in config.emissions.enabled_species and number is not None:
-            expected[Species.PMnvolN] = number
-    else:
-        expected[Species.PMnvolGMD] = np.zeros_like(fuel_flow)
-
     return expected, (no_prop, no2_prop, hono_prop)
 
 
-@pytest.mark.config_updates(emissions__pmnvol_method='scope11')
+@pytest.mark.config_updates(emissions__nvpm_method='meem')
 def test_emit_matches_expected_indices_and_pointwise(perf_model, trajectory, emissions):
     expected, (no_prop, no2_prop, hono_prop) = _expected_trajectory_indices(
         perf_model, trajectory
@@ -264,7 +227,7 @@ def test_emit_matches_expected_indices_and_pointwise(perf_model, trajectory, emi
 
 
 @pytest.mark.config_updates(
-    emissions__pmnvol_method='scope11', emissions__lifecycle_enabled=False
+    emissions__nvpm_method='meem', emissions__lifecycle_enabled=False
 )
 def test_sum_total_emissions_matches_components(perf_model, fuel, trajectory):
     emissions = compute_emissions(perf_model, fuel, trajectory)
@@ -297,7 +260,7 @@ def test_lto_respects_traj_flag_true(perf_model, fuel, trajectory):
         )
 
 
-@pytest.mark.config_updates(emissions__climb_descent_usage=ClimbDescentMode.LTO)
+@pytest.mark.config_updates(emissions__climb_descent_mode=ClimbDescentMode.LTO)
 def test_lto_respects_traj_flag_false(perf_model, fuel, trajectory):
     output = compute_emissions(perf_model, fuel, trajectory)
     for m in [ThrustMode.APPROACH, ThrustMode.CLIMB, ThrustMode.TAKEOFF]:
@@ -320,40 +283,10 @@ def test_lto_nox_split_matches_speciation(emissions):
     check(Species.HONO, speciation.hono)
 
 
-@pytest.mark.config_updates(emissions__pmvol_method='foa3')
-def test_calculate_pmvol_requires_hc_for_foa3(trajectory):
-    thrust_modes = ThrustModeArray(np.array([ThrustMode.APPROACH] * len(trajectory)))
-    with pytest.raises(RuntimeError):
-        _ = _calculate_EI_PMvol(thrust_modes, trajectory.fuel_flow, None)
-
-
-@pytest.mark.config_updates(emissions__pmnvol_method='scope11')
-def test_calculate_pmnvol_scope11_populates_fields(perf_model, trajectory):
-    thrust_modes = ThrustModeArray(np.array([ThrustMode.CLIMB] * len(trajectory)))
-    result = _calculate_EI_PMnvol(
-        perf_model,
-        thrust_modes,
-        trajectory.altitude,
-    )
-    traj_len = len(trajectory)
-    expected_mass = np.full(traj_len, 0.07311027)
-    expected_number = np.full(traj_len, 1.3e13)
-    np.testing.assert_allclose(result[Species.PMnvol], expected_mass)
-    np.testing.assert_allclose(
-        result[Species.PMnvolGMD], np.zeros(traj_len, dtype=float)
-    )
-    if Species.PMnvolN in result:
-        np.testing.assert_allclose(result[Species.PMnvolN], expected_number)
-
-
-@pytest.mark.config_updates(emissions__pmnvol_method='meem')
-def test_calculate_pmnvol_meem_populates_fields(perf_model, trajectory):
+@pytest.mark.config_updates(emissions__nvpm_method='meem')
+def test_calculate_nvpm_meem_populates_fields(perf_model, trajectory):
     atmos = AtmosphericState(trajectory.altitude, trajectory.true_airspeed)
-    thrust_modes = ThrustModeArray(np.array([ThrustMode.APPROACH] * len(trajectory)))
-    result = _calculate_EI_PMnvol(perf_model, thrust_modes, trajectory.altitude, atmos)
-    expected_gmd = np.array(
-        [40.0, 38.4671063303, 35.9228905331, 30.6483151751, 20.0, 20.0]
-    )
+    result = _calculate_EI_nvPM(perf_model, trajectory.altitude, atmos)
     expected_mass = np.array(
         [
             0.008296638,
@@ -374,10 +307,17 @@ def test_calculate_pmnvol_meem_populates_fields(perf_model, trajectory):
             2.2714835290e14,
         ]
     )
-    np.testing.assert_allclose(result[Species.PMnvolGMD], expected_gmd)
-    np.testing.assert_allclose(result[Species.PMnvol], expected_mass)
-    if Species.PMnvolN in result:
-        np.testing.assert_allclose(result[Species.PMnvolN], expected_number)
+    np.testing.assert_allclose(result[Species.nvPM], expected_mass)
+    if Species.nvPM_N in result:
+        np.testing.assert_allclose(result[Species.nvPM_N], expected_number)
+
+
+@pytest.mark.config_updates(emissions__nvpm_method='none')
+def test_calculate_nvpm_none_disables_outputs(perf_model, trajectory):
+    atmos = AtmosphericState(trajectory.altitude, trajectory.true_airspeed)
+    result = _calculate_EI_nvPM(perf_model, trajectory.altitude, atmos)
+    assert Species.nvPM not in result
+    assert Species.nvPM_N not in result
 
 
 def test_atmospheric_state_and_sls_flow_shapes(perf_model, trajectory):
@@ -435,13 +375,10 @@ def test_get_gse_emissions_matches_reference_profile(fuel):
             Species.HONO: 9.0,
             Species.SO4: 0.0003,
             Species.SO2: 0.0098,
-            Species.PMvol: 27.49985,
-            Species.PMnvol: 27.49985,
-            Species.PMnvolGMD: 0.0,
-            Species.OCic: 0.0,
+            Species.nvPM: 54.9997,
         }
     )
     for species, value in expected.items():
         assert result[species] == pytest.approx(value)
-    if Species.PMnvolN in result:
-        assert result[Species.PMnvolN] == pytest.approx(0.0)
+    if Species.nvPM_N in result:
+        assert result[Species.nvPM_N] == pytest.approx(0.0)
