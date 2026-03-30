@@ -149,10 +149,7 @@ def _calculate_EI_nvPM(
             assert atmos_state is not None, (
                 'Atmospheric state is required for MEEM nvPM.'
             )
-            (
-                indices[Species.nvPM],
-                nvpm_num,
-            ) = nvPM_MEEM(
+            nvPM_profile = nvPM_MEEM(
                 pm.edb,
                 altitudes,
                 rocd,
@@ -160,8 +157,8 @@ def _calculate_EI_nvPM(
                 atmos_state.pressure,
                 atmos_state.mach,
             )
-            if Species.nvPM_N in config.emissions.enabled_species:
-                indices[Species.nvPM_N] = nvpm_num
+            indices[Species.nvPM] = nvPM_profile.mass
+            indices[Species.nvPM_N] = nvPM_profile.number
 
         case _:
             raise NotImplementedError(

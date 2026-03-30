@@ -10,9 +10,15 @@ from AEIC.units import METERS_TO_FEET
 
 
 @dataclass
-class nvPMProfile:
+class nvPMProfileLTO:
     mass: ThrustModeValues
-    number: ThrustModeValues | None
+    number: ThrustModeValues
+
+
+@dataclass
+class nvPMProfileTrajectory:
+    mass: np.ndarray
+    number: np.ndarray
 
 
 def nvPM_MEEM(
@@ -22,7 +28,7 @@ def nvPM_MEEM(
     amb_temperature: np.ndarray,
     amb_pressure: np.ndarray,
     mach_number: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> nvPMProfileTrajectory:
     """
     Estimate non-volatile particulate matter (nvPM) emissions at cruise using the
     Mission Emissions Estimation Methodology (MEEM) based on Ahrens et al. (2022),
@@ -195,14 +201,16 @@ def nvPM_MEEM(
     EI_num[valid_mass] = (
         EI_ref_num[valid_mass] * EI_mass[valid_mass] / (1e-3 * EI_ref_mass[valid_mass])
     )
-
-    return EI_mass, EI_num
+    return nvPMProfileTrajectory(
+        EI_mass,
+        EI_num,
+    )
 
 
 @functools.cache
 def calculate_nvPM_scope11_LTO(
     SN_matrix: ThrustModeValues, engine_type: str, BP_Ratio: float
-) -> nvPMProfile:
+) -> nvPMProfileLTO:
     """
     Calculate PM non-volatile Emission Index (EI) using SCOPE11 methodology (2019).
 
@@ -282,7 +290,7 @@ def calculate_nvPM_scope11_LTO(
     # Freeze the return value because we're caching.
     nvPM_EI_num_particle_per_kg.freeze()
     nvPM_EI_mass_g_per_kg.freeze()
-    return nvPMProfile(
+    return nvPMProfileLTO(
         nvPM_EI_mass_g_per_kg,
         nvPM_EI_num_particle_per_kg,
     )

@@ -504,7 +504,9 @@ class TestNvPMMEEM:
         mach = np.array([0.1, 0.8, 0.6])
         rocd = np.array([1.0, 0.0, -1.0])
 
-        EI_mass, EI_num = nvPM_MEEM(edb_data, altitudes, rocd, Tamb, Pamb, mach)
+        nvPM_profile = nvPM_MEEM(edb_data, altitudes, rocd, Tamb, Pamb, mach)
+        EI_mass = nvPM_profile.mass
+        EI_num = nvPM_profile.number
 
         ref_EI_mass = np.array([76.38765062, 62.55814195, 0.66317982]) * 1e-3
         ref_EI_num = np.array([5.40274545e14, 4.50516868e14, 1.60368938e13])
