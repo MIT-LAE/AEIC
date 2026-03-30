@@ -153,12 +153,9 @@ def nvPM_MEEM(
     # (T3GR ≡ T3Alt)
     # -------------------------------------------------------------------------
 
-    # T3GR = T3Alt.
-    T3_ref = T3.copy()
-
     # P3GR from Eq. (11): inverse compressor map at sea-level conditions.
     # p0 and T0 are standard sea-level values (101325 Pa, 288.15 K).
-    P3_ref = p0 * (1 + eta_comp * (T3_ref / T0 - 1)) ** (kappa / (kappa - 1))
+    P3_ref = p0 * (1 + eta_comp * (T3 / T0 - 1)) ** (kappa / (kappa - 1))
 
     # FGR/F00 from Eq. (12): normalised ground-reference thrust fraction.
     # This locates the operating point on the 0–1 thrust axis used in Step 3.
@@ -196,10 +193,8 @@ def nvPM_MEEM(
     EI_mass = 1e-3 * EI_ref_mass * (P3 / P3_ref) ** 1.35 * (1.1**2.5)  # g/kg
 
     # EInum at altitude [#/kg]: preserve the GR number-to-mass ratio (Eq. 16).
-    EI_num = np.zeros_like(EI_ref_num)
-    valid_mass = EI_ref_mass > 0.0
-    EI_num[valid_mass] = (
-        EI_ref_num[valid_mass] * EI_mass[valid_mass] / (1e-3 * EI_ref_mass[valid_mass])
+    EI_num = np.where(
+        EI_ref_mass <= 0.0, 0.0, EI_ref_num * EI_mass / (1.0e-3 * EI_ref_mass)
     )
     return nvPMProfileTrajectory(
         EI_mass,
