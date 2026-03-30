@@ -10,6 +10,7 @@ from AEIC.emissions.ei.hcco import EI_HCCO
 from AEIC.emissions.ei.nox import BFFM2_EINOx, BFFM2EINOxResult, NOx_speciation
 from AEIC.emissions.ei.nvpm import calculate_nvPM_scope11_LTO, nvPM_MEEM
 from AEIC.emissions.ei.sox import EI_SOx, SOxEmissionResult
+from AEIC.emissions.types import AtmosphericState
 from AEIC.performance.apu import APU
 from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import ThrustMode, ThrustModeValues
@@ -499,19 +500,19 @@ class TestNvPMMEEM:
             EInum_max_thrust=0.925,
         )
         altitudes = np.array([6000.0, 33000.0, 12000.0]) / 3.28084
-        Tamb = np.array([288.15, 250.0, 220.0])
-        Pamb = np.array([101325.0, 54000.0, 26500.0])
-        mach = np.array([0.1, 0.8, 0.6])
+        TAS = np.array([200.0, 240.0, 190.0])
         rocd = np.array([1.0, 0.0, -1.0])
 
-        nvPM_profile = nvPM_MEEM(edb_data, altitudes, rocd, Tamb, Pamb, mach)
+        atmos_state = AtmosphericState(altitudes, TAS)
+
+        nvPM_profile = nvPM_MEEM(edb_data, altitudes, rocd, atmos_state)
         EI_mass = nvPM_profile.mass
         EI_num = nvPM_profile.number
 
         # These numbers come from MEEM test cases generated in
         # notebooks/test-cases.ipynb
-        ref_EI_mass = np.array([76.38765062, 62.55814195, 0.66317982]) * 1e-3
-        ref_EI_num = np.array([5.40274545e14, 4.50516868e14, 1.60368938e13])
+        ref_EI_mass = np.array([87.80422697, 19.50901914, 1.40599907]) * 1e-3
+        ref_EI_num = np.array([4.72211990e14, 1.74290262e14, 3.50345395e13])
 
         assert np.allclose(EI_mass, ref_EI_mass)
         assert np.allclose(EI_num, ref_EI_num)

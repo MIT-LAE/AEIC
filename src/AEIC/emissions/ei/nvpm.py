@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from AEIC.constants import T0, kappa, p0
+from AEIC.emissions.types import AtmosphericState
 from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import ThrustMode, ThrustModeValues
 from AEIC.units import METERS_TO_FEET
@@ -25,9 +26,7 @@ def nvPM_MEEM(
     edb_data: EDBEntry,
     altitudes: np.ndarray,
     rocd: np.ndarray,
-    amb_temperature: np.ndarray,
-    amb_pressure: np.ndarray,
-    mach_number: np.ndarray,
+    atmospheric_state: AtmosphericState,
 ) -> nvPMProfileTrajectory:
     """
     Estimate non-volatile particulate matter (nvPM) emissions at cruise using the
@@ -134,10 +133,12 @@ def nvPM_MEEM(
 
     # Step 1a: total (stagnation) ambient temperature and pressure.
     # These account for ram compression at the engine face at Mach > 0.
-    Tt_amb = amb_temperature * (1 + (kappa - 1) / 2 * mach_number**2)
-    Pt_amb = amb_pressure * (1 + (kappa - 1) / 2 * mach_number**2) ** (
-        kappa / (kappa - 1)
+    Tt_amb = atmospheric_state.temperature * (
+        1 + (kappa - 1) / 2 * atmospheric_state.mach**2
     )
+    Pt_amb = atmospheric_state.pressure * (
+        1 + (kappa - 1) / 2 * atmospheric_state.mach**2
+    ) ** (kappa / (kappa - 1))
 
     # Step 1b: combustor inlet pressure at altitude (Eq. 7).
     P3 = Pt_amb * (1 + pressure_coef * (opr_pi00 - 1))

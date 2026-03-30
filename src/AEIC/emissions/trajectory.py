@@ -149,14 +149,7 @@ def _calculate_EI_nvPM(
             assert atmos_state is not None, (
                 'Atmospheric state is required for MEEM nvPM.'
             )
-            nvPM_profile = nvPM_MEEM(
-                pm.edb,
-                altitudes,
-                rocd,
-                atmos_state.temperature,
-                atmos_state.pressure,
-                atmos_state.mach,
-            )
+            nvPM_profile = nvPM_MEEM(pm.edb, altitudes, rocd, atmos_state)
             indices[Species.nvPM] = nvPM_profile.mass
             indices[Species.nvPM_N] = nvPM_profile.number
 
