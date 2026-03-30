@@ -9,7 +9,7 @@ from AEIC.config import config
 from AEIC.config.emissions import (
     ClimbDescentMode,
     EINOxMethod,
-    nvpmMethod,
+    EInvPMMethod,
 )
 from AEIC.performance.models import BasePerformanceModel
 from AEIC.trajectories.trajectory import Trajectory
@@ -142,10 +142,10 @@ def _calculate_EI_nvPM(
     indices = SpeciesValues[np.ndarray]()
 
     match config.emissions.nvpm_method:
-        case nvpmMethod.NONE:
+        case EInvPMMethod.NONE:
             pass
 
-        case nvpmMethod.MEEM:
+        case EInvPMMethod.MEEM:
             assert atmos_state is not None, (
                 'Atmospheric state is required for MEEM nvPM.'
             )

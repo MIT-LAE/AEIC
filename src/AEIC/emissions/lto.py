@@ -7,7 +7,7 @@ from AEIC.config import config
 from AEIC.config.emissions import (
     ClimbDescentMode,
     EINOxMethod,
-    nvpmMethod,
+    EInvPMMethod,
 )
 from AEIC.emissions.types import EmissionsSubset
 from AEIC.performance.edb import EDBEntry
@@ -104,7 +104,7 @@ def _lto_nvpm(edb: EDBEntry) -> SpeciesValues[ThrustModeValues]:
     nvpm_num: ThrustModeValues | None = None
 
     match config.emissions.nvpm_method:
-        case nvpmMethod.MEEM:
+        case EInvPMMethod.MEEM:
             # Use nvPM EI/EInum from EDB if they exist, otherwise use SCOPE11
             use_edb_nvpm = all(
                 edb.nvPM_mass_matrix[mode] > 0.0 and edb.nvPM_num_matrix[mode] > 0.0
@@ -118,7 +118,7 @@ def _lto_nvpm(edb: EDBEntry) -> SpeciesValues[ThrustModeValues]:
                 nvpm_mass = profile.mass.copy()
                 if profile.number is not None:
                     nvpm_num = profile.number.copy()
-        case nvpmMethod.NONE:
+        case EInvPMMethod.NONE:
             nvpm_mass = ThrustModeValues(0.0)
         case _:
             raise ValueError(

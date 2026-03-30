@@ -18,7 +18,7 @@ class EINOxMethod(CIStrEnum):
     NONE = 'none'
 
 
-class nvpmMethod(CIStrEnum):
+class EInvPMMethod(CIStrEnum):
     """nvPM emissions calculation methods."""
 
     MEEM = 'meem'
@@ -81,7 +81,7 @@ class EmissionsConfig(CIBaseModel):
     co_method: EINOxMethod = DEFAULT_METHOD
     """CO emission calculation method. ("None" disables CO emissions.)"""
 
-    nvpm_method: nvpmMethod = nvpmMethod.MEEM
+    nvpm_method: EInvPMMethod = EInvPMMethod.MEEM
     """nvPM emission calculation method. ("None" disables nvPM emissions.)"""
 
     # Non trajectory emission calculation flags.
@@ -122,7 +122,7 @@ class EmissionsConfig(CIBaseModel):
     @property
     def nvpm_enabled(self) -> bool:
         """nvPM emission calculation flag."""
-        return self.nvpm_method != nvpmMethod.NONE
+        return self.nvpm_method != EInvPMMethod.NONE
 
     @cached_property
     def enabled_species(self) -> set[Species]:

@@ -508,6 +508,8 @@ class TestNvPMMEEM:
         EI_mass = nvPM_profile.mass
         EI_num = nvPM_profile.number
 
+        # These numbers come from MEEM test cases generated in
+        # notebooks/test-cases.ipynb
         ref_EI_mass = np.array([76.38765062, 62.55814195, 0.66317982]) * 1e-3
         ref_EI_num = np.array([5.40274545e14, 4.50516868e14, 1.60368938e13])
 
@@ -522,6 +524,8 @@ class Test_nvPMScope11:
         SN_matrix = ThrustModeValues(2.1, 2.1, 11.2, 13.4)
         BP_ratio = 5.1
         profile = calculate_nvPM_scope11_LTO(SN_matrix, "TF", BP_ratio)
+        # These numbers come from SCOPE11 test cases generated in
+        # notebooks/test-cases.ipynb
         ref_mass = (
             np.array(
                 [

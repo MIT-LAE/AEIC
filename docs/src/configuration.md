@@ -126,7 +126,7 @@ you should not be doing it in "normal" AEIC code!
 ```
 
 ```{eval-rst}
-.. autoenum:: AEIC.config.emissions.nvpmMethod
+.. autoenum:: AEIC.config.emissions.EInvPMMethod
 ```
 
 ## Weather module configuration class
