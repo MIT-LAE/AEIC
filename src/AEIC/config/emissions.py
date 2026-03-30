@@ -18,6 +18,13 @@ class EINOxMethod(CIStrEnum):
     NONE = 'none'
 
 
+class EIHCCOMethod(CIStrEnum):
+    """HC/CO emissions calculation methods."""
+
+    BFFM2 = 'bffm2'
+    NONE = 'none'
+
+
 class EInvPMMethod(CIStrEnum):
     """nvPM emissions calculation methods."""
 
@@ -43,8 +50,11 @@ class EmissionsConfig(CIBaseModel):
     model_config = ConfigDict(frozen=True)
     """Configuration is frozen after creation."""
 
-    DEFAULT_METHOD: ClassVar[EINOxMethod] = EINOxMethod.BFFM2
-    """Default method for NOₓ, HC, and CO emissions calculations."""
+    DEFAULT_METHOD_NOx: ClassVar[EINOxMethod] = EINOxMethod.BFFM2
+    """Default method for NOₓ emissions calculations."""
+
+    DEFAULT_METHOD_HCCO: ClassVar[EIHCCOMethod] = EIHCCOMethod.BFFM2
+    """Default method for HC, and CO emissions calculations."""
 
     fuel: str
     """Fuel used (conventional Jet-A, SAF, etc.). Should be the name of a file
@@ -72,13 +82,13 @@ class EmissionsConfig(CIBaseModel):
 
     # Emission calculation method options for all other emissions.
 
-    nox_method: EINOxMethod = DEFAULT_METHOD
+    nox_method: EINOxMethod = DEFAULT_METHOD_NOx
     """NOₓ emission calculation method. ("None" disables NOₓ emissions.)"""
 
-    hc_method: EINOxMethod = DEFAULT_METHOD
+    hc_method: EIHCCOMethod = DEFAULT_METHOD_HCCO
     """HC emission calculation method. ("None" disables HC emissions.)"""
 
-    co_method: EINOxMethod = DEFAULT_METHOD
+    co_method: EIHCCOMethod = DEFAULT_METHOD_HCCO
     """CO emission calculation method. ("None" disables CO emissions.)"""
 
     nvpm_method: EInvPMMethod = EInvPMMethod.MEEM
@@ -112,12 +122,12 @@ class EmissionsConfig(CIBaseModel):
     @property
     def hc_enabled(self) -> bool:
         """HC emission calculation flag."""
-        return self.hc_method != EINOxMethod.NONE
+        return self.hc_method != EIHCCOMethod.NONE
 
     @property
     def co_enabled(self) -> bool:
         """CO emission calculation flag."""
-        return self.co_method != EINOxMethod.NONE
+        return self.co_method != EIHCCOMethod.NONE
 
     @property
     def nvpm_enabled(self) -> bool:
