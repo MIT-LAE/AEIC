@@ -21,3 +21,15 @@ R_air = 287.05287
 
 # Earth radius [m]
 R_E = 6378100.0
+
+# Molecular weight of CO2 (g/mol)
+MW_CO2 = 44.0
+
+# Molecular weight of CO (g/mol)
+MW_CO = 28.0
+
+# Molecular weight of HC (effective) (g/mol)
+MW_HC = 16.4  # 82.0 / 5.0
+
+# Molecular weight of C (g/mol)
+MW_C = 12.0

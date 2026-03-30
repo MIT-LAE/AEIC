@@ -1,4 +1,5 @@
 from AEIC.config import config
+from AEIC.constants import MW_C, MW_CO, MW_CO2, MW_HC
 from AEIC.emissions.types import EmissionsSubset
 from AEIC.performance.apu import APU
 from AEIC.performance.types import ThrustMode, ThrustModeValues
@@ -67,13 +68,13 @@ def get_APU_emissions(
 
     # CO₂ via mass balance.
     if apu_running:
-        co2_ei_nom = 3160
-        nvol_carb_cont = 0.95
+        co2_ei_nom = fuel.EI_CO2
+        nvol_carb_cont = fuel.non_volatile_carbon_fraction
 
         co2 = co2_ei_nom
-        co2 -= (44 / 28) * indices[Species.CO]
-        co2 -= (44 / (82 / 5)) * indices[Species.HC]
-        co2 -= (44 / 12) * nvol_carb_cont * nvpm_ei
+        co2 -= (MW_CO2 / MW_CO) * indices[Species.CO]
+        co2 -= (MW_CO2 / MW_HC) * indices[Species.HC]
+        co2 -= (MW_CO2 / MW_C) * nvol_carb_cont * nvpm_ei
         indices[Species.CO2] = co2
     else:
         indices[Species.CO2] = 0.0
