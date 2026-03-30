@@ -11,18 +11,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.13"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: |
-          pip install .
-          pip install sphinx sphinx_rtd_theme myst-parser enum-tools sphinx-toolbox
+      - name: Install project & dependencies
+        run: uv sync --locked --all-extras --dev
 
       - name: Sphinx build
         run: |
-          sphinx-build docs _build
+          uv run sphinx-build docs _build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

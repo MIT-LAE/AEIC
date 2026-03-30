@@ -77,7 +77,7 @@ class LegacyTrajectory:
         retval.altitude = self.df.alt.values * FEET_TO_METERS
         retval.ground_distance = self.df.horDist.values * NAUTICAL_MILES_TO_METERS
         # Correct weird jumps in MATLAB azimuth output.
-        tmp_azimuth = self.df.az.values
+        tmp_azimuth = self.df.az.values.copy()
         for i in range(1, len(tmp_azimuth)):
             if tmp_azimuth[i] - tmp_azimuth[i - 1] > 180:
                 tmp_azimuth[i:] -= 180
