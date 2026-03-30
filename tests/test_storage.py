@@ -589,9 +589,9 @@ def test_fieldset_override(tmp_path: Path):
         assert ts_read3[1].mf == 12345
 
 
-@pytest.mark.forked
-def test_basic_merging(tmp_path: Path):
+def basic_merging_create_stores(tmp_path: Path):
     # Create a number of trajectory stores with names following a pattern.
+    Config.load()
     paths = []
     for i in range(4):
         path = tmp_path / f'test_{i}.nc'
@@ -600,6 +600,27 @@ def test_basic_merging(tmp_path: Path):
             for j in range(2):
                 t = make_test_trajectory((j + 1) * 5, j + i * 10)
                 ts.add(t)
+
+
+def basic_merging_check_merged_store(merged_path: Path):
+    # Open the merged store and check contents.
+    Config.load()
+    with TrajectoryStore.open(base_file=merged_path) as ts_merged:
+        assert ts_merged.nc_linked is True
+        assert len(ts_merged) == 8
+        assert ts_merged[0].name == 'traj_0'
+        assert ts_merged[7].name == 'traj_31'
+        assert ts_merged[4].flight_time.shape == (5,)
+
+
+@pytest.mark.forked
+def test_basic_merging(tmp_path: Path):
+    # Create a number of trajectory stores with names following a pattern.
+    run_in_subprocess(basic_merging_create_stores, tmp_path)
+    paths = []
+    for i in range(4):
+        path = tmp_path / f'test_{i}.nc'
+        paths.append(path)
 
     # Merge the stores into a new store.
     merged_path = tmp_path / 'merged.aeic-store'
@@ -610,12 +631,7 @@ def test_basic_merging(tmp_path: Path):
         _ = TrajectoryStore.append(base_file=merged_path)
 
     # Open the merged store and check contents.
-    with TrajectoryStore.open(base_file=merged_path) as ts_merged:
-        assert ts_merged.nc_linked is True
-        assert len(ts_merged) == 8
-        assert ts_merged[0].name == 'traj_0'
-        assert ts_merged[7].name == 'traj_31'
-        assert ts_merged[4].flight_time.shape == (5,)
+    run_in_subprocess(basic_merging_check_merged_store, merged_path)
 
 
 # Split test into subprocesses to avoid issues with NetCDF libraries.

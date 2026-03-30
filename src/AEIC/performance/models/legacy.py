@@ -321,7 +321,7 @@ class PerformanceTable:
         )
 
 
-class LegacyPerformanceModel(BasePerformanceModel):
+class LegacyPerformanceModel(BasePerformanceModel[SimpleFlightRules]):
     """Legacy table-based performance model."""
 
     model_type: Literal['legacy']

@@ -103,14 +103,14 @@ class LTOPerformanceInput(CIBaseModel):
         )
 
 
-class BasePerformanceModel[RulesT = SimpleFlightRules](CIBaseModel, ABC):
+class BasePerformanceModel[RulesT](CIBaseModel, ABC):
     """Base class for aircraft performance models.
 
     This a generic class parameterized by the type of flight rules accepted by
-    the class's :meth:`evaluate` method. By default, this is
-    :class:`SimpleFlightRules <AEIC.performance.types.SimpleFlightRules>`, but
-    subclasses can override this to specify more sophisticated flight rule
-    types.
+    the class's :meth:`evaluate` method. For very simple performance models,
+    this will just be the basic :class:`SimpleFlightRules
+    <AEIC.performance.types.SimpleFlightRules>`, but subclasses can override
+    this to specify more sophisticated flight rule types.
 
     (This class uses the pattern of splitting the :meth:`evaluate` method into
     two steps to allow for type checking of the flight rules input before
@@ -160,7 +160,8 @@ class BasePerformanceModel[RulesT = SimpleFlightRules](CIBaseModel, ABC):
     """Optional LTO performance data."""
 
     FLIGHT_RULES_CLASS: ClassVar[type] = SimpleFlightRules
-    """The class type for flight rules accepted by this performance model."""
+    """The class type for flight rules accepted by this performance model.
+    Override in derived classes if a different flight rules type is used."""
 
     @model_validator(mode='after')
     def load_apu_data(self) -> Self:
