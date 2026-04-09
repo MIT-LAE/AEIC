@@ -5,32 +5,117 @@ from collections.abc import Generator
 from pathlib import Path
 
 import click
+import numpy as np
 import zarr
-from tqdm import tqdm
 
 from AEIC.gridding.grid import Grid
+from AEIC.gridding.kernels import process_segments_nonuniform_z
 from AEIC.missions import CountQuery, Database, Filter, Query
 from AEIC.trajectories import Trajectory, TrajectoryStore
+from AEIC.types import Species
+from AEIC.utils.progress import Progress
 
 logger = logging.getLogger(__name__)
 
 
+NSEGMENTS = 1000  # Number of segments to process in each chunk.
+
+
 def map_phase(
     ntrajs: int,
+    species: list[Species],
     traj_iter: Generator[Trajectory],
-    grid,
+    grid: Grid,
     map_output: str,
 ):
-    output = None
-    for traj in tqdm(traj_iter, total=ntrajs):
-        if output is None:
-            nspecies = len(traj.trajectory_emissions)
-            shape = grid.shape + (nspecies,)
-            output = zarr.create_array(store=map_output, dtype='f4', shape=shape)
+    # Build output array. This assumes that all trajectories have the same set
+    # of species, which should be the case if they are all processed with the
+    # same configuration.
+    output = np.zeros(grid.shape + (len(species),))
 
-        lat_idx, lon_idx, alt_idx = grid.get_cell_indices(traj)
+    # Accumulate segments in batches: arrays for segment endpoints and
+    # emissions are reused across batches. Emissions are recorded at the first
+    # point of the segment, consistent with the way they are recorded in the
+    # trajectory data.
+    lat0 = np.zeros(NSEGMENTS)
+    lon0 = np.zeros(NSEGMENTS)
+    z0 = np.zeros(NSEGMENTS)
+    lat1 = np.zeros(NSEGMENTS)
+    lon1 = np.zeros(NSEGMENTS)
+    z1 = np.zeros(NSEGMENTS)
+    emissions = np.zeros((NSEGMENTS, len(species)))
 
-        pass
+    # Get vertical grid edges.
+    z_edges = grid.altitude.levels
+
+    # Number of segments currently accumulated in the arrays.
+    nsegs = 0
+
+    p = Progress(total=ntrajs, desc='Trajectory')
+    lat_min = min(grid.latitude.range)
+    lon_min = min(grid.longitude.range)
+    for traj in traj_iter:
+        # Split trajectories across the date line and process each
+        # sub-trajectory separately.
+        for sub_traj in traj.dateline_split():
+            # If adding the segments from this sub-trajectory would exceed the
+            # batch size, process the current batch and start a new one.
+            if nsegs + len(sub_traj) > NSEGMENTS:
+                process_segments_nonuniform_z(
+                    lat0[:nsegs],
+                    lon0[:nsegs],
+                    z0[:nsegs],
+                    lat1[:nsegs],
+                    lon1[:nsegs],
+                    z1[:nsegs],
+                    emissions[:nsegs, :],
+                    output,
+                    z_edges,
+                    lat_min,
+                    grid.latitude.resolution,
+                    lon_min,
+                    grid.longitude.resolution,
+                )
+                nsegs = 0
+
+            # Add segments from this sub-trajectory to the batch arrays.
+            start = nsegs
+            end = nsegs + len(sub_traj) - 1
+            lat0[start:end] = sub_traj.latitude[:-1]
+            lon0[start:end] = sub_traj.longitude[:-1]
+            z0[start:end] = sub_traj.altitude[:-1]
+            lat1[start:end] = sub_traj.latitude[1:]
+            lon1[start:end] = sub_traj.longitude[1:]
+            z1[start:end] = sub_traj.altitude[1:]
+            for i, sp in enumerate(species):
+                emissions[start:end, i] = sub_traj.trajectory_emissions[sp][:-1]
+            nsegs += len(sub_traj) - 1
+
+        p.update()
+    p.close()
+
+    # Process any left-over segments in the batch arrays.
+    if nsegs > 0:
+        process_segments_nonuniform_z(
+            lat0[:nsegs],
+            lon0[:nsegs],
+            z0[:nsegs],
+            lat1[:nsegs],
+            lon1[:nsegs],
+            z1[:nsegs],
+            emissions[:nsegs, :],
+            output,
+            z_edges,
+            lat_min,
+            grid.latitude.resolution,
+            lon_min,
+            grid.longitude.resolution,
+        )
+
+    # Save output array to zarr file all in one go: more efficient than
+    # incrementally updating the zarr file for each batch.
+    save = zarr.create_array(store=map_output, dtype='f4', shape=output.shape)
+    save[:] = output
 
 
 def reduce_phase(
@@ -38,7 +123,7 @@ def reduce_phase(
     map_prefix: str,
     output_file: Path,
 ):
-    pass
+    raise NotImplementedError('Reduce phase is not implemented yet.')
 
 
 @click.command(
@@ -145,6 +230,8 @@ def trajectories_to_grid(
             filter_expr = Filter.model_validate(filter_data)
 
     store = TrajectoryStore.open(base_file=input_store)
+    species = list(store[0].trajectory_emissions.keys())
+    print(f'Species in trajectory store: {species}')
     grid = Grid.load(grid_file)
 
     match mode:
@@ -158,8 +245,8 @@ def trajectories_to_grid(
                 store, mission_db_file, filter_expr, limit, offset
             )
             logger.info('Flights to process in slice: %s', limit)
-            map_output = f'{map_prefix}-{slice_index:03d}.zarr'
-            map_phase(nmissions, traj_iter, grid, map_output)
+            map_output = f'{map_prefix}-{slice_index:05d}.zarr'
+            map_phase(limit, species, traj_iter, grid, map_output)
 
         case 'reduce':
             # Reduce mode: read intermediate grid files and combine into final
@@ -208,9 +295,9 @@ def _trajectory_iterator(
     limit: int,
     offset: int,
 ) -> Generator[Trajectory]:
-    if mission_db_file is None:
-        # If no mission database is provided, we can just iterate through the
-        # trajectories in the store.
+    if mission_db_file is None or filter_expr is None:
+        # If no mission database is provided or there's no query, we can just
+        # iterate through the trajectories in the store.
         for idx in range(offset, offset + limit):
             yield store[idx]
     else:

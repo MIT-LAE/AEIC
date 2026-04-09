@@ -164,6 +164,9 @@ def run_simulations(
         )
     logging.basicConfig(level=logging.INFO)
 
+    if slice_count > 1:
+        logger.info('Parallel mode: slice %s of %s.', slice_index, slice_count)
+
     with track_file_accesses():
         # Load given configuration file.
         Config.load(config_file)

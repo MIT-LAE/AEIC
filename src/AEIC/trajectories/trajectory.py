@@ -99,6 +99,10 @@ class SubTrajectory:
     """Emissions values for the trajectory points, indexed by chemical
     species."""
 
+    def __len__(self) -> int:
+        """Return the number of points in the sub-trajectory."""
+        return len(self.longitude)
+
 
 # NOTE: If you add a fixed attribute to the Trajectory class, make sure to
 # update the FIXED_FIELDS list in the Container base class.

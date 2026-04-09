@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import tomllib
-from typing import Annotated, Literal
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Annotated, Literal, Protocol
 
+import numpy as np
 from pydantic import Field
 
+from AEIC.types import SpeciesValues
 from AEIC.utils.models import CIBaseModel
 
 
@@ -16,6 +20,9 @@ class HorizontalGrid(CIBaseModel):
     @property
     def bins(self) -> int:
         return int((self.range[1] - self.range[0]) / self.resolution)
+
+    def get_indexes(self, value: np.ndarray) -> np.ndarray:
+        return np.floor((value - self.offset) / self.resolution).astype(int)
 
 
 class LatitudeGrid(HorizontalGrid):
@@ -44,6 +51,17 @@ class HeightGrid(CIBaseModel):
     def top(self) -> float:
         return self.range[1]
 
+    @property
+    def levels(self) -> np.ndarray:
+        return np.arange(self.bottom, self.top, self.resolution)
+
+    def get_indexes(self, value: np.ndarray) -> np.ndarray:
+        return np.clip(
+            np.floor((value - self.bottom) / self.resolution).astype(int),
+            0,
+            self.bins - 1,
+        )
+
 
 class ISAPressureGrid(CIBaseModel):
     mode: Literal['isa_pressure']
@@ -66,6 +84,20 @@ class ISAPressureGrid(CIBaseModel):
 AltitudeGrid = Annotated[HeightGrid | ISAPressureGrid, Field(discriminator='mode')]
 
 
+class TrajectoryLike(Protocol):
+    latitude: np.ndarray
+    longitude: np.ndarray
+    altitude: np.ndarray
+    trajectory_emissions: SpeciesValues[np.ndarray]
+
+
+@dataclass(slots=True)
+class GridCell:
+    lon: int
+    lat: int
+    alt: int
+
+
 class Grid(CIBaseModel):
     latitude: LatitudeGrid
     longitude: LongitudeGrid
@@ -76,9 +108,7 @@ class Grid(CIBaseModel):
         return (self.latitude.bins, self.longitude.bins, self.altitude.bins)
 
     @classmethod
-    def load(cls, file_path: str) -> Grid:
+    def load(cls, file_path: Path | str) -> Grid:
         with open(file_path, 'rb') as fp:
             d = tomllib.load(fp)
             return cls.model_validate(d)
-
-    def get_cell_indices(self, traj) -> tuple[int, int, int]: ...

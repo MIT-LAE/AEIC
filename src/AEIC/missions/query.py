@@ -134,8 +134,8 @@ class QueryResult:
         """Create a QueryResult from a database row."""
 
         return cls(
-            departure=pd.Timestamp.utcfromtimestamp(row[0]),
-            arrival=pd.Timestamp.utcfromtimestamp(row[1]),
+            departure=pd.Timestamp.fromtimestamp(row[0], 'UTC'),
+            arrival=pd.Timestamp.fromtimestamp(row[1], 'UTC'),
             carrier=row[4],
             flight_number=row[5],
             origin=row[6],
