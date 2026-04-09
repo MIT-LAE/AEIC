@@ -122,27 +122,13 @@ def map_phase(
     save[:] = output
 
 
-def reduce_phase(
-    grid: Grid,
-    species: list[Species],
-    map_prefix: str,
-    output_file: Path,
-    mission_db_file: Path,
-    input_store: Path,
-    grid_file: Path,
-):
-    """Combine map-phase zarr slice files into a single gridded NetCDF file.
+def _discover_slice_files(map_prefix: str) -> tuple[dict[int, Path], list[int]]:
+    """Discover and validate slice zarr files matching the map_prefix pattern.
 
-    The map phase writes one bare zarr array per slice, named
-    ``{map_prefix}-NNNNN.zarr`` (where ``NNNNN`` is the zero-padded slice
-    index), each with shape ``(nlat, nlon, nalt, nspecies)`` and dtype
-    ``f4``. This function discovers all such slice files under
-    ``map_prefix``, sums them into a single accumulator, queries the mission
-    database for the inventory time range, and writes a NetCDF file
-    containing one variable per species plus CF-style coordinate variables.
+    Returns a dict mapping slice index to path, and the sorted list of indices.
+    Raises ``click.UsageError`` if no files are found or the indices are not
+    contiguous starting from 0.
     """
-
-    # 1. Discover slice files matching the map_prefix pattern.
     prefix_path = Path(map_prefix)
     parent = prefix_path.parent if str(prefix_path.parent) else Path('.')
     base_name = prefix_path.name
@@ -169,17 +155,20 @@ def reduce_phase(
             f'expected indices 0..{len(indices) - 1}. Missing: {missing}.'
         )
 
-    n_slices = len(indices)
-    logger.info('Found %d slice file(s) under %s', n_slices, parent)
+    logger.info('Found %d slice file(s) under %s', len(indices), parent)
+    return slice_files, indices
 
-    # 2. Validate slice shapes against the grid + species count. The map
-    # array layout is (lat, lon, alt, species).
-    expected_shape = (
-        grid.latitude.bins,
-        grid.longitude.bins,
-        grid.altitude.bins,
-        len(species),
-    )
+
+def _validate_slice_shapes(
+    slice_files: dict[int, Path],
+    indices: list[int],
+    expected_shape: tuple[int, ...],
+) -> None:
+    """Check every slice zarr has the expected shape.
+
+    The map array layout is (lat, lon, alt, species). Raises
+    ``click.UsageError`` on the first mismatch.
+    """
     first_arr = zarr.open_array(store=str(slice_files[0]), mode='r')
     if tuple(first_arr.shape) != expected_shape:
         raise click.UsageError(
@@ -195,17 +184,32 @@ def reduce_phase(
                 f'which differs from the first slice {expected_shape}.'
             )
 
-    # 3. Accumulate slices into a single working array.
+
+def _accumulate_slices(
+    slice_files: dict[int, Path],
+    indices: list[int],
+    expected_shape: tuple[int, ...],
+) -> np.ndarray:
+    """Sum all slice zarr arrays into a single float32 accumulator."""
     accum = np.zeros(expected_shape, dtype=np.float32)
-    p = Progress(total=n_slices, desc='Slice')
+    p = Progress(total=len(indices), desc='Slice')
     for i in indices:
         arr = zarr.open_array(store=str(slice_files[i]), mode='r')
         accum += arr[:]  # type: ignore
         p.update()
     p.close()
+    return accum
 
-    # 4. Query mission DB for the inventory time range so we can populate
-    # the time coordinate variable.
+
+def _query_inventory_time_range(
+    mission_db_file: Path,
+) -> tuple[float, datetime, datetime]:
+    """Query the mission DB for the earliest and latest scheduled departure.
+
+    Returns ``(min_ts, period_start, period_end)`` where ``min_ts`` is the
+    Unix timestamp of the earliest departure and the datetimes are UTC.
+    Raises ``click.UsageError`` if the database contains no flights.
+    """
     with Database(mission_db_file) as db:
         time_range = db(TimeRangeQuery())
     assert isinstance(time_range, tuple)
@@ -218,9 +222,27 @@ def reduce_phase(
     period_start = datetime.fromtimestamp(min_ts, tz=UTC)
     period_end = datetime.fromtimestamp(max_ts, tz=UTC)
     logger.info('Inventory period: %s to %s', period_start, period_end)
+    return min_ts, period_start, period_end
 
-    # 5. Write the NetCDF output. Always pass keepweakref=True per the
-    # netcdf4-python issue #1444 workaround used elsewhere in this repo.
+
+def _write_netcdf_output(
+    output_file: Path,
+    grid: Grid,
+    species: list[Species],
+    accum: np.ndarray,
+    min_ts: float,
+    n_slices: int,
+    input_store: Path,
+    mission_db_file: Path,
+    grid_file: Path,
+) -> None:
+    """Write the accumulated gridded data to a NetCDF file.
+
+    Always passes ``keepweakref=True`` per the netcdf4-python issue #1444
+    workaround used elsewhere in this repo. The accumulator is laid out as
+    ``(lat, lon, alt, species)`` and each species slab is permuted to
+    ``(alt, lat, lon)`` when written.
+    """
     with nc4.Dataset(
         str(output_file), mode='w', format='NETCDF4', keepweakref=True
     ) as ds:
@@ -293,9 +315,7 @@ def reduce_phase(
                 f'Unsupported altitude grid type: {type(alt).__name__}.'
             )
 
-        # Per-species emissions variables. The map accumulator is laid out
-        # as (lat, lon, alt, species); permute each species slab to
-        # (alt, lat, lon) when writing. Units come from EMISSIONS_FIELDS in
+        # Per-species emissions variables. Units come from EMISSIONS_FIELDS in
         # AEIC.emissions.emission (trajectory_emissions is in grams).
         for i, sp in enumerate(species):
             var = ds.createVariable(
@@ -324,6 +344,53 @@ def reduce_phase(
         ds.grid_definition = Path(grid_file).read_text()
 
     logger.info('Wrote gridded inventory to %s', output_file)
+
+
+def reduce_phase(
+    grid: Grid,
+    species: list[Species],
+    map_prefix: str,
+    output_file: Path,
+    mission_db_file: Path,
+    input_store: Path,
+    grid_file: Path,
+):
+    """Combine map-phase zarr slice files into a single gridded NetCDF file.
+
+    The map phase writes one bare zarr array per slice, named
+    ``{map_prefix}-NNNNN.zarr`` (where ``NNNNN`` is the zero-padded slice
+    index), each with shape ``(nlat, nlon, nalt, nspecies)`` and dtype
+    ``f4``. This function discovers all such slice files under
+    ``map_prefix``, sums them into a single accumulator, queries the mission
+    database for the inventory time range, and writes a NetCDF file
+    containing one variable per species plus CF-style coordinate variables.
+    """
+    slice_files, indices = _discover_slice_files(map_prefix)
+    n_slices = len(indices)
+
+    expected_shape = (
+        grid.latitude.bins,
+        grid.longitude.bins,
+        grid.altitude.bins,
+        len(species),
+    )
+    _validate_slice_shapes(slice_files, indices, expected_shape)
+
+    accum = _accumulate_slices(slice_files, indices, expected_shape)
+
+    min_ts, _, _ = _query_inventory_time_range(mission_db_file)
+
+    _write_netcdf_output(
+        output_file,
+        grid,
+        species,
+        accum,
+        min_ts,
+        n_slices,
+        input_store,
+        mission_db_file,
+        grid_file,
+    )
 
 
 @click.command(
