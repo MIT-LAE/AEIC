@@ -2,6 +2,7 @@ import importlib.metadata
 import logging
 import math
 import re
+import time
 import tomllib
 from collections.abc import Generator
 from datetime import UTC, datetime
@@ -513,7 +514,9 @@ def trajectories_to_grid(
             )
             logger.info('Flights to process in slice: %s', limit)
             map_output = f'{map_prefix}-{slice_index:05d}.zarr'
+            t0 = time.perf_counter()
             map_phase(limit, species, traj_iter, grid, map_output)
+            logger.info('map_phase elapsed: %.3f s', time.perf_counter() - t0)
 
         case 'reduce':
             # Reduce mode: read intermediate grid files and combine into final

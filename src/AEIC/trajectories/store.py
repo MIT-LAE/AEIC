@@ -1876,30 +1876,33 @@ class TrajectoryStore:
         ):
             case (False, False, False):
                 # float
-                if var[index] == var.get_fill_value():
+                val = var[index]
+                if val == var.get_fill_value():
                     return None
-                return var[index]
+                return val
             case (False, False, True):
                 # np.ndarray
-                if all(var[index] == var.get_fill_value()):
+                val = var[index]
+                if all(val == var.get_fill_value()):
                     return None
-                return var[index]
+                return val
             case (True, False, False) | (True, False, True):
                 # SpeciesValues[float] | SpeciesValues[np.ndarray]
-                return SpeciesValues(
-                    {sp: var[index, si] for si, sp in enumerate(species)}
-                )
+                slab = var[index]
+                return SpeciesValues({sp: slab[si] for si, sp in enumerate(species)})
             case (False, True, False):
                 # ThrustModeValues
+                slab = var[index]
                 return ThrustModeValues(
-                    {tm: var[index, ti] for ti, tm in enumerate(ThrustMode)}
+                    {tm: slab[ti] for ti, tm in enumerate(ThrustMode)}
                 )
             case (True, True, False):
                 # SpeciesValues[ThrustModeValues]
+                slab = var[index]
                 return SpeciesValues[ThrustModeValues](
                     {
                         sp: ThrustModeValues(
-                            {tm: var[index, si, ti] for ti, tm in enumerate(ThrustMode)}
+                            {tm: slab[si, ti] for ti, tm in enumerate(ThrustMode)}
                         )
                         for si, sp in enumerate(species)
                     }
