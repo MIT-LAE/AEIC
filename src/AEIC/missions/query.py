@@ -324,6 +324,40 @@ class CountQuery(QueryBase[int]):
         return sql, self._params
 
 
+@dataclass
+class TimeRangeQuery(QueryBase[tuple[int | None, int | None]]):
+    """Query for the min and max scheduled flight departure timestamps.
+
+    Returns a `(min_ts, max_ts)` tuple of Unix epoch seconds (UTC). Both
+    values are `None` if the schedules table is empty (after any filter or
+    date conditions are applied)."""
+
+    RESULT_TYPE = tuple
+    """Result type returned by this query class."""
+
+    PROCESS_RESULT = lambda _, gen: tuple(next(gen))  # noqa
+
+    def to_sql(self) -> tuple[str, list]:
+        """Generate the SQL query string and parameters."""
+
+        # Handle filter and date conditions.
+        self._common_conditions()
+
+        sql = (
+            'SELECT MIN(s.departure_timestamp), MAX(s.departure_timestamp) '
+            'FROM schedules s'
+        )
+        if len(self._conditions) > 0:
+            sql += (
+                ' JOIN flights f ON f.id = s.flight_id '
+                'JOIN airports ao ON f.origin = ao.id '
+                'JOIN airports ad ON f.destination = ad.id'
+                f'{self._where_clause()}'
+            )
+
+        return sql, self._params
+
+
 def date_to_timestamp(d: date) -> pd.Timestamp:
     """Convert a Python `date` to a UTC Pandas `Timestamp` at midnight."""
     return cast(pd.Timestamp, pd.Timestamp(d, tzinfo=UTC))

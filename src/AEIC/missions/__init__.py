@@ -1,7 +1,7 @@
 from .database import Database
 from .filter import BoundingBox, Filter
 from .mission import Mission
-from .query import CountQuery, FrequentFlightQuery, Query
+from .query import CountQuery, FrequentFlightQuery, Query, TimeRangeQuery
 
 __all__ = [
     'Database',
@@ -10,5 +10,6 @@ __all__ = [
     'Query',
     'CountQuery',
     'FrequentFlightQuery',
+    'TimeRangeQuery',
     'Mission',
 ]

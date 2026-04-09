@@ -1,16 +1,20 @@
+import importlib.metadata
 import logging
 import math
+import re
 import tomllib
 from collections.abc import Generator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import click
+import netCDF4 as nc4
 import numpy as np
 import zarr
 
-from AEIC.gridding.grid import Grid
+from AEIC.gridding.grid import Grid, HeightGrid, ISAPressureGrid
 from AEIC.gridding.kernels import process_segments_nonuniform_z
-from AEIC.missions import CountQuery, Database, Filter, Query
+from AEIC.missions import CountQuery, Database, Filter, Query, TimeRangeQuery
 from AEIC.trajectories import Trajectory, TrajectoryStore
 from AEIC.types import Species
 from AEIC.utils.progress import Progress
@@ -119,11 +123,207 @@ def map_phase(
 
 
 def reduce_phase(
-    grid,
+    grid: Grid,
+    species: list[Species],
     map_prefix: str,
     output_file: Path,
+    mission_db_file: Path,
+    input_store: Path,
+    grid_file: Path,
 ):
-    raise NotImplementedError('Reduce phase is not implemented yet.')
+    """Combine map-phase zarr slice files into a single gridded NetCDF file.
+
+    The map phase writes one bare zarr array per slice, named
+    ``{map_prefix}-NNNNN.zarr`` (where ``NNNNN`` is the zero-padded slice
+    index), each with shape ``(nlat, nlon, nalt, nspecies)`` and dtype
+    ``f4``. This function discovers all such slice files under
+    ``map_prefix``, sums them into a single accumulator, queries the mission
+    database for the inventory time range, and writes a NetCDF file
+    containing one variable per species plus CF-style coordinate variables.
+    """
+
+    # 1. Discover slice files matching the map_prefix pattern.
+    prefix_path = Path(map_prefix)
+    parent = prefix_path.parent if str(prefix_path.parent) else Path('.')
+    base_name = prefix_path.name
+    pattern = re.compile(rf'^{re.escape(base_name)}-(\d{{5}})\.zarr$')
+
+    slice_files: dict[int, Path] = {}
+    if parent.exists():
+        for entry in parent.iterdir():
+            m = pattern.match(entry.name)
+            if m is not None:
+                slice_files[int(m.group(1))] = entry
+
+    if not slice_files:
+        raise click.UsageError(
+            f'No slice files matching {base_name}-NNNNN.zarr found in {parent}.'
+        )
+
+    indices = sorted(slice_files.keys())
+    expected_indices = list(range(len(indices)))
+    if indices != expected_indices:
+        missing = sorted(set(expected_indices) - set(indices))
+        raise click.UsageError(
+            f'Slice files are not contiguous: found {len(indices)} files but '
+            f'expected indices 0..{len(indices) - 1}. Missing: {missing}.'
+        )
+
+    n_slices = len(indices)
+    logger.info('Found %d slice file(s) under %s', n_slices, parent)
+
+    # 2. Validate slice shapes against the grid + species count. The map
+    # array layout is (lat, lon, alt, species).
+    expected_shape = (
+        grid.latitude.bins,
+        grid.longitude.bins,
+        grid.altitude.bins,
+        len(species),
+    )
+    first_arr = zarr.open_array(store=str(slice_files[0]), mode='r')
+    if tuple(first_arr.shape) != expected_shape:
+        raise click.UsageError(
+            f'Slice file {slice_files[0]} has shape {tuple(first_arr.shape)}, '
+            f'expected {expected_shape} from --grid-file and --input-store. '
+            f'Did you pass the same grid file used during the map phase?'
+        )
+    for i in indices[1:]:
+        arr = zarr.open_array(store=str(slice_files[i]), mode='r')
+        if tuple(arr.shape) != expected_shape:
+            raise click.UsageError(
+                f'Slice file {slice_files[i]} has shape {tuple(arr.shape)} '
+                f'which differs from the first slice {expected_shape}.'
+            )
+
+    # 3. Accumulate slices into a single working array.
+    accum = np.zeros(expected_shape, dtype=np.float32)
+    p = Progress(total=n_slices, desc='Slice')
+    for i in indices:
+        arr = zarr.open_array(store=str(slice_files[i]), mode='r')
+        accum += arr[:]  # type: ignore
+        p.update()
+    p.close()
+
+    # 4. Query mission DB for the inventory time range so we can populate
+    # the time coordinate variable.
+    with Database(mission_db_file) as db:
+        time_range = db(TimeRangeQuery())
+    assert isinstance(time_range, tuple)
+    min_ts, max_ts = time_range
+    if min_ts is None or max_ts is None:
+        raise click.UsageError(
+            f'Mission database {mission_db_file} contains no scheduled '
+            f'flights, so a time coordinate cannot be derived.'
+        )
+    period_start = datetime.fromtimestamp(min_ts, tz=UTC)
+    period_end = datetime.fromtimestamp(max_ts, tz=UTC)
+    logger.info('Inventory period: %s to %s', period_start, period_end)
+
+    # 5. Write the NetCDF output. Always pass keepweakref=True per the
+    # netcdf4-python issue #1444 workaround used elsewhere in this repo.
+    with nc4.Dataset(
+        str(output_file), mode='w', format='NETCDF4', keepweakref=True
+    ) as ds:
+        # Dimensions: time is unlimited so monthly (length 12) can be added
+        # later without breaking the schema.
+        ds.createDimension('time', None)
+        ds.createDimension('altitude', grid.altitude.bins)
+        ds.createDimension('latitude', grid.latitude.bins)
+        ds.createDimension('longitude', grid.longitude.bins)
+        ds.createDimension('nv', 2)
+
+        # Time coordinate variable. The annual case writes a single value
+        # at the start of the inventory period.
+        time_var = ds.createVariable('time', 'f8', ('time',))
+        time_var.units = 'seconds since 1970-01-01 00:00:00 UTC'
+        time_var.calendar = 'gregorian'
+        time_var.standard_name = 'time'
+        time_var.long_name = 'Start of inventory period'
+        time_var[0] = float(min_ts)
+
+        # Latitude / longitude coordinate variables (cell centers + bounds).
+        lat = grid.latitude
+        lon = grid.longitude
+        lat_centers = lat.range[0] + (np.arange(lat.bins) + 0.5) * lat.resolution
+        lon_centers = lon.range[0] + (np.arange(lon.bins) + 0.5) * lon.resolution
+        lat_edges = lat.range[0] + np.arange(lat.bins + 1) * lat.resolution
+        lon_edges = lon.range[0] + np.arange(lon.bins + 1) * lon.resolution
+
+        lat_var = ds.createVariable('latitude', 'f8', ('latitude',))
+        lat_var.units = 'degrees_north'
+        lat_var.standard_name = 'latitude'
+        lat_var.bounds = 'lat_bnds'
+        lat_var[:] = lat_centers
+
+        lat_bnds_var = ds.createVariable('lat_bnds', 'f8', ('latitude', 'nv'))
+        lat_bnds_var[:, 0] = lat_edges[:-1]
+        lat_bnds_var[:, 1] = lat_edges[1:]
+
+        lon_var = ds.createVariable('longitude', 'f8', ('longitude',))
+        lon_var.units = 'degrees_east'
+        lon_var.standard_name = 'longitude'
+        lon_var.bounds = 'lon_bnds'
+        lon_var[:] = lon_centers
+
+        lon_bnds_var = ds.createVariable('lon_bnds', 'f8', ('longitude', 'nv'))
+        lon_bnds_var[:, 0] = lon_edges[:-1]
+        lon_bnds_var[:, 1] = lon_edges[1:]
+
+        # Altitude coordinate variable (per-mode dispatch).
+        alt = grid.altitude
+        alt_var = ds.createVariable('altitude', 'f8', ('altitude',))
+        if isinstance(alt, HeightGrid):
+            alt_centers = alt.bottom + (np.arange(alt.bins) + 0.5) * alt.resolution
+            alt_edges = alt.bottom + np.arange(alt.bins + 1) * alt.resolution
+            alt_var.units = 'm'
+            alt_var.standard_name = 'altitude'
+            alt_var.positive = 'up'
+            alt_var.bounds = 'altitude_bnds'
+            alt_var[:] = alt_centers
+            alt_bnds_var = ds.createVariable('altitude_bnds', 'f8', ('altitude', 'nv'))
+            alt_bnds_var[:, 0] = alt_edges[:-1]
+            alt_bnds_var[:, 1] = alt_edges[1:]
+        elif isinstance(alt, ISAPressureGrid):
+            alt_var.units = 'Pa'
+            alt_var.standard_name = 'air_pressure'
+            alt_var.positive = 'down'
+            alt_var[:] = np.asarray(alt.levels, dtype=np.float64)
+        else:
+            raise NotImplementedError(
+                f'Unsupported altitude grid type: {type(alt).__name__}.'
+            )
+
+        # Per-species emissions variables. The map accumulator is laid out
+        # as (lat, lon, alt, species); permute each species slab to
+        # (alt, lat, lon) when writing. Units come from EMISSIONS_FIELDS in
+        # AEIC.emissions.emission (trajectory_emissions is in grams).
+        for i, sp in enumerate(species):
+            var = ds.createVariable(
+                sp.name.lower(),
+                'f4',
+                ('time', 'altitude', 'latitude', 'longitude'),
+                zlib=True,
+                complevel=4,
+                shuffle=True,
+            )
+            var.units = 'g'
+            var.description = f'Gridded {sp.name} emissions'
+            var[0, :, :, :] = accum[..., i].transpose(2, 0, 1)
+
+        # Global attributes for provenance and reproducibility.
+        try:
+            aeic_version = importlib.metadata.version('AEIC')
+        except importlib.metadata.PackageNotFoundError:
+            aeic_version = 'unknown'
+        ds.aeic_version = aeic_version
+        ds.created_utc = datetime.now(UTC).isoformat()
+        ds.input_store = str(Path(input_store).resolve())
+        ds.mission_db_file = str(Path(mission_db_file).resolve())
+        ds.grid_file = str(Path(grid_file).resolve())
+        ds.n_slices = n_slices
+        ds.grid_definition = Path(grid_file).read_text()
+
+    logger.info('Wrote gridded inventory to %s', output_file)
 
 
 @click.command(
@@ -253,7 +453,25 @@ def trajectories_to_grid(
             # output.
             if output_file is None:
                 raise click.UsageError('Output file must be provided in reduce mode.')
-            reduce_phase(grid, map_prefix, output_file)
+            if mission_db_file is None:
+                raise click.UsageError(
+                    'Mission database file must be provided in reduce mode.'
+                )
+            if filter_file is not None:
+                raise click.UsageError('--filter-file is not supported in reduce mode.')
+            if slice_count != 1:
+                raise click.UsageError('--slice-count is not supported in reduce mode.')
+            if slice_index != 0:
+                raise click.UsageError('--slice-index is not supported in reduce mode.')
+            reduce_phase(
+                grid,
+                species,
+                map_prefix,
+                output_file,
+                mission_db_file,
+                input_store,
+                grid_file,
+            )
 
 
 def _count_missions(
