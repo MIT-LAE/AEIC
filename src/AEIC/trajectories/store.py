@@ -1938,16 +1938,17 @@ class TrajectoryStore:
                             f'Invalid combination of dimensions for field {field_name}'
                         )
 
-        # Construct Trajectories from the loaded data.
+        # Construct Trajectories from the loaded data. Write directly to
+        # traj._data rather than going through __setattr__, which would
+        # re-validate and re-cast every value via convert_in/_cast. The data
+        # is already correctly typed from the NetCDF read.
         non_base_fs = [fs for fs in self._nc if fs != BASE_FIELDSET_NAME]
         results: list[Trajectory] = []
         for i in range(batch_size):
             assert npoints[i] is not None
-            traj = Trajectory(npoints=npoints[i])
-            for fs_name in non_base_fs:
-                traj.add_fields(FieldSet.from_registry(fs_name))
+            traj = Trajectory(npoints=npoints[i], fieldsets=non_base_fs)
             for k, v in per_traj_data[i].items():
-                setattr(traj, k, v)
+                traj._data[k] = v
             results.append(traj)
         return results
 
