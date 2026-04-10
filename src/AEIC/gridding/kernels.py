@@ -106,13 +106,16 @@ def traverse_segment_nonuniform_z(
     else:
         t_max_j = 1e30
 
-    # Vertical: first boundary crossing (non-uniform spacing)
+    # Vertical: first boundary crossing (non-uniform spacing).
+    # Mirror the same bounds guards used in the k-advancement section below.
     if dz != 0.0:
         if dz > 0:
-            z_next = z_edges[k + 1]
+            if k + 1 >= z_edges.shape[0]:
+                t_max_k = 1e30
+            else:
+                t_max_k = (z_edges[k + 1] - z0) / dz
         else:
-            z_next = z_edges[k]
-        t_max_k = (z_next - z0) / dz
+            t_max_k = (z_edges[k] - z0) / dz
     else:
         t_max_k = 1e30
 
