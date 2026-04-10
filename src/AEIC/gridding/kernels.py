@@ -60,7 +60,12 @@ def traverse_segment_nonuniform_z(
     Assumptions / limitations
     ------------------------
     - Lat/lon treated as linear coordinates (not true great circles).
-    - Vertical coordinate is linear in z (consistent with ERA5 levels).
+    - Vertical coordinate is interpolated linearly between segment endpoints.
+      For altitude grids this is physically reasonable. For pressure grids,
+      the true altitude-to-pressure relationship is exponential (ISA), so
+      linear interpolation in pressure between endpoints is an approximation.
+      The error is small for short segments but may misplace emissions
+      vertically for climb/descent segments that span multiple pressure bins.
     - No longitude wrapping handled here (must be preprocessed).
     """
 

@@ -12,6 +12,19 @@ from AEIC.types import SpeciesValues
 from AEIC.utils.models import CIBaseModel
 
 
+def _edges_from_levels(levels: np.ndarray) -> np.ndarray:
+    """Synthesize N+1 bin edges from N level centers.
+
+    Interior edges are midpoints between adjacent levels. The outer edges are
+    extended symmetrically (i.e. each outermost level sits at the center of its
+    bin).
+    """
+    midpoints = 0.5 * (levels[:-1] + levels[1:])
+    lower = 2 * levels[0] - midpoints[0]
+    upper = 2 * levels[-1] - midpoints[-1]
+    return np.concatenate(([lower], midpoints, [upper]))
+
+
 class HorizontalGrid(CIBaseModel):
     resolution: float
     offset: float
@@ -53,14 +66,14 @@ class HeightGrid(CIBaseModel):
 
     @property
     def levels(self) -> np.ndarray:
-        return np.arange(self.bottom, self.top, self.resolution)
+        """Bin center values (meters)."""
+        return self.range[0] + (np.arange(self.bins) + 0.5) * self.resolution
 
-    def get_indexes(self, value: np.ndarray) -> np.ndarray:
-        return np.clip(
-            np.floor((value - self.bottom) / self.resolution).astype(int),
-            0,
-            self.bins - 1,
-        )
+    @property
+    def edges(self) -> np.ndarray:
+        """N+1 bin edge values synthesized from level midpoints, with outer
+        boundaries extended symmetrically."""
+        return _edges_from_levels(self.levels)
 
 
 class ISAPressureGrid(CIBaseModel):
@@ -79,6 +92,12 @@ class ISAPressureGrid(CIBaseModel):
     @property
     def top(self) -> float:
         return min(self.levels)
+
+    @property
+    def edges(self) -> np.ndarray:
+        """N+1 bin edge values in ascending pressure order, synthesized from
+        level midpoints with outer boundaries extended symmetrically."""
+        return _edges_from_levels(np.sort(self.levels))
 
 
 AltitudeGrid = Annotated[HeightGrid | ISAPressureGrid, Field(discriminator='mode')]

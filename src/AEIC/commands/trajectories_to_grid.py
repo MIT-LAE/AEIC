@@ -19,6 +19,7 @@ from AEIC.missions import CountQuery, Database, Filter, Query, TimeRangeQuery
 from AEIC.trajectories import Trajectory, TrajectoryStore
 from AEIC.types import Species
 from AEIC.utils.progress import Progress
+from AEIC.utils.standard_atmosphere import pressure_at_altitude_isa_bada4
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,8 @@ def map_phase(
     emissions = np.zeros((NSEGMENTS, len(species)))
 
     # Get vertical grid edges.
-    z_edges = grid.altitude.levels
+    z_edges = grid.altitude.edges
+    use_pressure = isinstance(grid.altitude, ISAPressureGrid)
 
     # Number of segments currently accumulated in the arrays.
     nsegs = 0
@@ -88,10 +90,16 @@ def map_phase(
             end = nsegs + len(sub_traj) - 1
             lat0[start:end] = sub_traj.latitude[:-1]
             lon0[start:end] = sub_traj.longitude[:-1]
-            z0[start:end] = sub_traj.altitude[:-1]
             lat1[start:end] = sub_traj.latitude[1:]
             lon1[start:end] = sub_traj.longitude[1:]
-            z1[start:end] = sub_traj.altitude[1:]
+            if use_pressure:
+                alt0 = sub_traj.altitude[:-1]
+                alt1 = sub_traj.altitude[1:]
+                z0[start:end] = pressure_at_altitude_isa_bada4(alt0) / 100.0
+                z1[start:end] = pressure_at_altitude_isa_bada4(alt1) / 100.0
+            else:
+                z0[start:end] = sub_traj.altitude[:-1]
+                z1[start:end] = sub_traj.altitude[1:]
             for i, sp in enumerate(species):
                 emissions[start:end, i] = sub_traj.trajectory_emissions[sp][:-1]
             nsegs += len(sub_traj) - 1
@@ -248,9 +256,9 @@ def _write_netcdf_output(
         str(output_file), mode='w', format='NETCDF4', keepweakref=True
     ) as ds:
         # Dimensions: time is unlimited so monthly (length 12) can be added
-        # later without breaking the schema.
+        # later without breaking the schema. The vertical dimension is created
+        # below in the per-grid-type dispatch (altitude or pressure_level).
         ds.createDimension('time', None)
-        ds.createDimension('altitude', grid.altitude.bins)
         ds.createDimension('latitude', grid.latitude.bins)
         ds.createDimension('longitude', grid.longitude.bins)
         ds.createDimension('nv', 2)
@@ -292,25 +300,33 @@ def _write_netcdf_output(
         lon_bnds_var[:, 0] = lon_edges[:-1]
         lon_bnds_var[:, 1] = lon_edges[1:]
 
-        # Altitude coordinate variable (per-mode dispatch).
+        # Altitude / pressure coordinate variable (per-mode dispatch).
         alt = grid.altitude
-        alt_var = ds.createVariable('altitude', 'f8', ('altitude',))
         if isinstance(alt, HeightGrid):
-            alt_centers = alt.bottom + (np.arange(alt.bins) + 0.5) * alt.resolution
-            alt_edges = alt.bottom + np.arange(alt.bins + 1) * alt.resolution
+            ds.createDimension('altitude', alt.bins)
+            alt_var = ds.createVariable('altitude', 'f8', ('altitude',))
             alt_var.units = 'm'
             alt_var.standard_name = 'altitude'
             alt_var.positive = 'up'
             alt_var.bounds = 'altitude_bnds'
-            alt_var[:] = alt_centers
+            alt_var[:] = alt.levels
+
+            alt_edges = alt.edges
             alt_bnds_var = ds.createVariable('altitude_bnds', 'f8', ('altitude', 'nv'))
             alt_bnds_var[:, 0] = alt_edges[:-1]
             alt_bnds_var[:, 1] = alt_edges[1:]
+            vert_dim = 'altitude'
         elif isinstance(alt, ISAPressureGrid):
-            alt_var.units = 'Pa'
-            alt_var.standard_name = 'air_pressure'
-            alt_var.positive = 'down'
-            alt_var[:] = np.asarray(alt.levels, dtype=np.float64)
+            ds.createDimension('pressure_level', alt.bins)
+            pl_var = ds.createVariable('pressure_level', 'f8', ('pressure_level',))
+            pl_var.units = 'hPa'
+            pl_var.long_name = 'pressure'
+            pl_var.standard_name = 'air_pressure'
+            pl_var.positive = 'down'
+            pl_var.stored_direction = 'decreasing'
+            # Levels stored in descending order (ERA5 convention).
+            pl_var[:] = np.sort(alt.levels)[::-1]
+            vert_dim = 'pressure_level'
         else:
             raise NotImplementedError(
                 f'Unsupported altitude grid type: {type(alt).__name__}.'
@@ -318,18 +334,25 @@ def _write_netcdf_output(
 
         # Per-species emissions variables. Units come from EMISSIONS_FIELDS in
         # AEIC.emissions.emission (trajectory_emissions is in grams).
+        # The accumulator is laid out as (lat, lon, vert, species). After
+        # transposing to (vert, lat, lon), pressure grids need a vertical
+        # flip so the output matches the descending-pressure ERA5 convention
+        # (the kernel bins in ascending pressure order).
         for i, sp in enumerate(species):
             var = ds.createVariable(
                 sp.name.lower(),
                 'f4',
-                ('time', 'altitude', 'latitude', 'longitude'),
+                ('time', vert_dim, 'latitude', 'longitude'),
                 zlib=True,
                 complevel=4,
                 shuffle=True,
             )
             var.units = 'g'
             var.description = f'Gridded {sp.name} emissions'
-            var[0, :, :, :] = accum[..., i].transpose(2, 0, 1)
+            slab = accum[..., i].transpose(2, 0, 1)
+            if isinstance(alt, ISAPressureGrid):
+                slab = slab[::-1, :, :]
+            var[0, :, :, :] = slab
 
         # Global attributes for provenance and reproducibility.
         try:

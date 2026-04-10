@@ -8,7 +8,7 @@ import zarr
 
 from AEIC.commands.trajectories_to_grid import reduce_phase
 from AEIC.config import config
-from AEIC.gridding.grid import Grid
+from AEIC.gridding.grid import Grid, ISAPressureGrid
 from AEIC.types import Species
 
 
@@ -22,6 +22,12 @@ def test_height_grid_load():
     assert grid.altitude.mode == 'height'
     assert grid.altitude.resolution == 500.0
     assert grid.altitude.bottom == 0.0
+    # Levels are bin centers: 250, 750, 1250, ...
+    assert grid.altitude.levels[0] == 250.0
+    assert grid.altitude.levels[1] == 750.0
+    assert len(grid.altitude.levels) == grid.altitude.bins
+    # Edges are N+1 values synthesized from midpoint levels.
+    assert len(grid.altitude.edges) == grid.altitude.bins + 1
 
 
 def test_pressure_grid_load():
@@ -35,6 +41,11 @@ def test_pressure_grid_load():
     assert grid.altitude.levels == [1000.0, 850.0, 700.0, 500.0, 300.0, 200.0, 100.0]
     assert grid.altitude.bottom == 1000.0
     assert grid.altitude.top == 100.0
+    assert grid.altitude.bins == 7
+    # Edges are in ascending pressure order with N+1 values.
+    edges = grid.altitude.edges
+    assert len(edges) == 8
+    assert np.all(np.diff(edges) > 0)  # ascending
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +127,7 @@ def test_reduce_phase_happy_path(tmp_path):
         assert ds.n_slices == 2
         assert len(ds.grid_definition) > 0
 
-        # Latitude cell centers
+        # Latitude / longitude cell centers
         nlat = grid.latitude.bins
         nlon = grid.longitude.bins
         lat_centers = (
@@ -129,9 +140,64 @@ def test_reduce_phase_happy_path(tmp_path):
         assert np.allclose(ds.variables['latitude'][:], lat_centers)
         assert np.allclose(ds.variables['longitude'][:], lon_centers)
 
+        # Altitude coordinate — bin centers from the height grid.
+        assert np.allclose(ds.variables['altitude'][:], grid.altitude.levels)
+
         # Bounds variables present
         assert 'lat_bnds' in ds.variables
         assert 'lon_bnds' in ds.variables
+        assert 'altitude_bnds' in ds.variables
+
+
+def test_reduce_phase_pressure_grid(tmp_path):
+    grid_file = config.file_location('grids/basic-1x1-isa-pressure.toml')
+    grid = Grid.load(grid_file)
+    assert isinstance(grid.altitude, ISAPressureGrid)
+    species = [Species.CO2]
+    nspecies = len(species)
+    shape = grid.shape + (nspecies,)
+
+    map_prefix = str(tmp_path / 'map')
+    _write_zarr_slice(f'{map_prefix}-00000.zarr', np.full(shape, 1.0, dtype=np.float32))
+
+    db_path = tmp_path / 'missions.sqlite'
+    _make_mission_db(db_path, [1546300800, 1577836799])
+
+    output_file = tmp_path / 'out.nc'
+    reduce_phase(
+        grid,
+        species,
+        map_prefix,
+        output_file,
+        db_path,
+        tmp_path / 'fake_store.nc',
+        grid_file,
+    )
+
+    with nc4.Dataset(str(output_file), keepweakref=True) as ds:
+        # Pressure grid uses 'pressure_level' dimension, not 'altitude'.
+        assert 'pressure_level' in ds.dimensions
+        assert 'altitude' not in ds.dimensions
+        assert ds.dimensions['pressure_level'].size == grid.altitude.bins
+
+        # Coordinate variable attributes match ERA5 convention.
+        pl_var = ds.variables['pressure_level']
+        assert pl_var.units == 'hPa'
+        assert pl_var.positive == 'down'
+        assert pl_var.stored_direction == 'decreasing'
+        assert pl_var.standard_name == 'air_pressure'
+
+        # Levels stored in descending order (1000, 850, ..., 100).
+        pl_values = pl_var[:]
+        assert np.all(np.diff(pl_values) < 0)
+
+        # Species variable uses pressure_level dimension.
+        co2_var = ds.variables['co2']
+        assert co2_var.dimensions == ('time', 'pressure_level', 'latitude', 'longitude')
+
+        # Total sum preserved.
+        n_cells = grid.latitude.bins * grid.longitude.bins * grid.altitude.bins
+        assert np.isclose(float(co2_var[0, :, :, :].sum()), 1.0 * n_cells, rtol=1e-4)
 
 
 # ---------------------------------------------------------------------------
