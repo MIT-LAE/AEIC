@@ -1759,6 +1759,198 @@ class TrajectoryStore:
         # Save the trajectory we've just loaded into the cache.
         self._trajectories[index] = traj
 
+    def iter_range(
+        self, start: int, stop: int, *, batch_size: int = 500
+    ) -> Iterator[Trajectory]:
+        """Yield trajectories with indices in ``[start, stop)`` in order.
+
+        This is a fast path for strict forward iteration over a contiguous
+        range of trajectories. It reads each field as a single slab per batch
+        of ``batch_size`` trajectories, avoiding the per-trajectory NetCDF/
+        Python overhead incurred by repeated ``__getitem__`` calls.
+
+        Trajectories yielded by this method are constructed fresh and are not
+        placed in the LRU cache: the cache is untouched, since strict forward
+        iteration would only thrash it.
+
+        Parameters
+        ----------
+        start, stop : int
+            Half-open range of trajectory indices to yield. Must satisfy
+            ``0 <= start <= stop <= len(self)``.
+        batch_size : int, optional
+            Maximum number of trajectories to read in one NetCDF slab. Larger
+            batches reduce per-call overhead but use more memory. Default 500.
+        """
+        if start < 0 or stop < start:
+            raise ValueError(
+                f'iter_range requires 0 <= start <= stop, got {start}, {stop}'
+            )
+        n = len(self)
+        if stop > n:
+            raise IndexError(f'iter_range stop {stop} exceeds store length {n}')
+        if start == stop:
+            return
+
+        # In-memory store: just fall back to the normal indexing path.
+        if not self.nc_linked:
+            for i in range(start, stop):
+                yield self[i]
+            return
+
+        # Collect file boundaries across all unique NcFiles used by field sets
+        # in the store. For a merged store, each NcFiles has a cumulative
+        # size_index marking where each underlying file ends; we need to avoid
+        # a single slab read straddling a file boundary. Base and associated
+        # merged stores may have different boundaries, so take the union.
+        boundaries = {start, stop}
+        for nc_files in self._nc_files:
+            assert nc_files.size_index is not None
+            for b in nc_files.size_index:
+                if start < b < stop:
+                    boundaries.add(b)
+        sorted_boundaries = sorted(boundaries)
+
+        # Within each [sub_start, sub_stop) range every NcFiles maps to a
+        # single underlying file. Chunk by batch_size and read.
+        for sub_start, sub_stop in zip(sorted_boundaries[:-1], sorted_boundaries[1:]):
+            for batch_start in range(sub_start, sub_stop, batch_size):
+                batch_stop = min(batch_start + batch_size, sub_stop)
+                yield from self._load_trajectories(batch_start, batch_stop)
+
+    def _load_trajectories(
+        self, global_start: int, global_stop: int
+    ) -> list[Trajectory]:
+        """Load a batch of trajectories in ``[global_start, global_stop)``.
+
+        This helper assumes the range lies entirely within a single underlying
+        file for every NcFiles in the store (guaranteed when called from
+        ``iter_range``, which chunks by file boundaries). One NetCDF slab read
+        is performed per field per field set, and the results are unpacked
+        into freshly constructed ``Trajectory`` objects.
+        """
+        batch_size = global_stop - global_start
+        assert batch_size > 0
+
+        # Per-trajectory data buffers and point counts (set from the first
+        # POINT field encountered for each trajectory).
+        per_traj_data: list[dict[str, Any]] = [{} for _ in range(batch_size)]
+        npoints: list[int | None] = [None] * batch_size
+
+        for fs_name, nc_files in self._nc.items():
+            assert nc_files.size_index is not None
+
+            # NOTE: Use bisect_right, not bisect_left with the (index + 1)
+            # offset trick used in _load_trajectory. We need a positive local
+            # index for slab reads — the negative-indexing trick used for
+            # scalar __getitem__ reads doesn't work for slices.
+            file_index = bisect.bisect_right(nc_files.size_index, global_start)
+            if file_index >= len(nc_files.size_index):
+                raise IndexError(
+                    f'trajectory index {global_start} out of range for field '
+                    f'set "{fs_name}"'
+                )
+            # Sanity check: the whole batch lies within a single file. The
+            # caller is responsible for ensuring this.
+            assert global_stop <= nc_files.size_index[file_index]
+            prev = nc_files.size_index[file_index - 1] if file_index > 0 else 0
+            local_start = global_start - prev
+            local_stop = global_stop - prev
+
+            fs = FieldSet.from_registry(fs_name)
+            group = nc_files.groups[fs_name][file_index]
+            species = nc_files.species or []
+
+            for field_name, field in fs.items():
+                if field_name not in group.variables:
+                    raise ValueError(
+                        f'Data field "{field_name}" does not exist in NetCDF file'
+                    )
+                var = group.variables[field_name]
+                var.set_auto_mask(False)
+                slab = var[local_start:local_stop]
+                fill_value = var.get_fill_value()
+
+                has_sp = Dimension.SPECIES in field.dimensions
+                has_tm = Dimension.THRUST_MODE in field.dimensions
+                has_pt = Dimension.POINT in field.dimensions
+
+                match (has_sp, has_tm, has_pt):
+                    case (False, False, False):
+                        # Scalar per-trajectory field.
+                        for i in range(batch_size):
+                            val = slab[i]
+                            if val == fill_value:
+                                per_traj_data[i][field_name] = None
+                            else:
+                                per_traj_data[i][field_name] = val
+                    case (False, False, True):
+                        # Variable-length 1-D pointwise field.
+                        for i in range(batch_size):
+                            val = slab[i]
+                            if all(val == fill_value):
+                                per_traj_data[i][field_name] = None
+                            else:
+                                per_traj_data[i][field_name] = val
+                                if npoints[i] is None:
+                                    npoints[i] = len(val)
+                    case (True, False, False):
+                        # SpeciesValues[float]: slab shape (batch, NSPECIES).
+                        for i in range(batch_size):
+                            per_traj_data[i][field_name] = SpeciesValues(
+                                {sp: slab[i, si] for si, sp in enumerate(species)}
+                            )
+                    case (True, False, True):
+                        # SpeciesValues[np.ndarray]: slab shape
+                        # (batch, NSPECIES) of vlen arrays.
+                        for i in range(batch_size):
+                            val = SpeciesValues(
+                                {sp: slab[i, si] for si, sp in enumerate(species)}
+                            )
+                            per_traj_data[i][field_name] = val
+                            if npoints[i] is None:
+                                npoints[i] = len(next(iter(val.values())))
+                    case (False, True, False):
+                        # ThrustModeValues: slab shape (batch, NTHRUST).
+                        for i in range(batch_size):
+                            per_traj_data[i][field_name] = ThrustModeValues(
+                                {tm: slab[i, ti] for ti, tm in enumerate(ThrustMode)}
+                            )
+                    case (True, True, False):
+                        # SpeciesValues[ThrustModeValues]: slab shape
+                        # (batch, NSPECIES, NTHRUST).
+                        for i in range(batch_size):
+                            per_traj_data[i][field_name] = SpeciesValues[
+                                ThrustModeValues
+                            ](
+                                {
+                                    sp: ThrustModeValues(
+                                        {
+                                            tm: slab[i, si, ti]
+                                            for ti, tm in enumerate(ThrustMode)
+                                        }
+                                    )
+                                    for si, sp in enumerate(species)
+                                }
+                            )
+                    case _:
+                        raise ValueError(
+                            f'Invalid combination of dimensions for field {field_name}'
+                        )
+
+        # Construct Trajectories from the loaded data.
+        non_base_fs = [fs for fs in self._nc if fs != BASE_FIELDSET_NAME]
+        results: list[Trajectory] = []
+        for i in range(batch_size):
+            assert npoints[i] is not None
+            traj = Trajectory(npoints=npoints[i])
+            for fs_name in non_base_fs:
+                traj.add_fields(FieldSet.from_registry(fs_name))
+            for k, v in per_traj_data[i].items():
+                setattr(traj, k, v)
+            results.append(traj)
+        return results
+
     def _write_trajectory(self, index: int) -> None:
         """Write a trajectory at the given index to the NetCDF file(s)."""
 

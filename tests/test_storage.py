@@ -869,3 +869,196 @@ def test_file_access_recorder():
         Path.cwd() / 'file3.nc',
         Path.cwd() / 'tmp.sqlite',
     ]
+
+
+def _assert_trajectories_equal(a: Trajectory, b: Trajectory) -> None:
+    """Compare two trajectories field-for-field."""
+    assert a._data_dictionary == b._data_dictionary
+    assert a._fieldsets == b._fieldsets
+    assert len(a) == len(b)
+    for name in a._data_dictionary:
+        va = a._data.get(name)
+        vb = b._data.get(name)
+        if isinstance(va, np.ndarray):
+            assert isinstance(vb, np.ndarray)
+            assert np.array_equal(va[: len(a)], vb[: len(b)])
+        elif isinstance(va, SpeciesValues):
+            assert isinstance(vb, SpeciesValues)
+            assert set(va.keys()) == set(vb.keys())
+            for sp in va.keys():
+                sub_a = va[sp]
+                sub_b = vb[sp]
+                if isinstance(sub_a, np.ndarray):
+                    assert np.array_equal(sub_a, sub_b)
+                elif isinstance(sub_a, ThrustModeValues):
+                    for tm in sub_a.keys():
+                        assert sub_a[tm] == sub_b[tm]
+                else:
+                    assert sub_a == sub_b
+        elif isinstance(va, ThrustModeValues):
+            assert isinstance(vb, ThrustModeValues)
+            for tm in va.keys():
+                assert va[tm] == vb[tm]
+        else:
+            assert va == vb
+
+
+def iter_range_full_check(path: Path):
+    Config.load()
+    with TrajectoryStore.create(base_file=path) as ts:
+        for i in range(1, 11):
+            t = make_test_trajectory(i * 5, i)
+            t.add_fields(SimpleExtras.random(i * 5))
+            t.add_fields(ComplexExtras.random(i * 5))
+            ts.add(t)
+
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        expected = [ts_read[i] for i in range(len(ts_read))]
+        ts_read._trajectories.clear()
+        actual = list(ts_read.iter_range(0, len(ts_read)))
+        assert len(actual) == len(expected)
+        for a, e in zip(actual, expected):
+            _assert_trajectories_equal(a, e)
+
+
+def test_iter_range_full(tmp_path: Path):
+    # Full-range iter_range on a non-merged store with simple + complex extras
+    # should yield trajectories that match __getitem__ field-for-field.
+    run_in_subprocess(iter_range_full_check, tmp_path / 'test.nc')
+
+
+def iter_range_partial_check(path: Path):
+    Config.load()
+    with TrajectoryStore.create(base_file=path) as ts:
+        for i in range(10):
+            ts.add(make_test_trajectory(10 + i, i))
+
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        # Empty range should yield nothing.
+        assert list(ts_read.iter_range(3, 3)) == []
+
+        # Single-element range.
+        expected = [ts_read[4]]
+        ts_read._trajectories.clear()
+        actual = list(ts_read.iter_range(4, 5))
+        assert len(actual) == 1
+        _assert_trajectories_equal(actual[0], expected[0])
+
+        # Narrow middle range.
+        expected = [ts_read[i] for i in range(3, 7)]
+        ts_read._trajectories.clear()
+        actual = list(ts_read.iter_range(3, 7))
+        assert len(actual) == 4
+        for a, e in zip(actual, expected):
+            _assert_trajectories_equal(a, e)
+
+        # Range ending at the last index.
+        expected = [ts_read[i] for i in range(7, 10)]
+        ts_read._trajectories.clear()
+        actual = list(ts_read.iter_range(7, 10))
+        assert len(actual) == 3
+        for a, e in zip(actual, expected):
+            _assert_trajectories_equal(a, e)
+
+        # Out-of-range should raise.
+        try:
+            list(ts_read.iter_range(0, 11))
+        except IndexError:
+            pass
+        else:
+            raise AssertionError("Expected IndexError for stop > len")
+        try:
+            list(ts_read.iter_range(5, 3))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Expected ValueError for start > stop")
+
+
+def test_iter_range_partial(tmp_path: Path):
+    # Partial ranges (including length-1 and ranges starting at non-zero
+    # offsets) should match __getitem__ for the corresponding indices.
+    run_in_subprocess(iter_range_partial_check, tmp_path / 'test.nc')
+
+
+def iter_range_merged_check(merged_path: Path):
+    Config.load()
+    with TrajectoryStore.open(base_file=merged_path) as ts_merged:
+        assert len(ts_merged) == 8
+
+        # Verify iter_range across the full merged store matches __getitem__.
+        expected = [ts_merged[i] for i in range(len(ts_merged))]
+        ts_merged._trajectories.clear()
+        actual = list(ts_merged.iter_range(0, len(ts_merged)))
+        assert len(actual) == 8
+        for a, e in zip(actual, expected):
+            _assert_trajectories_equal(a, e)
+
+        # Sub-range that straddles a file boundary (size_index = [2,4,6,8]).
+        # Range [1, 5) spans files 0, 1, and 2 — critical bisect_right test.
+        expected = [ts_merged[i] for i in range(1, 5)]
+        ts_merged._trajectories.clear()
+        actual = list(ts_merged.iter_range(1, 5))
+        assert len(actual) == 4
+        for a, e in zip(actual, expected):
+            _assert_trajectories_equal(a, e)
+
+        # Sub-range aligned exactly with a file boundary on both ends.
+        expected = [ts_merged[i] for i in range(2, 6)]
+        ts_merged._trajectories.clear()
+        actual = list(ts_merged.iter_range(2, 6))
+        assert len(actual) == 4
+        for a, e in zip(actual, expected):
+            _assert_trajectories_equal(a, e)
+
+        # Sub-range lying entirely within a single file other than file 0.
+        # size_index=[2,4,6,8] → [5, 6) is inside file 2.
+        expected = [ts_merged[5]]
+        ts_merged._trajectories.clear()
+        actual = list(ts_merged.iter_range(5, 6))
+        assert len(actual) == 1
+        _assert_trajectories_equal(actual[0], expected[0])
+
+        # Batch smaller than the file size to force multiple batches per
+        # file and exercise the batching loop.
+        expected = [ts_merged[i] for i in range(len(ts_merged))]
+        ts_merged._trajectories.clear()
+        actual = list(ts_merged.iter_range(0, len(ts_merged), batch_size=1))
+        assert len(actual) == 8
+        for a, e in zip(actual, expected):
+            _assert_trajectories_equal(a, e)
+
+
+def iter_range_merged_merge(tmp_path: Path):
+    Config.load()
+    paths = [tmp_path / f'test_{i}.nc' for i in range(4)]
+    merged_path = tmp_path / 'merged.aeic-store'
+    TrajectoryStore.merge(input_stores=paths, output_store=merged_path)
+
+
+def test_iter_range_merged_store(tmp_path: Path):
+    # Critical bisect_right test: iter_range across file boundaries on a
+    # merged store built from 4 files of 2 trajectories each (size_index
+    # [2, 4, 6, 8]).
+    run_in_subprocess(basic_merging_create_stores, tmp_path)
+    run_in_subprocess(iter_range_merged_merge, tmp_path)
+    run_in_subprocess(iter_range_merged_check, tmp_path / 'merged.aeic-store')
+
+
+def iter_range_no_cache_pollution_check(path: Path):
+    Config.load()
+    with TrajectoryStore.create(base_file=path) as ts:
+        for i in range(5):
+            ts.add(make_test_trajectory(10, i))
+
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        assert len(ts_read._trajectories) == 0
+        trajectories = list(ts_read.iter_range(0, len(ts_read)))
+        assert len(trajectories) == 5
+        # Cache should still be empty after iteration.
+        assert len(ts_read._trajectories) == 0
+
+
+def test_iter_range_no_cache_pollution(tmp_path: Path):
+    # iter_range must not populate the LRU trajectory cache.
+    run_in_subprocess(iter_range_no_cache_pollution_check, tmp_path / 'test.nc')

@@ -585,9 +585,10 @@ def _trajectory_iterator(
 ) -> Generator[Trajectory]:
     if mission_db_file is None or filter_expr is None:
         # If no mission database is provided or there's no query, we can just
-        # iterate through the trajectories in the store.
-        for idx in range(offset, offset + limit):
-            yield store[idx]
+        # iterate through the trajectories in the store. Use iter_range so
+        # trajectories are loaded in batched slab reads rather than one at a
+        # time.
+        yield from store.iter_range(offset, offset + limit)
     else:
         # Otherwise we need to query the mission database for missions matching
         # the filter conditions, and then retrieve the corresponding
