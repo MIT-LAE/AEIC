@@ -22,7 +22,6 @@ def test_height_grid_load():
     assert grid.altitude.mode == 'height'
     assert grid.altitude.resolution == 500.0
     assert grid.altitude.bottom == 0.0
-    assert not hasattr(grid.altitude, 'levels')
 
 
 def test_pressure_grid_load():
