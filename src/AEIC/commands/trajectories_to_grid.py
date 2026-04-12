@@ -615,11 +615,11 @@ def _trajectory_iterator(
     else:
         # Otherwise we need to query the mission database for missions matching
         # the filter conditions, and then retrieve the corresponding
-        # trajectories from the store.
+        # trajectories from the store. Collect all flight IDs up front so we
+        # can do a single bulk index lookup and batched slab reads via
+        # iter_flight_ids (instead of per-trajectory get_flight calls).
         with Database(mission_db_file) as db:
             result = db(Query(filter=filter_expr, limit=limit, offset=offset))
             assert isinstance(result, Generator)
-            for flight in result:
-                traj = store.get_flight(flight.flight_id)
-                if traj is not None:
-                    yield traj
+            flight_ids = [flight.flight_id for flight in result]
+        yield from store.iter_flight_ids(flight_ids)

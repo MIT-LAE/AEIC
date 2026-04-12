@@ -1818,6 +1818,89 @@ class TrajectoryStore:
                 batch_stop = min(batch_start + batch_size, sub_stop)
                 yield from self._load_trajectories(batch_start, batch_stop)
 
+    def iter_flight_ids(
+        self, flight_ids: list[int], *, batch_size: int = 500
+    ) -> Iterator[Trajectory]:
+        """Yield trajectories matching the given flight IDs.
+
+        Performs a bulk lookup of flight IDs to trajectory indices, then
+        loads trajectories in batched slab reads (same as ``iter_range``).
+        Flight IDs not found in the store are silently skipped.
+
+        Trajectories are yielded in trajectory-index order (sorted for
+        sequential NetCDF access), not in the order of the input
+        ``flight_ids`` list. Like ``iter_range``, yielded trajectories
+        are not placed in the LRU cache.
+
+        Parameters
+        ----------
+        flight_ids : list[int]
+            Flight IDs to look up in the store's index.
+        batch_size : int, optional
+            Maximum number of trajectories to read in one NetCDF slab.
+            Default 500.
+        """
+        if not self.indexable:
+            raise RuntimeError('Cannot lookup by flight_id in non-indexable store')
+        if not flight_ids:
+            return
+
+        # Reindex lazily if needed.
+        if self.index_stale:
+            self._reindex()
+
+        # Read the index arrays once (get_flight re-reads these on every
+        # call, which is the main source of overhead for per-flight lookups).
+        assert self.index_group is not None
+        stored_flight_ids = self.index_group.variables['flight_id'][:]
+        stored_traj_idxs = self.index_group.variables['trajectory_index'][:]
+
+        # Vectorized lookup: find positions of requested IDs in the sorted
+        # stored_flight_ids array.
+        requested = np.asarray(flight_ids, dtype=np.int64)
+        positions = np.searchsorted(stored_flight_ids, requested)
+
+        # Filter out misses (out of bounds or value mismatch).
+        valid = positions < len(stored_flight_ids)
+        valid[valid] &= stored_flight_ids[positions[valid]] == requested[valid]
+        traj_indices = np.sort(stored_traj_idxs[positions[valid]])
+
+        if len(traj_indices) == 0:
+            return
+
+        # In-memory store: fall back to normal indexing.
+        if not self.nc_linked:
+            for i in traj_indices:
+                yield self[int(i)]
+            return
+
+        # Group consecutive indices into contiguous runs. Each run becomes
+        # a [start, stop) range suitable for _load_trajectories.
+        diffs = np.diff(traj_indices)
+        split_points = np.where(diffs != 1)[0] + 1
+        runs = np.split(traj_indices, split_points)
+
+        # For each run, split at file boundaries and load in batches
+        # (same logic as iter_range).
+        for run in runs:
+            run_start = int(run[0])
+            run_stop = int(run[-1]) + 1
+
+            boundaries = {run_start, run_stop}
+            for nc_files in self._nc_files:
+                assert nc_files.size_index is not None
+                for b in nc_files.size_index:
+                    if run_start < b < run_stop:
+                        boundaries.add(b)
+            sorted_boundaries = sorted(boundaries)
+
+            for sub_start, sub_stop in zip(
+                sorted_boundaries[:-1], sorted_boundaries[1:]
+            ):
+                for bs in range(sub_start, sub_stop, batch_size):
+                    be = min(bs + batch_size, sub_stop)
+                    yield from self._load_trajectories(bs, be)
+
     def _load_trajectories(
         self, global_start: int, global_stop: int
     ) -> list[Trajectory]:

@@ -1062,3 +1062,86 @@ def iter_range_no_cache_pollution_check(path: Path):
 def test_iter_range_no_cache_pollution(tmp_path: Path):
     # iter_range must not populate the LRU trajectory cache.
     run_in_subprocess(iter_range_no_cache_pollution_check, tmp_path / 'test.nc')
+
+
+# --------------- iter_flight_ids ---------------
+
+
+def iter_flight_ids_basic_check(path: Path):
+    Config.load()
+    seeds = list(range(10))
+    with TrajectoryStore.create(base_file=path) as ts:
+        for s in seeds:
+            ts.add(make_test_trajectory(10 + s, s))
+
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        # Request a subset of flight IDs.
+        requested = [1, 3, 5, 7, 9]
+        expected = [ts_read.get_flight(fid) for fid in requested]
+        ts_read._trajectories.clear()
+        actual = list(ts_read.iter_flight_ids(requested))
+        assert len(actual) == len(expected)
+        for a, e in zip(actual, expected):
+            _assert_trajectories_equal(a, e)
+
+
+def test_iter_flight_ids_basic(tmp_path: Path):
+    # Subset lookup should return matching trajectories field-for-field.
+    run_in_subprocess(iter_flight_ids_basic_check, tmp_path / 'test.nc')
+
+
+def iter_flight_ids_missing_check(path: Path):
+    Config.load()
+    seeds = list(range(5))
+    with TrajectoryStore.create(base_file=path) as ts:
+        for s in seeds:
+            ts.add(make_test_trajectory(10, s))
+
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        # Mix of existing (0, 2, 4) and non-existing (99, 100) flight IDs.
+        requested = [0, 2, 4, 99, 100]
+        expected = [ts_read.get_flight(fid) for fid in [0, 2, 4]]
+        ts_read._trajectories.clear()
+        actual = list(ts_read.iter_flight_ids(requested))
+        assert len(actual) == 3
+        for a, e in zip(actual, expected):
+            _assert_trajectories_equal(a, e)
+
+
+def test_iter_flight_ids_missing(tmp_path: Path):
+    # Non-existent flight IDs should be silently skipped.
+    run_in_subprocess(iter_flight_ids_missing_check, tmp_path / 'test.nc')
+
+
+def iter_flight_ids_empty_check(path: Path):
+    Config.load()
+    with TrajectoryStore.create(base_file=path) as ts:
+        ts.add(make_test_trajectory(10, 0))
+
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        actual = list(ts_read.iter_flight_ids([]))
+        assert len(actual) == 0
+
+
+def test_iter_flight_ids_empty(tmp_path: Path):
+    # Empty flight ID list should yield nothing.
+    run_in_subprocess(iter_flight_ids_empty_check, tmp_path / 'test.nc')
+
+
+def iter_flight_ids_no_cache_pollution_check(path: Path):
+    Config.load()
+    with TrajectoryStore.create(base_file=path) as ts:
+        for s in range(5):
+            ts.add(make_test_trajectory(10, s))
+
+    with TrajectoryStore.open(base_file=path) as ts_read:
+        assert len(ts_read._trajectories) == 0
+        trajectories = list(ts_read.iter_flight_ids([0, 1, 2, 3, 4]))
+        assert len(trajectories) == 5
+        # Cache should still be empty after iteration.
+        assert len(ts_read._trajectories) == 0
+
+
+def test_iter_flight_ids_no_cache_pollution(tmp_path: Path):
+    # iter_flight_ids must not populate the LRU trajectory cache.
+    run_in_subprocess(iter_flight_ids_no_cache_pollution_check, tmp_path / 'test.nc')
