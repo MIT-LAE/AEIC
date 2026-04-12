@@ -3,18 +3,28 @@
 ## Summary
 
 The `aeic trajectories-to-grid --mode map` command was optimized in
-three steps, achieving a **47x overall speedup** on the map phase hot
-loop.
+four steps: three targeting the unfiltered hot loop (achieving a **47x
+speedup** there) and one targeting the filtered trajectory-loading path
+(achieving a **41x speedup** there).
+
+### Unfiltered path
 
 | Commit | Change | map_phase time | Speedup |
 |--------|--------|---------------|---------|
 | (baseline) | Original code | 174.3 s | 1x |
 | `9959fcb` | Eliminate redundant NetCDF reads | 32.2 s | 5.4x |
 | `3eeb48e` | Batched slab reads via `iter_range` | 5.9 s | 29.3x |
-| `3eeb48e^` | Skip type-checking on trusted internal reads | 3.7 s | 47.1x |
+| `fb13fcc` | Skip type-checking on trusted internal reads | 3.7 s | 47.1x |
 
 Benchmark: ~10,000 trajectories (slice 0 of 3900 from the test-run store),
 1x1 degree grid, best of 3 runs, `map_phase` wall-clock only.
+
+### Filtered path
+
+| Commit | Change | Loading time (40 flights) | Speedup |
+|--------|--------|--------------------------|---------|
+| (baseline) | `get_flight()` per trajectory | ~34 s | 1x |
+| `858f648` | Bulk index lookup + batched slabs via `iter_flight_ids` | ~0.83 s | 41x |
 
 
 ## Step 1: eliminate redundant scalar reads in `_read_from_nc_var`
@@ -140,6 +150,79 @@ The public `Container.__setattr__` type-checking is unchanged and
 continues to protect all user-facing code paths.
 
 
+## Step 4: bulk index lookup and batched reads via `iter_flight_ids`
+
+**Commit:** `858f648`
+
+### The problem
+
+When a mission filter is provided, `_trajectory_iterator` in
+`trajectories_to_grid.py` called `store.get_flight(flight.flight_id)` once
+per flight inside a `for flight in result` loop:
+
+```python
+# Before
+for flight in result:
+    traj = store.get_flight(flight.flight_id)
+    if traj is not None:
+        yield traj
+```
+
+`get_flight` performs a flight-ID lookup by reading the *entire*
+`flight_id` and `trajectory_index` NetCDF index arrays from disk on every
+call. For N filtered trajectories this means:
+
+- **2N full array reads** (the index arrays, re-read every time), and
+- **N individual `_load_trajectory` calls**, each going through the
+  `setattr` → `convert_in` → `_cast` type-checking chain.
+
+For 40 flights, this totalled ~34 s — all of it redundant I/O.
+
+### The fix
+
+Collect all flight IDs into a plain Python list *before* touching the
+store, then hand the whole list to `store.iter_flight_ids`:
+
+```python
+# After (trajectories_to_grid.py)
+flight_ids = [flight.flight_id for flight in result]
+yield from store.iter_flight_ids(flight_ids)
+```
+
+`TrajectoryStore.iter_flight_ids` (new method in `store.py`):
+
+1. Reads `flight_id` and `trajectory_index` index arrays **once**.
+2. Uses `np.searchsorted` (vectorized) to map all requested IDs to
+   trajectory indices in a single pass over the sorted index.
+3. Filters out misses (IDs not present in the store) with a boolean mask.
+4. Sorts the found trajectory indices for sequential NetCDF access.
+5. Groups consecutive indices into contiguous runs using `np.diff` and
+   `np.split`.
+6. Splits each run at file boundaries (same logic as `iter_range`).
+7. Loads each sub-range via `_load_trajectories` (batched slab reads,
+   bypassing `setattr` validation — same trusted-internal-path policy as
+   `iter_range`).
+8. Does not populate the LRU cache (same policy as `iter_range`).
+
+Key design decisions:
+
+- **Vectorized ID mapping.** `get_flight` uses a Python loop with early
+  exit to locate a single flight ID. `iter_flight_ids` instead calls
+  `np.searchsorted` once over the whole request, making the ID-to-index
+  mapping O(N log M) rather than O(N × M) where M is the index size.
+
+- **Run grouping.** After sorting trajectory indices, consecutive entries
+  that differ by 1 form a contiguous run that can be loaded with a single
+  `_load_trajectories` call. `np.diff` + `np.where` identifies the break
+  points in O(N) time. This avoids one NetCDF slab call per flight when
+  flights happen to be stored contiguously in the file.
+
+- **Yield order.** Trajectories are yielded in *trajectory-index* order
+  (i.e. the order they appear in the store), not in the order of the input
+  `flight_ids` list. This is intentional: sequential index order maximises
+  HDF5 chunk locality and avoids seeking backwards through the file.
+
+
 ## Lessons: avoiding NetCDF performance bugs
 
 ### 1. Every `var[index]` is expensive -- never read the same index twice
@@ -217,3 +300,25 @@ overhead per call. Patterns that look fine in pure Python (dictionary
 comprehensions that index a variable N times) become expensive when each
 index operation traverses three library boundaries. Think of NetCDF
 variable access as I/O, not as array indexing.
+
+### 7. Collect all IDs before entering a read loop
+
+When a loop calls a lookup function for each element in a result set,
+any per-call cost that scales with the *full dataset* — such as reading
+an entire index array — is paid once per element instead of once total.
+
+```python
+# Bad: reads the full flight_id index array on every iteration
+for flight in result:
+    traj = store.get_flight(flight.flight_id)   # O(M) I/O × N times
+
+# Good: read the index once, then map all IDs in one vectorized pass
+flight_ids = [flight.flight_id for flight in result]
+yield from store.iter_flight_ids(flight_ids)    # O(M) I/O × 1 time
+```
+
+The pattern generalises: if a lookup helper re-reads any shared resource
+(a database index, a config file, a NetCDF variable) on every call,
+restructure the caller to collect all keys up front and call a bulk
+variant of the lookup instead. NumPy's `searchsorted` is the natural
+tool for sorted integer or float index lookups.
