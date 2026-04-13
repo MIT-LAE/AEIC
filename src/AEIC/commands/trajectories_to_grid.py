@@ -1,6 +1,7 @@
-import importlib.metadata
+import json
 import logging
 import math
+import platform
 import re
 import time
 import tomllib
@@ -16,6 +17,13 @@ import zarr
 from AEIC.gridding.grid import Grid, HeightGrid, ISAPressureGrid
 from AEIC.gridding.kernels import process_segments_nonuniform_z
 from AEIC.missions import CountQuery, Database, Filter, Query, TimeRangeQuery
+from AEIC.storage.reproducibility import (
+    GIT_BRANCH,
+    GIT_COMMIT,
+    GIT_DIRTY,
+    VERSION,
+    ReproducibilityData,
+)
 from AEIC.trajectories import Trajectory, TrajectoryStore
 from AEIC.types import Species
 from AEIC.utils.progress import Progress
@@ -33,6 +41,7 @@ def map_phase(
     traj_iter: Generator[Trajectory],
     grid: Grid,
     map_output: str,
+    filter_expr: Filter | None = None,
 ):
     # Build output array. This assumes that all trajectories have the same set
     # of species, which should be the case if they are all processed with the
@@ -130,6 +139,13 @@ def map_phase(
     save = zarr.create_array(store=map_output, dtype='f4', shape=output.shape)
     save[:] = output
 
+    # Attach grid and filter metadata to the zarr array for cross-slice
+    # validation during the reduce phase.
+    save.attrs['grid_json'] = grid.model_dump_json()
+    save.attrs['filter_json'] = (
+        filter_expr.model_dump_json() if filter_expr is not None else None
+    )
+
 
 def _discover_slice_files(map_prefix: str) -> tuple[dict[int, Path], list[int]]:
     """Discover and validate slice zarr files matching the map_prefix pattern.
@@ -194,6 +210,36 @@ def _validate_slice_shapes(
             )
 
 
+def _read_and_validate_zarr_metadata(
+    slice_files: dict[int, Path],
+    indices: list[int],
+) -> tuple[str, str | None]:
+    """Read grid and filter metadata from zarr slice attrs and validate
+    consistency across all slices.
+
+    Returns ``(grid_json, filter_json)`` from the first slice. Raises
+    ``click.UsageError`` if any slice has different metadata.
+    """
+    first = zarr.open_array(store=str(slice_files[indices[0]]), mode='r')
+    grid_json: str = first.attrs['grid_json']
+    filter_json: str | None = first.attrs.get('filter_json')
+
+    for i in indices[1:]:
+        arr = zarr.open_array(store=str(slice_files[i]), mode='r')
+        if arr.attrs['grid_json'] != grid_json:
+            raise click.UsageError(
+                f'Slice {i} has a different grid definition than slice 0. '
+                f'All map slices must use the same grid.'
+            )
+        if arr.attrs.get('filter_json') != filter_json:
+            raise click.UsageError(
+                f'Slice {i} has a different filter expression than slice 0. '
+                f'All map slices must use the same filter.'
+            )
+
+    return grid_json, filter_json
+
+
 def _accumulate_slices(
     slice_files: dict[int, Path],
     indices: list[int],
@@ -243,7 +289,9 @@ def _write_netcdf_output(
     n_slices: int,
     input_store: Path,
     mission_db_file: Path,
-    grid_file: Path,
+    traj_repro: ReproducibilityData | None,
+    traj_comments: list[str],
+    filter_json: str | None,
 ) -> None:
     """Write the accumulated gridded data to a NetCDF file.
 
@@ -354,18 +402,70 @@ def _write_netcdf_output(
                 slab = slab[::-1, :, :]
             var[0, :, :, :] = slab
 
-        # Global attributes for provenance and reproducibility.
-        try:
-            aeic_version = importlib.metadata.version('AEIC')
-        except importlib.metadata.PackageNotFoundError:
-            aeic_version = 'unknown'
-        ds.aeic_version = aeic_version
+        # Minimal global attributes for quick identification.
+        ds.aeic_version = VERSION
         ds.created_utc = datetime.now(UTC).isoformat()
-        ds.input_store = str(Path(input_store).resolve())
-        ds.mission_db_file = str(Path(mission_db_file).resolve())
-        ds.grid_file = str(Path(grid_file).resolve())
-        ds.n_slices = n_slices
-        ds.grid_definition = Path(grid_file).read_text()
+
+        # Reproducibility groups under _reproducibility/.
+        repro = ds.createGroup('_reproducibility')
+
+        # -- Trajectory generation provenance (from the input store).
+        if traj_repro is not None:
+            tg = repro.createGroup('trajectory_generation')
+            tg.createVariable('python_version', str, ())
+            tg.variables['python_version'][...] = traj_repro.python_version
+            tg.createVariable('aeic_version', str, ())
+            tg.variables['aeic_version'][...] = traj_repro.software_version
+            tg.createVariable('git_commit', str, ())
+            tg.variables['git_commit'][...] = (
+                traj_repro.git_commit if traj_repro.git_commit is not None else ''
+            )
+            tg.createVariable('git_branch', str, ())
+            tg.variables['git_branch'][...] = (
+                traj_repro.git_branch if traj_repro.git_branch is not None else ''
+            )
+            tg.createVariable('git_dirty', np.uint8, ())
+            tg.variables['git_dirty'][...] = traj_repro.git_dirty
+            tg.createVariable('files_accessed', str, ())
+            tg.variables['files_accessed'][...] = json.dumps(
+                [str(p) for p in traj_repro.files]
+            )
+            tg.createVariable('config', str, ())
+            tg.variables['config'][...] = traj_repro.config
+            tg.createVariable('comments', str, ())
+            tg.variables['comments'][...] = json.dumps(traj_comments)
+            if traj_repro.sample_fraction is not None:
+                tg.createVariable('sample_fraction', np.float64, ())
+                tg.variables['sample_fraction'][...] = traj_repro.sample_fraction
+            if traj_repro.sample_seed is not None:
+                tg.createVariable('sample_seed', np.int64, ())
+                tg.variables['sample_seed'][...] = traj_repro.sample_seed
+
+        # -- Gridding provenance (from this run).
+        gg = repro.createGroup('gridding')
+        gg.createVariable('aeic_version', str, ())
+        gg.variables['aeic_version'][...] = VERSION
+        gg.createVariable('python_version', str, ())
+        gg.variables['python_version'][...] = platform.python_version()
+        gg.createVariable('git_commit', str, ())
+        gg.variables['git_commit'][...] = GIT_COMMIT if GIT_COMMIT is not None else ''
+        gg.createVariable('git_branch', str, ())
+        gg.variables['git_branch'][...] = GIT_BRANCH if GIT_BRANCH is not None else ''
+        gg.createVariable('git_dirty', np.uint8, ())
+        gg.variables['git_dirty'][...] = GIT_DIRTY
+        gg.createVariable('grid_definition', str, ())
+        gg.variables['grid_definition'][...] = grid.model_dump_json()
+        if filter_json is not None:
+            gg.createVariable('filter', str, ())
+            gg.variables['filter'][...] = filter_json
+        gg.createVariable('input_store', str, ())
+        gg.variables['input_store'][...] = str(Path(input_store).resolve())
+        gg.createVariable('mission_db_file', str, ())
+        gg.variables['mission_db_file'][...] = str(Path(mission_db_file).resolve())
+        gg.createVariable('n_slices', np.int32, ())
+        gg.variables['n_slices'][...] = n_slices
+        gg.createVariable('created_utc', str, ())
+        gg.variables['created_utc'][...] = datetime.now(UTC).isoformat()
 
     logger.info('Wrote gridded inventory to %s', output_file)
 
@@ -377,7 +477,8 @@ def reduce_phase(
     output_file: Path,
     mission_db_file: Path,
     input_store: Path,
-    grid_file: Path,
+    traj_repro: ReproducibilityData | None,
+    traj_comments: list[str],
 ):
     """Combine map-phase zarr slice files into a single gridded NetCDF file.
 
@@ -388,6 +489,9 @@ def reduce_phase(
     ``map_prefix``, sums them into a single accumulator, queries the mission
     database for the inventory time range, and writes a NetCDF file
     containing one variable per species plus CF-style coordinate variables.
+
+    Grid and filter metadata are read from the zarr slice attributes (written
+    during the map phase) and cross-validated for consistency.
     """
     slice_files, indices = _discover_slice_files(map_prefix)
     n_slices = len(indices)
@@ -399,6 +503,7 @@ def reduce_phase(
         len(species),
     )
     _validate_slice_shapes(slice_files, indices, expected_shape)
+    grid_json, filter_json = _read_and_validate_zarr_metadata(slice_files, indices)
 
     accum = _accumulate_slices(slice_files, indices, expected_shape)
 
@@ -413,7 +518,9 @@ def reduce_phase(
         n_slices,
         input_store,
         mission_db_file,
-        grid_file,
+        traj_repro,
+        traj_comments,
+        filter_json,
     )
 
 
@@ -538,7 +645,7 @@ def trajectories_to_grid(
             logger.info('Flights to process in slice: %s', limit)
             map_output = f'{map_prefix}-{slice_index:05d}.zarr'
             t0 = time.perf_counter()
-            map_phase(limit, species, traj_iter, grid, map_output)
+            map_phase(limit, species, traj_iter, grid, map_output, filter_expr)
             logger.info('map_phase elapsed: %.3f s', time.perf_counter() - t0)
 
         case 'reduce':
@@ -563,7 +670,8 @@ def trajectories_to_grid(
                 output_file,
                 mission_db_file,
                 input_store,
-                grid_file,
+                store.reproducibility_data,
+                store.comments,
             )
 
 
