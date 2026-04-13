@@ -202,6 +202,19 @@ class TestTraverseSegment:
         assert np.allclose(grid[0, 0, 0, :], w)
         assert np.isclose(grid.sum(), w.sum())
 
+    def test_exact_z_edge_maps_to_upper_bin(self):
+        """A point exactly on a z-edge boundary maps to the upper bin [edge, ...)."""
+        grid = _fresh_grid()
+        w = _weights()
+        # z=100 sits exactly on Z_EDGES[1]. With half-open [lower, upper) bins,
+        # it should map to bin k=1 ([100, 200)), not k=0 ([0, 100)).
+        traverse_segment_nonuniform_z(
+            1.5, 1.5, 100.0, 1.5, 1.5, 100.0, Z_EDGES, grid, w
+        )
+
+        assert np.allclose(grid[1, 1, 1, :], w)
+        assert np.isclose(grid.sum(), w.sum())
+
     def test_negative_i_direction(self):
         """Segment travelling in the negative i-direction distributes correctly."""
         grid = _fresh_grid()
@@ -262,6 +275,15 @@ class TestProcessSegments:
 
         # lat=0.5, lon=0.5 → i=0, j=0; z=50 → k=0
         assert np.allclose(grid[0, 0, 0, :], [10.0, 5.0])
+        assert np.isclose(grid.sum(), 15.0)
+
+    def test_fast_path_exact_z_edge(self):
+        """A segment on an exact z-edge uses the upper bin (half-open convention)."""
+        w2d = np.array([[10.0, 5.0]])
+        # z=100 is exactly Z_EDGES[1] → should map to k=1, not k=0.
+        grid = _run_process([0.5], [0.5], [100.0], [0.5], [0.5], [100.0], w2d)
+
+        assert np.allclose(grid[0, 0, 1, :], [10.0, 5.0])
         assert np.isclose(grid.sum(), 15.0)
 
     def test_fast_path_out_of_bounds_ignored(self):

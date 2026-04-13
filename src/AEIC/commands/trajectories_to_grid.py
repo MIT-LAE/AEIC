@@ -68,7 +68,7 @@ def map_phase(
         for sub_traj in traj.dateline_split():
             # If adding the segments from this sub-trajectory would exceed the
             # batch size, process the current batch and start a new one.
-            if nsegs + len(sub_traj) > NSEGMENTS:
+            if nsegs + len(sub_traj) - 1 > NSEGMENTS:
                 process_segments_nonuniform_z(
                     lat0[:nsegs],
                     lon0[:nsegs],
@@ -305,7 +305,12 @@ def reduce_phase(
         len(species),
     )
     _validate_slice_shapes(slice_files, indices, expected_shape)
-    _, filter_json = _read_and_validate_zarr_metadata(slice_files, indices)
+    grid_json, filter_json = _read_and_validate_zarr_metadata(slice_files, indices)
+    if grid.model_dump_json() != grid_json:
+        raise click.UsageError(
+            'The --grid-file does not match the grid used during the map phase. '
+            'Pass the same grid file that was used for the map slices.'
+        )
 
     accum = _accumulate_slices(slice_files, indices, expected_shape)
 
@@ -428,60 +433,68 @@ def trajectories_to_grid(
             filter_data = tomllib.load(fp)
             filter_expr = Filter.model_validate(filter_data)
 
-    store = TrajectoryStore.open(base_file=input_store)
-    species = list(store[0].trajectory_emissions.keys())
-    print(f'Species in trajectory store: {species}')
-    grid = Grid.load(grid_file)
+    with TrajectoryStore.open(base_file=input_store) as store:
+        species = list(store[0].trajectory_emissions.keys())
+        print(f'Species in trajectory store: {species}')
+        grid = Grid.load(grid_file)
 
-    match mode:
-        case 'map':
-            # Map mode: process trajectories in chunks and save intermediate
-            # grid files.
-            # TODO: Make trajectory iterator.
-            nmissions = _count_missions(store, mission_db_file, filter_expr)
-            limit, offset = _slice_limits(nmissions, slice_count, slice_index)
-            traj_iter = _trajectory_iterator(
-                store, mission_db_file, filter_expr, limit, offset
-            )
-            logger.info('Flights to process in slice: %s', limit)
-            map_output = f'{map_prefix}-{slice_index:05d}.zarr'
-            t0 = time.perf_counter()
-            map_phase(limit, species, traj_iter, grid, map_output, filter_expr)
-            logger.info('map_phase elapsed: %.3f s', time.perf_counter() - t0)
-
-        case 'reduce':
-            # Reduce mode: read intermediate grid files and combine into final
-            # output.
-            if output_file is None:
-                raise click.UsageError('Output file must be provided in reduce mode.')
-            if mission_db_file is None:
-                raise click.UsageError(
-                    'Mission database file must be provided in reduce mode.'
+        match mode:
+            case 'map':
+                # Map mode: process trajectories in chunks and save intermediate
+                # grid files.
+                # TODO: Make trajectory iterator.
+                nmissions = _count_missions(store, mission_db_file, filter_expr)
+                limit, offset = _slice_limits(nmissions, slice_count, slice_index)
+                traj_iter = _trajectory_iterator(
+                    store, mission_db_file, filter_expr, limit, offset
                 )
-            if filter_file is not None:
-                raise click.UsageError('--filter-file is not supported in reduce mode.')
-            if slice_count != 1:
-                raise click.UsageError('--slice-count is not supported in reduce mode.')
-            if slice_index != 0:
-                raise click.UsageError('--slice-index is not supported in reduce mode.')
-            reduce_phase(
-                grid,
-                species,
-                map_prefix,
-                output_file,
-                mission_db_file,
-                input_store,
-                store.reproducibility_data,
-                store.comments,
-            )
+                logger.info('Flights to process in slice: %s', limit)
+                map_output = f'{map_prefix}-{slice_index:05d}.zarr'
+                t0 = time.perf_counter()
+                map_phase(limit, species, traj_iter, grid, map_output, filter_expr)
+                logger.info('map_phase elapsed: %.3f s', time.perf_counter() - t0)
+
+            case 'reduce':
+                # Reduce mode: read intermediate grid files and combine into
+                # final output.
+                if output_file is None:
+                    raise click.UsageError(
+                        'Output file must be provided in reduce mode.'
+                    )
+                if mission_db_file is None:
+                    raise click.UsageError(
+                        'Mission database file must be provided in reduce mode.'
+                    )
+                if filter_file is not None:
+                    raise click.UsageError(
+                        '--filter-file is not supported in reduce mode.'
+                    )
+                if slice_count != 1:
+                    raise click.UsageError(
+                        '--slice-count is not supported in reduce mode.'
+                    )
+                if slice_index != 0:
+                    raise click.UsageError(
+                        '--slice-index is not supported in reduce mode.'
+                    )
+                reduce_phase(
+                    grid,
+                    species,
+                    map_prefix,
+                    output_file,
+                    mission_db_file,
+                    input_store,
+                    store.reproducibility_data,
+                    store.comments,
+                )
 
 
 def _count_missions(
     store: TrajectoryStore, mission_db_file: Path | None, filter_expr: Filter | None
 ) -> int:
-    if mission_db_file is None:
-        # If no mission database or filter is provided, we can just count the
-        # number of trajectories in the store.
+    if mission_db_file is None or filter_expr is None:
+        # Without both a mission database and a filter, iteration falls through
+        # to store.iter_range(), so the count must come from the store too.
         return len(store)
 
     # Otherwise we need to count the number of missions matching the filter

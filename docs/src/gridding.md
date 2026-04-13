@@ -84,12 +84,11 @@ The `[latitude]` and `[longitude]` sections share the same structure:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `resolution` | float | | Cell width in degrees |
-| `offset` | float | | Origin offset in degrees, controls where cell centers fall |
 | `range` | `[min, max]` | `[-90, 90]` (lat) or `[-180, 180]` (lon) | Domain extent in degrees |
 
-The `offset` parameter determines cell center alignment. For example,
-`resolution = 1.0` with `offset = 0.5` places cell centers at 0.5, 1.5, 2.5,
-etc. degrees from the range minimum.
+Cell edges are placed at `range[0], range[0] + resolution, ...` and cell
+centers fall at the midpoints (i.e. at `range[0] + 0.5 * resolution`,
+`range[0] + 1.5 * resolution`, etc.).
 
 ### Vertical axis
 
@@ -122,11 +121,9 @@ A 1-degree uniform height grid (`basic-1x1.toml`):
 ```toml
 [longitude]
 resolution = 1.0
-offset = 0.5
 
 [latitude]
 resolution = 1.0
-offset = 0.5
 
 [altitude]
 mode = "height"
@@ -139,11 +136,9 @@ An ERA5-compatible pressure level grid (`era5.toml`):
 ```toml
 [latitude]
 resolution = 1.0
-offset = 0.5
 
 [longitude]
 resolution = 1.0
-offset = 0.5
 
 [altitude]
 mode = "isa_pressure"

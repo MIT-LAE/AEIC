@@ -79,7 +79,7 @@ def traverse_segment_nonuniform_z(
     # Current voxel indices (integer)
     i = int(np.floor(i0f))
     j = int(np.floor(j0f))
-    k = np.searchsorted(z_edges, z0) - 1
+    k = np.searchsorted(z_edges, z0, side='right') - 1
 
     # Clamp vertical index to valid range
     if k < 0:
@@ -246,8 +246,8 @@ def process_segments_nonuniform_z(
         i1 = int(np.floor(i1f))
         j1 = int(np.floor(j1f))
 
-        k0 = np.searchsorted(z_edges, z0[s]) - 1
-        k1 = np.searchsorted(z_edges, z1[s]) - 1
+        k0 = np.searchsorted(z_edges, z0[s], side='right') - 1
+        k1 = np.searchsorted(z_edges, z1[s], side='right') - 1
 
         # Clamp vertical indices
         if k0 < 0:

@@ -27,15 +27,11 @@ def _edges_from_levels(levels: np.ndarray) -> np.ndarray:
 
 class HorizontalGrid(CIBaseModel):
     resolution: float
-    offset: float
     range: tuple[float, float]
 
     @property
     def bins(self) -> int:
         return int((self.range[1] - self.range[0]) / self.resolution)
-
-    def get_indexes(self, value: np.ndarray) -> np.ndarray:
-        return np.floor((value - self.offset) / self.resolution).astype(int)
 
 
 class LatitudeGrid(HorizontalGrid):

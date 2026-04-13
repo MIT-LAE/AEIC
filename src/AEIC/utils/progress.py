@@ -8,6 +8,12 @@ class Progress:
     def __init__(self, total, desc=None, log_interval=10):
         self.total = total
         self.desc = desc or ''
+
+        if total == 0:
+            self.noop = True
+            return
+        self.noop = False
+
         self.is_tty = sys.stderr.isatty()
 
         if self.is_tty:
@@ -18,6 +24,8 @@ class Progress:
             self.log_interval = log_interval
 
     def update(self, n=1):
+        if self.noop:
+            return
         if self.is_tty:
             self.pbar.update(n)
         else:
@@ -29,6 +37,8 @@ class Progress:
                 self.last_log = now
 
     def close(self):
+        if self.noop:
+            return
         if self.is_tty:
             self.pbar.close()
         else:
