@@ -58,7 +58,7 @@ def test_airport_handling(tmp_path):
 
 
 def test_oag_conversion(tmp_path, test_data_dir):
-    # This extract of the 2019 OAG data contains 7 valid flights.
+    # This extract of the 2019 OAG data contains 8 valid flights.
     oag_file = test_data_dir / 'oag/2019-extract.csv'
 
     convert_oag_data(
@@ -71,4 +71,4 @@ def test_oag_conversion(tmp_path, test_data_dir):
     with Database(tmp_path / 'oag_test.sqlite') as db:
         cur = db._conn.cursor()
         cur.execute('SELECT COUNT(*) FROM flights')
-        assert cur.fetchone()[0] == 7
+        assert cur.fetchone()[0] == 8

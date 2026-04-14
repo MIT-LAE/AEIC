@@ -179,7 +179,7 @@ def test_query_result(test_data_dir):
         result = db(Query(Filter(min_distance=3000)))
         assert isinstance(result, Generator)
         for flight in result:
-            assert flight.distance >= 3000
+            assert flight.gc_distance >= 3000 * 1000
             nflights += 1
         assert nflights == 99
 
@@ -198,7 +198,10 @@ def test_query_result(test_data_dir):
         result = db(q1)
         assert isinstance(result, Generator)
         for flight in result:
-            assert flight.distance <= 3000
+            # Use a sloppy comparison here because the distances in the OAG
+            # database are not exact great circle distances, but they should be
+            # close enough for testing purposes.
+            assert flight.gc_distance <= 3005 * 1000
             assert flight.origin_country in (
                 'US',
                 'CA',
@@ -213,7 +216,7 @@ def test_query_result(test_data_dir):
         result = db(q2)
         assert isinstance(result, Generator)
         for flight in result:
-            assert flight.distance <= 3000
+            assert flight.gc_distance <= 3000 * 1000
             assert flight.origin_country in (
                 'US',
                 'CA',
@@ -237,7 +240,7 @@ def test_query_result(test_data_dir):
         result = db(q3)
         assert isinstance(result, Generator)
         for flight in result:
-            assert flight.distance <= 3000
+            assert flight.gc_distance <= 3000 * 1000
             assert flight.origin_country in (
                 'US',
                 'CA',

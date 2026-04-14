@@ -8,7 +8,7 @@ import click
 import AEIC.trajectories.builders as tb
 from AEIC.config import Config, config
 from AEIC.emissions import compute_emissions
-from AEIC.missions import CountQuery, Database, Mission, Query
+from AEIC.missions import CountQuery, Database, Query
 from AEIC.performance.model_selector import (
     PerformanceModelSelector,
     SimplePerformanceModelSelector,
@@ -53,11 +53,7 @@ def simulate_slice(
             # Retrieve all flights in this slice and simulate them one by one.
             q = Query(limit=limit, offset=offset, sample=sample)
             p = Progress(total=limit, desc='Flights')
-            for flight in db(q):  # type: ignore
-                # Create a mission from the flight database result. (We fix
-                # the load factor here.)
-                mission = Mission.from_query_result(flight, load_factor=1.0)
-
+            for mission in db(q):  # type: ignore
                 # Fly the mission, catching exceptions.
                 try:
                     pm = performance_model

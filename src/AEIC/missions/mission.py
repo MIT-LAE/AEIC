@@ -12,11 +12,18 @@ from AEIC.types import Position
 from AEIC.utils import GEOD
 from AEIC.utils.airports import airport
 
-from .query import QueryResult
-
 
 @dataclass
 class Mission:
+    """Represents a single flight mission, with all relevant information for
+    emissions calculation.
+
+    There are a set of required fields (origin, destination, departure,
+    arrival, load factor, and aircraft type) and a set of optional fields
+    (carrier, flight number, origin and destination country, service type,
+    engine type, seat capacity, and flight ID). The optional fields may be None
+    if not available, but are usually filled from fields in the OAG database."""
+
     origin: str
     """IATA code of origin airport."""
 
@@ -29,14 +36,39 @@ class Mission:
     arrival: pd.Timestamp
     """Arrival time (UTC)."""
 
-    load_factor: float
-    """Load factor (between 0 and 1)."""
-
     aircraft_type: str
     """Aircraft type (ICAO code)."""
 
+    load_factor: float
+    """Load factor (between 0 and 1)."""
+
+    carrier: str | None = None
+    """Airline (IATA code)."""
+
+    flight_number: str | None = None
+    """Flight number."""
+
+    origin_country: str | None = None
+    """Origin country (ISO 3166-1 alpha-2 code)."""
+
+    destination_country: str | None = None
+    """Destination country (ISO 3166-1 alpha-2 code)."""
+
+    service_type: str | None = None
+    """Service type (IATA single-letter code, documented `here
+    <https://knowledge.oag.com/v1/docs/iata-service-type-codes>`__)."""
+
+    engine_type: str | None = None
+    """Engine type, or None if not known."""
+
+    seat_capacity: int | None = None
+    """Seat capacity."""
+
     flight_id: int | None = None
-    """Unique flight identifier from mission database (if available)."""
+    """Unique flight ID from mission database (if available)."""
+
+    id: int | None = None
+    """Unique flight instance ID from mission database (if available)."""
 
     @staticmethod
     def _airport_position(code: str) -> Position:
@@ -59,10 +91,10 @@ class Mission:
     def gc_distance(self) -> float:
         """Great circle distance between departure and arrival positions (m)."""
         return GEOD.inv(
-            self.origin_position.latitude,
             self.origin_position.longitude,
-            self.destination_position.latitude,
+            self.origin_position.latitude,
             self.destination_position.longitude,
+            self.destination_position.latitude,
         )[2]
 
     @property
@@ -90,22 +122,6 @@ class Mission:
                 )
             )
         return result
-
-    @classmethod
-    def from_query_result(cls, qr: QueryResult, load_factor: float = 1.0) -> Mission:
-        """Create a `Mission` instance from a `QueryResult` instance.
-
-        This is used for generating missions from mission database queries.
-        """
-        return cls(
-            origin=qr.origin,
-            destination=qr.destination,
-            departure=qr.departure,
-            arrival=qr.arrival,
-            load_factor=load_factor,  # (real load factor not in QueryResult)
-            aircraft_type=qr.aircraft_type,
-            flight_id=qr.id,  # The schedule ID is unique across the database
-        )
 
 
 def iso_to_timestamp(s: str) -> pd.Timestamp:

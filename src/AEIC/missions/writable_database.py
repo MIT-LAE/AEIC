@@ -604,10 +604,10 @@ class WritableDatabase(Database):
 
         gc_distance_km = (
             GEOD.inv(
-                origin.airport.latitude,
                 origin.airport.longitude,
-                destination.airport.latitude,
+                origin.airport.latitude,
                 destination.airport.longitude,
+                destination.airport.latitude,
             )[2]
             / 1000.0
         )
