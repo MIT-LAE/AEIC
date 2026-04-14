@@ -80,7 +80,7 @@ class Database:
         if not db_path.exists():
             raise RuntimeError(f'Database file {db_path} does not exist.')
 
-    def __call__(self, query: QueryBase[T]) -> Generator[T] | T:
+    def __call__(self, query: QueryBase[T]) -> Generator[T, None, None] | T:
         """Execute a query against the database.
 
         Results are returned via a generator that yields instances of the
@@ -104,9 +104,11 @@ class Database:
         if query.PROCESS_RESULT is not None:
             return query.PROCESS_RESULT(cur.execute(sql, params))
         else:
-            return self._yield_results(cur, sql, params, query.RESULT_TYPE)
+            return self._yield_results(
+                cur, sql, params, query.RESULT_CONSTRUCTION_TYPE or query.RESULT_TYPE
+            )
 
     @staticmethod
-    def _yield_results(cur, sql, params, result_type) -> Generator:
+    def _yield_results(cur, sql, params, result_type: type) -> Generator:
         for row in cur.execute(sql, params):
             yield result_type.from_row(row)

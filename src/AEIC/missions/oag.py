@@ -210,7 +210,7 @@ class CSVEntry:
             return None
 
     @classmethod
-    def read(cls, file_path: str) -> Generator[CSVEntry]:
+    def read(cls, file_path: str) -> Generator[CSVEntry, None, None]:
         """Read an OAG CSV file and yield CSVEntry instances for each row."""
         with open(file_path, newline='') as csvfile:
             for idx, row in enumerate(csv.DictReader(csvfile)):
