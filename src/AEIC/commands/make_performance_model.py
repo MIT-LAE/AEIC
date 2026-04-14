@@ -2,7 +2,8 @@ import tomllib
 from typing import Any
 
 import click
-import tomli_w
+import tomlkit
+from tomlkit import comment, document, nl, table
 
 from AEIC.config import Config, config
 
@@ -12,6 +13,175 @@ from AEIC.performance.apu import lookup_apu
 from AEIC.performance.edb import EDBEntry
 from AEIC.performance.models.base import LTOPerformanceInput
 from AEIC.performance.types import LTOPerformance
+
+_BANNER_WIDTH = 78
+
+_INLINE_COMMENTS = {
+    'aircraft_class': 'wide, narrow, small, freight',
+    'number_of_engines': 'Number of engines',
+    'APU_name': 'None: APU emissions not calculated',
+}
+
+_COL_COMMENTS = {
+    'fuel_flow': 'kg/s - REQUIRED; OUTPUT COLUMN',
+    'fl': 'Flight levels',
+    'tas': 'm/s',
+    'rocd': 'm/s',
+    'mass': 'kg',
+}
+
+_LTO_MODE_ORDER = ('idle', 'approach', 'climb', 'takeoff')
+_LTO_MODE_KEY_ORDER = ('thrust_frac', 'fuel_kgs', 'EI_NOx', 'EI_HC', 'EI_CO')
+_SPEED_PHASE_ORDER = ('climb', 'cruise', 'descent')
+_SPEED_KEY_ORDER = ('cas_low', 'cas_high', 'mach')
+
+
+def _add_top_banner(doc, title: str, description: str | None = None) -> None:
+    doc.add(comment('=' * _BANNER_WIDTH))
+    doc.add(comment(''))
+    doc.add(comment(f' {title}'))
+    doc.add(comment(''))
+    if description is not None:
+        doc.add(comment(description))
+
+
+def _add_sub_banner(doc, title: str) -> None:
+    doc.add(comment('-' * _BANNER_WIDTH))
+    doc.add(comment(''))
+    doc.add(comment(title))
+    doc.add(comment(''))
+
+
+def _set_with_inline(tbl, key: str, value: Any) -> None:
+    tbl[key] = value
+    if key in _INLINE_COMMENTS:
+        tbl[key].comment(_INLINE_COMMENTS[key])
+
+
+def _format_flight_performance(cols: list[str], data: list[list[float]]) -> str:
+    """Render the [flight_performance] section as a string with the
+    right-aligned numeric column layout used by the sample performance
+    model file."""
+    col_lines = []
+    for i, name in enumerate(cols):
+        sep = ',' if i < len(cols) - 1 else ''
+        quoted = f'"{name}"{sep}'
+        if name in _COL_COMMENTS:
+            col_lines.append(f'  {quoted}  # {_COL_COMMENTS[name]}')
+        else:
+            col_lines.append(f'  {quoted}')
+    cols_block = 'cols = [\n' + '\n'.join(col_lines) + '\n]'
+
+    cells = [[repr(float(v)) for v in row] for row in data]
+    widths = [max(len(row[c]) for row in cells) for c in range(len(cols))]
+    data_lines = []
+    for row in cells:
+        padded = ', '.join(row[c].rjust(widths[c]) for c in range(len(cols)))
+        data_lines.append(f'  [ {padded}],')
+    data_block = 'data = [\n' + '\n'.join(data_lines) + '\n]'
+
+    return '[flight_performance]\n' + cols_block + '\n\n' + data_block + '\n'
+
+
+def _fix_empty_comments(text: str) -> str:
+    """tomlkit renders `comment('')` as `# ` (with a trailing space);
+    strip the trailing space so empty banner lines are plain `#`."""
+    return text.replace('# \n', '#\n')
+
+
+def write_legacy_performance_toml(
+    path: str,
+    *,
+    aircraft_name: str,
+    aircraft_class: str,
+    isa_offset: int,
+    maximum_altitude_ft: int,
+    maximum_payload_kg: int,
+    number_of_engines: int,
+    apu_name: str | None,
+    lto_dump: dict[str, Any],
+    speeds_dump: dict[str, Any],
+    flight_performance: dict[str, Any],
+) -> None:
+    doc = document()
+    doc.add(comment('Performance model type (one of: legacy, bada, tasopt, piano).'))
+    doc['model_type'] = 'legacy'
+
+    doc.add(nl())
+    _add_top_banner(
+        doc, 'COMMON FIELDS', 'Fields common to all performance model types.'
+    )
+    doc.add(nl())
+
+    _set_with_inline(doc, 'aircraft_name', aircraft_name)
+    _set_with_inline(doc, 'aircraft_class', aircraft_class)
+    _set_with_inline(doc, 'ISA_offset', isa_offset)
+    _set_with_inline(doc, 'maximum_altitude_ft', maximum_altitude_ft)
+    _set_with_inline(doc, 'maximum_payload_kg', maximum_payload_kg)
+    _set_with_inline(doc, 'number_of_engines', number_of_engines)
+    if apu_name is not None:
+        _set_with_inline(doc, 'APU_name', apu_name)
+
+    doc.add(nl())
+    _add_sub_banner(doc, 'Speed data')
+
+    speeds_super = table(True)
+    for phase in _SPEED_PHASE_ORDER:
+        if phase not in speeds_dump:
+            continue
+        phase_tbl = table()
+        phase_data = speeds_dump[phase]
+        for key in _SPEED_KEY_ORDER:
+            if key in phase_data:
+                phase_tbl[key] = phase_data[key]
+        speeds_super.append(phase, phase_tbl)
+    doc['speeds'] = speeds_super
+
+    doc.add(nl())
+    _add_sub_banner(doc, 'LTO data')
+
+    lto_tbl = table()
+    lto_tbl['source'] = lto_dump['source']
+    lto_tbl['ICAO_UID'] = lto_dump['ICAO_UID']
+    if lto_dump['source'] == 'EDB':
+        lto_tbl['ICAO_UID'].comment('Add UID for EDB data')
+    lto_tbl['rated_thrust'] = lto_dump['rated_thrust']
+
+    mode_data = lto_dump.get('mode_data', {})
+    mode_super = table(True)
+    for mode in _LTO_MODE_ORDER:
+        if mode not in mode_data:
+            continue
+        mode_tbl = table()
+        md = mode_data[mode]
+        for key in _LTO_MODE_KEY_ORDER:
+            if key in md:
+                mode_tbl[key] = md[key]
+        mode_super.append(mode, mode_tbl)
+    lto_tbl.append('mode_data', mode_super)
+    doc['LTO_performance'] = lto_tbl
+
+    body = _fix_empty_comments(tomlkit.dumps(doc))
+    if not body.endswith('\n'):
+        body += '\n'
+
+    trailer_doc = document()
+    trailer_doc.add(nl())
+    trailer_doc.add(nl())
+    _add_top_banner(trailer_doc, 'MODEL-TYPE SPECIFIC FIELDS')
+    trailer_doc.add(nl())
+    _add_sub_banner(trailer_doc, 'Performance table data.')
+    trailer_doc.add(nl())
+    trailer = _fix_empty_comments(tomlkit.dumps(trailer_doc))
+
+    fp_section = _format_flight_performance(
+        flight_performance['cols'], flight_performance['data']
+    )
+
+    with open(path, 'w', encoding='utf-8') as fp:
+        fp.write(body)
+        fp.write(trailer)
+        fp.write(fp_section)
 
 
 def lto_from_edb(engine_file, engine_uid, thrust_fractions) -> LTOPerformance:
@@ -146,8 +316,6 @@ def legacy(
     if engine_file is not None:
         engine_file = config.file_location(engine_file)
 
-    toml_data: dict[str, Any] = {'model_type': 'legacy'}
-
     # LTO data comes either from the Emissions Databank (EDB) or user provided TOML file
     match lto_source:
         case 'edb':
@@ -156,29 +324,24 @@ def legacy(
             lto = lto_from_toml(lto_file)
         case _:
             raise click.UsageError(f'Unsupported LTO source: {lto_source}')
-    toml_data['LTO_performance'] = LTOPerformanceInput.from_internal(lto).model_dump()
+    lto_dump = LTOPerformanceInput.from_internal(lto).model_dump()
 
     # Parse BADA performance file.
     ptf_data = PTFData.load(ptf_file)
 
-    # Extract top-level data.
-    toml_data['aircraft_name'] = ptf_data.aircraft_type
-    toml_data['aircraft_class'] = aircraft_class
-    toml_data['ISA_offset'] = ptf_data.isa_offset
-    toml_data['maximum_altitude_ft'] = ptf_data.maximum_altitude_ft
-    toml_data['maximum_payload_kg'] = ptf_data.maximum_payload
-    toml_data['number_of_engines'] = number_of_engines
-    if apu_name is not None:
-        toml_data['APU_name'] = apu_name
-
-    # Extract speed data.
-    toml_data['speeds'] = ptf_data.speeds.model_dump()
-
-    # Extract performance table data.
-    toml_data['flight_performance'] = build_performance_table(ptf_data)
-
-    with open(ctx.obj['output_file'], 'wb') as fp:
-        tomli_w.dump(toml_data, fp)
+    write_legacy_performance_toml(
+        ctx.obj['output_file'],
+        aircraft_name=ptf_data.aircraft_type,
+        aircraft_class=aircraft_class,
+        isa_offset=ptf_data.isa_offset,
+        maximum_altitude_ft=ptf_data.maximum_altitude_ft,
+        maximum_payload_kg=ptf_data.maximum_payload,
+        number_of_engines=number_of_engines,
+        apu_name=apu_name,
+        lto_dump=lto_dump,
+        speeds_dump=ptf_data.speeds.model_dump(),
+        flight_performance=build_performance_table(ptf_data),
+    )
 
 
 @make_performance_model.command()
