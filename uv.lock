@@ -29,7 +29,6 @@ dependencies = [
     { name = "pyproj" },
     { name = "scipy" },
     { name = "timezonefinder" },
-    { name = "tomli-w" },
     { name = "tomlkit" },
     { name = "tqdm" },
     { name = "xarray" },
@@ -68,7 +67,6 @@ requires-dist = [
     { name = "pyproj", specifier = ">=3.7.2" },
     { name = "scipy", specifier = ">=1.16.3" },
     { name = "timezonefinder", specifier = ">=8.0.0" },
-    { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "tomlkit", specifier = ">=0.13" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "xarray", specifier = ">=2025.12.0" },
@@ -1879,15 +1877,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/22/78/7959800dd3c8eb2ce
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d5/30/770a072831fe83f98b67b565176b9353dd6a7494268070117e040b2589a8/timezonefinder-8.2.2-cp39-abi3-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1fe1c6dd2a6c3996472ae6917a7544d765bd74e84db2a9496942af55f60a0791", size = 53953449, upload-time = "2026-03-29T08:45:38.844Z" },
     { url = "https://files.pythonhosted.org/packages/1e/8f/28a9efd809eb197abe3688b60e192318f2f25ac6bc6c0e53812100af078e/timezonefinder-8.2.2-cp39-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:98c9cf6ff71e07629388533518ec5871d4764800c2bb6b9284981f9ac466c6f7", size = 53955422, upload-time = "2026-03-29T08:45:42.604Z" },
-]
-
-[[package]]
-name = "tomli-w"
-version = "1.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/19/75/241269d1da26b624c0d5e110e8149093c759b7a286138f4efd61a60e75fe/tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021", size = 7184, upload-time = "2025-01-15T12:07:24.262Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90", size = 6675, upload-time = "2025-01-15T12:07:22.074Z" },
 ]
 
 [[package]]

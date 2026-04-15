@@ -32,7 +32,6 @@ dependencies = [
     "scipy>=1.16.3",
     "pandas>=2.3.3",
     "xarray>=2025.12.0",
-    "tomli-w>=1.2.0",
     "zarr>=3.1.6",
     "numba>=0.65.0",
     "tomlkit>=0.13",
