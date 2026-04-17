@@ -10,8 +10,18 @@ engine_file = "engines/sample_edb.xlsx"
 # Use loaded weather to calculate wind vectors.
 use_weather = true
 
-# Location of weather data: files should be in YYYYMMDD.nc format.
+# Location of weather data.
 weather_data_dir = "weather"
+
+# Temporal layout of the ERA5 data on disk. Options:
+#   annual_mean, monthly_mean, daily_mean,
+#   hourly_daily_files, hourly_monthly_files.
+# Note: per-hour filenames (one file per hour with %H) are not supported.
+resolution = "hourly_daily_files"
+
+# strftime-style pattern for filenames relative to weather_data_dir.
+# Permitted tokens: %Y, %m, %d, %j, %H. Required tokens depend on resolution.
+file_format = "%Y%m%d.nc"
 
 
 [emissions]
