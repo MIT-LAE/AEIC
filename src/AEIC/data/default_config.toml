@@ -13,15 +13,19 @@ use_weather = true
 # Location of weather data.
 weather_data_dir = "weather"
 
-# Temporal layout of the ERA5 data on disk. Options:
-#   annual_mean, monthly_mean, daily_mean,
-#   hourly_daily_files, hourly_monthly_files.
-# Note: per-hour filenames (one file per hour with %H) are not supported.
-resolution = "hourly_daily_files"
+# Temporal layout of weather files on disk. One file per period.
+# Options: annual, monthly, daily. (Per-hour files are not supported.)
+file_resolution = "daily"
 
-# strftime-style pattern for filenames relative to weather_data_dir.
-# Permitted tokens: %Y, %m, %d, %j, %H. Required tokens depend on resolution.
-file_format = "%Y%m%d.nc"
+# Optional. Temporal resolution of data within each file. Defaults to
+# file_resolution (one period-mean per file). Must be finer-or-equal to
+# file_resolution. Options: annual, monthly, daily, hourly.
+# data_resolution = "hourly"
+
+# Optional. strftime-style filename pattern relative to weather_data_dir.
+# Defaults from file_resolution: %Y.nc (annual), %Y-%m.nc (monthly),
+# %Y-%m-%d.nc (daily). Permitted tokens depend on file_resolution.
+# file_format = "%Y%m%d.nc"
 
 
 [emissions]

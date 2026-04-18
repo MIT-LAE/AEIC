@@ -123,7 +123,8 @@ class LegacyContext(Context):
         if builder.options.use_weather:
             self.weather = Weather(
                 data_dir=config.weather.weather_data_dir,
-                resolution=config.weather.resolution,
+                file_resolution=config.weather.file_resolution,
+                data_resolution=config.weather.data_resolution,
                 file_format=config.weather.file_format,
             )
 

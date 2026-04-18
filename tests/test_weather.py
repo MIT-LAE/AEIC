@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from AEIC.config.weather import WeatherConfig, WeatherResolution
+from AEIC.config.weather import TemporalResolution, WeatherConfig
 from AEIC.missions import Mission
 from AEIC.missions.mission import iso_to_timestamp
 from AEIC.trajectories.ground_track import GroundTrack
@@ -34,12 +34,20 @@ def ground_track():
 
 @pytest.fixture
 def sample_weather(test_data_dir):
-    return Weather(data_dir=test_data_dir / 'weather')
+    # On-disk fixture is a single time slice (no valid_time dim) -- a daily
+    # mean -- so file_resolution=daily and data_resolution defaults to daily.
+    return Weather(
+        data_dir=test_data_dir / 'weather',
+        file_resolution=TemporalResolution.DAILY,
+    )
 
 
 def test_weather_init_with_bad_str():
     with pytest.raises(FileNotFoundError):
-        Weather(data_dir='missing-directory')
+        Weather(
+            data_dir='missing-directory',
+            file_resolution=TemporalResolution.DAILY,
+        )
 
 
 def test_compute_ground_speed(sample_weather, ground_track):
@@ -120,10 +128,14 @@ def _write_mean_file(path: Path, *, with_valid_time: bool) -> None:
     ds.to_netcdf(path)
 
 
+def _write_multi_file(path: Path, valid_time: pd.DatetimeIndex) -> None:
+    ds = _base_dataset(valid_time)
+    ds.to_netcdf(path)
+
+
 def _write_hourly_file(path: Path, start: pd.Timestamp, hours: int) -> None:
     vt = pd.date_range(start=start, periods=hours, freq='h')
-    ds = _base_dataset(vt)
-    ds.to_netcdf(path)
+    _write_multi_file(path, vt)
 
 
 # ---------------------------------------------------------------------------
@@ -131,74 +143,130 @@ def _write_hourly_file(path: Path, start: pd.Timestamp, hours: int) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_weather_resolution_enum_case_insensitive():
-    assert (
-        WeatherResolution('Hourly_Daily_Files') is WeatherResolution.HOURLY_DAILY_FILES
-    )
-    assert WeatherResolution('ANNUAL_MEAN') is WeatherResolution.ANNUAL_MEAN
+def test_temporal_resolution_enum_case_insensitive():
+    assert TemporalResolution('Hourly') is TemporalResolution.HOURLY
+    assert TemporalResolution('ANNUAL') is TemporalResolution.ANNUAL
+    assert TemporalResolution('Daily') is TemporalResolution.DAILY
 
 
 def test_default_weather_config_validates():
     cfg = WeatherConfig()
-    assert cfg.resolution is WeatherResolution.HOURLY_DAILY_FILES
-    assert cfg.file_format == '%Y%m%d.nc'
+    assert cfg.file_resolution is TemporalResolution.DAILY
+    assert cfg.data_resolution is None
+    assert cfg.effective_data_resolution is TemporalResolution.DAILY
+    assert cfg.file_format is None
+    assert cfg.effective_file_format == '%Y-%m-%d.nc'
+
+
+def test_file_resolution_hourly_rejected():
+    with pytest.raises(ValueError, match='[Pp]er-hour files'):
+        WeatherConfig(file_resolution=TemporalResolution.HOURLY)
+
+
+@pytest.mark.parametrize(
+    'file_res,data_res,should_pass',
+    [
+        (TemporalResolution.ANNUAL, TemporalResolution.ANNUAL, True),
+        (TemporalResolution.ANNUAL, TemporalResolution.MONTHLY, True),
+        (TemporalResolution.ANNUAL, TemporalResolution.DAILY, True),
+        (TemporalResolution.ANNUAL, TemporalResolution.HOURLY, True),
+        (TemporalResolution.MONTHLY, TemporalResolution.MONTHLY, True),
+        (TemporalResolution.MONTHLY, TemporalResolution.DAILY, True),
+        (TemporalResolution.MONTHLY, TemporalResolution.HOURLY, True),
+        (TemporalResolution.DAILY, TemporalResolution.DAILY, True),
+        (TemporalResolution.DAILY, TemporalResolution.HOURLY, True),
+        # Invalid: data coarser than file.
+        (TemporalResolution.DAILY, TemporalResolution.MONTHLY, False),
+        (TemporalResolution.DAILY, TemporalResolution.ANNUAL, False),
+        (TemporalResolution.MONTHLY, TemporalResolution.ANNUAL, False),
+    ],
+)
+def test_data_le_file_validation(file_res, data_res, should_pass):
+    if should_pass:
+        cfg = WeatherConfig(file_resolution=file_res, data_resolution=data_res)
+        assert cfg.effective_data_resolution is data_res
+    else:
+        with pytest.raises(ValueError, match='finer-or-equal'):
+            WeatherConfig(file_resolution=file_res, data_resolution=data_res)
+
+
+def test_data_resolution_defaults_to_file_resolution():
+    cfg = WeatherConfig(file_resolution=TemporalResolution.MONTHLY)
+    assert cfg.data_resolution is None
+    assert cfg.effective_data_resolution is TemporalResolution.MONTHLY
+
+
+def test_file_format_defaults_per_resolution():
+    assert (
+        WeatherConfig(file_resolution=TemporalResolution.ANNUAL).effective_file_format
+        == '%Y.nc'
+    )
+    assert (
+        WeatherConfig(file_resolution=TemporalResolution.MONTHLY).effective_file_format
+        == '%Y-%m.nc'
+    )
+    assert (
+        WeatherConfig(file_resolution=TemporalResolution.DAILY).effective_file_format
+        == '%Y-%m-%d.nc'
+    )
 
 
 def test_file_format_rejects_unknown_token():
     with pytest.raises(ValueError, match='unsupported strftime token'):
         WeatherConfig(
-            resolution=WeatherResolution.HOURLY_DAILY_FILES,
+            file_resolution=TemporalResolution.DAILY,
             file_format='%Y-%M-%d.nc',  # %M = minute
+        )
+
+
+def test_file_format_rejects_hourly_token():
+    # %H is never allowed since file_resolution can't be hourly.
+    with pytest.raises(ValueError, match='unsupported strftime token'):
+        WeatherConfig(
+            file_resolution=TemporalResolution.DAILY,
+            file_format='%Y%m%d%H.nc',
         )
 
 
 def test_file_format_rejects_tz_token():
     with pytest.raises(ValueError, match='unsupported strftime token'):
         WeatherConfig(
-            resolution=WeatherResolution.DAILY_MEAN,
+            file_resolution=TemporalResolution.DAILY,
             file_format='%Y%m%d%z.nc',
         )
 
 
 @pytest.mark.parametrize(
-    'resolution,file_format,should_pass',
+    'file_resolution,file_format,should_pass',
     [
-        # ANNUAL_MEAN
-        (WeatherResolution.ANNUAL_MEAN, 'annual.nc', True),
-        (WeatherResolution.ANNUAL_MEAN, '%Y.nc', True),
-        (WeatherResolution.ANNUAL_MEAN, '%Y-%m.nc', False),
-        # MONTHLY_MEAN
-        (WeatherResolution.MONTHLY_MEAN, '%Y-%m.nc', True),
-        (WeatherResolution.MONTHLY_MEAN, '%Y.nc', False),
-        (WeatherResolution.MONTHLY_MEAN, '%Y-%m-%d.nc', False),
-        (WeatherResolution.MONTHLY_MEAN, 'constant.nc', False),
-        # DAILY_MEAN
-        (WeatherResolution.DAILY_MEAN, '%Y%m%d.nc', True),
-        (WeatherResolution.DAILY_MEAN, '%Y-%j.nc', True),
-        (WeatherResolution.DAILY_MEAN, '%Y-%m.nc', False),
-        (WeatherResolution.DAILY_MEAN, '%Y%m%d%H.nc', False),
-        # HOURLY_DAILY_FILES
-        (WeatherResolution.HOURLY_DAILY_FILES, '%Y%m%d.nc', True),
-        (WeatherResolution.HOURLY_DAILY_FILES, '%Y-%j.nc', True),
-        (WeatherResolution.HOURLY_DAILY_FILES, '%Y%m%d%H.nc', False),
-        # HOURLY_MONTHLY_FILES
-        (WeatherResolution.HOURLY_MONTHLY_FILES, '%Y-%m.nc', True),
-        (WeatherResolution.HOURLY_MONTHLY_FILES, '%Y-%m-%d.nc', False),
-        (WeatherResolution.HOURLY_MONTHLY_FILES, 'constant.nc', False),
+        # ANNUAL
+        (TemporalResolution.ANNUAL, 'annual.nc', True),
+        (TemporalResolution.ANNUAL, '%Y.nc', True),
+        (TemporalResolution.ANNUAL, '%Y-%m.nc', False),
+        # MONTHLY
+        (TemporalResolution.MONTHLY, '%Y-%m.nc', True),
+        (TemporalResolution.MONTHLY, '%Y.nc', False),
+        (TemporalResolution.MONTHLY, '%Y-%m-%d.nc', False),
+        (TemporalResolution.MONTHLY, 'constant.nc', False),
+        # DAILY
+        (TemporalResolution.DAILY, '%Y%m%d.nc', True),
+        (TemporalResolution.DAILY, '%Y-%j.nc', True),
+        (TemporalResolution.DAILY, '%Y-%m.nc', False),
+        (TemporalResolution.DAILY, 'constant.nc', False),
     ],
 )
-def test_format_resolution_coupling(resolution, file_format, should_pass):
+def test_format_resolution_coupling(file_resolution, file_format, should_pass):
     if should_pass:
-        cfg = WeatherConfig(resolution=resolution, file_format=file_format)
-        assert cfg.resolution is resolution
+        cfg = WeatherConfig(file_resolution=file_resolution, file_format=file_format)
+        assert cfg.file_resolution is file_resolution
         assert cfg.file_format == file_format
     else:
         with pytest.raises(ValueError):
-            WeatherConfig(resolution=resolution, file_format=file_format)
+            WeatherConfig(file_resolution=file_resolution, file_format=file_format)
 
 
 # ---------------------------------------------------------------------------
-# Per-resolution integration tests
+# Per-resolution integration tests (data == file: squeeze)
 # ---------------------------------------------------------------------------
 
 
@@ -215,7 +283,7 @@ def test_annual_mean_reads_single_file(tmp_path):
     _write_mean_file(tmp_path / 'annual.nc', with_valid_time=False)
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.ANNUAL_MEAN,
+        file_resolution=TemporalResolution.ANNUAL,
         file_format='annual.nc',
     )
     for t in [
@@ -230,7 +298,7 @@ def test_annual_mean_with_length_one_valid_time_is_squeezed(tmp_path):
     _write_mean_file(tmp_path / 'annual.nc', with_valid_time=True)
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.ANNUAL_MEAN,
+        file_resolution=TemporalResolution.ANNUAL,
         file_format='annual.nc',
     )
     assert _run_probe(w, pd.Timestamp('2024-06-15')) == pytest.approx(
@@ -243,8 +311,7 @@ def test_monthly_mean_switches_files_on_month_boundary(tmp_path):
         _write_mean_file(tmp_path / f'2024-{month:02d}.nc', with_valid_time=False)
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.MONTHLY_MEAN,
-        file_format='%Y-%m.nc',
+        file_resolution=TemporalResolution.MONTHLY,
     )
     assert _run_probe(w, pd.Timestamp('2024-01-15')) == pytest.approx(
         _EXPECTED_GS, rel=1e-4
@@ -261,7 +328,7 @@ def test_daily_mean_with_doy_format(tmp_path):
         _write_mean_file(tmp_path / date.strftime('%Y-%j.nc'), with_valid_time=False)
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.DAILY_MEAN,
+        file_resolution=TemporalResolution.DAILY,
         file_format='%Y-%j.nc',
     )
     assert _run_probe(w, pd.Timestamp('2024-01-02T06:00')) == pytest.approx(
@@ -269,7 +336,12 @@ def test_daily_mean_with_doy_format(tmp_path):
     )
 
 
-def test_hourly_daily_files_sel_by_value(tmp_path):
+# ---------------------------------------------------------------------------
+# Per-resolution integration tests (data < file: select by date components)
+# ---------------------------------------------------------------------------
+
+
+def test_hourly_data_in_daily_files(tmp_path):
     _write_hourly_file(
         tmp_path / '20240601.nc',
         start=pd.Timestamp('2024-06-01T00:00'),
@@ -277,7 +349,8 @@ def test_hourly_daily_files_sel_by_value(tmp_path):
     )
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.HOURLY_DAILY_FILES,
+        file_resolution=TemporalResolution.DAILY,
+        data_resolution=TemporalResolution.HOURLY,
         file_format='%Y%m%d.nc',
     )
     for hour in (0, 7, 23):
@@ -285,8 +358,7 @@ def test_hourly_daily_files_sel_by_value(tmp_path):
         assert _run_probe(w, t) == pytest.approx(_EXPECTED_GS, rel=1e-4)
 
 
-def test_hourly_monthly_files(tmp_path):
-    # Write a file for 2024-06: 720 hourly entries.
+def test_hourly_data_in_monthly_files(tmp_path):
     _write_hourly_file(
         tmp_path / '2024-06.nc',
         start=pd.Timestamp('2024-06-01T00:00'),
@@ -294,13 +366,181 @@ def test_hourly_monthly_files(tmp_path):
     )
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.HOURLY_MONTHLY_FILES,
-        file_format='%Y-%m.nc',
+        file_resolution=TemporalResolution.MONTHLY,
+        data_resolution=TemporalResolution.HOURLY,
     )
-    # Probe at multiple days within the month — all land in the same file.
     for day in (1, 15, 30):
         t = pd.Timestamp(f'2024-06-{day:02d}T12:00')
         assert _run_probe(w, t) == pytest.approx(_EXPECTED_GS, rel=1e-4)
+
+
+def test_daily_data_in_monthly_files(tmp_path):
+    vt = pd.date_range(start='2024-06-01', periods=30, freq='D')
+    _write_multi_file(tmp_path / '2024-06.nc', vt)
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.MONTHLY,
+        data_resolution=TemporalResolution.DAILY,
+    )
+    for day in (1, 15, 30):
+        # Query at any time within the day; should pick that day's entry.
+        t = pd.Timestamp(f'2024-06-{day:02d}T18:30')
+        assert _run_probe(w, t) == pytest.approx(_EXPECTED_GS, rel=1e-4)
+
+
+def test_monthly_data_in_annual_file(tmp_path):
+    # Mid-month timestamps (the failure mode that motivated round-then-exact).
+    vt = pd.DatetimeIndex([pd.Timestamp(f'2024-{m:02d}-15') for m in range(1, 13)])
+    _write_multi_file(tmp_path / '2024.nc', vt)
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.ANNUAL,
+        data_resolution=TemporalResolution.MONTHLY,
+    )
+    # Each query inside its month (including end-of-month, which would be
+    # closer to the next month's entry under nearest+tolerance).
+    for month in (1, 6, 12):
+        t = pd.Timestamp(f'2024-{month:02d}-28T23:00')
+        assert _run_probe(w, t) == pytest.approx(_EXPECTED_GS, rel=1e-4)
+
+
+def test_monthly_in_annual_picks_correct_month_at_period_boundary(tmp_path):
+    # File entries are at mid-month (15th). Query at 2024-03-31:
+    #   distance to 2024-03-15 = 16 days
+    #   distance to 2024-04-15 = 15 days
+    # nearest+tolerance would silently pick April. Round-then-exact picks March.
+    # Verify by writing distinguishable values per month and checking we get the
+    # March slice.
+    pl_count = len(_PRESSURE_LEVELS)
+    lat_count = len(_LATITUDES)
+    lon_count = len(_LONGITUDES)
+
+    # Per-month wind_u: month 1 → 1.0, month 2 → 2.0, ..., month 12 → 12.0.
+    months = list(range(1, 13))
+    vt = pd.DatetimeIndex([pd.Timestamp(f'2024-{m:02d}-15') for m in months])
+    u_vals = np.zeros((12, pl_count, lat_count, lon_count), dtype=np.float32)
+    for i, m in enumerate(months):
+        u_vals[i, ...] = float(m)
+    v_vals = np.zeros_like(u_vals)
+    t_vals = np.full_like(u_vals, 220.0)
+
+    ds = xr.Dataset(
+        {
+            'u': (
+                ('valid_time', 'pressure_level', 'latitude', 'longitude'),
+                u_vals,
+            ),
+            'v': (
+                ('valid_time', 'pressure_level', 'latitude', 'longitude'),
+                v_vals,
+            ),
+            't': (
+                ('valid_time', 'pressure_level', 'latitude', 'longitude'),
+                t_vals,
+            ),
+        },
+        coords={
+            'valid_time': vt,
+            'pressure_level': _PRESSURE_LEVELS,
+            'latitude': _LATITUDES,
+            'longitude': _LONGITUDES,
+        },
+    )
+    ds.to_netcdf(tmp_path / '2024.nc')
+
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.ANNUAL,
+        data_resolution=TemporalResolution.MONTHLY,
+    )
+    # Query on 2024-03-31. Expected u_air = 200 (TAS, azimuth=0); wind_u for
+    # March is 3.0; ground speed = hypot(203, 0) = 203.
+    gs = _run_probe(w, pd.Timestamp('2024-03-31T23:00'))
+    assert gs == pytest.approx(203.0, rel=1e-4)
+    # Sanity check: querying in April returns wind_u=4 → gs=204.
+    gs = _run_probe(w, pd.Timestamp('2024-04-15T00:00'))
+    assert gs == pytest.approx(204.0, rel=1e-4)
+
+
+def test_daily_data_in_annual_file(tmp_path):
+    vt = pd.date_range(start='2024-01-01', periods=10, freq='D')
+    _write_multi_file(tmp_path / '2024.nc', vt)
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.ANNUAL,
+        data_resolution=TemporalResolution.DAILY,
+    )
+    for day in (1, 5, 10):
+        t = pd.Timestamp(f'2024-01-{day:02d}T12:00')
+        assert _run_probe(w, t) == pytest.approx(_EXPECTED_GS, rel=1e-4)
+
+
+def test_hourly_data_in_annual_file(tmp_path):
+    # Just write a small slice of an annual hourly file: 48 hours.
+    _write_hourly_file(
+        tmp_path / '2024.nc',
+        start=pd.Timestamp('2024-01-01T00:00'),
+        hours=48,
+    )
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.ANNUAL,
+        data_resolution=TemporalResolution.HOURLY,
+    )
+    for t in [
+        pd.Timestamp('2024-01-01T00:00'),
+        pd.Timestamp('2024-01-01T17:00'),
+        pd.Timestamp('2024-01-02T05:00'),
+    ]:
+        assert _run_probe(w, t) == pytest.approx(_EXPECTED_GS, rel=1e-4)
+
+
+# ---------------------------------------------------------------------------
+# L1 file-content validation
+# ---------------------------------------------------------------------------
+
+
+def test_l1_squeeze_case_rejects_multi_entry_file(tmp_path):
+    # Config says daily mean (data == file == DAILY) but file has 24 entries.
+    _write_hourly_file(
+        tmp_path / '2024-06-01.nc',
+        start=pd.Timestamp('2024-06-01T00:00'),
+        hours=24,
+    )
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.DAILY,
+    )
+    with pytest.raises(ValueError, match='expected 0 or 1 valid_time'):
+        _run_probe(w, pd.Timestamp('2024-06-01T12:00'))
+
+
+def test_l1_multi_case_rejects_missing_valid_time(tmp_path):
+    # Config says hourly_in_daily but file has no valid_time dim.
+    _write_mean_file(tmp_path / '2024-06-01.nc', with_valid_time=False)
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.DAILY,
+        data_resolution=TemporalResolution.HOURLY,
+    )
+    with pytest.raises(ValueError, match='no valid_time dim'):
+        _run_probe(w, pd.Timestamp('2024-06-01T12:00'))
+
+
+def test_l1_multi_case_rejects_single_entry(tmp_path):
+    # Config says hourly_in_daily but file has only 1 valid_time entry.
+    _write_hourly_file(
+        tmp_path / '2024-06-01.nc',
+        start=pd.Timestamp('2024-06-01T00:00'),
+        hours=1,
+    )
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.DAILY,
+        data_resolution=TemporalResolution.HOURLY,
+    )
+    with pytest.raises(ValueError, match='but file has 1'):
+        _run_probe(w, pd.Timestamp('2024-06-01T00:00'))
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +552,7 @@ def test_annual_file_opens_once(tmp_path):
     _write_mean_file(tmp_path / 'annual.nc', with_valid_time=False)
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.ANNUAL_MEAN,
+        file_resolution=TemporalResolution.ANNUAL,
         file_format='annual.nc',
     )
     with patch('AEIC.weather.xr.open_dataset', wraps=xr.open_dataset) as spy:
@@ -327,7 +567,7 @@ def test_daily_mean_reopens_on_midnight(tmp_path):
         _write_mean_file(tmp_path / date.strftime('%Y%m%d.nc'), with_valid_time=False)
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.DAILY_MEAN,
+        file_resolution=TemporalResolution.DAILY,
         file_format='%Y%m%d.nc',
     )
     with patch('AEIC.weather.xr.open_dataset', wraps=xr.open_dataset) as spy:
@@ -349,8 +589,8 @@ def test_hourly_monthly_files_no_reopen_within_month(tmp_path):
     )
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.HOURLY_MONTHLY_FILES,
-        file_format='%Y-%m.nc',
+        file_resolution=TemporalResolution.MONTHLY,
+        data_resolution=TemporalResolution.HOURLY,
     )
     with patch('AEIC.weather.xr.open_dataset', wraps=xr.open_dataset) as spy:
         _run_probe(w, pd.Timestamp('2024-06-01T00:00'))
@@ -368,19 +608,20 @@ def test_hourly_monthly_files_no_reopen_within_month(tmp_path):
 
 
 def test_hourly_sel_miss_raises(tmp_path):
-    # Sparse file — only hour 0 present. Query at hour 12 → beyond 1h tolerance.
+    # File has hours 0 and 1; query at hour 5 → no matching hour → KeyError.
     _write_hourly_file(
         tmp_path / '20240101.nc',
         start=pd.Timestamp('2024-01-01T00:00'),
-        hours=1,
+        hours=2,
     )
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.HOURLY_DAILY_FILES,
+        file_resolution=TemporalResolution.DAILY,
+        data_resolution=TemporalResolution.HOURLY,
         file_format='%Y%m%d.nc',
     )
     with pytest.raises(KeyError):
-        _run_probe(w, pd.Timestamp('2024-01-01T12:00'))
+        _run_probe(w, pd.Timestamp('2024-01-01T05:00'))
 
 
 def test_tz_aware_timestamp_coerced_to_utc(tmp_path):
@@ -388,7 +629,7 @@ def test_tz_aware_timestamp_coerced_to_utc(tmp_path):
     _write_mean_file(tmp_path / '20240902.nc', with_valid_time=False)
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.DAILY_MEAN,
+        file_resolution=TemporalResolution.DAILY,
         file_format='%Y%m%d.nc',
     )
     # 22:00 in New York on 2024-09-01 = 02:00 UTC on 2024-09-02.
@@ -424,7 +665,8 @@ def test_non_datetime_valid_time_rejected(tmp_path):
     ds.to_netcdf(tmp_path / '20240101.nc')
     w = Weather(
         data_dir=tmp_path,
-        resolution=WeatherResolution.HOURLY_DAILY_FILES,
+        file_resolution=TemporalResolution.DAILY,
+        data_resolution=TemporalResolution.HOURLY,
         file_format='%Y%m%d.nc',
     )
     with pytest.raises(TypeError, match='datetime64'):
