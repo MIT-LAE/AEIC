@@ -137,6 +137,8 @@ surface), or **Minor** (cosmetic, duplication, typos).
   `~/.local/bin` outside the uv environment and may surprise uv users.
   *Fix:* prefer `uv tool install pre-commit` (installs into uv's tool bin)
   or document both paths.
+  **DONE** — recommend `uv tool install pre-commit` in the primary step
+  and keep `pip install --user pre-commit` as a documented fallback.
 
 ### Spot-check of code examples (Tier-iii)
 
