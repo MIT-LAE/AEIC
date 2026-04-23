@@ -171,7 +171,7 @@ minute.
 
 - **`test_emission_functions.py:71`:** add `()` to `.all` — fix #1
   headline. (`np.testing.assert_allclose(result, out_result)` is
-  preferable since it reports the diff on failure.)
+  preferable since it reports the diff on failure.) *[DONE]*
 - **`test_mission_db.py:150`:** change `'random()' in sql` to
   `'det_random()' in sql` — pins the reproducibility contract
   ([Phase 2](#tests-test_mission_dbpy-3-tests)).

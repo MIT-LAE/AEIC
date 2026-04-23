@@ -68,7 +68,7 @@ class TestEI_HCCO:
                 157.25298236,
             ]
         )
-        assert np.isclose(result, out_result).all
+        np.testing.assert_allclose(result, out_result)
 
     def test_basic_functionality(self):
         """Test basic HC+CO emissions calculation"""
