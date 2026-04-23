@@ -24,7 +24,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 6 | Major | `docs/src/parsers.md` | Empty stub page listed in TOC; `AEIC.parsers` has three submodules (`lto_reader`, `opf_reader`, `ptf_reader`) that are entirely undocumented. **DONE** |
 | 7 | Major | `docs/src/emission.md:113` | Cross-ref target `AEIC.emission.emission.Emissions` (singular) — correct path is `AEIC.emissions.emission.Emissions`. Broken link. **DONE** |
 | 8 | Major | `docs/src/mission_database.md:82, 286` | `AEIC.missions.WritableDatabase` is not exported from `__init__.py`; cross-refs won't resolve. **DONE** |
-| 9 | Major | `data-dictionary.md:11` | Malformed table row (only 3 cells for "Airspeed") AND content drifts from the canonical copy in `docs/src/developer/conventions.md`. |
+| 9 | Major | `data-dictionary.md:11` | Malformed table row (only 3 cells for "Airspeed") AND content drifts from the canonical copy in `docs/src/developer/conventions.md`. **DONE** |
 | 10 | Major | `docs/src/gridding.md:345, 349` | `autofunction` directives reference `map_phase` / `reduce_phase` in `AEIC.commands.trajectories_to_grid`, which are command-module internals, not public API. |
 
 ---
@@ -269,6 +269,10 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   `conventions.md` as the single source of truth (Sphinx reference anchor
   `data-dictionary` already exists). Add a redirect note in the root
   file if anything links to it externally.
+  **DONE** — deleted `data-dictionary.md` at the repo root; the only
+  internal references were from `docs/src/developer/conventions.md`
+  (the `(data-dictionary)=` anchor) and this review document itself, so
+  no redirect stub was needed.
 
 - **Minor** `README.md:7-62` vs `docs/main_page.md:1-29`
   Installation and Units sections are duplicated. `pyproject.toml:84-87`
