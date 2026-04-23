@@ -166,6 +166,9 @@ non-underscore names for plain modules) that are not mentioned in any
   paths rather than the curated top-level exports.
   *Fix:* add a short `docs/src/storage.md` page (or a section in
   `trajectory_stores.md`), with `automodule AEIC.storage`.
+  **DONE** — added `docs/src/storage.md` with an overview of the field
+  sets / dimensions / phase / reproducibility groupings and an
+  `automodule AEIC.storage` block; linked from `docs/index.rst`.
 
 - **Major** `AEIC.trajectories.BASE_FIELDSET_NAME` — exported, not
   referenced anywhere in docs.
