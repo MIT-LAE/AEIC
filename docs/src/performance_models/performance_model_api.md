@@ -40,7 +40,7 @@ model selector is essentially just a function from a {py:class}`Mission
 performance model to use for each mission.
 
 A simple performance model selector implementation is provided by the
-{py:class}`SimplPerformanceModelSelector
+{py:class}`SimplePerformanceModelSelector
 <AEIC.performance.model_selector.SimplePerformanceModelSelector>` class. This
 class implements a simple mapping from aircraft type to performance model
 based on the contents of a directory that holds TOML performance model files

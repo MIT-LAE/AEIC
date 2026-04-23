@@ -107,6 +107,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
   'e'). The *target* is correct (`SimplePerformanceModelSelector`), but
   the rendered label is wrong.
   *Fix:* change to `{py:class}`SimplePerformanceModelSelector <...>``.
+  **DONE** — fixed the visible label to `SimplePerformanceModelSelector`.
 
 - **Major** `docs/src/developer/tools.md:7` → `pyproject.toml:18`
   "AEIC uses Python 3.13." `pyproject.toml` pins
