@@ -23,6 +23,8 @@ of performance model TOML files.
 
 ```{warning}
 Currently, this can obviously only generate "legacy" performance model files!
+A `tasopt` subcommand is also registered (`aeic make-performance-model
+tasopt ...`) but is a stub that currently raises `NotImplementedError`.
 
 Also, the script is unfinished and needs some work by Adi and/or Wyatt to pin
 down some of the choices for generating the performance table and LTO data.

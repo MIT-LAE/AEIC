@@ -262,6 +262,9 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   model is implemented" but don't mention the stub subcommand exists.
   *Fix:* either hide the subcommand until implemented, or add a single
   line noting `tasopt` exists and raises `NotImplementedError`.
+  **DONE** — added a line inside the existing warning in
+  `performance_model_files.md` noting that `aeic make-performance-model
+  tasopt` is registered but currently raises `NotImplementedError`.
 
 - **Minor** No top-level "CLI reference" index in `docs/index.rst`.
   Users must hunt across `gridding.md`, `oag.md`, and
