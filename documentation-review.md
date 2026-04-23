@@ -369,6 +369,9 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   **DONE** — changed `Example::` to `Example:` in `weather.md`.
 - **Minor** `docs/src/emission.md:80, 89` — typo "emissiosn" (two
   occurrences) in the workflow description.
+  **DONE** — fixed both occurrences of "emissiosn" → "emissions"
+  (actual lines were 69 and 80; review's line numbers were slightly
+  off but the typos were unambiguous).
 - **Minor** `docs/src/trajectories/trajectory_builders.md` §Legacy —
   coverage builder reports `LegacyBuilder.fly_climb` and
   `LegacyBuilder.fly_descent` have no docstrings. `fly_cruise` does have

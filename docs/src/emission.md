@@ -66,7 +66,7 @@ steps:
    values provided in the trajectory.
 2. Calls the `AEIC.emissions.trajectory.get_trajectory_emissions` function to
    calculate per-segment emission indices and emission values along the
-   trajectory. (If the emissiosn configuration flag `climb_descent_mode` is
+   trajectory. (If the emissions configuration flag `climb_descent_mode` is
    set to `lto`, trajectory emissions are only returned for the cruise phase
    of the flight.)
    - For some species (CO₂, H₂O, SO₂, SO₄), constant fuel-dependent emission
@@ -77,7 +77,7 @@ steps:
      speciation ratios.
 3. Calls the `AEIC.emissions.lto.get_LTO_emissions` function to calculate
    ICAO-style landing and take off emissions using the per-mode inputs
-   embedded in the performance file. (If the emissiosn configuration flag
+   embedded in the performance file. (If the emissions configuration flag
    `climb_descent_mode` is set to `trajectory`, LTO emissions are not returned
    for the climb and approach phases of the flight, since these are included
    in the trajectory emissions.)
