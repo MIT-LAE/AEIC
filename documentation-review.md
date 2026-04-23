@@ -18,7 +18,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 |---|----------|-------|---------|
 | 1 | Critical | `docs/src/oag.md:21` | `convert-oag-data` example uses `uv run convert-oag-data` — command no longer exists; must be `aeic convert-oag-data`. **DONE** |
 | 2 | Critical | `docs/src/performance_models/performance_model_files.md:35-43` | `make-performance-model` example is stale (wrong invocation + missing required `--lto-source` flag). Example will not run. **DONE** |
-| 3 | Critical | `docs/src/configuration.md:51` | Example imports `LTOInputMode` from `AEIC.config`; no such name exists. Import raises `ImportError`. |
+| 3 | Critical | `docs/src/configuration.md:51` | Example imports `LTOInputMode` from `AEIC.config`; no such name exists. Import raises `ImportError`. **DONE** |
 | 4 | Major | `docs/src/developer/tools.md:7` | Claims "AEIC uses Python 3.13"; `pyproject.toml` requires `>=3.12,<3.13`. Actively wrong. |
 | 5 | Major | CLI coverage | `aeic run`, `aeic merge-stores`, `aeic make-file-bundle` have no documentation pages and no mention in the TOC. |
 | 6 | Major | `docs/src/parsers.md` | Empty stub page listed in TOC; `AEIC.parsers` has three submodules (`lto_reader`, `opf_reader`, `ptf_reader`) that are entirely undocumented. |
@@ -63,6 +63,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
   in the tree. The rest of the example only uses `Config.load(...)`, so
   `LTOInputMode` is a stale leftover.
   *Fix:* remove `LTOInputMode` from the import.
+  **DONE** — removed `LTOInputMode` from the import in the example.
 
 ### Major — divergent prose, broken xrefs, module-path typos
 

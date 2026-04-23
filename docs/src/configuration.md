@@ -47,7 +47,7 @@ false (it defaults to true). All other values are taken from the default
 configuration that's included in the AEIC package.
 
 ```python
-from AEIC.config import Config, LTOInputMode
+from AEIC.config import Config
 
 Config.load(emissions=dict(lifecycle_enabled=False))
 ```
