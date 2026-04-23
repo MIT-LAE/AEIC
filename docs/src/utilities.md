@@ -56,7 +56,6 @@ print(f'{ap.name} @ {ap.elevation} MSL')
 ```{eval-rst}
 .. automodule:: AEIC.utils.airports
     :members:
-    :exclude-members: CountriesData, AirportsData
 ```
 
 ## Unit conversion

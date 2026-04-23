@@ -384,6 +384,12 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   then appear as undocumented in the coverage builder output because
   they're not documented elsewhere. If they're intended to be internal,
   this is fine; if public, they need their own autoclass directives.
+  **DONE** — both classes have class-level docstrings in source and
+  are reachable via `AEIC.utils.airports`. Dropped the
+  `:exclude-members:` line in `utilities.md` so the `automodule`
+  directive picks them up alongside `Airport`, `Country`, and the
+  `airport()` factory; this also clears the Sphinx coverage builder
+  warning.
 
 ---
 
