@@ -110,7 +110,7 @@ species known to AEIC.
 
 ### Emissions output
 
-The {py:class}`Emissions <AEIC.emission.emission.Emissions>` class holds
+The {py:class}`Emissions <AEIC.emissions.emission.Emissions>` class holds
 emission index and emission quantities for trajectory, LTO, APU, GSE and total
 emissions, as well as some ancillary quantities like fuel burn per segment.
 The emission indices and emission quantities are stored as values of the

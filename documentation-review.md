@@ -22,7 +22,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 4 | Major | `docs/src/developer/tools.md:7` | Claims "AEIC uses Python 3.13"; `pyproject.toml` requires `>=3.12,<3.13`. Actively wrong. **DONE** |
 | 5 | Major | CLI coverage | `aeic run`, `aeic merge-stores`, `aeic make-file-bundle` have no documentation pages and no mention in the TOC. **DONE** |
 | 6 | Major | `docs/src/parsers.md` | Empty stub page listed in TOC; `AEIC.parsers` has three submodules (`lto_reader`, `opf_reader`, `ptf_reader`) that are entirely undocumented. **DONE** |
-| 7 | Major | `docs/src/emission.md:113` | Cross-ref target `AEIC.emission.emission.Emissions` (singular) — correct path is `AEIC.emissions.emission.Emissions`. Broken link. |
+| 7 | Major | `docs/src/emission.md:113` | Cross-ref target `AEIC.emission.emission.Emissions` (singular) — correct path is `AEIC.emissions.emission.Emissions`. Broken link. **DONE** |
 | 8 | Major | `docs/src/mission_database.md:82, 286` | `AEIC.missions.WritableDatabase` is not exported from `__init__.py`; cross-refs won't resolve. |
 | 9 | Major | `data-dictionary.md:11` | Malformed table row (only 3 cells for "Airspeed") AND content drifts from the canonical copy in `docs/src/developer/conventions.md`. |
 | 10 | Major | `docs/src/gridding.md:345, 349` | `autofunction` directives reference `map_phase` / `reduce_phase` in `AEIC.commands.trajectories_to_grid`, which are command-module internals, not public API. |
@@ -73,6 +73,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
   the correct plural `AEIC.emissions.emission.Emissions`.
   *Fix:* change prose cross-ref to `AEIC.emissions.emission.Emissions` (or
   `AEIC.emissions.Emissions`, since it's re-exported via `__all__`).
+  **DONE** — fixed the cross-ref target to `AEIC.emissions.emission.Emissions`.
 
 - **Major** `docs/src/mission_database.md:82, 286` → `src/AEIC/missions/__init__.py` (no export)
   Two references to `{py:class}`AEIC.missions.WritableDatabase``. The class
