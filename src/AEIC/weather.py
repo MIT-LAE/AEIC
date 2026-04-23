@@ -233,9 +233,9 @@ class Weather:
             Altitude above sea level [meters].
         true_airspeed : float
             True airspeed [m/s].
-        azmiuth : float, optional
+        azimuth : float, optional
             Azimuth [degrees].
-            If omitted, use the precomputed ground-track azmith.
+            If omitted, use the precomputed ground-track azimuth.
 
         Returns
         -------

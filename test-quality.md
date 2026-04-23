@@ -203,9 +203,11 @@ code. Writes a README or notebook cell.
 - **Notebook Sections 2–6:** add explicit "rounded results for use in
   test" cells to BFFM2, NOx speciation, HCCO, SCOPE 11, MEEM. This
   clears trigger #4 on every Phase-4 SUSPICIOUS-DATA downgrade (6 of
-  the 13 SUSPICIOUS-DATA findings across the whole review).
+  the 13 SUSPICIOUS-DATA findings across the whole review). *[DONE]*
+  Also fixed SCOPE 11 Q-coefficient typo (0.766 → 0.776) that caused
+  the notebook values to diverge from the test expected values.
 - **`tests/data/` READMEs:** every subdirectory lacks a provenance file.
-  Priority order by finding pressure:
+  Priority order by finding pressure: *[DONE]*
   1. `tests/data/verification/legacy/README.md` — naming the
      AEIC-MATLAB commit/revision, mission inputs, and the
      `matlab-output-orig/` → `matlab-output/` transformation. Clears
@@ -213,7 +215,7 @@ code. Writes a README or notebook cell.
   2. `tests/data/weather/README.md` — source dataset (ERA5?), spatial
      subset, download date. Context for the Phase-5 High SUSPICIOUS-DATA.
   3. `tests/data/oag/README.md` — how `2019-extract.csv` was produced,
-     the 7 expected flights. Clears Medium SUSPICIOUS-DATA on
+     the 8 expected flights. Clears Medium SUSPICIOUS-DATA on
      `test_oag_conversion`.
   4. `tests/data/missions/oag-2019-test-subset.README.md` — the
      verification SQL used to derive the 1197 / 99 / 36 / 307 / 13
@@ -221,7 +223,7 @@ code. Writes a README or notebook cell.
   5. `src/AEIC/data/engines/README.md` — ICAO EDB revision of
      `sample_edb.xlsx`.
 - **Weather fixture typo fix:** `azmiuth` / `azmith` → `azimuth` in
-  `src/AEIC/weather.py` docstring (incidental from Phase 5 review).
+  `src/AEIC/weather.py` docstring (incidental from Phase 5 review). *[DONE]*
 
 ### Tier 3 — larger lifts (new test bodies)
 
