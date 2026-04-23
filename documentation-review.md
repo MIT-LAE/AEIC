@@ -272,6 +272,9 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   do.
   *Fix:* add a `docs/src/cli.md` page listing all 6 subcommands with
   one-line summaries and links to their detail sections.
+  **DONE** — the `docs/src/cli.md` page added for §3/§4 above opens
+  with a table of all six subcommands with one-line summaries and
+  links, and is listed in `docs/index.rst`.
 
 ---
 
