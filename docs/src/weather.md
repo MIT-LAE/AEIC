@@ -16,7 +16,7 @@ standard-atmosphere approximation, winds are interpolated at the requested
 longitude/latitude, and those winds are combined with the aircraft heading
 derived from the ground track (or an override supplied via `azimuth`).
 
-Example::
+Example:
 
 ```python
    mission = Mission(...)

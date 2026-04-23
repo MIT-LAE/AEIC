@@ -366,6 +366,7 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   convention for introducing a code block; in MyST it renders as
   literal text with a trailing `::`.
   *Fix:* change to `Example:` or remove.
+  **DONE** — changed `Example::` to `Example:` in `weather.md`.
 - **Minor** `docs/src/emission.md:80, 89` — typo "emissiosn" (two
   occurrences) in the workflow description.
 - **Minor** `docs/src/trajectories/trajectory_builders.md` §Legacy —
