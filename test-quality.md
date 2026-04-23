@@ -191,7 +191,7 @@ minute.
   `TRAJ_FIELDS` — it's the independent variable, so MAPE ≈ 0 by
   construction. *[DONE]*
 - **`test_mission_db_creation.py:34`:** normalize `0b0000000` →
-  `0b00000000` (cosmetic but consistent).
+  `0b00000000` (cosmetic but consistent). *[DONE]*
 - **`test_golden.py:22–23`:** replace the `if len(failed) > 0: raise`
   pattern with `assert not failed, …`.
 

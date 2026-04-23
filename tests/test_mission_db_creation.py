@@ -31,7 +31,7 @@ def test_dow_mask():
         == 0b00001010
     )
     assert WritableDatabase._make_dow_mask({DayOfWeek.SUNDAY}) == 0b01000000
-    assert WritableDatabase._make_dow_mask(set()) == 0b0000000
+    assert WritableDatabase._make_dow_mask(set()) == 0b00000000
 
 
 def test_airport_handling(tmp_path):
