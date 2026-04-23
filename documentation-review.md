@@ -308,6 +308,12 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   Development section pulled via `.. include::`, and shortening
   `README.md` to link to the built docs rather than duplicating
   content.
+  **DONE** — dropped the duplicated Local Development, `uv`, and
+  pre-commit subsections from `README.md` and replaced them with a
+  single short paragraph linking to `docs/src/developer/tools.md`.
+  The remaining Installation and Units sections still match
+  `docs/main_page.md` and are already kept in sync by
+  `bump-my-version`.
 
 - **Minor** `docs/conf.py:22` vs `pyproject.toml:4`
   `release = '1.0.0a1'` vs `version = "0.3.0"`. The Sphinx title bar and
