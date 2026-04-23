@@ -174,7 +174,7 @@ minute.
   preferable since it reports the diff on failure.) *[DONE]*
 - **`test_mission_db.py:150`:** change `'random()' in sql` to
   `'det_random()' in sql` — pins the reproducibility contract
-  ([Phase 2](#tests-test_mission_dbpy-3-tests)).
+  ([Phase 2](#tests-test_mission_dbpy-3-tests)). *[DONE]*
 - **Forked-marker sweep:** add `@pytest.mark.forked` to every
   netCDF-touching test that currently lacks it:
   - `test_emissions_storage`, `test_separate_emissions` (Phase 1, High).

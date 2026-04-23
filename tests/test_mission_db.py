@@ -147,7 +147,7 @@ def test_query():
         filter=Filter(country='US', min_seat_capacity=250), sample=0.05
     ).to_sql()
     assert params == [250, 'US', 'US', 0.05]
-    assert 'random()' in sql
+    assert 'det_random()' in sql
 
     sql, params = Query(
         filter=Filter(country='US', min_distance=1000, max_distance=5000),
