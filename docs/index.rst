@@ -27,6 +27,7 @@ performance models, updated trajectory dynamics, parallelization, and more.
    :caption: AEIC modules
 
    src/configuration.md
+   src/cli.md
    src/performance_models/performance_models.md
    src/trajectories/trajectories.md
    src/emission.md

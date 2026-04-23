@@ -20,7 +20,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 2 | Critical | `docs/src/performance_models/performance_model_files.md:35-43` | `make-performance-model` example is stale (wrong invocation + missing required `--lto-source` flag). Example will not run. **DONE** |
 | 3 | Critical | `docs/src/configuration.md:51` | Example imports `LTOInputMode` from `AEIC.config`; no such name exists. Import raises `ImportError`. **DONE** |
 | 4 | Major | `docs/src/developer/tools.md:7` | Claims "AEIC uses Python 3.13"; `pyproject.toml` requires `>=3.12,<3.13`. Actively wrong. **DONE** |
-| 5 | Major | CLI coverage | `aeic run`, `aeic merge-stores`, `aeic make-file-bundle` have no documentation pages and no mention in the TOC. |
+| 5 | Major | CLI coverage | `aeic run`, `aeic merge-stores`, `aeic make-file-bundle` have no documentation pages and no mention in the TOC. **DONE** |
 | 6 | Major | `docs/src/parsers.md` | Empty stub page listed in TOC; `AEIC.parsers` has three submodules (`lto_reader`, `opf_reader`, `ptf_reader`) that are entirely undocumented. |
 | 7 | Major | `docs/src/emission.md:113` | Cross-ref target `AEIC.emission.emission.Emissions` (singular) — correct path is `AEIC.emissions.emission.Emissions`. Broken link. |
 | 8 | Major | `docs/src/mission_database.md:82, 286` | `AEIC.missions.WritableDatabase` is not exported from `__init__.py`; cross-refs won't resolve. |
@@ -173,6 +173,8 @@ non-underscore names for plain modules) that are not mentioned in any
 
 - **Major** `aeic run`, `aeic merge-stores`, `aeic make-file-bundle` — no
   documentation pages; no appearance in `docs/index.rst`.
+  **DONE** — added `docs/src/cli.md` covering all three commands and
+  linked it from `docs/index.rst`.
 
 ---
 
@@ -201,6 +203,9 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   *Fix:* add a "Running simulations" page (or section in
   `trajectories/`) with flag table, examples for single/parallel runs,
   and the selector-vs-model-file choice.
+  **DONE** — added `aeic run` section in the new `docs/src/cli.md`
+  reference page with flag table, selector-vs-model-file note and
+  single-process + parallel examples.
 
 - **Major** `aeic merge-stores` → `src/AEIC/commands/merge_stores.py`
   Flags: `--output-store` (required), `--merge/--combine`, plus
@@ -212,6 +217,9 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   `gridding.md:224-259` — the gap is load-bearing.
   *Fix:* document the command and link it from the parallel-simulation
   section of `gridding.md` and from `trajectory_stores.md`.
+  **DONE** — added `aeic merge-stores` section in the new `docs/src/cli.md`
+  reference page covering `--merge`/`--combine` semantics and a parallel
+  example.
 
 - **Major** `aeic make-file-bundle` → `src/AEIC/commands/make_file_bundle.py`
   Flags: `--input-store` (required), `--output-bundle` (required).
@@ -220,6 +228,8 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   machinery described in `gridding.md:292-300` and
   `trajectory_stores.md`.
   *Fix:* document the command in a new "Reproducibility bundles" section.
+  **DONE** — added `aeic make-file-bundle` section in the new
+  `docs/src/cli.md` reference page.
 
 - **Major** `aeic make-performance-model tasopt` → `make_performance_model.py:184-188`
   `tasopt` is registered as a subcommand but raises
