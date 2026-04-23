@@ -16,7 +16,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 
 | # | Severity | Where | Summary |
 |---|----------|-------|---------|
-| 1 | Critical | `docs/src/oag.md:21` | `convert-oag-data` example uses `uv run convert-oag-data` — command no longer exists; must be `aeic convert-oag-data`. |
+| 1 | Critical | `docs/src/oag.md:21` | `convert-oag-data` example uses `uv run convert-oag-data` — command no longer exists; must be `aeic convert-oag-data`. **DONE** |
 | 2 | Critical | `docs/src/performance_models/performance_model_files.md:35-43` | `make-performance-model` example is stale (wrong invocation + missing required `--lto-source` flag). Example will not run. |
 | 3 | Critical | `docs/src/configuration.md:51` | Example imports `LTOInputMode` from `AEIC.config`; no such name exists. Import raises `ImportError`. |
 | 4 | Major | `docs/src/developer/tools.md:7` | Claims "AEIC uses Python 3.13"; `pyproject.toml` requires `>=3.12,<3.13`. Actively wrong. |
@@ -40,6 +40,8 @@ surface), or **Minor** (cosmetic, duplication, typos).
   is a Click subcommand registered as `aeic convert-oag-data`.
   *Fix:* replace `uv run convert-oag-data` with `aeic convert-oag-data` (or
   `uv run aeic convert-oag-data`); same change in the options preamble.
+  **DONE** — replaced `uv run convert-oag-data` with `aeic convert-oag-data`
+  in the example and preamble prose.
 
 - **Critical** `docs/src/performance_models/performance_model_files.md:35-43` → `src/AEIC/commands/make_performance_model.py:74-145`
   Example uses `uv run make-performance-model ... legacy ...`; correct

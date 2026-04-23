@@ -8,20 +8,20 @@ class ({py:class}`OAGDatabase`) to generate the database entries needed to
 represent OAG data.
 
 In normal use, these classes will mostly only be used via that
-`convert-oag-data` utility. Once a mission database has been created from OAG
-data, it can be accessed using the classes in the top-level
+`aeic convert-oag-data` utility. Once a mission database has been created from
+OAG data, it can be accessed using the classes in the top-level
 {py:mod}`AEIC.missions` package.
 
 ## Database creation
 
 To convert a CSV file containing OAG data to an AEIC SQLite mission database,
-use the `convert-oag-data` script like this:
+use the `aeic convert-oag-data` subcommand like this:
 
 ```
-uv run convert-oag-data -i 2024.csv -y 2024 -d oag-2024.sqlite -w warnings-2024.txt
+aeic convert-oag-data -i 2024.csv -y 2024 -d oag-2024.sqlite -w warnings-2024.txt
 ```
 
-The options to the `convert-oag-data` script are:
+The options to the `aeic convert-oag-data` subcommand are:
 
  - `-i` / `--in-file` (required): input OAG CSV file;
  - `-d` / `--db-file` (required): output SQLite database file;
