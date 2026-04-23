@@ -1,6 +1,7 @@
 import functools
 
 import numpy as np
+import pytest
 
 import AEIC.trajectories.builders as tb
 from AEIC.emissions.emission import compute_emissions
@@ -8,6 +9,7 @@ from AEIC.trajectories import TrajectoryStore
 from AEIC.types import SpeciesValues
 
 
+@pytest.mark.forked
 def test_emissions_storage(tmp_path, sample_missions, performance_model, fuel):
     fname = tmp_path / 'test_trajectories_with_emissions.nc'
 
@@ -28,6 +30,7 @@ def test_emissions_storage(tmp_path, sample_missions, performance_model, fuel):
     assert hasattr(traj, 'total_emissions')
 
 
+@pytest.mark.forked
 def test_separate_emissions(tmp_path, sample_missions, performance_model, fuel):
     path = tmp_path / 'test_trajectories.nc'
     emissions_path = tmp_path / 'test_emissions.nc'

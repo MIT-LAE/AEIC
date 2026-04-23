@@ -176,7 +176,7 @@ minute.
   `'det_random()' in sql` — pins the reproducibility contract
   ([Phase 2](#tests-test_mission_dbpy-3-tests)). *[DONE]*
 - **Forked-marker sweep:** add `@pytest.mark.forked` to every
-  netCDF-touching test that currently lacks it:
+  netCDF-touching test that currently lacks it: *[DONE]*
   - `test_emissions_storage`, `test_separate_emissions` (Phase 1, High).
   - `test_trajectory_simulation_basic`,
     `test_trajectory_simulation_outside_weather_domain`,

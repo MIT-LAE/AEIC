@@ -50,6 +50,7 @@ def test_weather_init_with_bad_str():
         )
 
 
+@pytest.mark.forked
 def test_compute_ground_speed(sample_weather, ground_track):
     ground_distance_m = 370400.0
     altitude_m = 9144.0

@@ -57,6 +57,7 @@ def test_trajectory_simulation_single(sample_missions, performance_model):
     assert len(traj) > 10
 
 
+@pytest.mark.forked
 def test_trajectory_simulation_basic(tmp_path, sample_missions, performance_model):
     fname = tmp_path / 'test_trajectories.nc'
 
@@ -77,6 +78,7 @@ def test_trajectory_simulation_basic(tmp_path, sample_missions, performance_mode
     # TODO: Test that additional fields are correctly saved and loaded.
 
 
+@pytest.mark.forked
 def test_trajectory_simulation_outside_weather_domain(
     example_mission, performance_model
 ):
@@ -86,6 +88,7 @@ def test_trajectory_simulation_outside_weather_domain(
         builder.fly(performance_model, example_mission)
 
 
+@pytest.mark.forked
 def test_trajectory_simulation_weather(example_mission_with_weather, performance_model):
     builder = tb.LegacyBuilder(options=tb.Options(use_weather=True, iterate_mass=False))
 
