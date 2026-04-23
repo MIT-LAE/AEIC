@@ -338,6 +338,9 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   Both files exist but are empty. `CHANGELOG.md` is especially relevant
   given `releases.md` documents a release workflow.
   *Fix:* either populate or remove these placeholder files.
+  **DONE** — removed both 0-byte placeholders (nothing in the repo
+  referenced them). They can be re-added with real content when a
+  changelog workflow or Code of Conduct is actually adopted.
 
 - **Minor** `grid-map-optimization.md` (repo root, ~100 lines)
   A detailed performance report with benchmarks and git-history context.
