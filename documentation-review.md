@@ -23,7 +23,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 5 | Major | CLI coverage | `aeic run`, `aeic merge-stores`, `aeic make-file-bundle` have no documentation pages and no mention in the TOC. **DONE** |
 | 6 | Major | `docs/src/parsers.md` | Empty stub page listed in TOC; `AEIC.parsers` has three submodules (`lto_reader`, `opf_reader`, `ptf_reader`) that are entirely undocumented. **DONE** |
 | 7 | Major | `docs/src/emission.md:113` | Cross-ref target `AEIC.emission.emission.Emissions` (singular) — correct path is `AEIC.emissions.emission.Emissions`. Broken link. **DONE** |
-| 8 | Major | `docs/src/mission_database.md:82, 286` | `AEIC.missions.WritableDatabase` is not exported from `__init__.py`; cross-refs won't resolve. |
+| 8 | Major | `docs/src/mission_database.md:82, 286` | `AEIC.missions.WritableDatabase` is not exported from `__init__.py`; cross-refs won't resolve. **DONE** |
 | 9 | Major | `data-dictionary.md:11` | Malformed table row (only 3 cells for "Airspeed") AND content drifts from the canonical copy in `docs/src/developer/conventions.md`. |
 | 10 | Major | `docs/src/gridding.md:345, 349` | `autofunction` directives reference `map_phase` / `reduce_phase` in `AEIC.commands.trajectories_to_grid`, which are command-module internals, not public API. |
 
@@ -85,6 +85,10 @@ surface), or **Minor** (cosmetic, duplication, typos).
   *Fix:* either export it (add to `missions/__init__.py` `__all__`) or
   change cross-refs to `AEIC.missions.writable_database.WritableDatabase`
   and clarify it's internal.
+  **DONE** — changed both cross-refs in `mission_database.md` to
+  `AEIC.missions.writable_database.WritableDatabase` and updated the
+  surrounding prose to clarify that the class is internal (used by
+  `aeic convert-oag-data`) and not part of the public API.
 
 - **Major** `docs/src/gridding.md:345, 349` → `src/AEIC/commands/trajectories_to_grid.py:30, 275`
   `autofunction` directives for `map_phase` and `reduce_phase` expose

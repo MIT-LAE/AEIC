@@ -78,8 +78,12 @@ the database structure and the underlying SQL interface to SQLite, instead
 exposing a simple application-specific query API.
 
 The {py:class}`Database <AEIC.missions.Database>` class is oriented towards
-read-only access to a mission database. There is a derived class called
-`WritableDatabase` for applications that construct flight databases.
+read-only access to a mission database. AEIC also ships a derived class,
+{py:class}`WritableDatabase
+<AEIC.missions.writable_database.WritableDatabase>`, which is used internally
+(primarily by `aeic convert-oag-data`) to construct new flight databases.
+It is not part of the public API and should not be relied on from user
+code.
 
 The normal workflow for querying the mission database is to create a
 {py:class}`Database <AEIC.missions.Database>` instance, passing the path to
@@ -282,5 +286,5 @@ in the database, we can do:
 The database schema for the mission database is described [on the GitHub
 wiki](https://github.com/MIT-LAE/AEIC/wiki/OAG-database) for AEIC. (The wiki
 page is slightly outdated: the definitive documentation for the database
-schema is {py:attr}`_ensure_schema` method of the
-{py:class}`AEIC.missions.WritableDatabase` class.)
+schema is the {py:attr}`_ensure_schema` method of the
+{py:class}`AEIC.missions.writable_database.WritableDatabase` class.)
