@@ -180,6 +180,9 @@ non-underscore names for plain modules) that are not mentioned in any
   Alias used throughout the codebase for scalar-or-array numeric
   parameters.
   *Fix:* add a brief entry in `docs/src/utilities.md` "Custom types".
+  **DONE** — added a short description of `FloatOrNDArray` and an
+  `autodata` directive to the "Custom types" section of
+  `utilities.md`.
 
 - **Major** `AEIC.trajectories.builders.ADSBBuilder / ADSBOptions`,
   `DymosBuilder / DymosOptions`, `TASOPTBuilder / TASOPTOptions` —

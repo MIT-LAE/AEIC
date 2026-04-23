@@ -29,6 +29,14 @@ Small custom types are used to represent "locations" (2-D) and "positions"
 .. autoenum:: AEIC.types.AircraftClass
 ```
 
+The `FloatOrNDArray` alias is used throughout AEIC for numeric
+parameters that may be supplied as either a single scalar or a Numpy
+array of per-point values.
+
+```{eval-rst}
+.. autodata:: AEIC.types.FloatOrNDArray
+```
+
 ## Airport handling
 
 Airport data is downloaded from the [OurAirports
