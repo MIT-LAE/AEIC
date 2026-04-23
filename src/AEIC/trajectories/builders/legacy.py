@@ -241,6 +241,11 @@ class LegacyBuilder(Builder):
         return starting_mass
 
     def fly_climb(self, traj: Trajectory) -> None:
+        """Simulate the climb phase of a trajectory.
+
+        Delegates to :meth:`_fly_level_change` with climb flight rules, integrating
+        from the end of the previous phase up to the cruise-start altitude.
+        """
         self._fly_level_change(
             traj,
             FlightPhase.CLIMB,
@@ -249,6 +254,13 @@ class LegacyBuilder(Builder):
         )
 
     def fly_descent(self, traj: Trajectory) -> None:
+        """Simulate the descent phase of a trajectory.
+
+        Delegates to :meth:`_fly_level_change` with descent flight rules,
+        integrating from the cruise altitude down to the descent-end altitude.
+        The final per-phase point count is decremented by one to account for
+        the shared boundary point with the next phase.
+        """
         self._fly_level_change(
             traj,
             FlightPhase.DESCENT,

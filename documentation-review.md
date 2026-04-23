@@ -376,6 +376,9 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   coverage builder reports `LegacyBuilder.fly_climb` and
   `LegacyBuilder.fly_descent` have no docstrings. `fly_cruise` does have
   one. (See Appendix B.)
+  **DONE** — added short docstrings to `LegacyBuilder.fly_climb` and
+  `LegacyBuilder.fly_descent` in
+  `src/AEIC/trajectories/builders/legacy.py`.
 - **Minor** `docs/src/utilities.md:50-52` — `automodule: AEIC.utils.airports`
   uses `:exclude-members: CountriesData, AirportsData`; both classes
   then appear as undocumented in the coverage builder output because
