@@ -361,6 +361,7 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
 - **Minor** `docs/src/configuration.md:56` — `{py.mod}` typo (dot
   instead of colon); renders literally as "{py.mod}". Should be
   `{py:mod}`.
+  **DONE** — fixed `{py.mod}` → `{py:mod}` in `configuration.md`.
 - **Minor** `docs/src/weather.md:19` — `Example::` is reStructuredText
   convention for introducing a code block; in MyST it renders as
   literal text with a trailing `::`.
