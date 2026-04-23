@@ -8,6 +8,7 @@
 
 import os
 import sys
+import tomllib
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -19,7 +20,9 @@ copyright = (
     'Aditeya Shukla, Raymond Speth'
 )
 author = 'Wyatt Giroux, Prashanth Prakash, Prateek Ranjan, Aditeya Shukla,Raymond Speth'
-release = '1.0.0a1'
+
+with open(os.path.join(os.path.dirname(__file__), '..', 'pyproject.toml'), 'rb') as _fp:
+    release = tomllib.load(_fp)['project']['version']
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

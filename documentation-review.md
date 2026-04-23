@@ -321,6 +321,9 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   *Fix:* read the version from `pyproject.toml` in `conf.py`
   (`tomllib.load(...)`), or update `release` and add it to the
   `bump-my-version` `files` list.
+  **DONE** — `docs/conf.py` now reads `release` from
+  `pyproject.toml` via `tomllib`, so the Sphinx title bar and PDF
+  output automatically track the project version.
 
 - **Minor** `CONTRIBUTING.mb` (file at repo root)
   Filename typo: `.mb` extension is not a standard Markdown extension
