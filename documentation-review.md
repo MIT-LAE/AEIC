@@ -21,7 +21,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 3 | Critical | `docs/src/configuration.md:51` | Example imports `LTOInputMode` from `AEIC.config`; no such name exists. Import raises `ImportError`. **DONE** |
 | 4 | Major | `docs/src/developer/tools.md:7` | Claims "AEIC uses Python 3.13"; `pyproject.toml` requires `>=3.12,<3.13`. Actively wrong. **DONE** |
 | 5 | Major | CLI coverage | `aeic run`, `aeic merge-stores`, `aeic make-file-bundle` have no documentation pages and no mention in the TOC. **DONE** |
-| 6 | Major | `docs/src/parsers.md` | Empty stub page listed in TOC; `AEIC.parsers` has three submodules (`lto_reader`, `opf_reader`, `ptf_reader`) that are entirely undocumented. |
+| 6 | Major | `docs/src/parsers.md` | Empty stub page listed in TOC; `AEIC.parsers` has three submodules (`lto_reader`, `opf_reader`, `ptf_reader`) that are entirely undocumented. **DONE** |
 | 7 | Major | `docs/src/emission.md:113` | Cross-ref target `AEIC.emission.emission.Emissions` (singular) — correct path is `AEIC.emissions.emission.Emissions`. Broken link. |
 | 8 | Major | `docs/src/mission_database.md:82, 286` | `AEIC.missions.WritableDatabase` is not exported from `__init__.py`; cross-refs won't resolve. |
 | 9 | Major | `data-dictionary.md:11` | Malformed table row (only 3 cells for "Airspeed") AND content drifts from the canonical copy in `docs/src/developer/conventions.md`. |
@@ -115,6 +115,8 @@ surface), or **Minor** (cosmetic, duplication, typos).
   *Fix:* add a short overview and `automodule` directives for each
   submodule; or, if parsers are genuinely internal, remove the page from
   the TOC (`docs/index.rst:38`).
+  **DONE** — fleshed out `docs/src/parsers.md` with a short overview and
+  `automodule` directives for `ptf_reader`, `opf_reader`, and `lto_reader`.
 
 ### Major — stale "uv run" pattern (lower-impact instances)
 
