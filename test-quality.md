@@ -185,7 +185,8 @@ minute.
   - `test_trajectory_simulation_golden` (Phase 6, Low).
 - **Delete / move `tests/test_legacy_verification.py`** to
   `scripts/legacy_verification_plot.py` (or delete — `test_matlab_verification`
-  is the successor). Closes two High findings at once.
+  is the successor). Closes two High findings at once. *[DONE]* (deleted;
+  `scripts/run_legacy_verification.py` already exists as the proper successor)
 - **`test_matlab_verification.py:13–24`:** drop `'flight_time'` from
   `TRAJ_FIELDS` — it's the independent variable, so MAPE ≈ 0 by
   construction.
