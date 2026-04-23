@@ -349,6 +349,10 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   reference material (in which case it belongs under `docs/src/`).
   *Fix:* decide if this is documentation or a one-off report, and move
   or remove accordingly.
+  **DONE** — treated as reference material: moved to
+  `docs/src/developer/grid-map-optimization.md` (via `git mv` to
+  preserve history) and added to the Developer documentation toctree
+  in `docs/index.rst`.
 
 ---
 

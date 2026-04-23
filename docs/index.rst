@@ -49,3 +49,4 @@ performance models, updated trajectory dynamics, parallelization, and more.
    src/developer/tools.md
    src/developer/conventions.md
    src/developer/releases.md
+   src/developer/grid-map-optimization.md
