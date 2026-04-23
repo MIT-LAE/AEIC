@@ -330,6 +330,9 @@ The `aeic` CLI has 6 subcommands (`src/AEIC/cli.py:32-37`):
   and may not render on GitHub.
   *Fix:* rename to `CONTRIBUTING.md`. Check for any links pointing at
   the old name.
+  **DONE** — renamed via `git mv` to `CONTRIBUTING.md`; no other file
+  in the repo (outside this review document) referenced the old
+  `.mb` name, so no link updates were needed.
 
 - **Minor** `CHANGELOG.md` (0 bytes) and `CONDUCT.md` (0 bytes)
   Both files exist but are empty. `CHANGELOG.md` is especially relevant
