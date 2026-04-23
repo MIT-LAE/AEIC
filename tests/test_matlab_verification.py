@@ -11,7 +11,6 @@ from AEIC.verification.legacy import LegacyTrajectory
 from AEIC.verification.metrics import out_of_tolerance
 
 TRAJ_FIELDS = [
-    'flight_time',
     'ground_distance',
     'latitude',
     'longitude',
@@ -24,7 +23,6 @@ TRAJ_FIELDS = [
 ]
 
 TRAJ_FIELD_UNITS = {
-    'flight_time': 's',
     'ground_distance': 'm',
     'altitude': 'm',
     'fuel_flow': 'kg s⁻¹',
