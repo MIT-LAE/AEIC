@@ -338,13 +338,3 @@ The output file includes a `_reproducibility` group containing two subgroups:
 .. autoclass:: AEIC.gridding.output.OutputGrid
    :members:
 ```
-
-### Command functions
-
-```{eval-rst}
-.. autofunction:: AEIC.commands.trajectories_to_grid.map_phase
-```
-
-```{eval-rst}
-.. autofunction:: AEIC.commands.trajectories_to_grid.reduce_phase
-```

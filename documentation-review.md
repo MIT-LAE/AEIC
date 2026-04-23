@@ -25,7 +25,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 7 | Major | `docs/src/emission.md:113` | Cross-ref target `AEIC.emission.emission.Emissions` (singular) — correct path is `AEIC.emissions.emission.Emissions`. Broken link. **DONE** |
 | 8 | Major | `docs/src/mission_database.md:82, 286` | `AEIC.missions.WritableDatabase` is not exported from `__init__.py`; cross-refs won't resolve. **DONE** |
 | 9 | Major | `data-dictionary.md:11` | Malformed table row (only 3 cells for "Airspeed") AND content drifts from the canonical copy in `docs/src/developer/conventions.md`. **DONE** |
-| 10 | Major | `docs/src/gridding.md:345, 349` | `autofunction` directives reference `map_phase` / `reduce_phase` in `AEIC.commands.trajectories_to_grid`, which are command-module internals, not public API. |
+| 10 | Major | `docs/src/gridding.md:345, 349` | `autofunction` directives reference `map_phase` / `reduce_phase` in `AEIC.commands.trajectories_to_grid`, which are command-module internals, not public API. **DONE** |
 
 ---
 
@@ -97,6 +97,10 @@ surface), or **Minor** (cosmetic, duplication, typos).
   `traj_iter`, `traj_repro`, `traj_comments` and have implicit preconditions).
   *Fix:* either drop these directives from the public doc page or move the
   functions under `AEIC.gridding` and document them there as stable API.
+  **DONE** — dropped the `map_phase` / `reduce_phase` `autofunction`
+  directives (and the enclosing "Command functions" subsection) from
+  `gridding.md`. The map/reduce behaviour is still described in prose
+  under "Map mode" / "Reduce mode" earlier in the same page.
 
 - **Major** `docs/src/performance_models/performance_model_api.md:43-44`
   Visible cross-ref text reads "SimplPerformanceModelSelector" (missing
