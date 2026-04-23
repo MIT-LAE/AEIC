@@ -77,3 +77,41 @@ altitude ($7000\,\text{ft}$ below operating ceiling).
 .. automodule:: AEIC.trajectories.builders.legacy
    :members:
 ```
+
+## Work-in-progress builders
+
+The following builders are re-exported from
+{py:mod}`AEIC.trajectories.builders` but are **not yet fully implemented**.
+They are listed here so that consumers who notice them in the public API are
+aware of their status; expect signatures, behaviour, and option sets to
+change as the implementations land.
+
+### TASOPT builder
+
+{py:class}`TASOPTBuilder <AEIC.trajectories.builders.tasopt.TASOPTBuilder>`
+will drive trajectory simulation from TASOPT-based performance data.
+
+```{eval-rst}
+.. WARNING::
+   This builder is a stub and cannot yet fly trajectories end-to-end.
+```
+
+### ADS-B builder
+
+{py:class}`ADSBBuilder <AEIC.trajectories.builders.ads_b.ADSBBuilder>`
+will reconstruct trajectories from ADS-B track data.
+
+```{eval-rst}
+.. WARNING::
+   This builder is a stub and cannot yet fly trajectories end-to-end.
+```
+
+### Dymos builder
+
+{py:class}`DymosBuilder <AEIC.trajectories.builders.dymos.DymosBuilder>`
+will drive trajectory simulation using the Dymos optimal-control library.
+
+```{eval-rst}
+.. WARNING::
+   This builder is a stub and cannot yet fly trajectories end-to-end.
+```

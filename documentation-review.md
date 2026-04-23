@@ -190,6 +190,9 @@ non-underscore names for plain modules) that are not mentioned in any
   passing note that only `LegacyBuilder` is fully implemented.
   *Fix:* either add stub sections flagging them as WIP or remove them
   from `__all__` until implemented.
+  **DONE** — added a "Work-in-progress builders" section in
+  `trajectory_builders.md` with a stub subsection and WIP warning for
+  each of `TASOPTBuilder`, `ADSBBuilder`, and `DymosBuilder`.
 
 ### CLI (see also §4)
 
