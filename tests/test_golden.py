@@ -22,5 +22,4 @@ def test_trajectory_simulation_golden(
 
     comparison_ts.close()
 
-    if len(failed) > 0:
-        raise AssertionError(f'Trajectory simulation mismatch for: {failed}')
+    assert not failed, f'Trajectory simulation mismatch for: {failed}'
