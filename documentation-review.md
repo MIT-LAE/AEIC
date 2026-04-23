@@ -17,7 +17,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | # | Severity | Where | Summary |
 |---|----------|-------|---------|
 | 1 | Critical | `docs/src/oag.md:21` | `convert-oag-data` example uses `uv run convert-oag-data` — command no longer exists; must be `aeic convert-oag-data`. **DONE** |
-| 2 | Critical | `docs/src/performance_models/performance_model_files.md:35-43` | `make-performance-model` example is stale (wrong invocation + missing required `--lto-source` flag). Example will not run. |
+| 2 | Critical | `docs/src/performance_models/performance_model_files.md:35-43` | `make-performance-model` example is stale (wrong invocation + missing required `--lto-source` flag). Example will not run. **DONE** |
 | 3 | Critical | `docs/src/configuration.md:51` | Example imports `LTOInputMode` from `AEIC.config`; no such name exists. Import raises `ImportError`. |
 | 4 | Major | `docs/src/developer/tools.md:7` | Claims "AEIC uses Python 3.13"; `pyproject.toml` requires `>=3.12,<3.13`. Actively wrong. |
 | 5 | Major | CLI coverage | `aeic run`, `aeic merge-stores`, `aeic make-file-bundle` have no documentation pages and no mention in the TOC. |
@@ -53,6 +53,9 @@ surface), or **Minor** (cosmetic, duplication, typos).
   *Fix:* change to `aeic make-performance-model` and add
   `--lto-source edb` in the example (the `--engine-file`/`--engine-uid`
   already imply `edb`).
+  **DONE** — replaced `uv run make-performance-model` with
+  `aeic make-performance-model` and added `--lto-source edb` to the
+  example invocation.
 
 - **Critical** `docs/src/configuration.md:51` → `src/AEIC/config/__init__.py:3`
   Code block does `from AEIC.config import Config, LTOInputMode`. `AEIC.config`

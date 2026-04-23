@@ -32,13 +32,14 @@ A complete invocation of {command}`make-performance-model` to generate a
 legacy performance model file looks like this:
 
 ```shell
-uv run make-performance-model \
+aeic make-performance-model \
   --output-file tmp.toml \
   legacy \
   --apu-name 'APU 131-9' \
   --number-of-engines 2 \
   --aircraft-class narrow \
   --ptf-file /home/bada/B738__.PTF \
+  --lto-source edb \
   --engine-file engines/sample_edb.xlsx \
   --engine-uid 01P11CM121
 ```
