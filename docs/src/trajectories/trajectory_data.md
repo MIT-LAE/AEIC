@@ -64,6 +64,17 @@ name. Field sets are stored by name in a registry, and use an MD5-based hash
 to ensure that named field sets from different sources correspond to the same
 sets of fields.
 
+The name of the base field set (the one every trajectory carries) is
+exposed as the
+{py:data}`BASE_FIELDSET_NAME <AEIC.trajectories.BASE_FIELDSET_NAME>`
+constant, which is also used by
+{py:class}`TrajectoryStore <AEIC.trajectories.store.TrajectoryStore>`
+when writing and querying the NetCDF group that holds the base fields.
+
+```{eval-rst}
+.. autodata:: AEIC.trajectories.trajectory.BASE_FIELDSET_NAME
+```
+
 ```{eval-rst}
 .. NOTE::
    We probably need a mechanism for versioning field sets. At the moment,

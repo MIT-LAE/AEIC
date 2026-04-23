@@ -173,6 +173,8 @@ non-underscore names for plain modules) that are not mentioned in any
 - **Major** `AEIC.trajectories.BASE_FIELDSET_NAME` — exported, not
   referenced anywhere in docs.
   *Fix:* mention under "Field sets" in `docs/src/trajectories/trajectory_data.md`.
+  **DONE** — added a paragraph under "Field sets" describing
+  `BASE_FIELDSET_NAME` and an `autodata` directive for it.
 
 - **Major** `AEIC.types.FloatOrNDArray` — exported; not documented.
   Alias used throughout the codebase for scalar-or-array numeric
