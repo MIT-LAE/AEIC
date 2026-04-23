@@ -4,7 +4,7 @@
 
  * All tool configuration and dependency information for AEIC code is held in
    the top-level `pyproject.toml` file.
- * AEIC uses Python 3.13.
+ * AEIC uses Python 3.12.
  * Dependencies are managed using the [`uv` tool](https://docs.astral.sh/uv).
 
 

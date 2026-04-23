@@ -19,7 +19,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 1 | Critical | `docs/src/oag.md:21` | `convert-oag-data` example uses `uv run convert-oag-data` — command no longer exists; must be `aeic convert-oag-data`. **DONE** |
 | 2 | Critical | `docs/src/performance_models/performance_model_files.md:35-43` | `make-performance-model` example is stale (wrong invocation + missing required `--lto-source` flag). Example will not run. **DONE** |
 | 3 | Critical | `docs/src/configuration.md:51` | Example imports `LTOInputMode` from `AEIC.config`; no such name exists. Import raises `ImportError`. **DONE** |
-| 4 | Major | `docs/src/developer/tools.md:7` | Claims "AEIC uses Python 3.13"; `pyproject.toml` requires `>=3.12,<3.13`. Actively wrong. |
+| 4 | Major | `docs/src/developer/tools.md:7` | Claims "AEIC uses Python 3.13"; `pyproject.toml` requires `>=3.12,<3.13`. Actively wrong. **DONE** |
 | 5 | Major | CLI coverage | `aeic run`, `aeic merge-stores`, `aeic make-file-bundle` have no documentation pages and no mention in the TOC. |
 | 6 | Major | `docs/src/parsers.md` | Empty stub page listed in TOC; `AEIC.parsers` has three submodules (`lto_reader`, `opf_reader`, `ptf_reader`) that are entirely undocumented. |
 | 7 | Major | `docs/src/emission.md:113` | Cross-ref target `AEIC.emission.emission.Emissions` (singular) — correct path is `AEIC.emissions.emission.Emissions`. Broken link. |
@@ -104,6 +104,8 @@ surface), or **Minor** (cosmetic, duplication, typos).
   `requires-python = ">=3.12,<3.13"`, which *excludes* 3.13. Python 3.12
   is the only supported version.
   *Fix:* change to "AEIC uses Python 3.12."
+  **DONE** — updated `docs/src/developer/tools.md:7` to say
+  "AEIC uses Python 3.12."
 
 - **Major** `docs/src/parsers.md` (entire file) → `src/AEIC/parsers/` (submodules)
   Single heading "# Available parsers" and no body. `AEIC.parsers`
