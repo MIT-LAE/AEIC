@@ -144,7 +144,7 @@ the full finding body.
    ([Phase 2 · `test_mission_db_creation.py`](#tests-test_mission_db_creationpy-3-tests)).
    Every downstream mission-DB test's provenance leads back through
    this ingestion; the only check is a row count.
-10. 🔴 **`test_emit_matches_expected_indices_and_pointwise` — helper calls the SUT**
+10. **`test_emit_matches_expected_indices_and_pointwise` — helper calls the SUT** *[DONE]*
     ([Phase 4 · `test_emissions.py`](#tests-test_emissionspy-10-tests)).
     `_expected_trajectory_indices` invokes the same BFFM2 / EI_HCCO /
     SLS functions that `compute_emissions` uses — a consistency check
@@ -954,7 +954,7 @@ helper pattern).
   fix:* cite an external source for these per-LTO-cycle emissions
   (IPCC, EASA/ICAO, Stettler 2011, etc.) in a comment, or add a GSE
   section to `test-cases.ipynb`.
-- 🔴 **[High][WEAK-ASSERTION]** `test_emit_matches_expected_indices_and_pointwise`
+- **[High][WEAK-ASSERTION]** `test_emit_matches_expected_indices_and_pointwise`
   (`test_emissions.py:183–213`) — the `_expected_trajectory_indices`
   helper (lines 126–180) invokes the **same** `BFFM2_EINOx`,
   `EI_HCCO`, and `get_SLS_equivalent_fuel_flow` functions the SUT
@@ -967,6 +967,21 @@ helper pattern).
   cells, or at minimum label the test as a consistency check (not a
   correctness check) and add a separate correctness test that cites
   the notebook.
+  *Actual remediation:* the "at minimum" alternative. The full Tier 3
+  remediation (cite notebook rounded arrays) was examined and rejected
+  — notebook Sections 2 and 4 use EDB inputs that do not match
+  `DummyPerformanceModel.lto`, so citing those arrays would require
+  either realigning the test fixture with notebook inputs (then this
+  test duplicates `TestBFFM2_EINOx::test_matches_reference_component_values`)
+  or adding new notebook cells for the current fixture (meaningful
+  surgery, and HCCO Section 4 has no CO block). Instead: the test is
+  renamed to `test_compute_emissions_pipeline_wiring` with a docstring
+  that states what it does and does not verify, the helper is marked
+  DELIBERATELY SELF-REFERENTIAL with a pointer to the real correctness
+  tests (`TestBFFM2_EINOx`, `TestEI_HCCO`, `TestNOxSpeciation`,
+  `test_atmospheric_state_and_sls_flow_shapes`), and a new mass-
+  conservation assertion `no_prop + no2_prop + hono_prop ≈ 1.0` adds a
+  genuine correctness signal independent of the helper.
 - **[Medium][SUSPICIOUS-DATA]** `test_calculate_nvpm_meem_populates_fields`
   (`test_emissions.py:263–284`) — hard-coded `expected_mass` (6
   values) and `expected_number` (6 values) with no provenance comment.
