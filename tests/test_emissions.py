@@ -353,22 +353,51 @@ def test_atmospheric_state_and_sls_flow_shapes(perf_model, trajectory):
 
 
 def test_get_gse_emissions_matches_reference_profile(fuel):
-    result = get_GSE_emissions(AircraftClass.WIDE, fuel).emissions
+    # Primary nominal per-LTO-cycle GSE emissions for the WIDE aircraft class
+    # (units: grams / cycle). Source: AEIC v2 MATLAB implementation carried
+    # forward into this codebase; legacy reference fixtures live under
+    # tests/data/verification/legacy/ (see README). TODO: back-trace to a
+    # primary external source (Stettler 2011, FAA AEDT, EPA EDMS, etc.) and
+    # cite here once identified — this is the only remaining self-referential
+    # piece of the test.
+    co2_wide = 58_000.0
+    nox_wide = 900.0
+    hc_wide = 70.0
+    co_wide = 300.0
+    pm10_wide = 55.0
+
+    # GSE-specific NOx speciation fractions (gse.py:31-33). NOTE: these are
+    # not the ICAO NOx_speciation() factors used for trajectory/LTO splits.
+    no_frac, no2_frac, hono_frac = 0.90, 0.09, 0.01
+
+    # Fuel-sulfur mass balance (gse.py:36-46). Fuel-sulfur concentration
+    # 5 ppm; 2 % converts to sulfate; molecular-weight ratios map sulfur
+    # mass to SO2 / SO4 mass.
+    fsc = 5e-6  # 5 ppm as a fraction
+    kg_to_g = 1000.0
+    eps = 0.02
+    mw_o2, mw_so2, mw_so4 = 32.0, 64.0, 96.0
+    so4 = fsc * kg_to_g * eps * (mw_so4 / mw_o2)
+    so2 = fsc * kg_to_g * (1.0 - eps) * (mw_so2 / mw_o2)
+
+    gse_fuel = co2_wide / fuel.EI_CO2
     expected = SpeciesValues[float](
         {
-            Species.CO2: 58_000.0,
-            Species.NOx: 900.0,
-            Species.HC: 70.0,
-            Species.CO: 300.0,
-            Species.H2O: 22669.67201166181,
-            Species.NO: 810.0,
-            Species.NO2: 81.0,
-            Species.HONO: 9.0,
-            Species.SO4: 0.0003,
-            Species.SO2: 0.0098,
-            Species.nvPM: 54.9997,
+            Species.CO2: co2_wide,
+            Species.NOx: nox_wide,
+            Species.HC: hc_wide,
+            Species.CO: co_wide,
+            Species.H2O: fuel.EI_H2O * gse_fuel,
+            Species.NO: nox_wide * no_frac,
+            Species.NO2: nox_wide * no2_frac,
+            Species.HONO: nox_wide * hono_frac,
+            Species.SO4: so4,
+            Species.SO2: so2,
+            Species.nvPM: pm10_wide - so4,
         }
     )
+
+    result = get_GSE_emissions(AircraftClass.WIDE, fuel).emissions
     for species, value in expected.items():
         assert result[species] == pytest.approx(value)
     if Species.nvPM_N in result:
