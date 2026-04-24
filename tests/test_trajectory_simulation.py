@@ -64,18 +64,23 @@ def test_trajectory_simulation_basic(tmp_path, sample_missions, performance_mode
     builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
     ts = TrajectoryStore.create(base_file=fname)
 
+    rng = np.random.default_rng(0)
+    original_fields = []
     for mis in sample_missions:
         traj = builder.fly(performance_model, mis)
         traj.add_fields(test_fields)
-        traj.test_field1 = np.random.rand(len(traj))
-        traj.test_field2 = np.random.randint(0, 100, size=len(traj))
+        traj.test_field1 = rng.random(len(traj), dtype=np.float32)
+        traj.test_field2 = rng.integers(0, 100, size=len(traj), dtype=np.int32)
+        original_fields.append((traj.test_field1.copy(), traj.test_field2.copy()))
         ts.add(traj)
 
     ts.close()
 
     ts_loaded = TrajectoryStore.open(base_file=fname)
     assert len(ts_loaded) == len(ts)
-    # TODO: Test that additional fields are correctly saved and loaded.
+    for traj_loaded, (f1, f2) in zip(ts_loaded, original_fields):
+        assert np.array_equal(traj_loaded.test_field1, f1)
+        assert np.array_equal(traj_loaded.test_field2, f2)
 
 
 @pytest.mark.forked
