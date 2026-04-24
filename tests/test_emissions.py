@@ -125,6 +125,16 @@ def test_emissions_species(emissions):
 
 
 def _expected_trajectory_indices(perf_model, trajectory):
+    # DELIBERATELY SELF-REFERENTIAL: this helper drives the same BFFM2,
+    # EI_HCCO, SLS, and AtmosphericState paths that compute_emissions uses.
+    # The test that consumes this (test_compute_emissions_pipeline_wiring)
+    # is therefore a wiring/integration check — it verifies that
+    # compute_emissions routes trajectory inputs through the science
+    # helpers correctly, not that those helpers are scientifically
+    # correct. Science correctness is covered independently by
+    # test_emission_functions.py::TestBFFM2_EINOx,
+    # ::TestEI_HCCO, and ::TestNOxSpeciation, all of which cite
+    # notebook rounded-results cells.
     idx_slice = _trajectory_slice(trajectory)
     lto_inputs = perf_model.lto
 
@@ -182,7 +192,31 @@ def _expected_trajectory_indices(perf_model, trajectory):
 
 
 @pytest.mark.config_updates(emissions__nvpm_method='meem')
-def test_emit_matches_expected_indices_and_pointwise(perf_model, trajectory, emissions):
+def test_compute_emissions_pipeline_wiring(perf_model, trajectory, emissions):
+    """Verify compute_emissions wires the per-segment pipeline correctly.
+
+    What this test checks:
+    - compute_emissions routes trajectory inputs (fuel_flow, altitude,
+      true_airspeed) through AtmosphericState, SLS, BFFM2_EINOx, and
+      EI_HCCO in the expected order and with the expected arguments, so
+      the values it stores in trajectory_indices match what those helpers
+      return when driven directly with the same inputs.
+    - The per-segment emissions identity holds:
+      trajectory_emissions == trajectory_indices * fuel_burn_per_segment.
+    - NOx correctly speciates into NO + NO2 + HONO using the factors
+      returned by BFFM2_EINOx.
+    - NOx speciation fractions satisfy the physical mass-conservation
+      identity no_prop + no2_prop + hono_prop == 1 (independent of the
+      helper — a true correctness signal).
+
+    What this test does NOT check: the scientific correctness of
+    BFFM2_EINOx / EI_HCCO / NOx_speciation / AtmosphericState /
+    get_SLS_equivalent_fuel_flow themselves. That is covered by
+    test_emission_functions.py (TestBFFM2_EINOx, TestEI_HCCO,
+    TestNOxSpeciation) and test_atmospheric_state_and_sls_flow_shapes,
+    which each assert against independently-grounded reference values
+    (notebook rounded-results cells / ISA formulas).
+    """
     expected, (no_prop, no2_prop, hono_prop) = _expected_trajectory_indices(
         perf_model, trajectory
     )
@@ -211,6 +245,13 @@ def test_emit_matches_expected_indices_and_pointwise(perf_model, trajectory, emi
         emissions.trajectory_indices[Species.HONO][idx_slice],
         emissions.trajectory_indices[Species.NOx][idx_slice] * hono_prop,
     )
+    # Mass-conservation identity: NOx must fully partition into
+    # NO + NO2 + HONO with no gain or loss. Independent of the helper
+    # and of the SUT's speciation factor values — a genuine correctness
+    # signal that catches any bug causing the fractions to drift from a
+    # valid probability split.
+    np.testing.assert_allclose(no_prop + no2_prop + hono_prop, 1.0)
+
     assert emissions.lifecycle_co2 is not None
 
 
