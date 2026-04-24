@@ -1,7 +1,9 @@
+import pytest
+
 import AEIC.utils.airports as airports
 from AEIC.missions import Database
 from AEIC.missions.oag import convert_oag_data
-from AEIC.missions.writable_database import WritableDatabase
+from AEIC.missions.writable_database import Warning, WritableDatabase
 from AEIC.types import DayOfWeek
 
 
@@ -58,17 +60,109 @@ def test_airport_handling(tmp_path):
 
 
 def test_oag_conversion(tmp_path, test_data_dir):
-    # This extract of the 2019 OAG data contains 8 valid flights.
+    # This extract of the 2019 OAG data contains 8 valid flights (see
+    # tests/data/oag/README.md for provenance and expected filtering).
     oag_file = test_data_dir / 'oag/2019-extract.csv'
+    warnings_path = tmp_path / 'oag_warnings.txt'
 
     convert_oag_data(
         oag_file,
         2019,
         tmp_path / 'oag_test.sqlite',
-        warnings_file=tmp_path / 'oag_warnings.txt',
+        warnings_file=warnings_path,
     )
 
     with Database(tmp_path / 'oag_test.sqlite') as db:
         cur = db._conn.cursor()
+
         cur.execute('SELECT COUNT(*) FROM flights')
         assert cur.fetchone()[0] == 8
+
+        # Full row content for AS 1011 ORD->SEA (row 4 of the CSV; the first
+        # row that survives is_row_valid filtering). All expected values are
+        # derived from the CSV, not from the SUT:
+        #   carrier=AS, fltno=1011, depapt=ORD, arrapt=SEA
+        #   days='  34' (positions 3,4 → WED,THU → mask = 2**2 + 2**3 = 12)
+        #   deptim=0805 → 8*60+5 = 485 minutes since midnight
+        #   arrtim=1053 → 10*60+53 = 653 minutes since midnight
+        #   arrday='' → +0 day offset
+        #   distance=1715 statute miles → 1715 * 1.609344 = 2760.02 km
+        #   service=J, inpacft=320, seats=146
+        #   efffrom=20191205, effto=20191211 → stored as ISO dates
+        #   2019-12-05 is Thu (day 4), 2019-12-11 is Wed (day 3); the
+        #   effective window covers one of each → 2 scheduled flights
+        cur.execute(
+            """
+            SELECT f.carrier, f.flight_number,
+                   o.iata_code, d.iata_code,
+                   f.day_of_week_mask,
+                   f.departure_time, f.arrival_time, f.arrival_day_offset,
+                   f.service_type, f.aircraft_type, f.engine_type,
+                   f.seat_capacity,
+                   f.effective_from, f.effective_to,
+                   f.number_of_flights, f.od_pair,
+                   f.distance
+            FROM flights f
+            JOIN airports o ON f.origin = o.id
+            JOIN airports d ON f.destination = d.id
+            WHERE f.carrier = ? AND f.flight_number = ?
+            """,
+            ('AS', 1011),
+        )
+        row = cur.fetchone()
+        assert row is not None
+        (
+            carrier,
+            flight_number,
+            origin_iata,
+            dest_iata,
+            dow_mask,
+            dep_time,
+            arr_time,
+            arr_day_offset,
+            service_type,
+            aircraft_type,
+            engine_type,
+            seat_capacity,
+            eff_from,
+            eff_to,
+            n_flights,
+            od_pair,
+            distance,
+        ) = row
+        assert carrier == 'AS'
+        # flight_number column is TEXT — SQLite stores the int-parsed fltno
+        # as its string form.
+        assert flight_number == '1011'
+        assert origin_iata == 'ORD'
+        assert dest_iata == 'SEA'
+        assert dow_mask == 0b00001100
+        assert dep_time == 8 * 60 + 5
+        assert arr_time == 10 * 60 + 53
+        assert arr_day_offset == 0
+        assert service_type == 'J'
+        assert aircraft_type == '320'
+        assert engine_type == ''
+        assert seat_capacity == 146
+        assert eff_from == '2019-12-05'
+        assert eff_to == '2019-12-11'
+        assert n_flights == 2
+        assert od_pair == 'ORDSEA'
+        assert distance == pytest.approx(1715 * 1.609344)
+
+        # Schedules: every accepted flight produced at least one schedule,
+        # and at least some flights generated multiple (long effective
+        # windows × daily/weekday day-of-week masks).
+        cur.execute('SELECT COUNT(*) FROM schedules')
+        assert cur.fetchone()[0] > 8
+        cur.execute('SELECT COUNT(DISTINCT flight_id) FROM schedules')
+        assert cur.fetchone()[0] == 8
+
+    # All 8 valid flights use major airports with plausible distances, so no
+    # UNKNOWN_AIRPORT / SUSPICIOUS_DISTANCE / ZERO_DISTANCE / TIME_MISORDERING
+    # warnings fire, and (since rejected rows are filtered silently by
+    # is_row_valid before distance/airport checks) report() does not write
+    # the warnings file at all. Assert the silence explicitly — a regression
+    # that started emitting spurious warnings on valid rows would fail here.
+    assert not warnings_path.exists()
+    assert Warning.Type  # exercise the import so a future refactor catches the rename
