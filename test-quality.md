@@ -127,7 +127,7 @@ the full finding body.
    ([Phase 4 · `test_emissions.py`](#tests-test_emissionspy-10-tests)).
    Atmospheric expected values were derived from `AtmosphericState`, the
    very SUT under test (per notebook cell 11).
-7. 🔴 **`test_get_gse_emissions_matches_reference_profile` — snapshot of SUT constants**
+7. **`test_get_gse_emissions_matches_reference_profile` — snapshot of SUT constants** *[DONE]*
    ([Phase 4 · `test_emissions.py`](#tests-test_emissionspy-10-tests)).
    Hardcoded `expected` dict literally matches `_gse_nominal_profile()`
    defaults; no external/notebook reference.
@@ -944,7 +944,7 @@ helper pattern).
   expected temp/pressure/mach against ICAO Standard Atmosphere tables
   (not against `AtmosphericState`) and note the independent source
   inline.
-- 🔴 **[High][SUSPICIOUS-DATA]** `test_get_gse_emissions_matches_reference_profile`
+- **[High][SUSPICIOUS-DATA]** `test_get_gse_emissions_matches_reference_profile`
   (`test_emissions.py:338–358`) — hard-coded `expected` dict
   (`CO2=58_000.0`, `NOx=900.0`, `HC=70.0`, …) matches the per-class
   literals in `_gse_nominal_profile()` (`emissions/gse.py`). The test
