@@ -153,12 +153,12 @@ the full finding body.
 
 ### High [COVERAGE-GAP] — important validator unexercised
 
-11. 🔴 **`PerformanceTable.__post_init__` — six structural checks untested**
+11. **`PerformanceTable.__post_init__` — six structural checks untested**
     ([Phase 3 · `test_performance_table.py`](#tests-test_performance_tablepy-3-tests)).
     `check_coverage × 3` and `check_fl_only × 5` over climb / cruise /
     descent sub-tables — the heart of the BADA-shape validation. Every
     `raise ValueError` branch is unexercised; orphan
-    `bad_performance_model_{1,2,3}.toml` fixtures reference zero tests.
+    `bad_performance_model_{1,2,3}.toml` fixtures reference zero tests. *[DONE]*
 
 ## Prioritized remediation
 
@@ -728,14 +728,18 @@ branches is exercised by any test in this phase. Reported inline below.
   `ICAO_UID == '01P11CM121'` assertion to fail with `AttributeError`
   if LTO went missing — or replace with a positive content check on
   `model.lto.fuel_flow[ThrustMode.IDLE] > 0`.
-- 🟡 **[Medium][COVERAGE-GAP]** `tests/data/performance/bad_performance_model_{1,2,3}.toml`
+- **[Medium][COVERAGE-GAP]** `tests/data/performance/bad_performance_model_{1,2,3}.toml`
   exist as fixtures but **no test in the repo references them** (grep
   confirms zero hits). They appear to be intentional negative-path
   fixtures for the validators in `PerformanceTableInput.validate_names_and_sizes`
   / `PerformanceTable.__post_init__` that were planned and never
   written. *Suggested fix:* either add `with pytest.raises(...)` tests
   loading each (asserting which validator fails), or delete the
-  fixtures and stop shipping them as test data.
+  fixtures and stop shipping them as test data. *[DONE]* (fixtures deleted;
+  schema had drifted — `model_type = "table"`, `cas_lo`/`Foo_kN` — so
+  loading them would fail at Pydantic validation, not at `__post_init__`.
+  Replaced with inline-parametrized mutate-one-cell tests in
+  `test_performance_table.py`.)
 - 🟡 **[Medium][COVERAGE-GAP]** `test_performance_model_selection` exercises
   three branches of `SimplePerformanceModelSelector.__call__`: direct
   file match (`738`), synonym lookup (`319 → 380`), and default
@@ -767,7 +771,7 @@ branches is exercised by any test in this phase. Reported inline below.
   loop over all 18 input rows and assert each one is recoverable from
   `model.df` at the matching `(fl, rocd, mass)` key, asserting
   equality of `tas` and `fuel_flow` against the closures.
-- 🔴 **[High][COVERAGE-GAP]** `PerformanceTable.__post_init__` (in
+- **[High][COVERAGE-GAP]** `PerformanceTable.__post_init__` (in
   `legacy.py:191–251`) runs six structural-integrity checks on the
   BADA-shape contract — `check_coverage` for each of zero / positive /
   negative ROCD sub-tables, and `check_fl_only` for `tas` (zero, pos,
@@ -779,7 +783,12 @@ branches is exercised by any test in this phase. Reported inline below.
   bad-table input through `PerformanceTable.from_input` per failure
   mode (missing FL coverage in cruise; TAS varying with mass at
   positive ROCD; etc.) and asserting the specific `ValueError`
-  message.
+  message. *[DONE]* *Actual remediation:* parametrized
+  `test_performance_table_post_init_rejects` covers all 9
+  `check_coverage`/`check_fl_only` branches via mutate-one-cell on a
+  good baseline; two additional tests cover the mass-count guard
+  (positive-only n≠3 and negative-only n≠1). Orphan fixtures deleted
+  rather than rewritten (schema drift).
 - 🟡 **[Medium][COVERAGE-GAP]** `test_create_performance_table_missing_output_column`
   only covers the missing-`fuel_flow` branch of `PerformanceTableInput.validate_names_and_sizes`.
   The validator also raises on duplicate columns, missing `fl` /
