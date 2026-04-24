@@ -295,28 +295,44 @@ def test_calculate_nvpm_none_disables_outputs(perf_model, trajectory):
     assert Species.nvPM_N not in result
 
 
+def _isa_reference(altitudes_m, tas_m_s):
+    """Independent ISA reference per ICAO Doc 7488 / US Std Atmosphere 1976.
+
+    Must not import from AEIC.utils.standard_atmosphere — that module is the
+    SUT. Constants are inlined from the published standard so this helper is
+    a standalone reference against which AtmosphericState can be checked.
+    """
+    T0 = 288.15
+    p0 = 101325.0
+    L = -0.0065
+    g = 9.80665
+    R = 287.05287
+    kappa = 1.4
+    h_tp = 11000.0
+
+    h = np.asarray(altitudes_m, dtype=float)
+    T = np.where(h <= h_tp, T0 + L * h, T0 + L * h_tp)
+    T_tp = T0 + L * h_tp
+    p_tp = p0 * (T_tp / T0) ** (-g / (L * R))
+    p = np.where(
+        h <= h_tp,
+        p0 * (T / T0) ** (-g / (L * R)),
+        p_tp * np.exp(-g / (R * T_tp) * (h - h_tp)),
+    )
+    M = np.asarray(tas_m_s, dtype=float) / np.sqrt(kappa * R * T)
+    return T, p, M
+
+
 def test_atmospheric_state_and_sls_flow_shapes(perf_model, trajectory):
     atmos = AtmosphericState(trajectory.altitude, trajectory.true_airspeed)
-    expected_temp = np.array([288.15, 278.4, 249.15, 216.65, 229.65, 275.15])
-    expected_pressure = np.array(
-        [
-            101325.0,
-            84555.9940737564,
-            47181.0021852292,
-            22632.0400950078,
-            30742.4326120969,
-            79495.201934051,
-        ]
-    )
-    expected_mach = np.array(
-        [
-            0.3526362622,
-            0.4484475741,
-            0.6004518548,
-            0.7116967515,
-            0.5925081326,
-            0.4210157206,
-        ]
+    # Expected values from published ISA formulas (ICAO Doc 7488 / US Std
+    # Atmosphere 1976), computed in _isa_reference() without importing from
+    # AEIC.utils.standard_atmosphere (the SUT).
+    # Spot checks vs ICAO Doc 7488 Table A:
+    #   h=0 m      -> T=288.150 K, p=101325 Pa  (sea level)
+    #   h=11000 m  -> T=216.650 K, p≈22632 Pa   (tropopause)
+    expected_temp, expected_pressure, expected_mach = _isa_reference(
+        trajectory.altitude, trajectory.true_airspeed
     )
     np.testing.assert_allclose(atmos.temperature, expected_temp)
     np.testing.assert_allclose(atmos.pressure, expected_pressure)
