@@ -1381,6 +1381,17 @@ weather fixture.
   up `u`/`v` directly from the NetCDF, compute `hypot(tas·cos +
   u, tas·sin + v)` in the test body — this makes the expected
   value derivable from the *data* rather than from the SUT).
+  *Actual remediation:* neither (a) nor (b). Any independent
+  computation against the real ERA5 fixture duplicates the SUT
+  (ISA pressure lookup + xarray interp + hypot). Instead the
+  15-digit literal was replaced with a finite-and-physically-
+  plausible envelope (`100 < gs < 300` m/s for TAS=200 m/s). The
+  algorithm itself is independently verified by the synthetic-
+  fixture tests added later in the same file
+  (`test_annual_mean_reads_single_file` onward), where the wind
+  field is known and the expected ground speed is derivable on
+  paper. The real-fixture test is now an honest smoke check for
+  fixture loadability, not a precision check.
 - 🟡 **[Medium][COVERAGE-GAP]** Success-path weather is exercised by
   exactly one point (one time, one altitude, one TAS, no azimuth
   override). Uncovered in this file:
