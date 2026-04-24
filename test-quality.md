@@ -140,7 +140,7 @@ the full finding body.
 
 ### High [WEAK-ASSERTION] — assertion passes even when implementation is wrong
 
-9. 🔴 **`test_oag_conversion` — `COUNT(*) == 7` on the entire ingestion pipeline**
+9. **`test_oag_conversion` — `COUNT(*) == 7` on the entire ingestion pipeline** *[DONE]*
    ([Phase 2 · `test_mission_db_creation.py`](#tests-test_mission_db_creationpy-3-tests)).
    Every downstream mission-DB test's provenance leads back through
    this ingestion; the only check is a row count.
@@ -618,7 +618,7 @@ stability but leaves the execution path thinly tested.
 
 ### `tests/test_mission_db_creation.py` (3 tests)
 
-- 🔴 **[High][WEAK-ASSERTION]** `test_oag_conversion` — the only
+- **[High][WEAK-ASSERTION]** `test_oag_conversion` — the only
   assertion on the end-to-end `convert_oag_data` pipeline is
   `SELECT COUNT(*) FROM flights == 7`. Nothing verifies: (a) the row
   *contents* (carrier, flight number, aircraft type, origin /
