@@ -123,7 +123,7 @@ the full finding body.
 
 ### High [SUSPICIOUS-DATA] — expected values have SUT-self-generated provenance
 
-6. 🔴 **`test_atmospheric_state_and_sls_flow_shapes` — self-referential inputs**
+6. **`test_atmospheric_state_and_sls_flow_shapes` — self-referential inputs** *[DONE]*
    ([Phase 4 · `test_emissions.py`](#tests-test_emissionspy-10-tests)).
    Atmospheric expected values were derived from `AtmosphericState`, the
    very SUT under test (per notebook cell 11).
@@ -933,7 +933,7 @@ values are either hard-coded in the test or re-derived inline by
 calling the SUT a second time (the `_expected_trajectory_indices`
 helper pattern).
 
-- 🔴 **[High][SUSPICIOUS-DATA]** `test_atmospheric_state_and_sls_flow_shapes`
+- **[High][SUSPICIOUS-DATA]** `test_atmospheric_state_and_sls_flow_shapes`
   (`test_emissions.py:297–335`) — `expected_temp`, `expected_pressure`,
   `expected_mach` are hard-coded arrays with no provenance comment; the
   SLS-flow array has a `# NOTE: RESULTS FROM notebooks/test-cases.ipynb
