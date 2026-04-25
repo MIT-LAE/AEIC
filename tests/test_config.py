@@ -73,6 +73,25 @@ def test_frozen_inner():
         config.weather.use_weather = False
 
 
+def test_escape_allows_re_validation_without_overwriting_singleton():
+    """`Config.escape()` lets reproducibility-replay code build a second
+    ``Config`` without tripping the singleton check or replacing the
+    canonical instance — the path used by
+    ``trajectories.store._read_reproducibility_info``.
+    """
+    Config.load()
+    primary = Config.get()
+
+    with pytest.raises(RuntimeError, match='Config has already been initialized.'):
+        Config.load()
+
+    with Config.escape():
+        replay = Config.load()
+
+    assert replay is not primary
+    assert Config.get() is primary
+
+
 def test_data_file_locations(tmp_path: Path, monkeypatch):
     # Test that data file locations are resolved correctly.
     d = tmp_path / 'data'

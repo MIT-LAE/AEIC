@@ -255,7 +255,7 @@ Each is a self-contained PR.
 - **`Config.escape()` context manager test** (Phase 1 Medium
   COVERAGE-GAP). This is the reproducibility-replay path; a broken
   `escape()` would silently corrupt snapshot loads. See also the Bonus
-  decorator-stacking observation.
+  decorator-stacking observation. *[DONE]*
 - **`Database.set_random_seed()` determinism test** (Phase 2 Medium
   COVERAGE-GAP). Open the test DB twice with the same seed, collect
   flight IDs, assert equal.
@@ -370,7 +370,8 @@ override is deliberate; documented by the inline comment.
   reproducibility snapshots, a broken `escape()` would silently corrupt
   replay. *Suggested fix:* add a test that nests `Config.load()` inside
   `with Config.escape():` and verifies the inner load does not raise
-  `RuntimeError` and does not overwrite the outer singleton.
+  `RuntimeError` and does not overwrite the outer singleton. *[DONE]*
+  See `tests/test_config.py::test_escape_allows_re_validation_without_overwriting_singleton`.
 - 🟢 **[Low][COVERAGE-GAP]** `default_data_file_location` with a path
   absent from both overrides and `src/AEIC/data/` (raise at
   `core.py:153`) is untested. *Suggested fix:* add a one-liner
