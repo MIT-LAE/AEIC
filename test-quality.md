@@ -1523,12 +1523,15 @@ Exercises `LegacyBuilder.fly()` end-to-end, plus one
   `@pytest.mark.parametrize("cls", [TASOPTBuilder, ADSBBuilder,
   DymosBuilder])` that calls `with pytest.raises(NotImplementedError):
   cls()`. *[DONE]*
-- 🟢 **[Low][COVERAGE-GAP]** `iterate_mass=True` is tested only in the
+- **[Low][COVERAGE-GAP]** `iterate_mass=True` is tested only in the
   success case and in the `max_mass_iters=1` failure case. The
   boundary — a mission that converges exactly at `max_mass_iters`,
   or a reltol-on-the-edge case — is untested.  *Suggested fix:*
   a parametrized edge-case test; low priority relative to the
-  others.
+  others. *[DONE]* `test_trajectory_mass_iter_boundary` parametrizes
+  over `_MIN_ITERS_TO_CONVERGE - 1` (must raise) and
+  `_MIN_ITERS_TO_CONVERGE` (must succeed) for the BOS→LAX example
+  mission at reltol=1e-6.
 - **[Low][HYGIENE]** The `iteration_params` fixture (`:35–37`)
   hardcodes `test_reltol=1e-6` and `test_maxiters=1000`. The name
   `test_maxiters=1000` is suspicious — for missions that should

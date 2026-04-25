@@ -179,6 +179,42 @@ def test_trajectory_mass_iter_fail(
         builder_fail.fly(performance_model, example_mission)
 
 
+# Empirical baseline: with `mass_iter_reltol=1e-6` against the sample
+# performance model, the BOS→LAX `example_mission` first converges at
+# `max_mass_iters=7`. The boundary test below pins both directions:
+# `max_mass_iters=6` must raise, `max_mass_iters=7` must succeed. A
+# regression that shifted the iteration count by one would land here
+# rather than slipping through the loose `max_mass_iters=1` failure case
+# and the (pre-fix) `max_mass_iters=1000` success case.
+_MIN_ITERS_TO_CONVERGE = 7
+
+
+@pytest.mark.parametrize(
+    'max_mass_iters,should_converge',
+    [
+        (_MIN_ITERS_TO_CONVERGE - 1, False),
+        (_MIN_ITERS_TO_CONVERGE, True),
+    ],
+    ids=['just_below_boundary', 'exactly_at_boundary'],
+)
+def test_trajectory_mass_iter_boundary(
+    performance_model, example_mission, max_mass_iters, should_converge
+):
+    builder = tb.LegacyBuilder(
+        options=tb.Options(
+            iterate_mass=True,
+            max_mass_iters=max_mass_iters,
+            mass_iter_reltol=1e-6,
+        )
+    )
+    if should_converge:
+        traj = builder.fly(performance_model, example_mission)
+        assert len(traj) > 0
+    else:
+        with pytest.raises(RuntimeError, match='Mass iteration failed to converge'):
+            builder.fly(performance_model, example_mission)
+
+
 @pytest.mark.parametrize(
     'cls',
     [tb.TASOPTBuilder, tb.ADSBBuilder, tb.DymosBuilder],
