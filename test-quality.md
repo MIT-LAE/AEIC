@@ -361,7 +361,7 @@ override is deliberate; documented by the inline comment.
   via `Config.get()`). Both assert the same two fields are non-None.
   *Suggested fix:* parametrize, or merge and add a single explicit
   proxy-vs-classmethod equivalence assertion.
-- 🟡 **[Medium][COVERAGE-GAP]** `Config.escape()` context manager — used
+- **[Medium][COVERAGE-GAP]** `Config.escape()` context manager — used
   for bypassing the singleton when loading config snapshots from
   trajectory-store reproducibility data — is not exercised here or
   anywhere in Phase 1. Coverage confirms the "slack" branch at
@@ -391,7 +391,7 @@ override is deliberate; documented by the inline comment.
 public methods are not *exercised* (100 % is from being touched by
 other tests via imports / instantiation paths).
 
-- 🟡 **[Medium][COVERAGE-GAP]** `Dimensions.netcdf` property — untested in
+- **[Medium][COVERAGE-GAP]** `Dimensions.netcdf` property — untested in
   this file. This property controls how dimensions are serialized to
   NetCDF files; a bug here would silently reorder axes in output.
   *Suggested fix:* add an explicit test asserting the tuple contents
@@ -412,7 +412,7 @@ mergeability tests (`test_pattern_merging`,
 delegating to `subproc.run_in_subprocess`; both patterns coexist in the
 file.
 
-- 🟡 **[Medium][ISOLATION]** `test_file_access_recorder` — calls
+- **[Medium][ISOLATION]** `test_file_access_recorder` — calls
   `sqlite3.connect('tmp.sqlite')` with a bare relative path, which
   creates `tmp.sqlite` in the *current working directory* (i.e. repo
   root when pytest is run there). The file leaks across test runs.
@@ -426,7 +426,7 @@ file.
   `safe_open('file1.nc')` only catches `FileNotFoundError` from the
   `open(f, 'r')` default mode. *Suggested fix:* drop the safety wrappers
   entirely; the recorder's event hook fires regardless. *[DONE]*
-- 🟡 **[Medium][LOGIC-ERROR]** `test_multi_threading` — asserts a worker
+- **[Medium][LOGIC-ERROR]** `test_multi_threading` — asserts a worker
   thread sets `result == 'FAILED'`, i.e. expects multi-threaded NetCDF
   writes to fail. The test swallows *any* exception via bare `except
   Exception:`, so a failure for an unrelated reason (e.g. `tmp_path`
@@ -482,14 +482,14 @@ leakage requires subprocess isolation").
   heisen-failures. *Suggested fix:* add `@pytest.mark.forked` to both
   (or wrap bodies in `run_in_subprocess`, matching the convention used
   elsewhere in `tests/test_storage.py`).
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_emissions_storage` — after reload,
+- **[Medium][WEAK-ASSERTION]** `test_emissions_storage` — after reload,
   asserts `hasattr(traj, 'total_emissions')` but never compares the
   loaded emissions to the computed ones. *Suggested fix:* capture
   `original_emissions = [compute_emissions(...) for mis in ...]` before
   writing, and after reopening assert
   `ts_loaded[i].total_emissions == original_emissions[i].total_emissions`
   for each species. *[DONE]*
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_separate_emissions` — checks types
+- **[Medium][WEAK-ASSERTION]** `test_separate_emissions` — checks types
   (`isinstance(..., SpeciesValues)`, `isinstance(..., np.ndarray)`) but
   not values. The branch under test is the associated-file round trip,
   which is the exact place serialization bugs could silently drop or
