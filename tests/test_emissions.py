@@ -293,7 +293,13 @@ def test_lto_respects_traj_flag_true(perf_model, fuel, trajectory):
         )
 
 
-def test_lto_nox_split_matches_speciation(emissions):
+def test_lto_nox_split_consistent_with_speciation_factors(emissions):
+    """Consistency check: the LTO NOx-split path multiplies by the
+    same `NOx_speciation()` factors the SUT uses, so this verifies the
+    pipeline applies the speciation step (not that the factors
+    themselves are right). Factor correctness is asserted independently
+    by `test_emission_functions.py::TestNOxSpeciation::test_NOx_speciation_results`.
+    """
     speciation = NOx_speciation()
 
     def check(species: Species, prop: ThrustModeValues):

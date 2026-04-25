@@ -1049,7 +1049,7 @@ helper pattern).
   added a duplicate species would pass. *Suggested fix:* assert
   `set(emissions.species) == set(Species)` (or whatever the intended
   containment is) and add a docstring stating the invariant. *[DONE]*
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_lto_nox_split_matches_speciation`
+- **[Medium][WEAK-ASSERTION]** `test_lto_nox_split_matches_speciation`
   (`test_emissions.py:250–260`) — the test recomputes `NOx_speciation()`
   and asserts `lto_indices[NO] == lto_indices[NOx] * speciation.no`.
   This is the exact algebraic identity the SUT implements when it
@@ -1059,7 +1059,7 @@ helper pattern).
   `test_emission_functions.py::TestNOxSpeciation::test_NOx_speciation_results`
   (itself SUSPICIOUS-DATA, see below). *Suggested fix:* keep this as
   a consistency check but rename (`test_lto_nox_split_consistent_with_speciation_factors`)
-  and cross-reference the factor-correctness test.
+  and cross-reference the factor-correctness test. *[DONE]*
 - 🟡 **[Medium][COVERAGE-GAP]** `test_lto_respects_traj_flag_true`
   (`test_emissions.py:240–247`) — asserts `APPROACH` and `CLIMB` LTO
   emissions are ~0 when `climb_descent_mode=TRAJECTORY`, i.e. the
