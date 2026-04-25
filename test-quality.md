@@ -535,12 +535,12 @@ leakage requires subprocess isolation").
   `run_in_subprocess`, which is probably *intended*, but the coupling
   is implicit. *Suggested fix:* add a one-line comment documenting the
   cross-subprocess expectation. *[DONE]*
-- 🟢 **[Low][ISOLATION]** `default_config` fixture at lines 36–65 is
+- **[Low][ISOLATION]** `default_config` fixture at lines 36–65 is
   `autouse=True` and runs `Config.load(**config_data, …)` unconditionally.
   Any test that wants to skip it must locally redefine a fixture of the
   same name (as `test_config.py` does). Works, but the override-via-
   shadowing contract is not documented. *Suggested fix:* add a
-  fixture-level docstring noting how to opt out.
+  fixture-level docstring noting how to opt out. *[DONE]*
 
 ### `tests/subproc.py` (context)
 

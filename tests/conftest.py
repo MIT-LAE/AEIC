@@ -62,6 +62,17 @@ def test_data_dir():
 # Set up and tear down global configuration around each test.
 @pytest.fixture(autouse=True)
 def default_config(request):
+    """Autouse fixture that loads the default AEIC `Config` for every test.
+
+    Tests that need to drive `Config.load()` themselves (e.g. to assert on
+    the load mechanics, or to load multiple configs in sequence) opt out by
+    redefining a fixture of the same name in their own module — pytest's
+    fixture resolution will prefer the closer override. See
+    `tests/test_config.py` for an example. An overriding fixture should
+    accept `request` and assert that no `@pytest.mark.config_updates`
+    marker is attached, so users who write the marker on a test that
+    happens to fall under the override aren't silently ignored.
+    """
     # Updates to the default configuration are pulled from the config_updates
     # marker.
     data_marker = request.node.get_closest_marker('config_updates')
