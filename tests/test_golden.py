@@ -26,8 +26,11 @@ def test_trajectory_simulation_matches_golden_snapshot(
     comparison_ts = TrajectoryStore.open(base_file=comparison_fname)
 
     failed = []
+    sample_traj = None
     for idx, mis in enumerate(sample_missions):
         traj = builder.fly(performance_model, mis)
+        if sample_traj is None and mis.aircraft_type == '738':
+            sample_traj = traj
         comparison_traj = comparison_ts[idx]
         if not traj.approx_eq(comparison_traj):
             failed.append(traj.name)
@@ -35,3 +38,14 @@ def test_trajectory_simulation_matches_golden_snapshot(
     comparison_ts.close()
 
     assert not failed, f'Trajectory simulation mismatch for: {failed}'
+
+    # Unit-convention tripwire: the snapshot comparison only catches drift
+    # from a prior SUT state — if someone changes a unit (m → km, kg → t,
+    # m/s → kt) and regenerates the golden, the snapshot silently passes
+    # with physically wrong numbers. Pin physical-envelope bounds on a
+    # known 738 trajectory so a unit shift fails loudly here.
+    assert sample_traj is not None
+    assert 50_000 < float(sample_traj.aircraft_mass[0]) < 90_000  # kg
+    assert 5_000 < float(sample_traj.altitude.max()) < 15_000  # m
+    assert 100_000 < float(sample_traj.ground_distance.max()) < 20_000_000  # m
+    assert 30 < float(sample_traj.true_airspeed.max()) < 350  # m/s

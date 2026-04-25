@@ -251,7 +251,9 @@ Each is a self-contained PR.
   `test_trajectory_simulation_matches_golden_snapshot` to signal
   snapshot semantics; add per-field tolerances; add at least one
   unit-convention tripwire (`assert 50_000 < traj.aircraft_mass[0] < 90_000`
-  for a 738).
+  for a 738). *[DONE]* (rename + tripwire; per-field tolerance
+  parametrization deferred — requires SUT changes to
+  `Container.approx_eq`).
 - **`Config.escape()` context manager test** (Phase 1 Medium
   COVERAGE-GAP). This is the reproducibility-replay path; a broken
   `escape()` would silently corrupt snapshot loads. See also the Bonus
@@ -1697,7 +1699,7 @@ which reduces to `np.allclose` defaults
   independent correctness check; cross-reference the future
   notebook section (per the notebook-gap list) if/when trajectory
   state gets an independent implementation. *[DONE]*
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_trajectory_simulation_golden`
+- **[Medium][WEAK-ASSERTION]** `test_trajectory_simulation_golden`
   — the tolerance is implicit (buried in `approx_eq` →
   `np.allclose` defaults at `container.py:174`). `rtol=1e-5` on a
   fuel_flow of O(1) is 1e-5 kg/s (tight); but on `ground_distance`
@@ -1712,6 +1714,13 @@ which reduces to `np.allclose` defaults
   tolerance explicitly, and add at least one scalar-level assertion
   on a named field (e.g. `assert 50_000 < traj.aircraft_mass[0]
   < 90_000` for a 738) that would blow up loudly on a unit shift.
+  *[DONE]* *Actual remediation:* the tripwire half — physical
+  envelopes on aircraft_mass, altitude, ground_distance, and TAS
+  for a 738 — was added to detect coordinated regeneration after a
+  unit shift. The per-field tolerance parametrization was *not*
+  pursued: it requires either a SUT change to `Container.approx_eq`
+  or duplicating the comparison logic in the test, both of which
+  exceed the medium's intended scope.
 - 🟢 **[Low][COVERAGE-GAP]** `test_golden.py` never asserts that
   `len(comparison_ts) == len(sample_missions)`. If the golden file
   and the mission fixture drift apart (e.g. sample missions
