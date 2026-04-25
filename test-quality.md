@@ -418,14 +418,14 @@ file.
   root when pytest is run there). The file leaks across test runs.
   *Suggested fix:* use `tmp_path / 'tmp.sqlite'` and update the expected
   `access_recorder.paths` accordingly; drop the redundant `safe_*`
-  wrappers (see next item).
+  wrappers (see next item). *[DONE]*
 - 🟢 **[Low][HYGIENE]** `test_file_access_recorder` — `safe_sqlite3_connect`
   wraps `sqlite3.connect` in `try/except FileNotFoundError`, but
   `sqlite3.connect` *creates* the file if it does not exist and never
   raises `FileNotFoundError`, so the `except` branch is dead. Similarly
   `safe_open('file1.nc')` only catches `FileNotFoundError` from the
   `open(f, 'r')` default mode. *Suggested fix:* drop the safety wrappers
-  entirely; the recorder's event hook fires regardless.
+  entirely; the recorder's event hook fires regardless. *[DONE]*
 - 🟡 **[Medium][LOGIC-ERROR]** `test_multi_threading` — asserts a worker
   thread sets `result == 'FAILED'`, i.e. expects multi-threaded NetCDF
   writes to fail. The test swallows *any* exception via bare `except

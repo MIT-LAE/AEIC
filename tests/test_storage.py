@@ -843,31 +843,30 @@ def test_append_to_container_by_class():
     assert container_extensible.per_point_2.tolist() == list(range(20, 1420, 20))
 
 
-def test_file_access_recorder():
+def test_file_access_recorder(tmp_path: Path):
     # Create a FileAccessRecorder, record some accesses, check that they were
     # recorded correctly.
-    def safe_open(f):
-        try:
-            return open(f)
-        except FileNotFoundError:
-            return None
-
-    def safe_sqlite3_connect(f):
-        try:
-            return sqlite3.connect(f)
-        except FileNotFoundError:
-            return None
+    file1 = tmp_path / 'file1.nc'
+    file2 = tmp_path / 'file2.nc'
+    file3 = tmp_path / 'file3.nc'
+    sqlite_db = tmp_path / 'tmp.sqlite'
+    for f in (file1, file2, file3):
+        f.touch()
 
     with track_file_accesses():
-        safe_open('file1.nc')
-        safe_open('file2.nc')
-        safe_open('file3.nc')
-        safe_sqlite3_connect('tmp.sqlite')
+        with open(file1):
+            pass
+        with open(file2):
+            pass
+        with open(file3):
+            pass
+        sqlite3.connect(sqlite_db).close()
+
     assert access_recorder.paths == [
-        Path.cwd() / 'file1.nc',
-        Path.cwd() / 'file2.nc',
-        Path.cwd() / 'file3.nc',
-        Path.cwd() / 'tmp.sqlite',
+        file1.resolve(),
+        file2.resolve(),
+        file3.resolve(),
+        sqlite_db.resolve(),
     ]
 
 
