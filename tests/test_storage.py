@@ -87,16 +87,25 @@ def simple_check_ts(path: Path | str, title: str, lengths: list[int]):
 @pytest.mark.forked
 def test_create_reopen(tmp_path: Path):
     # Create a small TrajectoryStore, save to NetCDF, disabling further
-    # appending (closes NetCDF file), reload from NetCDF.
-
+    # appending (closes NetCDF file), reload from NetCDF. Verifies both
+    # structural metadata (title, length, indexing) *and* per-field numeric
+    # equality between what was written and what comes back, so a regression
+    # that silently permutes axes or rounds values on serialize is caught
+    # here rather than passing on hasattr/shape checks alone.
+    np.random.seed(0)
     path = tmp_path / 'test.nc'
-    simple_create_ts(base_file=path, title='simple case')
-
-    simple_check_ts(path, 'simple case', [10, 15])
+    originals = [make_test_trajectory(10, 1), make_test_trajectory(15, 2)]
+    with TrajectoryStore.create(base_file=path, title='simple case') as ts:
+        for t in originals:
+            ts.add(t)
 
     with TrajectoryStore.open(base_file=path) as ts_read:
-        for traj in ts_read:
-            assert isinstance(traj, Trajectory)
+        assert ts_read.global_attributes['title'] == 'simple case'
+        assert len(ts_read) == 2
+        for i, original in enumerate(originals):
+            loaded = ts_read[i]
+            assert isinstance(loaded, Trajectory)
+            _assert_trajectories_equal(loaded, original)
         with pytest.raises(IndexError):
             ts_read[10]
 

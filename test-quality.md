@@ -469,7 +469,7 @@ file.
   generator through `make_test_trajectory` — the helper relies on
   global numpy state across many call sites and reworking its signature
   was out of scope for a [Low].
-- 🟢 **[Low][WEAK-ASSERTION]** Across the `test_create_*` /
+- **[Low][WEAK-ASSERTION]** Across the `test_create_*` /
   `test_extra_fields_in_*` / `test_merging_*` family, the post-reload
   assertions exclusively check shapes, lengths, `fieldsets`
   memberships, and `hasattr(...)`. They never verify that reloaded
@@ -478,7 +478,11 @@ file.
   fix:* in at least one representative test per write-mode, assert
   `np.array_equal(loaded.fuel_flow, original.fuel_flow)` for a known
   trajectory (or use `Container.__eq__`, which already implements the
-  comparison).
+  comparison). *[DONE]* `test_create_reopen` now captures the originals
+  before writing and asserts field-by-field equality via the existing
+  `_assert_trajectories_equal` helper. The `iter_range` / `iter_flight_ids`
+  family already does this, so the create-and-reopen path was the
+  notable gap.
 - 🟢 **[Low][HYGIENE]** `test_create_reopen_large` is
   `@pytest.mark.skip(reason='long test case, enable manually')`. Fine
   as a gated scaling test; consider `@pytest.mark.slow` + a CLI flag so
