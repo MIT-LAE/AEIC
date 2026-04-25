@@ -111,11 +111,22 @@ def test_trajectory_simulation_outside_weather_domain(
 
 @pytest.mark.forked
 def test_trajectory_simulation_weather(example_mission_with_weather, performance_model):
-    builder = tb.LegacyBuilder(options=tb.Options(use_weather=True, iterate_mass=False))
+    """Use-weather builds a trajectory whose ground speed differs from
+    the no-weather baseline: without that, `len(traj) > 0` would pass
+    even if `use_weather=True` had no effect.
+    """
+    builder_wx = tb.LegacyBuilder(
+        options=tb.Options(use_weather=True, iterate_mass=False)
+    )
+    builder_nowx = tb.LegacyBuilder(
+        options=tb.Options(use_weather=False, iterate_mass=False)
+    )
 
-    traj = builder.fly(performance_model, example_mission_with_weather)
+    traj_wx = builder_wx.fly(performance_model, example_mission_with_weather)
+    traj_nowx = builder_nowx.fly(performance_model, example_mission_with_weather)
 
-    assert len(traj) > 0
+    assert len(traj_wx) > 0
+    assert np.any(traj_wx.ground_speed != traj_nowx.ground_speed)
 
 
 def test_trajectory_mass_iter(performance_model, example_mission, iteration_params):

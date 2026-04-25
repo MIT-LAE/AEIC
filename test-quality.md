@@ -1390,13 +1390,13 @@ Exercises `LegacyBuilder.fly()` end-to-end, plus one
   entirely), and the mass invariants are split into three: aircraft
   finishes above empty, below starting, and fuel mass strictly
   decreases.
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_trajectory_simulation_weather`
+- **[Medium][WEAK-ASSERTION]** `test_trajectory_simulation_weather`
   (`:94`) asserts only `len(traj) > 0`. Same smoke-only problem
   as above, and here the weather path is what's supposedly under
   test — so at minimum one should assert that the ground-speed
   trace differs from the no-weather baseline. *Suggested fix:*
   also build a no-weather trajectory for the same mission and
-  assert `np.any(traj_weather.ground_speed != traj_nowx.ground_speed)`.
+  assert `np.any(traj_weather.ground_speed != traj_nowx.ground_speed)`. *[DONE]*
 - 🟡 **[Medium][WEAK-ASSERTION]** `test_trajectory_performance_model_selector`
   (`:141–147`) asserts only `len(traj) > 0` per mission. This is the
   only test of `PerformanceModelSelector.select_for_mission`; it
