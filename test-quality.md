@@ -1167,13 +1167,17 @@ across classes provide "standard atmosphere"-style inputs.
 
 #### `TestGetAPUEmissions`
 
-- 🟡 **[Medium][COVERAGE-GAP]** APU tests collectively do not exercise
+- **[Medium][COVERAGE-GAP]** APU tests collectively do not exercise
   the config-flag path (`emissions.apu_enabled=False` — if such a
   flag exists in `default_config.toml`; verify). If APU can be
   disabled via config, there is no test for the short-circuit branch.
   *Suggested fix:* add a test with
   `@pytest.mark.config_updates(emissions__apu_enabled=False)` that
-  asserts `apu_emissions` is empty.
+  asserts `apu_emissions` is empty. *[DONE]* *Actual remediation:*
+  added in `test_emissions.py::test_apu_disabled_short_circuits`
+  rather than in `TestGetAPUEmissions`, because the `apu_enabled`
+  guard lives in `compute_emissions` (emission.py:181), not in
+  `get_APU_emissions` itself.
 - 🟢 **[Low][HYGIENE]** Arbitrary parameter values throughout
   (`fuel_kg_per_s=0.1`, `NOx_g_per_kg=15.0`, `apu_time=2854`, etc.)
   have no provenance comments. These are synthetic test inputs, not

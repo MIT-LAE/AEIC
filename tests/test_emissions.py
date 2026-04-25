@@ -277,6 +277,17 @@ def test_sum_total_emissions_matches_components(perf_model, fuel, trajectory):
         assert emissions.total_emissions[species] == pytest.approx(expected)
 
 
+@pytest.mark.config_updates(emissions__apu_enabled=False)
+def test_apu_disabled_short_circuits(perf_model, fuel, trajectory):
+    """When `emissions.apu_enabled=False`, `compute_emissions` must skip
+    `get_APU_emissions` entirely (`emission.py:181` guard) and produce
+    empty `apu_emissions`. The default config has APU enabled, so this
+    branch is otherwise unexercised.
+    """
+    output = compute_emissions(perf_model, fuel, trajectory)
+    assert dict(output.apu_emissions) == {}
+
+
 def test_scope11_profile_caching(perf_model):
     profile_first = scope11_profile(perf_model.edb)
     profile_second = scope11_profile(perf_model.edb)
