@@ -543,8 +543,17 @@ class Test_nvPMScope11:
         )
         ref_num = np.array([1.12837170e15, 8.85798223e14, 4.67821152e14, 4.87773789e14])
         for i, mode in enumerate(ThrustMode):
-            assert np.allclose(profile.mass[mode], ref_mass[i])
-            assert np.allclose(profile.number[mode], ref_num[i])
+            # `np.allclose` defaults of atol=1e-8 are negligible against
+            # number values of order 1e14–1e15; pin the BFFM2-style
+            # rtol=1e-6, atol=1e-9 scheme explicitly so a regression in
+            # either channel surfaces, and use `assert_allclose` so the
+            # failure reports the diff.
+            np.testing.assert_allclose(
+                profile.mass[mode], ref_mass[i], rtol=1e-6, atol=1e-9
+            )
+            np.testing.assert_allclose(
+                profile.number[mode], ref_num[i], rtol=1e-6, atol=1e-9
+            )
 
     def test_engine_type_scaling_and_invalid_smoke_numbers(self):
         SN_matrix = ThrustModeValues(5.0, 50.0, -1.0, 0.0)

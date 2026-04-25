@@ -1215,9 +1215,11 @@ across classes provide "standard atmosphere"-style inputs.
   notebooks/test-cases.ipynb". Section 5 has reference EDB inputs but
   **no rounded-results block**. *Suggested fix:* same as MEEM — add
   rounded-results block to notebook Section 5.
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_SCOPE11_unit_test` — implicit
+- **[Medium][WEAK-ASSERTION]** `test_SCOPE11_unit_test` — implicit
   `np.allclose` tolerances against `number`-channel values of order
-  1e14–1e15. *Suggested fix:* specify explicit tolerances.
+  1e14–1e15. *Suggested fix:* specify explicit tolerances. *[DONE]*
+  Pinned to `rtol=1e-6, atol=1e-9` (matching the BFFM2 / MEEM scheme)
+  via `np.testing.assert_allclose`.
 - 🟢 **[Low][LOGIC-ERROR]** `test_engine_type_scaling_and_invalid_smoke_numbers`
   — inline computation mirrors the SUT's CBC/AFR/kslm/Q formula, so
   the "engine_type_scaling" half is a tautological copy-paste check.
