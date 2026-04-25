@@ -351,13 +351,14 @@ local one that skips initial load and only resets the singleton on
 teardown — each test explicitly calls `Config.load(...)` itself. The
 override is deliberate; documented by the inline comment.
 
-- 🟢 **[Low][WEAK-ASSERTION]** `test_load_default_config` — asserts
+- **[Low][WEAK-ASSERTION]** `test_load_default_config` — asserts
   `config.performance_model is not None` and
   `config.weather.weather_data_dir is not None`. Both are required
   Pydantic fields, so the load would have raised before reaching the
   assertions; these checks are tautological. *Suggested fix:* assert
   concrete default values (e.g. a specific file name from
   `default_config.toml`) so that overlay-logic regressions are caught.
+  *[DONE]*
 - 🟢 **[Low][HYGIENE]** `test_load_default_config` + `test_get_config` —
   near-duplicate smoke tests (one accesses via the `config` proxy, one
   via `Config.get()`). Both assert the same two fields are non-None.

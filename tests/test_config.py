@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from AEIC.config import Config, config
-from AEIC.config.emissions import EINOxMethod
+from AEIC.config.emissions import ClimbDescentMode, EINOxMethod
 
 
 # Disable default configuration loading fixture just for this file.
@@ -23,8 +23,13 @@ def test_missing_config():
 
 def test_load_default_config():
     Config.load()
-    assert config.performance_model is not None
-    assert config.weather.weather_data_dir is not None
+    # Pin a handful of concrete defaults from default_config.toml so an
+    # overlay-logic regression that drops the default branch surfaces here.
+    assert config.performance_model.name == 'sample_performance_model.toml'
+    assert config.weather.weather_data_dir.name == 'weather'
+    assert config.weather.use_weather is True
+    assert config.emissions.nox_method == EINOxMethod.BFFM2
+    assert config.emissions.climb_descent_mode == ClimbDescentMode.TRAJECTORY
 
 
 def test_reinitialize_config():
