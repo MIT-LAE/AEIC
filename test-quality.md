@@ -627,12 +627,12 @@ stability but leaves the execution path thinly tested.
   needs the loose bound). *[DONE]* Sampling branch gains
   `assert nflights > 0` alongside the loose upper bound; every_nth=5
   case pins the deterministic count (78) for this exact test DB.
-- 🟢 **[Low][WEAK-ASSERTION]** `test_query_result` frequent-flight
+- **[Low][WEAK-ASSERTION]** `test_query_result` frequent-flight
   branch (lines 252–257) — the DTW-touches invariant is asserted only
   on `results[0]`, not on the whole result set; a regression that
   returned DTW-touching pairs only in the first row would pass.
   *Suggested fix:* loop over `results` asserting
-  `'DTW' in (r.airport1, r.airport2)` for each row.
+  `'DTW' in (r.airport1, r.airport2)` for each row. *[DONE]*
 - 🟢 **[Low][COVERAGE-GAP]** `test_query` — `CountQuery` is exported
   from `AEIC.missions` (and documented in CLAUDE.md) but has no
   `to_sql()` assertion in this file; coverage of `CountQuery` is

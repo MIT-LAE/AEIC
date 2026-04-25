@@ -277,7 +277,12 @@ def test_query_result(test_data_dir):
         result = db(FrequentFlightQuery(Filter(airport='DTW')))
         assert isinstance(result, Generator)
         results = list(result)
-        assert results[0].airport1 == 'DTW' or results[0].airport2 == 'DTW'
+        assert results, 'frequent-flight query returned no rows'
+        # DTW must appear on every row, not just the first — a regression
+        # that returned matching pairs only at the head of the result would
+        # otherwise pass.
+        for r in results:
+            assert 'DTW' in (r.airport1, r.airport2)
         assert sum(r.number_of_flights for r in results) == 13
 
 
