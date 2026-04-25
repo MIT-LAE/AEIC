@@ -144,10 +144,22 @@ def test_thrust_mode_values_copy_mutable_escape_hatch(tm1):
 
 
 def test_or_thrust_mode_values(tm1, tm3):
+    # `__or__` iterates `self._data.items()`, so the result's key set is
+    # the lhs's key set — `__getitem__`'s default-to-zero would mask a
+    # regression that flipped iteration to `other`. Pin the key sets
+    # explicitly in addition to the value checks.
     result1 = tm3 | tm1
+    assert set(iter(result1)) == {ThrustMode.IDLE, ThrustMode.TAKEOFF}
     assert result1[ThrustMode.IDLE] == 11.0
     assert result1[ThrustMode.TAKEOFF] == 44.0
+
     result2 = tm1 | tm3
+    assert set(iter(result2)) == {
+        ThrustMode.IDLE,
+        ThrustMode.APPROACH,
+        ThrustMode.CLIMB,
+        ThrustMode.TAKEOFF,
+    }
     assert result2[ThrustMode.IDLE] == 11.0
     assert result2[ThrustMode.APPROACH] == 2.0
     assert result2[ThrustMode.CLIMB] == 3.0

@@ -973,7 +973,7 @@ mutability contract.
   `tm = ThrustModeValues({...}); pytest.raises(TypeError, lambda: tm.__setitem__(ThrustMode.IDLE, 5.0))`,
   and one asserting `tm.copy(mutable=True)[ThrustMode.IDLE] = 5.0`
   succeeds. *[DONE]*
-- 🟢 **[Low][WEAK-ASSERTION]** `test_or_thrust_mode_values` — the `__or__`
+- **[Low][WEAK-ASSERTION]** `test_or_thrust_mode_values` — the `__or__`
   implementation iterates `self._data.items()`, so
   `tm3 | tm1` produces a result containing only IDLE and TAKEOFF
   (the keys of `tm3`). The test asserts the two values
@@ -984,7 +984,7 @@ mutability contract.
   bug that, e.g., changed `__or__` to iterate `other._data.items()`
   would change the resulting key set and pass the test.
   *Suggested fix:* `assert set(iter(result1)) == {ThrustMode.IDLE,
-  ThrustMode.TAKEOFF}` and similarly for `result2`.
+  ThrustMode.TAKEOFF}` and similarly for `result2`. *[DONE]*
 - 🟢 **[Low][COVERAGE-GAP]** `__add__` / `__mul__` / `__truediv__`
   each have two branches (TMV vs scalar). For `__add__` only the
   float-scalar branch is exercised via `1.0 + tm1` (the int branch
