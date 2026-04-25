@@ -1260,7 +1260,7 @@ across classes provide "standard atmosphere"-style inputs.
   rather than in `TestGetAPUEmissions`, because the `apu_enabled`
   guard lives in `compute_emissions` (emission.py:181), not in
   `get_APU_emissions` itself.
-- 🟢 **[Low][HYGIENE]** Arbitrary parameter values throughout
+- **[Low][HYGIENE]** Arbitrary parameter values throughout
   (`fuel_kg_per_s=0.1`, `NOx_g_per_kg=15.0`, `apu_time=2854`, etc.)
   have no provenance comments. These are synthetic test inputs, not
   reference data, so don't trigger SUSPICIOUS-DATA, but a one-line
@@ -1268,7 +1268,11 @@ across classes provide "standard atmosphere"-style inputs.
   would prevent a future reader from assuming they are authoritative.
   *Suggested fix:* add the clarifying comment at the top of the
   class, and consider expanding notebook `test-cases.ipynb` with an
-  APU section (see notebook-index gap list).
+  APU section (see notebook-index gap list). *[DONE]* Class-level
+  docstring now states the synthetic origin and warns against
+  porting the numbers as authoritative. Notebook expansion is left
+  out of scope for the Low (it was already noted in the
+  notebook-index gap list separately).
 
 #### `TestNvPMMEEM`
 

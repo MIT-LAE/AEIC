@@ -462,7 +462,15 @@ class TestEI_SOx:
 
 
 class TestGetAPUEmissions:
-    """Tests for get_APU_emissions function"""
+    """Tests for get_APU_emissions function.
+
+    NOTE: The numeric APU parameters below (`fuel_kg_per_s=0.1`,
+    `NOx_g_per_kg=15.0`, `apu_time=2854`, etc.) are **synthetic test
+    inputs**, not values drawn from a published APU dataset. They are
+    chosen to produce numerically distinguishable outputs across modes,
+    not to match any real airframe's APU. Treat them accordingly when
+    porting this fixture or interpreting result magnitudes.
+    """
 
     def setup_method(self):
         """Set up test data"""
