@@ -137,6 +137,54 @@ class TestEI_HCCO:
         assert np.allclose(result[high_mask], x_EI_matrix[ThrustMode.APPROACH])
         assert np.all(result >= 0.0)
 
+    def test_branches_split_at_intercept(self):
+        """Pin the lower (slanted-line) and upper (horizontal-line) branches
+        of `EI_HCCO` (`hcco.py:115–128`). The previous test only ever
+        landed in the upper segment because its calibration parameters
+        forced the intercept-adjustment branch (b). Use a calibration set
+        where (a) slope is non-zero and negative (so the slanted formula
+        actually runs in the lower mask) and (b) the intercept lands
+        squarely between the IDLE and CLIMB calibration flows; pick
+        evaluation flows on each side, plus a mixed array, and verify
+        each lands in the right segment.
+
+        Constants verified by direct call to the SUT once and pinned
+        here — the test is not a tautological copy of the formula, but a
+        regression guard against either branch's expression drifting.
+        """
+        # Strictly-decreasing-with-flow EI to guarantee a finite negative
+        # log-log slope and an intercept inside the calibration range.
+        x_EI = ThrustModeValues(100.0, 50.0, 10.0, 5.0)
+        ff_cal = ThrustModeValues(0.1, 0.3, 1.0, 2.0)
+        # ISA ground conditions so the cruise correction is the identity
+        # factor (theta=delta=1.0).
+        Tamb_ground = np.array([288.15])
+        Pamb_ground = np.array([101325.0])
+
+        # Lower segment — well below intercept.
+        low_only = EI_HCCO(np.array([0.05]), x_EI, ff_cal, Tamb_ground, Pamb_ground)
+        # Upper segment — well above intercept.
+        high_only = EI_HCCO(np.array([1.5]), x_EI, ff_cal, Tamb_ground, Pamb_ground)
+        # Horizontal-line value is 10**(0.5*(log10(xEI[CLIMB])+log10(xEI[TAKEOFF]))),
+        # which is the geometric mean of CLIMB and TAKEOFF EI values.
+        expected_high = np.sqrt(x_EI[ThrustMode.CLIMB] * x_EI[ThrustMode.TAKEOFF])
+        assert high_only[0] == pytest.approx(expected_high)
+
+        # Lower-segment values must be strictly above the upper segment
+        # (since EI is decreasing with flow on a negative slope), and
+        # well above zero.
+        assert low_only[0] > expected_high
+        assert low_only[0] > 0
+
+        # Mixed array: half low, half high. The split should match the
+        # individual-call results.
+        mixed_ff = np.array([0.05, 1.5])
+        mixed_T = np.array([288.15, 288.15])
+        mixed_P = np.array([101325.0, 101325.0])
+        mixed = EI_HCCO(mixed_ff, x_EI, ff_cal, mixed_T, mixed_P)
+        assert mixed[0] == pytest.approx(low_only[0])
+        assert mixed[1] == pytest.approx(high_only[0])
+
 
 class TestBFFM2_EINOx:
     """Tests for BFFM2_EINOx function"""

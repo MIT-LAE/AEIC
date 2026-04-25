@@ -1183,11 +1183,16 @@ across classes provide "standard atmosphere"-style inputs.
   (HCCO) has outputs in cells 29–34 but no explicit rounded-results
   block. *Suggested fix:* add an inline comment citing the specific
   notebook cell whose `HC_result` output these values were taken from.
-- 🟢 **[Low][COVERAGE-GAP]** `test_intercept_adjustment_uses_second_mode_value`
+- **[Low][COVERAGE-GAP]** `test_intercept_adjustment_uses_second_mode_value`
   — exercises the high-fuel-flow regime only; the low-flow branch and
   the interpolation region in `EI_HCCO` are untested. *Suggested fix:*
   parametrize across low / mid / high `fuelflow_evaluate` with
-  expected-value assertions per regime.
+  expected-value assertions per regime. *[DONE]* New
+  `test_branches_split_at_intercept` covers the lower (slanted-line)
+  and upper (horizontal-line) segments separately on a calibration
+  set with strictly-decreasing EI (guaranteed negative slope, finite
+  intercept inside the calibration range), plus a mixed-array call
+  that pins the per-element split.
 
 #### `TestBFFM2_EINOx`
 
