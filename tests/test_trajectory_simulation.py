@@ -34,7 +34,13 @@ def example_mission_with_weather():
 
 @pytest.fixture
 def iteration_params():
-    return dict(test_reltol=1e-6, test_maxiters=1000)
+    # `test_maxiters=20` is plenty of headroom for the BOS-LAX mission used
+    # in these tests (the mass iteration converges in ~7 cycles at
+    # reltol=1e-6 against the sample performance model). The original
+    # `test_maxiters=1000` would have masked a regression that, e.g.,
+    # stopped converging quadratically — the test would just have run
+    # longer instead of failing loudly.
+    return dict(test_reltol=1e-6, test_maxiters=20)
 
 
 test_fields = FieldSet(

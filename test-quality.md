@@ -1529,7 +1529,7 @@ Exercises `LegacyBuilder.fly()` end-to-end, plus one
   or a reltol-on-the-edge case — is untested.  *Suggested fix:*
   a parametrized edge-case test; low priority relative to the
   others.
-- 🟢 **[Low][HYGIENE]** The `iteration_params` fixture (`:35–37`)
+- **[Low][HYGIENE]** The `iteration_params` fixture (`:35–37`)
   hardcodes `test_reltol=1e-6` and `test_maxiters=1000`. The name
   `test_maxiters=1000` is suspicious — for missions that should
   converge in a handful of iterations, 1000 gives the test
@@ -1537,7 +1537,10 @@ Exercises `LegacyBuilder.fly()` end-to-end, plus one
   convergence. *Suggested fix:* lower to something like 20 (plenty
   of headroom for a correctly-behaving solver) so that a
   regression into slow convergence fails loudly instead of running
-  silently for longer.
+  silently for longer. *[DONE]* Lowered to 20. Empirical baseline
+  on the BOS→LAX sample mission converges in ~7 iterations, so 20
+  leaves ~3× headroom while making any quadratic-to-linear
+  convergence regression fail loudly.
 
 ### `tests/test_weather.py` (2 tests)
 
