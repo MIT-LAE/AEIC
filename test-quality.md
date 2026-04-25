@@ -673,13 +673,18 @@ stability but leaves the execution path thinly tested.
   cell of a known-good AS 1011 ORD->SEA template per category, so the
   trigger for each warning is visible at the call site rather than
   buried in a static fixture file.
-- 🟡 **[Medium][COVERAGE-GAP]** `test_airport_handling` (lines 37–57)
+- **[Medium][COVERAGE-GAP]** `test_airport_handling` (lines 37–57)
   — calls `db._get_or_add_airport(cur, 1234, 'CDG')` but never
   queries the `airports` table to verify the "add" half of the
   method actually persisted CDG with id `1234`. The returned
   `AirportInfo` only confirms lookup. *Suggested fix:* after the
   call, `cur.execute("SELECT id FROM airports WHERE iata_code = 'CDG'")`
-  and assert the returned id is `1234`.
+  and assert the returned id is `1234`. *[DONE]* *Actual remediation:*
+  the `1234` in the call is the CSV-line number (`line` parameter for
+  warnings), not the airport id — the id is auto-assigned by sqlite
+  and surfaced via `airport_info.id`. The persistence assertion now
+  matches against `airport_info.id` instead. A negative case for the
+  unknown 'QPX' airport asserts no row is left behind.
 - 🟢 **[Low][WEAK-ASSERTION]** `test_airport_handling` (line 53) —
   `int(airport_info.airport.latitude) == 49` is a truncation-based
   coarseness check for CDG (49.0097°N); a sign flip to -49.9 would

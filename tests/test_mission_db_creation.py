@@ -57,8 +57,21 @@ def test_airport_handling(tmp_path):
         assert int(airport_info.airport.latitude) == 49
         assert airport_info.timezone == 'Europe/Paris'
 
-        # Not a real airport.
+        # _get_or_add_airport for an unseen IATA must actually persist a
+        # row — the returned AirportInfo on its own only confirms the
+        # in-memory cache. The 1234 above is the *CSV line number* used for
+        # warnings (`line` parameter), not an airport id; the airport id is
+        # auto-assigned by sqlite and surfaced via `airport_info.id`.
+        cur.execute(
+            "SELECT id, iata_code, country FROM airports WHERE iata_code = 'CDG'"
+        )
+        persisted = cur.fetchone()
+        assert persisted == (airport_info.id, 'CDG', 'FR')
+
+        # Not a real airport — must NOT leave a row behind.
         assert db._get_or_add_airport(cur, 1235, 'QPX') is None
+        cur.execute("SELECT id FROM airports WHERE iata_code = 'QPX'")
+        assert cur.fetchone() is None
 
 
 def test_oag_conversion(tmp_path, test_data_dir):
