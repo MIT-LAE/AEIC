@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -9,6 +10,8 @@ from AEIC.units import METERS_TO_FL
 
 from ..ground_track import GroundTrack
 from ..trajectory import Trajectory
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -216,12 +219,17 @@ class Builder(ABC):
             if mission.flight_id is not None:
                 traj.flight_id = mission.flight_id
             return traj
-        except Exception as e:
+        except Exception:
             # If anything went wrong, we want to make sure to clean up the
-            # context before we raise the exception.
-            print(
-                'Error during trajectory simulation for flight '
-                f'{mission.flight_id} ({mission.origin} -> {mission.destination}): {e}'
+            # context before we raise the exception. Log via the module
+            # logger so the caller can control filtering / log-level —
+            # `print()` here would dump unconditionally for every bad
+            # mission in a multi-million-mission run.
+            logger.exception(
+                'Error during trajectory simulation for flight %s (%s -> %s)',
+                mission.flight_id,
+                mission.origin,
+                mission.destination,
             )
             raise
         finally:
