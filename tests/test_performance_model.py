@@ -44,18 +44,23 @@ def test_performance_model_initialization():
 
 
 def test_performance_model_selection(performance_model_selector, sample_missions):
+    # Three branches of `SimplePerformanceModelSelector.__call__` are
+    # exercised below — each row is annotated with which branch resolves it,
+    # so a future schema change to `simple_selector/config.toml` (e.g.
+    # adding an explicit synonym for 73H) lands as a clear diff. Mission
+    # aircraft types are 738, 739, 73H, 738, 7M8, 319, 319, 739, 73J, 319.
     pms = [performance_model_selector(m).aircraft_name for m in sample_missions]
     assert pms == [
-        'B738',
-        'B738',
-        'B738',
-        'B738',
-        'B738',
-        'A380',
-        'A380',
-        'B738',
-        'B738',
-        'A380',
+        'B738',  # 0  exact match (738.toml)
+        'B738',  # 1  default fallback (739 not in config)
+        'B738',  # 2  default fallback (73H not in config)
+        'B738',  # 3  exact match (738.toml)
+        'B738',  # 4  default fallback (7M8 not in config)
+        'A380',  # 5  synonym (319 → 380)
+        'A380',  # 6  synonym (319 → 380)
+        'B738',  # 7  default fallback (739 not in config)
+        'B738',  # 8  default fallback (73J not in config)
+        'A380',  # 9  synonym (319 → 380)
     ]
 
 

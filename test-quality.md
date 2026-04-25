@@ -828,12 +828,13 @@ branches is exercised by any test in this phase. Reported inline below.
   `test_simple_selector_caches_repeated_lookups` that pins the cache
   identity contract via `is` equality on two same-aircraft-type
   missions from `sample_missions`.
-- 🟢 **[Low][HYGIENE]** `test_performance_model_selection` — the
+- **[Low][HYGIENE]** `test_performance_model_selection` — the
   10-element expected list has no comment explaining the
   intent (which entries test default fallback vs synonym vs exact
   match). A reviewer cannot tell from the test alone what each row
   proves. *Suggested fix:* add an inline comment beside the expected
   list naming the three branches and which indices exercise each.
+  *[DONE]*
 
 ### `tests/test_performance_table.py` (3 tests)
 
