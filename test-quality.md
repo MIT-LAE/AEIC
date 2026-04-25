@@ -1769,7 +1769,7 @@ the only real verification test in Phase 6.
   `{'true_airspeed'}`. *Suggested fix:* add a one-line comment
   explaining the final-point skip and convert to set literal.
   *[DONE]*
-- 🟢 **[Low][COVERAGE-GAP]** `src/AEIC/verification/legacy.py::process_matlab_csvs`
+- **[Low][COVERAGE-GAP]** `src/AEIC/verification/legacy.py::process_matlab_csvs`
   (lines 16–65) is unexercised by any test (directly responsible
   for the 67 % coverage on that file). The function handles the
   raw two-file → per-mission split including the
@@ -1778,7 +1778,14 @@ the only real verification test in Phase 6.
   `matlab-output/` without a single test noticing. *Suggested
   fix:* one small unit test feeding synthetic two-mission
   `traj_df` / `emis_df` into `process_matlab_csvs` and asserting
-  the written files contain the expected merged rows.
+  the written files contain the expected merged rows. *[DONE]*
+  Three tests added: `test_process_matlab_csvs_per_mission_split`
+  (happy path with two missions, asserts file split + sorted
+  times + dropped key columns + NaN-on-tail-point semantics),
+  `test_process_matlab_csvs_rejects_inconsistent_time_columns`
+  (pins the line-58 raise), and
+  `test_process_matlab_csvs_rejects_missing_out_dir` (pins the
+  line-28 raise).
 
 ### `tests/test_golden.py` (1 test)
 
