@@ -1679,7 +1679,7 @@ by `scripts/make_golden_test_data.py`) via `Trajectory.approx_eq`,
 which reduces to `np.allclose` defaults
 (`rtol=1e-5, atol=1e-8` — see `container.py:174`).
 
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_trajectory_simulation_golden`
+- **[Medium][WEAK-ASSERTION]** `test_trajectory_simulation_golden`
   (`test_golden.py:5–23`) — the expected values are a **SUT
   self-snapshot** (`scripts/make_golden_test_data.py` builds the
   file by running the current SUT and freezing the output). Per the
@@ -1696,7 +1696,7 @@ which reduces to `np.allclose` defaults
   docstring noting the test is a regression sentinel, not an
   independent correctness check; cross-reference the future
   notebook section (per the notebook-gap list) if/when trajectory
-  state gets an independent implementation.
+  state gets an independent implementation. *[DONE]*
 - 🟡 **[Medium][WEAK-ASSERTION]** `test_trajectory_simulation_golden`
   — the tolerance is implicit (buried in `approx_eq` →
   `np.allclose` defaults at `container.py:174`). `rtol=1e-5` on a
