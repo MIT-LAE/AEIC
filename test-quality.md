@@ -395,7 +395,8 @@ other tests via imports / instantiation paths).
   this file. This property controls how dimensions are serialized to
   NetCDF files; a bug here would silently reorder axes in output.
   *Suggested fix:* add an explicit test asserting the tuple contents
-  and ordering (including the `Dimension.POINT` exclusion).
+  and ordering (including the `Dimension.POINT` exclusion). *[DONE]*
+  See `tests/test_dimensions.py::test_dimensions_netcdf`.
 - 🟢 **[Low][COVERAGE-GAP]** `Dimensions.remove`, `Dimensions.from_dim_names`,
   and `Dimension.dim_name` property are untested in this file.
   *Suggested fix:* add targeted single-assertion tests.

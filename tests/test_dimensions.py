@@ -62,6 +62,19 @@ def test_dimensions_ordered():
     assert dims.ordered == [Dimension.TRAJECTORY, Dimension.SPECIES, Dimension.POINT]
 
 
+def test_dimensions_netcdf():
+    # POINT is excluded — it's the implicit per-trajectory axis in the
+    # on-disk layout — and the remaining names come back in standard
+    # Dimension-enum order regardless of construction order.
+    assert Dimensions(Dimension.TRAJECTORY, Dimension.POINT).netcdf == ('trajectory',)
+    assert Dimensions(
+        Dimension.POINT, Dimension.SPECIES, Dimension.TRAJECTORY
+    ).netcdf == ('trajectory', 'species')
+    assert Dimensions(
+        Dimension.THRUST_MODE, Dimension.SPECIES, Dimension.TRAJECTORY
+    ).netcdf == ('trajectory', 'species', 'thrust_mode')
+
+
 def test_dimensions_abbrevs():
     dims = Dimensions(Dimension.TRAJECTORY, Dimension.POINT, Dimension.SPECIES)
     assert dims.abbrev == 'TSP'
