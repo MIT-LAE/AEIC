@@ -1,3 +1,5 @@
+import re
+
 import pandas as pd
 import pytest
 
@@ -22,9 +24,21 @@ class DummyExcelFile:
         raise ValueError(f"Unknown sheet requested: {sheet_name}")
 
 
-def test_get_EDB_data_for_engine_raises_when_uid_absent(tmp_path, monkeypatch):
-    gaseous = pd.DataFrame({'UID No': ['100']})
-    nvpm = pd.DataFrame({'UID No': ['200']})
+@pytest.mark.parametrize(
+    'gaseous_uids,nvpm_uids,query_uid,expected_sheet',
+    [
+        # UID absent from both sheets → gaseous-sheet check fires first.
+        (['100'], ['200'], '300', 'Gaseous Emissions and Smoke'),
+        # UID in gaseous but not in nvPM → nvPM-sheet check fires.
+        (['100', '300'], ['200'], '300', 'nvPM Emissions'),
+    ],
+    ids=['absent_from_both', 'present_in_gaseous_only'],
+)
+def test_get_EDB_data_for_engine_raises_when_uid_absent(
+    tmp_path, monkeypatch, gaseous_uids, nvpm_uids, query_uid, expected_sheet
+):
+    gaseous = pd.DataFrame({'UID No': gaseous_uids})
+    nvpm = pd.DataFrame({'UID No': nvpm_uids})
 
     dummy_path = tmp_path / "edb.xlsx"
     dummy_path.touch()
@@ -34,10 +48,9 @@ def test_get_EDB_data_for_engine_raises_when_uid_absent(tmp_path, monkeypatch):
         lambda _: DummyExcelFile(gaseous, nvpm),
     )
 
-    with pytest.raises(
-        ValueError, match="UID 300 not found in sheet 'Gaseous Emissions and Smoke'."
-    ):
-        EDBEntry.get_engine(dummy_path, uid="300")
+    expected_msg = f"UID {query_uid} not found in sheet '{expected_sheet}'."
+    with pytest.raises(ValueError, match=re.escape(expected_msg)):
+        EDBEntry.get_engine(dummy_path, uid=query_uid)
 
 
 def test_get_EDB_data_for_engine_returns_engine_data():

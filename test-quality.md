@@ -1358,12 +1358,12 @@ Tests for `EDBEntry.get_engine()` — one negative-path (monkeypatched
   incomplete. *Suggested fix:* add a README to
   `src/AEIC/data/engines/` naming the ICAO EDB revision (and
   publication date) the sample was extracted from.
-- 🟢 **[Low][COVERAGE-GAP]** `test_get_EDB_data_for_engine_raises_when_uid_absent`
+- **[Low][COVERAGE-GAP]** `test_get_EDB_data_for_engine_raises_when_uid_absent`
   exercises only the "UID not in Gaseous Emissions sheet" branch.
   `EDBEntry.get_engine` has at least one other error-path — UID
   present in gaseous sheet but absent from nvPM sheet (or vice
   versa) — which is untested. *Suggested fix:* a one-line
-  parametrization covering each sheet's absence branch.
+  parametrization covering each sheet's absence branch. *[DONE]*
 - 🟢 **[Low][HYGIENE]** The positive-path test does a single giant
   assertion block with ~10 `assert` statements. On failure, pytest
   reports only the first failing line, which makes diagnosis slower
