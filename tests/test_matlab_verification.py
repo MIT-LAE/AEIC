@@ -33,7 +33,15 @@ TRAJ_FIELD_UNITS = {
 
 COMPARISON_FIELDS = TRAJ_FIELDS + ['trajectory_indices']
 
-SKIP_FINAL_POINT_FIELDS = set(['true_airspeed'])
+# Fields whose final-point comparison is skipped (`Trajectory.compare`
+# drops the last index for these). At touchdown the legacy MATLAB
+# trajectory and the new SUT diverge by construction on TAS — the
+# legacy file carries an extra post-landing time point that the new
+# builder doesn't synthesize the same way — so a strict per-point
+# match on the last sample is a guaranteed false positive. Drop the
+# tail point for `true_airspeed` only; ground-distance / altitude /
+# fuel-flow agree at the endpoint and shouldn't be skipped.
+SKIP_FINAL_POINT_FIELDS = {'true_airspeed'}
 
 
 @pytest.mark.config_updates(use_weather=False)

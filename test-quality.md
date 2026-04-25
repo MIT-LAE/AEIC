@@ -1759,7 +1759,7 @@ the only real verification test in Phase 6.
   comparison list is a free pass per mission. *Suggested fix:*
   drop `'flight_time'` from `TRAJ_FIELDS`; comparison is only
   informative for the dependent variables.
-- 🟢 **[Low][HYGIENE]** `test_matlab_verification.py:38` —
+- **[Low][HYGIENE]** `test_matlab_verification.py:38` —
   `SKIP_FINAL_POINT_FIELDS = set(['true_airspeed'])`. The set is a
   one-liner magic constant with no comment; the *reason* for
   skipping TAS's final point (likely the landed/decelerated
@@ -1768,6 +1768,7 @@ the only real verification test in Phase 6.
   `set(['true_airspeed'])` is slower and less idiomatic than
   `{'true_airspeed'}`. *Suggested fix:* add a one-line comment
   explaining the final-point skip and convert to set literal.
+  *[DONE]*
 - 🟢 **[Low][COVERAGE-GAP]** `src/AEIC/verification/legacy.py::process_matlab_csvs`
   (lines 16–65) is unexercised by any test (directly responsible
   for the 67 % coverage on that file). The function handles the
