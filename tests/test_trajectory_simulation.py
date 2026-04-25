@@ -176,7 +176,24 @@ def test_trajectory_mass_iter_fail(
 def test_trajectory_performance_model_selector(
     performance_model_selector, sample_missions
 ):
+    """Builder threaded with a selector dispatches each mission via the
+    selector. Pure `len(traj) > 0` would have passed even if every
+    dispatch silently returned the default model.
+    """
+    expected_models = [
+        'B738',
+        'B738',
+        'B738',
+        'B738',
+        'B738',
+        'A380',
+        'A380',
+        'B738',
+        'B738',
+        'A380',
+    ]
     builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
-    for mis in sample_missions:
+    for mis, expected in zip(sample_missions, expected_models):
+        assert performance_model_selector(mis).aircraft_name == expected
         traj = builder.fly(performance_model_selector, mis)
         assert len(traj) > 0

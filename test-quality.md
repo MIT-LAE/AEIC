@@ -1397,13 +1397,18 @@ Exercises `LegacyBuilder.fly()` end-to-end, plus one
   trace differs from the no-weather baseline. *Suggested fix:*
   also build a no-weather trajectory for the same mission and
   assert `np.any(traj_weather.ground_speed != traj_nowx.ground_speed)`. *[DONE]*
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_trajectory_performance_model_selector`
+- **[Medium][WEAK-ASSERTION]** `test_trajectory_performance_model_selector`
   (`:141–147`) asserts only `len(traj) > 0` per mission. This is the
   only test of `PerformanceModelSelector.select_for_mission`; it
   does not verify that the *correct* model was selected for each
   mission. *Suggested fix:* assert which model was used — e.g.
   capture `builder.ctx.ac_performance.name` (or equivalent) and
-  compare against the expected mapping.
+  compare against the expected mapping. *[DONE]* *Actual remediation:*
+  the trajectory doesn't surface the selected model, so the test
+  asserts `selector(mis).aircraft_name == expected` per mission
+  alongside the trajectory build (overlaps with
+  `test_performance_model_selection` by design — the redundancy
+  pins the dispatch contract from the builder side).
 - 🟡 **[Medium][COVERAGE-GAP]** No test instantiates `TASOPTBuilder`,
   `ADSBBuilder`, or `DymosBuilder`. Each stub currently raises
   `NotImplementedError` in `__init__`
