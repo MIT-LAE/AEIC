@@ -273,3 +273,26 @@ def test_query_result(test_data_dir):
         results = list(result)
         assert results[0].airport1 == 'DTW' or results[0].airport2 == 'DTW'
         assert sum(r.number_of_flights for r in results) == 13
+
+
+def test_set_random_seed_determinism(test_data_dir):
+    """`Database.set_random_seed()` is the documented reproducibility entry
+    point for sampling queries (see CLAUDE.md). Two databases seeded with
+    the same value must yield identical schedule sequences; a different
+    seed must yield a different sequence (otherwise sampling is not
+    actually using the seeded RNG).
+    """
+    test_db = test_data_dir / 'missions/oag-2019-test-subset.sqlite'
+
+    def sample_ids(seed: int) -> list[int]:
+        with Database(test_db) as db:
+            db.set_random_seed(seed)
+            return [f.flight_id for f in db(Query(sample=0.1))]
+
+    ids_a = sample_ids(42)
+    ids_b = sample_ids(42)
+    ids_c = sample_ids(43)
+
+    assert ids_a, 'sampling returned no rows — test cannot validate determinism'
+    assert ids_a == ids_b
+    assert ids_a != ids_c

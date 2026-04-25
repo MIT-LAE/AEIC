@@ -258,7 +258,7 @@ Each is a self-contained PR.
   decorator-stacking observation. *[DONE]*
 - **`Database.set_random_seed()` determinism test** (Phase 2 Medium
   COVERAGE-GAP). Open the test DB twice with the same seed, collect
-  flight IDs, assert equal.
+  flight IDs, assert equal. *[DONE]*
 
 ### Tier 4 — deferred / out of scope
 
@@ -606,14 +606,18 @@ stability but leaves the execution path thinly tested.
   purely transitive. *Suggested fix:* add a minimal case asserting
   `CountQuery(Filter(country='US')).to_sql()` contains `COUNT(*)`
   and the expected params.
-- 🟡 **[Medium][COVERAGE-GAP]** `Database.set_random_seed()` — the
+- **[Medium][COVERAGE-GAP]** `Database.set_random_seed()` — the
   documented reproducibility entry point for deterministic sampling,
   called out in CLAUDE.md. Neither this file nor
   `test_mission_db_creation.py` exercises it. A broken seed path
   would only surface at replay time. *Suggested fix:* add a test that
   opens the test DB, calls `set_random_seed(42)`, runs
   `Query(sample=0.1)`, collects the flight IDs; repeats with a fresh
-  `Database` + same seed; asserts the two ID lists are equal.
+  `Database` + same seed; asserts the two ID lists are equal. *[DONE]*
+  See `tests/test_mission_db.py::test_set_random_seed_determinism`. A
+  third run with a different seed pins that the sequence actually
+  changes — without it, a stub `set_random_seed` that ignored the seed
+  would still pass equality.
 - 🟢 **[Low][COVERAGE-GAP]** `Mission.from_query_result` /
   `Mission.from_toml` — coverage of `missions/mission.py` is only
   42 % for the phase. These constructors sit on the critical path
