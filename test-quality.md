@@ -1197,14 +1197,16 @@ across classes provide "standard atmosphere"-style inputs.
   `ei_mass_alt, ei_num_alt` but no rounded-results block. *Suggested
   fix:* add rounded-results block to notebook Section 6 and cite the
   cell.
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_MEEM_using_test_cases_data` —
+- **[Medium][WEAK-ASSERTION]** `test_MEEM_using_test_cases_data` —
   `np.allclose(EI_mass, ref_EI_mass)` and `np.allclose(EI_num, ref_EI_num)`
   use the `numpy` defaults (`rtol=1e-5, atol=1e-8`). For `EI_num`
   values of order 1e13–1e14, `atol=1e-8` is negligible, so the check
   degenerates to relative-only with 1e-5 tolerance — tight for science
   but inconsistent with the BFFM2 test's explicit `rtol=1e-6`.
   *Suggested fix:* specify tolerances explicitly; match the BFFM2
-  test's `rtol=1e-6, atol=1e-9` scheme.
+  test's `rtol=1e-6, atol=1e-9` scheme. *[DONE]* Switched to
+  `np.testing.assert_allclose` while there so a regression reports the
+  diff rather than just `False`.
 
 #### `Test_nvPMScope11`
 

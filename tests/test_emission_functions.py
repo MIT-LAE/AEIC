@@ -514,8 +514,11 @@ class TestNvPMMEEM:
         ref_EI_mass = np.array([87.80422697, 19.50901914, 1.40599907]) * 1e-3
         ref_EI_num = np.array([4.72211990e14, 1.74290262e14, 3.50345395e13])
 
-        assert np.allclose(EI_mass, ref_EI_mass)
-        assert np.allclose(EI_num, ref_EI_num)
+        # Match the BFFM2 tolerance scheme: numpy default atol=1e-8 is
+        # negligible against EI_num values of order 1e13–1e14, so the
+        # implicit check would degenerate to relative-only with rtol=1e-5.
+        np.testing.assert_allclose(EI_mass, ref_EI_mass, rtol=1e-6, atol=1e-9)
+        np.testing.assert_allclose(EI_num, ref_EI_num, rtol=1e-6, atol=1e-9)
 
 
 class Test_nvPMScope11:
