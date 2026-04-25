@@ -642,6 +642,61 @@ def test_tz_aware_timestamp_coerced_to_utc(tmp_path):
     assert _run_probe(w, t_local) == pytest.approx(_EXPECTED_GS, rel=1e-4)
 
 
+def test_explicit_azimuth_overrides_ground_track_azimuth(tmp_path):
+    """Explicit `azimuth` argument must override the precomputed
+    `gt_point.azimuth` (auto vs. explicit diverge in weather.py:263–266).
+    """
+    _write_mean_file(tmp_path / 'annual.nc', with_valid_time=False)
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.ANNUAL,
+        file_format='annual.nc',
+    )
+    # azimuth=0 (gt_point default) → u_air=TAS, gs = hypot(TAS+wind_u, 0).
+    # azimuth=90 (east) → v_air=TAS, gs = hypot(wind_u, TAS).
+    gs_auto = w.get_ground_speed(
+        time=pd.Timestamp('2024-06-15'),
+        gt_point=_PROBE_POINT,
+        altitude=_PROBE_ALT,
+        true_airspeed=_PROBE_TAS,
+    )
+    gs_east = w.get_ground_speed(
+        time=pd.Timestamp('2024-06-15'),
+        gt_point=_PROBE_POINT,
+        altitude=_PROBE_ALT,
+        true_airspeed=_PROBE_TAS,
+        azimuth=90.0,
+    )
+    assert gs_auto == pytest.approx(_EXPECTED_GS, rel=1e-4)
+    assert gs_east == pytest.approx(float(np.hypot(_WIND_U, _PROBE_TAS)), rel=1e-4)
+    assert gs_auto != gs_east
+
+
+def test_out_of_domain_raises(tmp_path):
+    """A ground track point outside the weather grid must raise
+    ValueError (`weather.py:261`). Covered indirectly via
+    `test_trajectory_simulation_outside_weather_domain`, but the
+    natural place for unit coverage is here.
+    """
+    _write_mean_file(tmp_path / 'annual.nc', with_valid_time=False)
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.ANNUAL,
+        file_format='annual.nc',
+    )
+    far_point = GroundTrack.Point(
+        location=Location(longitude=0.0, latitude=0.0),
+        azimuth=0.0,
+    )
+    with pytest.raises(ValueError, match='outside weather data domain'):
+        w.get_ground_speed(
+            time=pd.Timestamp('2024-06-15'),
+            gt_point=far_point,
+            altitude=_PROBE_ALT,
+            true_airspeed=_PROBE_TAS,
+        )
+
+
 def test_non_datetime_valid_time_rejected(tmp_path):
     # Build a file with an integer valid_time coord.
     shape = (3, len(_PRESSURE_LEVELS), len(_LATITUDES), len(_LONGITUDES))

@@ -1480,7 +1480,7 @@ weather fixture.
   field is known and the expected ground speed is derivable on
   paper. The real-fixture test is now an honest smoke check for
   fixture loadability, not a precision check.
-- 🟡 **[Medium][COVERAGE-GAP]** Success-path weather is exercised by
+- **[Medium][COVERAGE-GAP]** Success-path weather is exercised by
   exactly one point (one time, one altitude, one TAS, no azimuth
   override). Uncovered in this file:
   - `azimuth` parameter explicitly supplied (auto vs. explicit
@@ -1496,7 +1496,16 @@ weather fixture.
     in this file where it most naturally belongs.
   *Suggested fix:* three more short tests in this file (explicit
   azimuth, two-date call sequence, direct
-  out-of-domain call).
+  out-of-domain call). *[DONE]* Date-boundary caching and the
+  `valid_time` absent/present pair were both closed by the
+  synthetic-fixture tests added in the same Phase 5 wave
+  (`test_daily_mean_reopens_on_midnight`,
+  `test_hourly_monthly_files_no_reopen_within_month`,
+  `test_annual_mean_reads_single_file` /
+  `test_annual_mean_with_length_one_valid_time_is_squeezed`); the
+  remaining `azimuth` and direct out-of-domain branches are now
+  pinned by `test_explicit_azimuth_overrides_ground_track_azimuth`
+  and `test_out_of_domain_raises`.
 - **[Low][HYGIENE]** `tests/data/weather/` contains
   `20240901.nc` with no README or provenance file. Not a
   SUSPICIOUS-DATA finding (the file is an input, not an expected
