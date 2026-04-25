@@ -430,7 +430,7 @@ file.
   *Suggested fix:* use `tmp_path / 'tmp.sqlite'` and update the expected
   `access_recorder.paths` accordingly; drop the redundant `safe_*`
   wrappers (see next item). *[DONE]*
-- 🟢 **[Low][HYGIENE]** `test_file_access_recorder` — `safe_sqlite3_connect`
+- **[Low][HYGIENE]** `test_file_access_recorder` — `safe_sqlite3_connect`
   wraps `sqlite3.connect` in `try/except FileNotFoundError`, but
   `sqlite3.connect` *creates* the file if it does not exist and never
   raises `FileNotFoundError`, so the `except` branch is dead. Similarly
