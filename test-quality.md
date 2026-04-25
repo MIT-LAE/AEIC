@@ -1060,7 +1060,7 @@ helper pattern).
   (itself SUSPICIOUS-DATA, see below). *Suggested fix:* keep this as
   a consistency check but rename (`test_lto_nox_split_consistent_with_speciation_factors`)
   and cross-reference the factor-correctness test. *[DONE]*
-- 🟡 **[Medium][COVERAGE-GAP]** `test_lto_respects_traj_flag_true`
+- **[Medium][COVERAGE-GAP]** `test_lto_respects_traj_flag_true`
   (`test_emissions.py:240–247`) — asserts `APPROACH` and `CLIMB` LTO
   emissions are ~0 when `climb_descent_mode=TRAJECTORY`, i.e. the
   climb/descent mass has moved to the trajectory side. It never
@@ -1068,7 +1068,11 @@ helper pattern).
   that dropped it on the floor entirely would pass. There is also
   no complementary `test_lto_respects_traj_flag_false` (`ClimbDescentMode.LTO`).
   *Suggested fix:* assert `np.sum(trajectory_emissions[species]) > 0`
-  for climb/descent segments, and add the reciprocal-flag test.
+  for climb/descent segments, and add the reciprocal-flag test. *[DONE]*
+  The trajectory-side check uses NOx/HC/CO as canary species; the new
+  reciprocal `test_lto_respects_traj_flag_false` pins the mirrored
+  contract — non-zero APPROACH/CLIMB LTO columns and trajectory
+  emissions zero outside the cruise slice.
 - 🟢 **[Low][WEAK-ASSERTION]** `test_scope11_profile_caching`
   (`test_emissions.py:234–237`) — asserts `profile_first.mass is
   profile_second.mass` (object identity) only. Does not verify that

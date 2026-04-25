@@ -285,12 +285,42 @@ def test_scope11_profile_caching(perf_model):
 
 @pytest.mark.config_updates(emissions__climb_descent_mode=ClimbDescentMode.TRAJECTORY)
 def test_lto_respects_traj_flag_true(perf_model, fuel, trajectory):
+    """In TRAJECTORY mode the climb and descent emissions move to the
+    trajectory side; the LTO APPROACH/CLIMB columns must be zero AND
+    the trajectory side must carry the mass. Asserting only the LTO
+    zero would let a regression that dropped the mass entirely pass.
+    """
     output = compute_emissions(perf_model, fuel, trajectory)
     for m in [ThrustMode.APPROACH, ThrustMode.CLIMB]:
         assert all(
             np.isclose(output.lto_emissions[species][m], 0.0)
             for species in output.lto_emissions
         )
+    climb_slice = slice(0, trajectory.n_climb)
+    descent_slice = slice(len(trajectory) - trajectory.n_descent, len(trajectory))
+    for species in (Species.NOx, Species.HC, Species.CO):
+        assert np.sum(output.trajectory_emissions[species][climb_slice]) > 0
+        assert np.sum(output.trajectory_emissions[species][descent_slice]) > 0
+
+
+@pytest.mark.config_updates(emissions__climb_descent_mode=ClimbDescentMode.LTO)
+def test_lto_respects_traj_flag_false(perf_model, fuel, trajectory):
+    """Reciprocal: in LTO mode the climb and descent emissions live on
+    the LTO side. APPROACH/CLIMB LTO columns must be non-zero, and the
+    trajectory side must zero out everything outside cruise.
+    """
+    output = compute_emissions(perf_model, fuel, trajectory)
+    for m in (ThrustMode.APPROACH, ThrustMode.CLIMB):
+        assert any(
+            output.lto_emissions[species][m] > 0 for species in output.lto_emissions
+        )
+    climb_slice = slice(0, trajectory.n_climb)
+    cruise_slice = slice(trajectory.n_climb, len(trajectory) - trajectory.n_descent)
+    descent_slice = slice(len(trajectory) - trajectory.n_descent, len(trajectory))
+    for species, arr in output.trajectory_emissions.items():
+        assert np.sum(arr[cruise_slice]) > 0
+        assert np.allclose(arr[climb_slice], 0)
+        assert np.allclose(arr[descent_slice], 0)
 
 
 def test_lto_nox_split_consistent_with_speciation_factors(emissions):
