@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from AEIC.performance.types import ThrustMode, ThrustModeValues
+from AEIC.performance.types import ThrustMode, ThrustModeArray, ThrustModeValues
 
 
 @pytest.fixture
@@ -165,6 +165,39 @@ def test_thrust_mode_values_copy_mutable_escape_hatch(tm1):
     writable[ThrustMode.IDLE] = 99.0
     assert writable[ThrustMode.IDLE] == 99.0
     assert tm1[ThrustMode.IDLE] == 1.0  # original is independent
+
+
+def test_thrust_mode_values_broadcast(tm1):
+    """`broadcast` projects per-mode values onto an array shaped like a
+    `ThrustModeArray` — the SUT path used to lay out LTO data along a
+    trajectory's per-point thrust-mode axis. Verify both that each cell
+    carries its mode's value and that the output preserves the input
+    shape.
+    """
+    modes = ThrustModeArray(
+        np.array(
+            [
+                ThrustMode.IDLE.value,
+                ThrustMode.CLIMB.value,
+                ThrustMode.TAKEOFF.value,
+                ThrustMode.APPROACH.value,
+                ThrustMode.IDLE.value,
+            ]
+        )
+    )
+    out = tm1.broadcast(modes)
+    assert out.shape == (5,)
+    assert out.tolist() == [1.0, 3.0, 4.0, 2.0, 1.0]
+
+
+def test_thrust_mode_array_rejects_invalid_values():
+    """`ThrustModeArray.__post_init__` is the construction-time guard
+    against arrays that mix valid mode codes with anything else. A
+    regression that loosened the check would let downstream `as_enum`
+    raise far from the source.
+    """
+    with pytest.raises(ValueError, match='invalid ThrustMode values'):
+        ThrustModeArray(np.array([ThrustMode.IDLE.value, 9999]))
 
 
 def test_or_thrust_mode_values(tm1, tm3):

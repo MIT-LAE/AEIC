@@ -995,7 +995,7 @@ mutability contract.
   were already both covered (`tm3 / tm1` and `tm1 / 2.0`); two new
   tests cover the missing `__add__` int + right-direction case and
   the `__mul__` TMV × TMV case.
-- 🟢 **[Low][COVERAGE-GAP]** Untested utility methods on
+- **[Low][COVERAGE-GAP]** Untested utility methods on
   `ThrustModeValues`: `as_array`, `sum`, `broadcast` (the only
   non-trivial one — it interacts with `ThrustModeArray`),
   `isclose`, `__hash__`, `__str__`, `__repr__`, `freeze`, `copy`.
@@ -1005,7 +1005,12 @@ mutability contract.
   `test_thrust_mode_array.py` (or extend this file) for at least
   `broadcast` + `ThrustModeArray.__post_init__` (raise on invalid
   values), since those are the methods that touch real
-  trajectory-shaped arrays.
+  trajectory-shaped arrays. *[DONE]* The two highest-value methods
+  the audit highlighted are now covered:
+  `test_thrust_mode_values_broadcast` and
+  `test_thrust_mode_array_rejects_invalid_values`. The remaining
+  trivial accessors (`as_array`, `__str__`, etc.) are left to be
+  exercised transitively — explicitly out of scope for a Low.
 - 🟢 **[Low][HYGIENE]** `test_thrust_mode_values_comparison` is a
   one-liner asserting `ThrustModeValues() != 0.0`. The intent
   (verifying `__eq__` returns False for non-TMV) is fine but
