@@ -359,11 +359,14 @@ override is deliberate; documented by the inline comment.
   concrete default values (e.g. a specific file name from
   `default_config.toml`) so that overlay-logic regressions are caught.
   *[DONE]*
-- 🟢 **[Low][HYGIENE]** `test_load_default_config` + `test_get_config` —
+- **[Low][HYGIENE]** `test_load_default_config` + `test_get_config` —
   near-duplicate smoke tests (one accesses via the `config` proxy, one
   via `Config.get()`). Both assert the same two fields are non-None.
   *Suggested fix:* parametrize, or merge and add a single explicit
-  proxy-vs-classmethod equivalence assertion.
+  proxy-vs-classmethod equivalence assertion. *[DONE]* `test_get_config`
+  is now `test_proxy_and_get_match`, asserting field-by-field equality
+  between `Config.get()` and the proxy rather than restating the
+  defaults already pinned in `test_load_default_config`.
 - **[Medium][COVERAGE-GAP]** `Config.escape()` context manager — used
   for bypassing the singleton when loading config snapshots from
   trajectory-store reproducibility data — is not exercised here or

@@ -52,11 +52,15 @@ def test_load_config_file():
     config1_checks()
 
 
-def test_get_config():
+def test_proxy_and_get_match():
+    # The `config` module-level proxy and `Config.get()` are two access paths
+    # to the same singleton — assert they resolve to equal values rather than
+    # duplicating the smoke checks in `test_load_default_config` against each.
     Config.load()
     cfg = Config.get()
-    assert cfg.performance_model is not None
-    assert cfg.weather.weather_data_dir is not None
+    assert cfg.performance_model == config.performance_model
+    assert cfg.weather.weather_data_dir == config.weather.weather_data_dir
+    assert cfg.emissions.nox_method == config.emissions.nox_method
 
 
 def config1_checks():
