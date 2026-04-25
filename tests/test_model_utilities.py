@@ -1,3 +1,5 @@
+from pydantic import RootModel
+
 from AEIC.utils.models import CIBaseModel, CIStrEnum
 
 
@@ -63,3 +65,33 @@ def test_ci_base_model_with_invalid_key():
     assert not hasattr(model, "INVALID_KEY")
     assert model.model_extra is None  # Pydantic's `extra='ignore'` drops it
     assert "INVALID_KEY" not in model.model_fields_set
+
+
+def test_ci_base_model_top_level_list():
+    """The `normalize_keys` `elif isinstance(values, list)` branch only
+    fires for top-level lists, e.g. when a `RootModel[list[X]]` is
+    validated. Each list item is normalized if it's a dict, passed through
+    unchanged otherwise — pin both legs.
+    """
+
+    class Item(CIBaseModel):
+        value: int
+
+    class Items(RootModel[list[Item]]):
+        pass
+
+    items = Items.model_validate(
+        [
+            {"VALUE": 1},  # case-folded by _normalize_dict
+            {"value": 2},  # already lowercase
+            {"VaLuE": 3},  # mixed case
+        ]
+    )
+    assert [it.value for it in items.root] == [1, 2, 3]
+
+    # And the inner `else v` arm: non-dict items in a top-level list are
+    # passed through unchanged. Call `normalize_keys` directly because a
+    # mixed-shape list wouldn't survive downstream model validation.
+    raw = [{"VALUE": 1}, "passthrough", 7]
+    out = Item.normalize_keys(raw)
+    assert out == [{"value": 1}, "passthrough", 7]

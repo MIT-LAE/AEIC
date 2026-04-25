@@ -932,12 +932,16 @@ branches is exercised by any test in this phase. Reported inline below.
   through verbatim while known keys case-fold, and pins the
   Pydantic-side drop via `model.model_extra is None` and the absence
   from `model_fields_set`. Either layer tightening trips the test.
-- 🟢 **[Low][COVERAGE-GAP]** `_normalize_dict` recursion handles three
+- **[Low][COVERAGE-GAP]** `_normalize_dict` recursion handles three
   cases: non-model values, nested `BaseModel`, and `list[BaseModel]`.
   Only the latter two are tested. The list-of-non-model branch
   (`normalize_keys` mode='before' on a top-level list, line 80–84)
   is untested. *Suggested fix:* add a test passing a top-level list
   of dicts to `model_validate` (e.g. via a `RootModel[list[NestedModel]]`).
+  *[DONE]* `test_ci_base_model_top_level_list` covers the dict-item
+  leg via `RootModel[list[Item]]` and the inner `else v` (non-dict
+  pass-through) leg via a direct `normalize_keys` call on a
+  mixed-shape list.
 - 🟢 **[Low][COVERAGE-GAP]** `CIStrEnum._missing_` is only tested with
   one miss case (`"yellow"`). The non-string branch
   (`_missing_(42)` → returns `None` via the outer `if isinstance(value,
