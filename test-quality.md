@@ -266,7 +266,7 @@ Each is a self-contained PR.
   marker — cosmetic; functional behavior unchanged.
 - `TASOPTBuilder` / `ADSBBuilder` / `DymosBuilder` `NotImplementedError`
   contract test — worth having but low priority while the stubs don't
-  move.
+  move. *[DONE]* Pulled forward as part of the Phase 5 medium sweep.
 - SOx test tolerance tightening (1 % → 1e-6) — the current tolerance is
   demonstrably adequate for the analytical identity under test.
 
@@ -1409,7 +1409,7 @@ Exercises `LegacyBuilder.fly()` end-to-end, plus one
   alongside the trajectory build (overlaps with
   `test_performance_model_selection` by design — the redundancy
   pins the dispatch contract from the builder side).
-- 🟡 **[Medium][COVERAGE-GAP]** No test instantiates `TASOPTBuilder`,
+- **[Medium][COVERAGE-GAP]** No test instantiates `TASOPTBuilder`,
   `ADSBBuilder`, or `DymosBuilder`. Each stub currently raises
   `NotImplementedError` in `__init__`
   (`src/AEIC/trajectories/builders/{tasopt,ads_b,dymos}.py`).
@@ -1419,7 +1419,7 @@ Exercises `LegacyBuilder.fly()` end-to-end, plus one
   polices it. *Suggested fix:* one parametrized test
   `@pytest.mark.parametrize("cls", [TASOPTBuilder, ADSBBuilder,
   DymosBuilder])` that calls `with pytest.raises(NotImplementedError):
-  cls()`.
+  cls()`. *[DONE]*
 - 🟢 **[Low][COVERAGE-GAP]** `iterate_mass=True` is tested only in the
   success case and in the `max_mass_iters=1` failure case. The
   boundary — a mission that converges exactly at `max_mass_iters`,

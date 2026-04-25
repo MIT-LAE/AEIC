@@ -173,6 +173,20 @@ def test_trajectory_mass_iter_fail(
         builder_fail.fly(performance_model, example_mission)
 
 
+@pytest.mark.parametrize(
+    'cls',
+    [tb.TASOPTBuilder, tb.ADSBBuilder, tb.DymosBuilder],
+    ids=['TASOPT', 'ADSB', 'Dymos'],
+)
+def test_stub_builder_raises_not_implemented(cls):
+    """Stub builders must raise on construction so a half-implemented
+    subclass can't quietly land — the `NotImplementedError` is the only
+    surface saying "this isn't ready" and nothing else polices it.
+    """
+    with pytest.raises(NotImplementedError):
+        cls()
+
+
 def test_trajectory_performance_model_selector(
     performance_model_selector, sample_missions
 ):
