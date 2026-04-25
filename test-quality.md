@@ -633,12 +633,15 @@ stability but leaves the execution path thinly tested.
   returned DTW-touching pairs only in the first row would pass.
   *Suggested fix:* loop over `results` asserting
   `'DTW' in (r.airport1, r.airport2)` for each row. *[DONE]*
-- 🟢 **[Low][COVERAGE-GAP]** `test_query` — `CountQuery` is exported
+- **[Low][COVERAGE-GAP]** `test_query` — `CountQuery` is exported
   from `AEIC.missions` (and documented in CLAUDE.md) but has no
   `to_sql()` assertion in this file; coverage of `CountQuery` is
   purely transitive. *Suggested fix:* add a minimal case asserting
   `CountQuery(Filter(country='US')).to_sql()` contains `COUNT(*)`
-  and the expected params.
+  and the expected params. *[DONE]* *Actual remediation:* the SUT
+  emits `COUNT(s.id)`, not `COUNT(*)`, so the assertion pins that
+  exact form. Both unfiltered and country-filtered cases are
+  covered, including the filter branch's JOINs and `WHERE`.
 - **[Medium][COVERAGE-GAP]** `Database.set_random_seed()` — the
   documented reproducibility entry point for deterministic sampling,
   called out in CLAUDE.md. Neither this file nor

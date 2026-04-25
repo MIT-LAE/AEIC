@@ -3,7 +3,14 @@ from datetime import date
 
 import pandas as pd
 
-from AEIC.missions import BoundingBox, Database, Filter, FrequentFlightQuery, Query
+from AEIC.missions import (
+    BoundingBox,
+    CountQuery,
+    Database,
+    Filter,
+    FrequentFlightQuery,
+    Query,
+)
 from AEIC.missions.query import date_to_timestamp
 
 
@@ -155,6 +162,18 @@ def test_query():
     ).to_sql()
     assert params == [1000, 5000, 'US', 'US', 8]
     assert 'SELECT MIN(day) FROM schedules' in sql
+
+    # CountQuery: unfiltered shortcuts to a single SELECT against schedules.
+    sql, params = CountQuery().to_sql()
+    assert sql == 'SELECT COUNT(s.id) FROM schedules s'
+    assert params == []
+
+    # CountQuery with a country filter brings in the JOINs and emits the
+    # WHERE clause from the filter.
+    sql, params = CountQuery(filter=Filter(country='US')).to_sql()
+    assert 'COUNT(s.id)' in sql
+    assert 'WHERE' in sql
+    assert params == ['US', 'US']
 
     sql, params = FrequentFlightQuery(
         filter=Filter(origin_country='US'), limit=10
