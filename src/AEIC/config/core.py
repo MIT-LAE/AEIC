@@ -224,8 +224,8 @@ class Config(CIBaseModel):
         global _config
         _config = None
 
-    @contextmanager
     @staticmethod
+    @contextmanager
     def escape():
         """Context manager to allow temporary bypass of singleton and
         validation restrictions.
