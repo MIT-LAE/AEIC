@@ -456,7 +456,7 @@ file.
   source), the READ-only flags (`override`, `force_fieldset_matches`),
   and the CREATE-mode `base_file=None` + `associated_files`
   inconsistency, with regex-pinned messages.
-- 🟢 **[Low][FLAKY-RISK]** `test_indexing` and `test_merged_store_indexing`
+- **[Low][FLAKY-RISK]** `test_indexing` and `test_merged_store_indexing`
   use `random.sample` without seeding, and `make_test_trajectory` uses
   `np.random.*` without seeding. Every run draws fresh data. Assertions
   are structural so they don't actually flake today, but non-determinism
@@ -464,6 +464,11 @@ file.
   assertion added later. *Suggested fix:* seed `random` and
   `np.random.default_rng(...)` at the top of each test (or via a
   fixture), and pass the generator into `make_test_trajectory`.
+  *[DONE]* *Actual remediation:* seeded the global `random` and
+  `np.random` RNGs at the top of each test rather than threading a
+  generator through `make_test_trajectory` — the helper relies on
+  global numpy state across many call sites and reworking its signature
+  was out of scope for a [Low].
 - 🟢 **[Low][WEAK-ASSERTION]** Across the `test_create_*` /
   `test_extra_fields_in_*` / `test_merging_*` family, the post-reload
   assertions exclusively check shapes, lengths, `fieldsets`

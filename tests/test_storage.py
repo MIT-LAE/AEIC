@@ -627,6 +627,11 @@ def test_merging_with_associated_files(tmp_path, test_data_dir):
 
 @pytest.mark.forked
 def test_indexing(tmp_path: Path):
+    # Seed both RNGs so the flight-ID sample and the trajectory field values
+    # produced by `make_test_trajectory` are reproducible across runs.
+    random.seed(0)
+    np.random.seed(0)
+
     # 1. Create a unique set of flight IDs.
     ntrajs = 100
     seeds = random.sample(range(1000, 10000), ntrajs)
@@ -672,6 +677,11 @@ def merged_store_indexing_check_stores(seeds, merged_path, test_data_dir):
 
 
 def test_merged_store_indexing(tmp_path, test_data_dir):
+    # Same rationale as `test_indexing`: seed before sampling flight IDs and
+    # generating trajectory fields so the run is reproducible.
+    random.seed(1)
+    np.random.seed(1)
+
     # 1. Create a unique set of flight IDs.
     ntrajs = 1000
     seeds = random.sample(range(10000, 100000), ntrajs)
