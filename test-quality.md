@@ -1328,10 +1328,16 @@ across classes provide "standard atmosphere"-style inputs.
 
 #### `TestIntegration`
 
-- 🟢 **[Low][SUSPICIOUS-DATA]** `test_nox_emissions_consistency` — the
+- **[Low][SUSPICIOUS-DATA]** `test_nox_emissions_consistency` — the
   3-value expected array is a regression snapshot with no citation.
   *Suggested fix:* add a comment marking this explicitly as a
-  regression guard, or cite a notebook cell.
+  regression guard, or cite a notebook cell. *[DONE]* Docstring now
+  states the snapshot origin and points at
+  `test_matches_reference_component_values` as the test that
+  carries the notebook-sourced scientific correctness check;
+  inline comment by the assertion makes the role of the array
+  unambiguous to a future reader. Switched to `assert_allclose`
+  while there.
 
 ### `tests/test_edb.py` (2 tests)
 
