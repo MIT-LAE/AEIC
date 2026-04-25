@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from AEIC.performance.types import ThrustMode, ThrustModeValues
@@ -76,6 +77,51 @@ def test_div_float_thrust_mode_values(tm1):
     assert result[ThrustMode.APPROACH] == 1.0
     assert result[ThrustMode.CLIMB] == 1.5
     assert result[ThrustMode.TAKEOFF] == 2.0
+
+
+@pytest.mark.parametrize(
+    'args, expected',
+    [
+        (
+            (np.array([1.0, 2.0, 3.0, 4.0]),),
+            {
+                ThrustMode.IDLE: 1.0,
+                ThrustMode.APPROACH: 2.0,
+                ThrustMode.CLIMB: 3.0,
+                ThrustMode.TAKEOFF: 4.0,
+            },
+        ),
+        (
+            (5.0,),
+            {
+                ThrustMode.IDLE: 5.0,
+                ThrustMode.APPROACH: 5.0,
+                ThrustMode.CLIMB: 5.0,
+                ThrustMode.TAKEOFF: 5.0,
+            },
+        ),
+        (
+            (1.0, 2.0, 3.0, 4.0),
+            {
+                ThrustMode.IDLE: 1.0,
+                ThrustMode.APPROACH: 2.0,
+                ThrustMode.CLIMB: 3.0,
+                ThrustMode.TAKEOFF: 4.0,
+            },
+        ),
+    ],
+    ids=['ndarray', 'scalar_float', 'four_positional'],
+)
+def test_thrust_mode_values_constructor_shapes(args, expected):
+    tm = ThrustModeValues(*args)
+    for mode, value in expected.items():
+        assert tm[mode] == value
+
+
+def test_thrust_mode_values_invalid_init():
+    # Two-positional is not a recognized constructor shape.
+    with pytest.raises(ValueError, match='Invalid initialization of ThrustModeValues'):
+        ThrustModeValues(1.0, 2.0)
 
 
 def test_or_thrust_mode_values(tm1, tm3):

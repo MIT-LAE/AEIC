@@ -900,7 +900,7 @@ The file does a respectable job on the arithmetic operators; the
 gaps are around the construction surface and the freezing /
 mutability contract.
 
-- 🟡 **[Medium][COVERAGE-GAP]** `ThrustModeValues.__init__` accepts five
+- **[Medium][COVERAGE-GAP]** `ThrustModeValues.__init__` accepts five
   argument shapes (zero args, dict / TMV, np.ndarray, scalar float,
   four positional floats) plus an `else: raise`. Only the
   dict-shape and the zero-args shape (via `ThrustModeValues()` in
@@ -908,6 +908,7 @@ mutability contract.
   ndarray, scalar-float, four-arg, and invalid-init branches are
   untested. *Suggested fix:* parametrize a small constructor test
   per shape, plus one `pytest.raises(ValueError)` for the bad case.
+  *[DONE]*
 - 🟡 **[Medium][COVERAGE-GAP]** Mutability contract — `__setitem__`
   raises `TypeError` when `_mutable` is False (the *default*), and
   `freeze()` / `copy(mutable=...)` are the documented escape hatches.
