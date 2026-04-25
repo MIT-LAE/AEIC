@@ -121,7 +121,11 @@ def emissions(perf_model, fuel, trajectory):
 
 
 def test_emissions_species(emissions):
-    assert len(emissions.species) == len(Species)
+    """`Emissions.species` covers exactly the `Species` enum — count
+    equality alone would silently allow a regression that dropped one
+    species and added a stray duplicate.
+    """
+    assert emissions.species == set(Species)
 
 
 def _expected_trajectory_indices(perf_model, trajectory):

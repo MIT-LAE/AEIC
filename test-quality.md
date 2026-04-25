@@ -1040,7 +1040,7 @@ helper pattern).
   order 1e14 (effectively relative-only). *Suggested fix:* cite the
   specific notebook cell whose output produced these numbers, or add a
   rounded-results block to Section 6.
-- 🟡 **[Medium][LOGIC-ERROR]** `test_emissions_species`
+- **[Medium][LOGIC-ERROR]** `test_emissions_species`
   (`test_emissions.py:122–123`) — the entire test body is `assert
   len(emissions.species) == len(Species)`. A test named
   `test_emissions_species` without a docstring suggests it verifies
@@ -1048,7 +1048,7 @@ helper pattern).
   equality* with the `Species` enum. A bug that dropped `NOx` and
   added a duplicate species would pass. *Suggested fix:* assert
   `set(emissions.species) == set(Species)` (or whatever the intended
-  containment is) and add a docstring stating the invariant.
+  containment is) and add a docstring stating the invariant. *[DONE]*
 - 🟡 **[Medium][WEAK-ASSERTION]** `test_lto_nox_split_matches_speciation`
   (`test_emissions.py:250–260`) — the test recomputes `NOx_speciation()`
   and asserts `lto_indices[NO] == lto_indices[NOx] * speciation.no`.
