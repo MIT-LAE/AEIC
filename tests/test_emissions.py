@@ -266,6 +266,18 @@ def test_compute_emissions_pipeline_wiring(perf_model, trajectory, emissions):
 )
 def test_sum_total_emissions_matches_components(perf_model, fuel, trajectory):
     emissions = compute_emissions(perf_model, fuel, trajectory)
+
+    # Precondition: with the default config + this trajectory, CO2 must
+    # appear in every component bucket with a positive value. The
+    # `total == sum(components)` identity below would otherwise pass
+    # trivially if a regression silently zeroed one of the buckets
+    # (e.g. dropped GSE) — the matching zero on the total side would
+    # still satisfy the equality.
+    assert np.sum(emissions.trajectory_emissions[Species.CO2]) > 0
+    assert emissions.lto_emissions[Species.CO2].sum() > 0
+    assert emissions.apu_emissions[Species.CO2] > 0
+    assert emissions.gse_emissions[Species.CO2] > 0
+
     for species in emissions.total_emissions:
         expected = 0.0
         if species in emissions.trajectory_emissions:

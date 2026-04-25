@@ -1146,7 +1146,7 @@ helper pattern).
   would pass. *Suggested fix:* additionally assert
   `profile_first.mass[ThrustMode.TAKEOFF] > 0` (or similar) and that
   per-mode values are finite. *[DONE]*
-- 🟢 **[Low][WEAK-ASSERTION]** `test_sum_total_emissions_matches_components`
+- **[Low][WEAK-ASSERTION]** `test_sum_total_emissions_matches_components`
   (`test_emissions.py:219–231`) — only verifies the arithmetic
   identity `total[s] == sum(trajectory + lto + apu + gse)`. It does
   not verify that the individual component sums are themselves
@@ -1154,7 +1154,10 @@ helper pattern).
   as long as `total_emissions` also saw the zero. *Suggested fix:*
   add a precondition assertion (e.g., `assert
   emissions.gse_emissions[Species.CO2] > 0`) for a few canary
-  species that the test config expects to be non-zero.
+  species that the test config expects to be non-zero. *[DONE]*
+  CO2 is the canary across all four buckets (trajectory / LTO /
+  APU / GSE) since every component must emit CO2 under the default
+  fuel config.
 
 ### `tests/test_emission_functions.py` (~24 tests across 7 classes)
 
