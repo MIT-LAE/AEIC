@@ -129,13 +129,15 @@ class Container:
                 vo = other._data[name]
                 if isinstance(
                     vs,
-                    str
-                    | None
-                    | int
-                    | float
-                    | np.floating
-                    | SpeciesValues
-                    | ThrustModeValues,
+                    (
+                        str,
+                        type(None),
+                        int,
+                        float,
+                        np.floating,
+                        SpeciesValues,
+                        ThrustModeValues,
+                    ),
                 ):
                     if vs != vo:
                         return False
@@ -159,13 +161,13 @@ class Container:
             if name in self._data:
                 vs = self._data[name]
                 vo = other._data[name]
-                if isinstance(vs, str | None):
+                if isinstance(vs, (str, type(None))):
                     if vs != vo:
                         return False
-                elif isinstance(vs, int | float | np.floating):
+                elif isinstance(vs, (int, float, np.floating)):
                     if not np.isclose(vs, vo):
                         return False
-                elif isinstance(vs, SpeciesValues | ThrustModeValues):
+                elif isinstance(vs, (SpeciesValues, ThrustModeValues)):
                     if not vs.isclose(vo):
                         return False
                 elif isinstance(vs, np.ndarray):

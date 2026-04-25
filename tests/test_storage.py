@@ -877,6 +877,45 @@ def test_append_to_container_by_keywords_bad():
         container_extensible.append(per_point_1=10)
 
 
+def test_container_equality_handles_str_and_none_fields():
+    """`Container.__eq__` and `approx_eq` both branch on
+    `isinstance(vs, (str, type(None)))` to fall into the direct-equality
+    arm. The audit flagged the original `str | None` form as a latent
+    runtime bug — pin a regression by stuffing `Trajectory.name`
+    (`str | None`) with both leg values and exercising both paths.
+    """
+    np.random.seed(0)
+    a = make_test_trajectory(5, 1)
+
+    # str leg: equal -> both eq and approx_eq True.
+    a.name = 'shared-name'
+    a_copy = a.copy()
+    assert a == a_copy
+    assert a.approx_eq(a_copy)
+
+    # str leg: differ -> both False.
+    a_copy.name = 'other-name'
+    assert a != a_copy
+    assert not a.approx_eq(a_copy)
+
+    # None leg: both sides None -> both True.
+    a.name = None
+    a_copy = a.copy()
+    assert a == a_copy
+    assert a.approx_eq(a_copy)
+
+    # None leg: one side None, other side str -> both False.
+    a_copy.name = 'now-set'
+    assert a != a_copy
+    assert not a.approx_eq(a_copy)
+
+    # str on one side, None on the other (reversed) — both False.
+    a.name = 'x'
+    a_copy.name = None
+    assert a != a_copy
+    assert not a.approx_eq(a_copy)
+
+
 def test_append_to_container_by_class():
     # Create extensible container, append points by single point container
     # class (enough to trigger capacity expansion), check data.
