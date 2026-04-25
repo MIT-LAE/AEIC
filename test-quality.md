@@ -734,12 +734,12 @@ stability but leaves the execution path thinly tested.
   still fail (truncates to -49), but a +49.9 drift would pass.
   *Suggested fix:* assert `airport_info.airport.latitude ==
   pytest.approx(49.01, abs=0.01)` for a tighter contract. *[DONE]*
-- 🟢 **[Low][HYGIENE]** `test_airport_handling` — exercises private
+- **[Low][HYGIENE]** `test_airport_handling` — exercises private
   methods (`_lookup_timezone`, `_get_or_add_airport`). Appropriate as
   a white-box unit test but the intent is undocumented; naïve
   refactoring of `WritableDatabase` internals would break this test
   without signal that the public surface is fine. *Suggested fix:*
-  one-line docstring acknowledging the white-box scope.
+  one-line docstring acknowledging the white-box scope. *[DONE]*
 - **[Low][HYGIENE]** `test_dow_mask` (line 34) — `0b0000000` is
   seven zeros; every other literal in the test uses an eight-bit form
   (`0b01111111`, `0b00010101`, etc.). Functionally identical (leading

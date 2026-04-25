@@ -39,6 +39,13 @@ def test_dow_mask():
 
 
 def test_airport_handling(tmp_path):
+    """White-box unit test: pokes at private helpers (`_lookup_timezone`,
+    `_get_or_add_airport`) on `WritableDatabase` because the public surface
+    folds them into the bulk OAG ingestion path. A naïve refactor of
+    `WritableDatabase` internals will break this test even when the public
+    behaviour is fine — the trade-off is intentional, since it pins the
+    contract that lookup populates the airports table.
+    """
     with WritableDatabase(tmp_path / 'test.sqlite') as db:
         cur = db._conn.cursor()
 
