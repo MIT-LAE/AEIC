@@ -41,9 +41,14 @@ def test_separate_emissions(tmp_path, sample_missions, performance_model, fuel):
     emissions_path = tmp_path / 'test_emissions.nc'
 
     builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+    expected_totals = []
+    expected_indices = []
     with TrajectoryStore.create(base_file=path) as ts:
         for mis in sample_missions:
             traj = builder.fly(performance_model, mis)
+            emissions = compute_emissions(performance_model, fuel, traj)
+            expected_totals.append(dict(emissions.total_emissions))
+            expected_indices.append(dict(emissions.trajectory_indices))
             ts.add(traj)
 
     with TrajectoryStore.open(base_file=path) as ts_create_assoc:
@@ -63,11 +68,16 @@ def test_separate_emissions(tmp_path, sample_missions, performance_model, fuel):
         assert ts_read.files[0].fieldsets == {'base'}
         assert ts_read.files[1].fieldsets == {'emissions'}
         for i in range(len(sample_missions)):
-            assert isinstance(ts_read[i].total_emissions, SpeciesValues)
-            for sp in ts_read[i].total_emissions:
-                assert isinstance(ts_read[i].total_emissions[sp], float)
-            assert isinstance(ts_read[i].trajectory_indices, SpeciesValues)
-            for sp in ts_read[i].trajectory_indices:
-                v = ts_read[i].trajectory_indices[sp]
-                assert isinstance(v, np.ndarray)
-                assert len(v) == len(ts_read[i].fuel_flow)
+            loaded_totals = ts_read[i].total_emissions
+            assert isinstance(loaded_totals, SpeciesValues)
+            assert set(loaded_totals) == set(expected_totals[i])
+            for sp, value in expected_totals[i].items():
+                np.testing.assert_allclose(loaded_totals[sp], value)
+
+            loaded_indices = ts_read[i].trajectory_indices
+            assert isinstance(loaded_indices, SpeciesValues)
+            assert set(loaded_indices) == set(expected_indices[i])
+            for sp, expected in expected_indices[i].items():
+                assert isinstance(loaded_indices[sp], np.ndarray)
+                assert len(loaded_indices[sp]) == len(ts_read[i].fuel_flow)
+                np.testing.assert_allclose(loaded_indices[sp], expected)

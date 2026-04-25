@@ -494,7 +494,10 @@ leakage requires subprocess isolation").
   not values. The branch under test is the associated-file round trip,
   which is the exact place serialization bugs could silently drop or
   reorder species. *Suggested fix:* as above, compare at least one
-  representative species array via `np.allclose`.
+  representative species array via `np.allclose`. *[DONE]* Both the
+  scalar `total_emissions` and the per-segment `trajectory_indices`
+  arrays are now compared species-by-species against an in-memory
+  baseline, with species-key set equality enforced.
 
 ### `tests/conftest.py` (context)
 
