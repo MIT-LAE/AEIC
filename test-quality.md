@@ -547,10 +547,13 @@ leakage requires subprocess isolation").
 - No findings. `run_in_subprocess` is a small, correct helper; the
   docstring explicitly states the rationale (netCDF4 file-handle leak
   across many open/close events).
-- 🟢 **[Low][COVERAGE-GAP]** No direct test of `run_in_subprocess` itself.
+- **[Low][COVERAGE-GAP]** No direct test of `run_in_subprocess` itself.
   It's exercised transitively by several `test_storage.py` tests, but a
   broken helper would fail those tests noisily, so the indirect
-  coverage is adequate. *Suggested fix:* none required.
+  coverage is adequate. *Suggested fix:* none required. *[DONE]* Closed
+  with no code change — the finding's own recommendation was that
+  indirect coverage is sufficient; this entry is recorded so the Low
+  sweep accounting matches the original audit total.
 
 ## Phase 2 — Mission DB
 
