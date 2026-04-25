@@ -449,9 +449,13 @@ file.
   exercising turned out to be `TrajectoryStore.active_in_thread`
   (store.py:378), not a NetCDF-layer error — assertion now pins the
   `RuntimeError` class and matches the guard message substring.
-- 🟢 **[Low][LOGIC-ERROR]** `test_init_checking` — body ends with
+- **[Low][LOGIC-ERROR]** `test_init_checking` — body ends with
   `# TODO: MORE HERE...` (line 213). Incomplete test. *Suggested fix:*
-  finish enumerating the guard-clause cases or remove the TODO.
+  finish enumerating the guard-clause cases or remove the TODO. *[DONE]*
+  Now exercises all four global-attribute fields (title/comment/history/
+  source), the READ-only flags (`override`, `force_fieldset_matches`),
+  and the CREATE-mode `base_file=None` + `associated_files`
+  inconsistency, with regex-pinned messages.
 - 🟢 **[Low][FLAKY-RISK]** `test_indexing` and `test_merged_store_indexing`
   use `random.sample` without seeding, and `make_test_trajectory` uses
   `np.random.*` without seeding. Every run draws fresh data. Assertions

@@ -28,20 +28,44 @@ from tests.subproc import run_in_subprocess
 from tests.utils import ComplexExtras, SimpleExtras, make_test_trajectory
 
 
-def test_init_checking():
-    # Missing NetCDF file name when creating or appending.
-    with pytest.raises(ValueError):
+def test_init_checking(tmp_path: Path):
+    # Missing NetCDF file name when reading or appending. (Required outside of
+    # CREATE mode.)
+    with pytest.raises(ValueError, match='base_file required'):
         _ = TrajectoryStore.open()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='base_file required'):
         _ = TrajectoryStore.append()
 
-    # Specifying global attributes in non-create modes.
-    with pytest.raises(ValueError):
-        _ = TrajectoryStore.open(base_file='test.nc', title='Test')
-    with pytest.raises(ValueError):
-        _ = TrajectoryStore.append(base_file='test.nc', title='Test')
+    # Specifying any of the four global-attribute fields in non-CREATE modes.
+    for kwargs in (
+        {'title': 'T'},
+        {'comment': 'C'},
+        {'history': 'H'},
+        {'source': 'S'},
+    ):
+        with pytest.raises(ValueError, match='global attributes'):
+            _ = TrajectoryStore.open(base_file='test.nc', **kwargs)
+        with pytest.raises(ValueError, match='global attributes'):
+            _ = TrajectoryStore.append(base_file='test.nc', **kwargs)
 
-    # TODO: MORE HERE...
+    # `override` and `force_fieldset_matches` are READ-only options.
+    with pytest.raises(ValueError, match='override may only be specified in READ'):
+        _ = TrajectoryStore.create(override=True)
+    with pytest.raises(ValueError, match='override may only be specified in READ'):
+        _ = TrajectoryStore.append(base_file='test.nc', override=True)
+    with pytest.raises(ValueError, match='force_fieldset_matches'):
+        _ = TrajectoryStore.create(force_fieldset_matches=True)
+    with pytest.raises(ValueError, match='force_fieldset_matches'):
+        _ = TrajectoryStore.append(base_file='test.nc', force_fieldset_matches=True)
+
+    # CREATE mode with `base_file=None` cannot also carry associated files —
+    # there is no on-disk store to associate them with yet.
+    with pytest.raises(
+        ValueError, match='associated_files may only be specified in CREATE mode'
+    ):
+        _ = TrajectoryStore.create(
+            associated_files=[(tmp_path / 'extra.nc', ['simple_extras'])]
+        )
 
 
 def simple_create_ts(
