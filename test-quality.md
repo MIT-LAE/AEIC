@@ -563,7 +563,7 @@ stability but leaves the execution path thinly tested.
   inlines the limit value into the SQL string (`query.py:253`) rather
   than parameterizing it, so the assertion is `'LIMIT 10' in sql`
   (params unchanged) — the inline form is the contract being pinned.
-- 🟡 **[Medium][LOGIC-ERROR]** `test_query_result` every-nth block
+- **[Medium][LOGIC-ERROR]** `test_query_result` every-nth block
   (lines 236–248) — the inter-flight gap invariant
   `if last_day > 0: assert (day - last_day) % 5 == 0` has two defects:
   (1) when `last_day == 0` (the 1970-01-01 epoch) the check is
@@ -572,7 +572,7 @@ stability but leaves the execution path thinly tested.
   runs of same-day flights never actually exercise the every-nth
   contract. *Suggested fix:* initialise `last_day = None` and skip
   only when `is None`; track whether any non-zero gap was observed
-  and assert it at end-of-loop so the invariant is actually hit.
+  and assert it at end-of-loop so the invariant is actually hit. *[DONE]*
 - **[Medium][SUSPICIOUS-DATA]** `test_query_result` — five expected
   row counts are bare integer literals (`1197`, `99`, `36`, `307`,
   `13`). The inline comment at lines 167–168 ("These queries were all

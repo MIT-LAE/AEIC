@@ -243,7 +243,8 @@ def test_query_result(test_data_dir):
         q3 = Query(Filter(max_distance=3000, country=['US', 'CA']))
         q3.every_nth = 5
         nflights = 0
-        last_day = -1
+        last_day: int | None = None
+        saw_nonzero_gap = False
         result = db(q3)
         assert isinstance(result, Generator)
         for flight in result:
@@ -253,11 +254,18 @@ def test_query_result(test_data_dir):
                 'CA',
             ) or flight.destination_country in ('US', 'CA')
             day = days_since_epoch(flight.departure)
-            if last_day > 0:
-                assert (day - last_day) % 5 == 0
+            if last_day is not None:
+                gap = day - last_day
+                assert gap % 5 == 0
+                if gap > 0:
+                    saw_nonzero_gap = True
             last_day = day
             nflights += 1
         assert nflights < 307
+        # Without at least one positive gap, the modulo check only ran on
+        # same-day flights where `0 % 5 == 0` passes trivially — i.e. the
+        # every_nth=5 contract was never actually exercised.
+        assert saw_nonzero_gap
 
         # Frequent flight query.
         result = db(FrequentFlightQuery(Filter(airport='DTW')))
