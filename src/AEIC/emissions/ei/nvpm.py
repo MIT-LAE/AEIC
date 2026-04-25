@@ -213,7 +213,12 @@ def calculate_nvPM_scope11_LTO(
     Parameters
     ----------
     SN_matrix : ThrustModeValues
-        Smoke number matrix for each ICAO mode.
+        Smoke number matrix for each ICAO mode. Sentinel values
+        ``SN == -1`` and ``SN == 0`` are treated as "no measurement
+        available" — the corresponding mode is skipped and both
+        ``mass[mode]`` and ``number[mode]`` come back as ``0.0`` in the
+        returned profile. Callers that need to distinguish "skipped"
+        from "computed-as-zero" should check the input SN themselves.
     ENGINE_TYPE : str
         Engine type ('TF', 'MTF', etc.).
     BP_Ratio : float
@@ -223,6 +228,8 @@ def calculate_nvPM_scope11_LTO(
     -------
     nvPMProfile
         nvPM mass and number emission indices [g/kg and #/kg fuel].
+        Modes whose ``SN_matrix`` entry is the -1 / 0 sentinel come
+        back as 0.0 (see above).
     """
 
     # Air to fuel ration at four LTO points, estimated by Wayson et al. (2009)
