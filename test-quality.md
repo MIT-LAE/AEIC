@@ -1364,12 +1364,14 @@ Tests for `EDBEntry.get_engine()` — one negative-path (monkeypatched
   present in gaseous sheet but absent from nvPM sheet (or vice
   versa) — which is untested. *Suggested fix:* a one-line
   parametrization covering each sheet's absence branch. *[DONE]*
-- 🟢 **[Low][HYGIENE]** The positive-path test does a single giant
+- **[Low][HYGIENE]** The positive-path test does a single giant
   assertion block with ~10 `assert` statements. On failure, pytest
   reports only the first failing line, which makes diagnosis slower
   than necessary when the EDB parser regresses. *Suggested fix:*
   consider `pytest.approx` with a dict, or a parametrized test per
-  field.
+  field. *[DONE]* Parametrized over 14 (`attr`, `expected`) tuples
+  via a module-shared `sample_engine_info` fixture; failures land on
+  the per-attribute test ID.
 
 ## Phase 5 — Trajectories
 

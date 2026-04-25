@@ -53,80 +53,125 @@ def test_get_EDB_data_for_engine_raises_when_uid_absent(
         EDBEntry.get_engine(dummy_path, uid=query_uid)
 
 
-def test_get_EDB_data_for_engine_returns_engine_data():
-    UID = "01P11CM121"
+_SAMPLE_EDB_UID = "01P11CM121"
 
-    engine_info = EDBEntry.get_engine(
-        config.file_location('engines/sample_edb.xlsx'), UID
+
+@pytest.fixture
+def sample_engine_info():
+    """Parse `engines/sample_edb.xlsx` per parametrized case. Function
+    scope is required because the autouse `default_config` fixture loads
+    the AEIC `Config` per test, and `config.file_location` resolves the
+    sheet path against that.
+    """
+    return EDBEntry.get_engine(
+        config.file_location('engines/sample_edb.xlsx'), _SAMPLE_EDB_UID
     )
 
-    assert engine_info.engine == "CFM56-7B27E"
-    assert engine_info.uid == UID
-    assert engine_info.engine_type == "TF"
-    assert engine_info.BP_Ratio == 5.1
-    assert engine_info.fuel_flow == ThrustModeValues(
-        {
-            ThrustMode.IDLE: 0.11,
-            ThrustMode.APPROACH: 0.343,
-            ThrustMode.CLIMB: 1.031,
-            ThrustMode.TAKEOFF: 1.293,
-        }
-    )
-    assert engine_info.CO_EI_matrix == ThrustModeValues(
-        {
-            ThrustMode.IDLE: 29.39,
-            ThrustMode.APPROACH: 2.82,
-            ThrustMode.CLIMB: 0.17,
-            ThrustMode.TAKEOFF: 0.31,
-        }
-    )
-    assert engine_info.HC_EI_matrix == ThrustModeValues(
-        {
-            ThrustMode.IDLE: 1.54,
-            ThrustMode.APPROACH: 0.05,
-            ThrustMode.CLIMB: 0.02,
-            ThrustMode.TAKEOFF: 0.03,
-        }
-    )
-    assert engine_info.EI_NOx_matrix == ThrustModeValues(
-        {
-            ThrustMode.IDLE: 4.36,
-            ThrustMode.APPROACH: 9.09,
-            ThrustMode.CLIMB: 17.89,
-            ThrustMode.TAKEOFF: 23.94,
-        }
-    )
-    assert engine_info.SN_matrix == ThrustModeValues(
-        {
-            ThrustMode.IDLE: 2.1,
-            ThrustMode.APPROACH: 2.1,
-            ThrustMode.CLIMB: 11.2,
-            ThrustMode.TAKEOFF: 13.4,
-        }
-    )
-    assert engine_info.nvPM_mass_matrix == ThrustModeValues(
-        {
-            ThrustMode.IDLE: 0.74,
-            ThrustMode.APPROACH: 1.72,
-            ThrustMode.CLIMB: 44.0,
-            ThrustMode.TAKEOFF: 70.8,
-        }
-    )
-    assert engine_info.nvPM_num_matrix == ThrustModeValues(
-        {
-            ThrustMode.IDLE: 26600000000000.0,
-            ThrustMode.APPROACH: 71000000000000.0,
-            ThrustMode.CLIMB: 433000000000000.0,
-            ThrustMode.TAKEOFF: 402000000000000.0,
-        }
-    )
-    assert engine_info.PR == ThrustModeValues(
-        {
-            ThrustMode.IDLE: 29.0,
-            ThrustMode.APPROACH: 29.0,
-            ThrustMode.CLIMB: 29.0,
-            ThrustMode.TAKEOFF: 29.0,
-        }
-    )
-    assert engine_info.EImass_max == 70.8
-    assert engine_info.EInum_max == 433000000000000.0
+
+@pytest.mark.parametrize(
+    'attr,expected',
+    [
+        ('engine', "CFM56-7B27E"),
+        ('uid', _SAMPLE_EDB_UID),
+        ('engine_type', "TF"),
+        ('BP_Ratio', 5.1),
+        (
+            'fuel_flow',
+            ThrustModeValues(
+                {
+                    ThrustMode.IDLE: 0.11,
+                    ThrustMode.APPROACH: 0.343,
+                    ThrustMode.CLIMB: 1.031,
+                    ThrustMode.TAKEOFF: 1.293,
+                }
+            ),
+        ),
+        (
+            'CO_EI_matrix',
+            ThrustModeValues(
+                {
+                    ThrustMode.IDLE: 29.39,
+                    ThrustMode.APPROACH: 2.82,
+                    ThrustMode.CLIMB: 0.17,
+                    ThrustMode.TAKEOFF: 0.31,
+                }
+            ),
+        ),
+        (
+            'HC_EI_matrix',
+            ThrustModeValues(
+                {
+                    ThrustMode.IDLE: 1.54,
+                    ThrustMode.APPROACH: 0.05,
+                    ThrustMode.CLIMB: 0.02,
+                    ThrustMode.TAKEOFF: 0.03,
+                }
+            ),
+        ),
+        (
+            'EI_NOx_matrix',
+            ThrustModeValues(
+                {
+                    ThrustMode.IDLE: 4.36,
+                    ThrustMode.APPROACH: 9.09,
+                    ThrustMode.CLIMB: 17.89,
+                    ThrustMode.TAKEOFF: 23.94,
+                }
+            ),
+        ),
+        (
+            'SN_matrix',
+            ThrustModeValues(
+                {
+                    ThrustMode.IDLE: 2.1,
+                    ThrustMode.APPROACH: 2.1,
+                    ThrustMode.CLIMB: 11.2,
+                    ThrustMode.TAKEOFF: 13.4,
+                }
+            ),
+        ),
+        (
+            'nvPM_mass_matrix',
+            ThrustModeValues(
+                {
+                    ThrustMode.IDLE: 0.74,
+                    ThrustMode.APPROACH: 1.72,
+                    ThrustMode.CLIMB: 44.0,
+                    ThrustMode.TAKEOFF: 70.8,
+                }
+            ),
+        ),
+        (
+            'nvPM_num_matrix',
+            ThrustModeValues(
+                {
+                    ThrustMode.IDLE: 26600000000000.0,
+                    ThrustMode.APPROACH: 71000000000000.0,
+                    ThrustMode.CLIMB: 433000000000000.0,
+                    ThrustMode.TAKEOFF: 402000000000000.0,
+                }
+            ),
+        ),
+        (
+            'PR',
+            ThrustModeValues(
+                {
+                    ThrustMode.IDLE: 29.0,
+                    ThrustMode.APPROACH: 29.0,
+                    ThrustMode.CLIMB: 29.0,
+                    ThrustMode.TAKEOFF: 29.0,
+                }
+            ),
+        ),
+        ('EImass_max', 70.8),
+        ('EInum_max', 433000000000000.0),
+    ],
+)
+def test_get_EDB_data_for_engine_returns_engine_data(
+    sample_engine_info, attr, expected
+):
+    """Each attribute on the parsed EDB entry is checked individually so
+    a regression in (e.g.) the nvPM-num column extraction lands on its
+    own test ID rather than failing the first `assert` in a wall.
+    """
+    assert getattr(sample_engine_info, attr) == expected
