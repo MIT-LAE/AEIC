@@ -554,12 +554,15 @@ stability but leaves the execution path thinly tested.
   determinism would go undetected by this test, despite its placement
   in the sampling branch. *Suggested fix:* change the assertion to
   `'det_random()' in sql` to pin the reproducibility contract.
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_query` (lines 159–163) — the
+- **[Medium][WEAK-ASSERTION]** `test_query` (lines 159–163) — the
   `FrequentFlightQuery(filter=..., limit=10)` branch asserts only
   `'GROUP BY od_pair' in sql` and `params == ['US']`. The `limit=10`
   argument is never verified in either the SQL (`LIMIT ?` clause) or
   the params list. *Suggested fix:* assert `'LIMIT ?' in sql` and that
-  `10` appears in `params`.
+  `10` appears in `params`. *[DONE]* *Actual remediation:* the SUT
+  inlines the limit value into the SQL string (`query.py:253`) rather
+  than parameterizing it, so the assertion is `'LIMIT 10' in sql`
+  (params unchanged) — the inline form is the contract being pinned.
 - 🟡 **[Medium][LOGIC-ERROR]** `test_query_result` every-nth block
   (lines 236–248) — the inter-flight gap invariant
   `if last_day > 0: assert (day - last_day) % 5 == 0` has two defects:

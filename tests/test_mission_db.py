@@ -161,6 +161,10 @@ def test_query():
     ).to_sql()
     assert params == ['US']
     assert 'GROUP BY od_pair' in sql
+    # FrequentFlightQuery inlines the limit into the SQL string rather than
+    # parameterizing it (see query.py:253), so the value lands in `sql`,
+    # not in `params`.
+    assert 'LIMIT 10' in sql
 
 
 def test_query_result(test_data_dir):
