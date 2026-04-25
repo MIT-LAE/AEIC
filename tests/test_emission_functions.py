@@ -636,35 +636,47 @@ class Test_nvPMScope11:
                 profile.number[mode], ref_num[i], rtol=1e-6, atol=1e-9
             )
 
-    def test_engine_type_scaling_and_invalid_smoke_numbers(self):
-        SN_matrix = ThrustModeValues(5.0, 50.0, -1.0, 0.0)
+    def test_scope11_engine_type_scaling(self):
+        """`calculate_nvPM_scope11_LTO` applies a bypass-ratio correction to
+        the MTF (mixed turbofan) path that the TF path does not. The full
+        numeric contract for both engine types at every mode is pinned by
+        `test_SCOPE11_unit_test` against the notebook reference values;
+        here, just pin the qualitative invariant — at IDLE on a finite
+        positive SN, MTF > TF — without inline-computing the
+        SUT formula. Inline-computation would be a tautological copy of
+        `nvpm.py` and a regression that broke both implementations the
+        same way would still pass.
+        """
+        SN_matrix = ThrustModeValues(5.0, 50.0, 30.0, 40.0)
         BP_Ratio = 2.0
 
         mtf = calculate_nvPM_scope11_LTO(SN_matrix, 'MTF', BP_Ratio)
         tf = calculate_nvPM_scope11_LTO(SN_matrix, 'TF', BP_Ratio)
 
-        SN0 = min(SN_matrix[ThrustMode.IDLE], 40.0)
-        CBC0 = 0.6484 * np.exp(0.0766 * SN0) / (1 + np.exp(-1.099 * (SN0 - 3.064)))
-        AFR = ThrustModeValues(106, 83, 51, 45)
+        # Bypass correction makes MTF strictly larger than TF at IDLE.
+        assert mtf.mass[ThrustMode.IDLE] > tf.mass[ThrustMode.IDLE] > 0
+        # Number-channel parity check: both engine types yield non-empty
+        # number profiles.
+        assert mtf.number[ThrustMode.IDLE] > 0
+        assert tf.number[ThrustMode.IDLE] > 0
 
-        bypass = 1 + BP_Ratio
-        kslm_mtf = np.log(
-            (3.219 * CBC0 * bypass * 1000 + 312.5) / (CBC0 * bypass * 1000 + 42.6)
-        )
-        Q_mtf = 0.776 * AFR[ThrustMode.IDLE] * bypass + 0.767
-        expected_mtf = (kslm_mtf * CBC0 * Q_mtf) / 1000.0
-        assert np.isclose(mtf.mass[ThrustMode.IDLE], expected_mtf)
-
-        kslm_tf = np.log((3.219 * CBC0 * 1000 + 312.5) / (CBC0 * 1000 + 42.6))
-        Q_tf = 0.776 * AFR[ThrustMode.IDLE] + 0.767
-        expected_tf = (kslm_tf * CBC0 * Q_tf) / 1000.0
-        assert np.isclose(tf.mass[ThrustMode.IDLE], expected_tf)
-
-        assert mtf.mass[ThrustMode.IDLE] > tf.mass[ThrustMode.IDLE]
-        assert mtf.mass[ThrustMode.CLIMB] == 0.0
-        assert tf.mass[ThrustMode.TAKEOFF] == 0.0
-        assert mtf.number is not None
-        assert tf.number is not None
+    def test_scope11_invalid_smoke_numbers_return_zero(self):
+        """Per `emissions/ei/nvpm.py`, smoke numbers ≤ 0 are treated as
+        invalid and the SUT must emit zero in both mass and number for
+        the corresponding modes. Bug guard: a future refactor that
+        propagated -1.0 / 0.0 through the CBC0 expression would either
+        produce NaN or a negative emission — both of which would slip
+        through if only "non-zero" was asserted.
+        """
+        # IDLE has a finite positive SN so the rest of the modes can be
+        # invalid without the SUT raising on a degenerate input set.
+        SN_matrix = ThrustModeValues(5.0, 50.0, -1.0, 0.0)
+        for engine_type in ('MTF', 'TF'):
+            profile = calculate_nvPM_scope11_LTO(SN_matrix, engine_type, BP_Ratio=2.0)
+            assert profile.mass[ThrustMode.CLIMB] == 0.0
+            assert profile.mass[ThrustMode.TAKEOFF] == 0.0
+            assert profile.number[ThrustMode.CLIMB] == 0.0
+            assert profile.number[ThrustMode.TAKEOFF] == 0.0
 
 
 # Integration tests

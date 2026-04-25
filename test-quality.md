@@ -1306,7 +1306,7 @@ across classes provide "standard atmosphere"-style inputs.
   1e14–1e15. *Suggested fix:* specify explicit tolerances. *[DONE]*
   Pinned to `rtol=1e-6, atol=1e-9` (matching the BFFM2 / MEEM scheme)
   via `np.testing.assert_allclose`.
-- 🟢 **[Low][LOGIC-ERROR]** `test_engine_type_scaling_and_invalid_smoke_numbers`
+- **[Low][LOGIC-ERROR]** `test_engine_type_scaling_and_invalid_smoke_numbers`
   — inline computation mirrors the SUT's CBC/AFR/kslm/Q formula, so
   the "engine_type_scaling" half is a tautological copy-paste check.
   The "invalid_smoke_numbers" half passes an `SN_matrix` containing
@@ -1317,7 +1317,14 @@ across classes provide "standard atmosphere"-style inputs.
   secondary observation. *Suggested fix:* split into two tests —
   `test_scope11_engine_type_scaling` (with expected values sourced
   from the notebook, not inline-computed) and
-  `test_scope11_invalid_smoke_numbers_return_zero`.
+  `test_scope11_invalid_smoke_numbers_return_zero`. *[DONE]*
+  *Actual remediation:* split as suggested. The engine-scaling test
+  now pins only the qualitative MTF > TF > 0 invariant (the
+  bypass-correction signal) and defers full numeric grounding to
+  `test_SCOPE11_unit_test`'s notebook-sourced reference, instead of
+  inline-computing CBC/AFR/kslm/Q against the SUT formula. The
+  invalid-SN test additionally pins the number-channel zero
+  (a refactor producing NaN would otherwise have slipped through).
 
 #### `TestIntegration`
 
