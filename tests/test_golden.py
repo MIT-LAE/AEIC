@@ -25,6 +25,16 @@ def test_trajectory_simulation_matches_golden_snapshot(
     builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
     comparison_ts = TrajectoryStore.open(base_file=comparison_fname)
 
+    # Precondition: if `sample_missions` is extended without rebuilding
+    # the golden file, `comparison_ts[idx]` would IndexError mid-loop with
+    # a less-informative traceback. Surface the mismatch up front.
+    assert len(comparison_ts) == len(sample_missions), (
+        f'golden file has {len(comparison_ts)} trajectories but '
+        f'sample_missions has {len(sample_missions)}; regenerate '
+        f'`tests/data/golden/test_trajectories_golden.nc` via '
+        f'`scripts/make_golden_test_data.py`.'
+    )
+
     failed = []
     sample_traj = None
     for idx, mis in enumerate(sample_missions):

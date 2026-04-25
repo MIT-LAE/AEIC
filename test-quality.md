@@ -1836,14 +1836,16 @@ which reduces to `np.allclose` defaults
   pursued: it requires either a SUT change to `Container.approx_eq`
   or duplicating the comparison logic in the test, both of which
   exceed the medium's intended scope.
-- 🟢 **[Low][COVERAGE-GAP]** `test_golden.py` never asserts that
+- **[Low][COVERAGE-GAP]** `test_golden.py` never asserts that
   `len(comparison_ts) == len(sample_missions)`. If the golden file
   and the mission fixture drift apart (e.g. sample missions
   extended but golden file not rebuilt), `comparison_ts[idx]`
   raises an `IndexError` mid-loop with a less informative
   traceback than a precondition assertion would. *Suggested fix:*
   add `assert len(comparison_ts) == len(sample_missions)` before
-  the loop.
+  the loop. *[DONE]* Precondition assertion now points at
+  `scripts/make_golden_test_data.py` so a contributor who hits
+  the failure knows how to regenerate the fixture.
 - **[Low][HYGIENE]** `test_golden.py:22–23` — the final failure
   mechanism is `if len(failed) > 0: raise AssertionError(...)`
   rather than `assert not failed, ...`. Both work in pytest; the
