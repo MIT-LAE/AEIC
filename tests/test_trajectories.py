@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 import AEIC.trajectories.builders as tb
 from AEIC.emissions.emission import compute_emissions
@@ -127,6 +128,27 @@ def test_append_to_trajectory():
     assert ext_traj.n_climb == 10
     assert ext_traj.n_cruise == 10
     assert ext_traj.n_descent == 10
+
+    # Spot-check that point-wise field values actually round-trip through
+    # `make_point` → `append` → `fix`. A regression that silently zeroed
+    # the per-point arrays on `fix()` would otherwise satisfy the length /
+    # phase-counter checks above.
+    assert ext_traj.fuel_flow[0] == 1.4
+    assert ext_traj.fuel_flow[15] == 1.4
+    assert ext_traj.latitude[0] == 41.0
+    assert ext_traj.latitude[15] == pytest.approx(41.0 + 0.02 * 5)
+    # Per-phase altitude trace: climb 0→9000, cruise flat at 10000, descent
+    # 10000→1000.
+    assert ext_traj.altitude[0] == 0
+    assert ext_traj.altitude[9] == 9000
+    assert all(a == 10000 for a in ext_traj.altitude[10:20])
+    assert ext_traj.altitude[20] == 10000
+    assert ext_traj.altitude[29] == 1000
+    # Aircraft mass decreases monotonically within each phase. (The
+    # `aircraft_mass = 60000 - 1.4*60*i` setup resets at each phase so a
+    # cross-phase monotonicity check would not hold here.)
+    for phase_slice in (slice(0, 10), slice(10, 20), slice(20, 30)):
+        assert all(np.diff(ext_traj.aircraft_mass[phase_slice]) < 0)
 
 
 def test_dateline_splitting_no_split(performance_model, fuel):

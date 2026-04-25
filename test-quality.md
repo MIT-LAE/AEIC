@@ -1411,7 +1411,7 @@ Pure in-process tests of the `Trajectory` container: copy/approx-eq
 perturbation checks, single-point field-set derivation, and extensible
 append-then-fix. No NetCDF touch, no external data fixtures.
 
-- 🟢 **[Low][WEAK-ASSERTION]** `test_append_to_trajectory`
+- **[Low][WEAK-ASSERTION]** `test_append_to_trajectory`
   (`test_trajectories.py:94–126`) — appends 30 points across 3 phases
   with hardcoded inputs (`fuel_flow=1.4`, `aircraft_mass=60000-…`,
   `latitude=41.0+0.02*i`, etc.) and then asserts only `len == 30` and
@@ -1421,7 +1421,9 @@ append-then-fix. No NetCDF touch, no external data fixtures.
   would pass. The hardcoded inputs are not SUSPICIOUS-DATA (they're
   test inputs, not expected outputs). *Suggested fix:* add a few
   field-value spot-checks after `fix()` — e.g. `ext_traj.latitude[0]
-  == 41.0`, `ext_traj.fuel_flow[5] == 1.4`.
+  == 41.0`, `ext_traj.fuel_flow[5] == 1.4`. *[DONE]* Spot-checks now
+  cover `fuel_flow`, `latitude`, the per-phase altitude trace, and
+  per-phase monotonic mass decrease.
 - 🟢 **[Low][COVERAGE-GAP]** `Trajectory.interpolate_time` and
   `Trajectory.copy_point` have no dedicated tests in this file
   (`trajectory.py:163`, `:148`). The out-of-bounds `left=nan /
