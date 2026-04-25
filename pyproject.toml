@@ -107,7 +107,14 @@ line-length = 88
 [tool.ruff.format]
 quote-style = "preserve"  # keep whatever the file already uses, dont change single quotes to double
 
-[tool.pytest]
+[tool.pytest.ini_options]
+# Restrict collection to `tests/` so that worktrees / sibling checkouts
+# (e.g. `pretty-performance-model-toml/tests/`, `trajectories-to-grid/tests/`)
+# do not get walked — each ships its own `tests/conftest.py` that
+# collides with the repo's own under the `tests.conftest` module name,
+# breaking `uv run pytest` from the repo root.
+testpaths = ["tests"]
+
 # Numpy claims these warnings are harmless, so filter them out:
 # https://github.com/numpy/numpy/blob/46268caa719db95ab2198bcd619f0e3120d7c52e/numpy/__init__.py#L704-L707
 filterwarnings = ["ignore:numpy.ndarray size changed:RuntimeWarning"]
