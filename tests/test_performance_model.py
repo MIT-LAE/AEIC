@@ -11,7 +11,7 @@ from AEIC.config import config
 from AEIC.performance.model_selector import SimplePerformanceModelSelector
 from AEIC.performance.models import LegacyPerformanceModel, PerformanceModel
 from AEIC.performance.models.legacy import ROCDFilter
-from AEIC.performance.types import AircraftState, SimpleFlightRules
+from AEIC.performance.types import AircraftState, SimpleFlightRules, ThrustMode
 
 
 def test_performance_model_initialization():
@@ -22,8 +22,11 @@ def test_performance_model_initialization():
     )
     assert isinstance(model, LegacyPerformanceModel)
 
-    assert model.lto_performance is not None
     assert model.lto_performance.ICAO_UID == '01P11CM121'
+    # Positive content check on the converted LTO data — a regression that
+    # left LTO un-loaded would surface as fuel_flow[IDLE] == 0.0, which the
+    # `is not None` smoke this replaces could not have caught.
+    assert model.lto.fuel_flow[ThrustMode.IDLE] > 0
 
     # Cruise (ROCDFilter.ZERO) is the phase exercised by the
     # SimpleFlightRules.CRUISE evaluate call below; pin its axes.

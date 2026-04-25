@@ -789,7 +789,7 @@ branches is exercised by any test in this phase. Reported inline below.
   remediation:* the cruise sanity call goes through
   `model.evaluate(state, SimpleFlightRules.CRUISE)` rather than the
   private `interpolate(...)` API — same coverage, public surface.
-- 🟢 **[Low][WEAK-ASSERTION]** `test_performance_model_initialization` —
+- **[Low][WEAK-ASSERTION]** `test_performance_model_initialization` —
   asserts `model.lto_performance is not None`. The field type is
   `LTOPerformanceInput | None`, so this catches a TOML omission, but
   the only thing that *actually* matters downstream is that the LTO
@@ -797,7 +797,9 @@ branches is exercised by any test in this phase. Reported inline below.
   *Suggested fix:* drop the `is not None` line and rely on the
   `ICAO_UID == '01P11CM121'` assertion to fail with `AttributeError`
   if LTO went missing — or replace with a positive content check on
-  `model.lto.fuel_flow[ThrustMode.IDLE] > 0`.
+  `model.lto.fuel_flow[ThrustMode.IDLE] > 0`. *[DONE]* Replaced with
+  the positive content check on `model.lto` (the converted internal
+  form), which catches a regression that left LTO un-loaded.
 - **[Medium][COVERAGE-GAP]** `tests/data/performance/bad_performance_model_{1,2,3}.toml`
   exist as fixtures but **no test in the repo references them** (grep
   confirms zero hits). They appear to be intentional negative-path
