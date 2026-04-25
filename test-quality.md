@@ -378,10 +378,11 @@ override is deliberate; documented by the inline comment.
   `with Config.escape():` and verifies the inner load does not raise
   `RuntimeError` and does not overwrite the outer singleton. *[DONE]*
   See `tests/test_config.py::test_escape_allows_re_validation_without_overwriting_singleton`.
-- 🟢 **[Low][COVERAGE-GAP]** `default_data_file_location` with a path
+- **[Low][COVERAGE-GAP]** `default_data_file_location` with a path
   absent from both overrides and `src/AEIC/data/` (raise at
   `core.py:153`) is untested. *Suggested fix:* add a one-liner
-  `pytest.raises(FileNotFoundError)` case.
+  `pytest.raises(FileNotFoundError)` case. *[DONE]* See
+  `tests/test_config.py::test_default_data_file_location_missing_raises`.
 - 🟢 **[Low][HYGIENE]** Local `default_config` fixture in this file
   (`test_config.py:13–16`) takes no `request` argument, so a
   `@pytest.mark.config_updates(...)` applied to a test in this file

@@ -122,3 +122,13 @@ def test_data_file_locations(tmp_path: Path, monkeypatch):
         config.file_location('nonexistent.dat')
     with pytest.raises(FileNotFoundError):
         config.file_location((d / 'nonexistent.dat').resolve())
+
+
+def test_default_data_file_location_missing_raises():
+    # Pin the raise at config/core.py for a path that exists in neither
+    # data_path_overrides nor src/AEIC/data/ — the only branch in
+    # `default_data_file_location` not exercised by `test_data_file_locations`.
+    Config.load()
+    cfg = Config.get()
+    with pytest.raises(FileNotFoundError, match='not found in AEIC default data'):
+        cfg.default_data_file_location('definitely_does_not_exist.dat')
