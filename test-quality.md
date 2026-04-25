@@ -1011,12 +1011,15 @@ mutability contract.
   `test_thrust_mode_array_rejects_invalid_values`. The remaining
   trivial accessors (`as_array`, `__str__`, etc.) are left to be
   exercised transitively — explicitly out of scope for a Low.
-- 🟢 **[Low][HYGIENE]** `test_thrust_mode_values_comparison` is a
+- **[Low][HYGIENE]** `test_thrust_mode_values_comparison` is a
   one-liner asserting `ThrustModeValues() != 0.0`. The intent
   (verifying `__eq__` returns False for non-TMV) is fine but
   obscure; equality between two TMVs that should be equal is never
   asserted. *Suggested fix:* expand to a small parametrized test
   covering: equal TMVs, unequal TMVs, TMV vs dict, TMV vs scalar.
+  *[DONE]* Six parametrized cases now cover the equal-data,
+  unequal-values, unequal-keys, vs-dict, vs-scalar, and vs-None
+  branches; both `==` and `!=` are checked per case.
 
 ## Phase 4 — Emissions
 

@@ -37,8 +37,40 @@ def test_thrust_mode_values_defaults(tm3):
     assert tm3[ThrustMode.APPROACH] == 0.0
 
 
-def test_thrust_mode_values_comparison():
-    assert ThrustModeValues() != 0.0
+@pytest.mark.parametrize(
+    'name,lhs,rhs,expect_equal',
+    [
+        # Equal TMVs: same data, mutability flag does not matter.
+        (
+            'equal_same_data',
+            ThrustModeValues({ThrustMode.IDLE: 1.0, ThrustMode.CLIMB: 2.0}),
+            ThrustModeValues({ThrustMode.IDLE: 1.0, ThrustMode.CLIMB: 2.0}),
+            True,
+        ),
+        # Differing values.
+        (
+            'unequal_values',
+            ThrustModeValues({ThrustMode.IDLE: 1.0}),
+            ThrustModeValues({ThrustMode.IDLE: 2.0}),
+            False,
+        ),
+        # Differing key sets even with overlapping values.
+        (
+            'unequal_keys',
+            ThrustModeValues({ThrustMode.IDLE: 1.0}),
+            ThrustModeValues({ThrustMode.CLIMB: 1.0}),
+            False,
+        ),
+        # Non-TMV operands always return False — the `isinstance` guard
+        # short-circuits before any data comparison.
+        ('vs_dict', ThrustModeValues(), {}, False),
+        ('vs_zero_float', ThrustModeValues(), 0.0, False),
+        ('vs_none', ThrustModeValues(), None, False),
+    ],
+)
+def test_thrust_mode_values_comparison(name, lhs, rhs, expect_equal):
+    assert (lhs == rhs) is expect_equal
+    assert (lhs != rhs) is not expect_equal
 
 
 def test_add_thrust_mode_values(tm1, tm2):
