@@ -44,6 +44,22 @@ def test_ci_base_model_with_invalid_key():
         "INVALID_KEY": "Should be ignored",
     }
 
+    # _normalize_dict does NOT drop unknown keys — when `field_map.get(k.lower(), k)`
+    # finds no field, it passes the original key through into the normalized
+    # dict. The actual silent-drop happens at Pydantic's default
+    # `extra='ignore'` policy, which surfaces as `model_extra is None`
+    # (no extras retained) and `INVALID_KEY` not appearing in
+    # `model_fields_set`. Pin both so a future tightening of either layer
+    # (e.g. switching to `extra='forbid'` or having `_normalize_dict` drop
+    # unknown keys explicitly) trips this test.
+    normalized = TestModel._normalize_dict(input_data)
+    # Known keys are case-folded to the field name; unknown keys are passed
+    # through verbatim (they're not in `field_map`).
+    assert normalized["name"] == "Test"
+    assert normalized["INVALID_KEY"] == "Should be ignored"
+
     model = TestModel.model_validate(input_data)
     assert model.name == "Test"
     assert not hasattr(model, "INVALID_KEY")
+    assert model.model_extra is None  # Pydantic's `extra='ignore'` drops it
+    assert "INVALID_KEY" not in model.model_fields_set

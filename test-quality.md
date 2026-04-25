@@ -914,7 +914,7 @@ branches is exercised by any test in this phase. Reported inline below.
 
 ### `tests/test_model_utilities.py` (3 tests)
 
-- 🟢 **[Low][LOGIC-ERROR]** `test_ci_base_model_with_invalid_key` — the
+- **[Low][LOGIC-ERROR]** `test_ci_base_model_with_invalid_key` — the
   test name suggests verifying behaviour when an unknown key is
   passed, but the only assertion is `not hasattr(model, "INVALID_KEY")`,
   which is trivially true for any Pydantic model regardless of input.
@@ -927,7 +927,11 @@ branches is exercised by any test in this phase. Reported inline below.
   assert the silent-drop behaviour by inspecting `model.model_extra`
   (or whatever Pydantic v2 exposes for ignored keys) and document
   whether the expectation is that `_normalize_dict` itself drops the
-  key or that Pydantic does.
+  key or that Pydantic does. *[DONE]* The test now calls
+  `_normalize_dict` directly to pin that the unknown key is passed
+  through verbatim while known keys case-fold, and pins the
+  Pydantic-side drop via `model.model_extra is None` and the absence
+  from `model_fields_set`. Either layer tightening trips the test.
 - 🟢 **[Low][COVERAGE-GAP]** `_normalize_dict` recursion handles three
   cases: non-model values, nested `BaseModel`, and `list[BaseModel]`.
   Only the latter two are tested. The list-of-non-model branch
