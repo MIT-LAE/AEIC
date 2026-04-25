@@ -1424,7 +1424,7 @@ append-then-fix. No NetCDF touch, no external data fixtures.
   == 41.0`, `ext_traj.fuel_flow[5] == 1.4`. *[DONE]* Spot-checks now
   cover `fuel_flow`, `latitude`, the per-phase altitude trace, and
   per-phase monotonic mass decrease.
-- 🟢 **[Low][COVERAGE-GAP]** `Trajectory.interpolate_time` and
+- **[Low][COVERAGE-GAP]** `Trajectory.interpolate_time` and
   `Trajectory.copy_point` have no dedicated tests in this file
   (`trajectory.py:163`, `:148`). The out-of-bounds `left=nan /
   right=nan` behavior in `interpolate_time` and the bounds-check
@@ -1432,7 +1432,7 @@ append-then-fix. No NetCDF touch, no external data fixtures.
   indirectly by `test_trajectory_comparison` going through
   `traj.copy()`, but not explicitly.  *Suggested fix:* add two short
   unit tests — one for OOB interp NaN, one for out-of-bounds
-  `copy_point`.
+  `copy_point`. *[DONE]*
 - No other issues found. `test_trajectory_comparison` is thorough —
   it exercises each `Dimension` (T / TP / TS / TSM / TSP) with
   small-then-large perturbations, so a broken `approx_eq` for any

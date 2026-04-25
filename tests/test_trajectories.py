@@ -151,6 +151,48 @@ def test_append_to_trajectory():
         assert all(np.diff(ext_traj.aircraft_mass[phase_slice]) < 0)
 
 
+def test_interpolate_time_out_of_bounds_yields_nan():
+    """`Trajectory.interpolate_time` passes `left=np.nan, right=np.nan` to
+    `np.interp`, so query times outside the existing flight_time range
+    must yield NaN rather than clamping or extrapolating. A regression
+    that dropped the bounds args (or flipped `left`/`right`) would
+    silently corrupt the segment-merge / resampling path that depends on
+    "off-trajectory" being an unambiguous NaN signal.
+    """
+    traj = make_test_trajectory(5, 1)
+    # `make_test_trajectory` already populates `flight_time` linearly from
+    # 0 to 3600 across the 5 points. Query inside, on the boundary, and
+    # outside both ends.
+    query = np.array([-100.0, 0.0, 1800.0, 3600.0, 9999.0])
+    out = traj.interpolate_time(query)
+    assert np.isnan(out.aircraft_mass[0])  # below left endpoint
+    assert np.isfinite(out.aircraft_mass[1])  # exact left boundary
+    assert np.isfinite(out.aircraft_mass[2])  # interior
+    assert np.isfinite(out.aircraft_mass[3])  # exact right boundary
+    assert np.isnan(out.aircraft_mass[4])  # above right endpoint
+
+
+def test_copy_point_rejects_out_of_bounds():
+    """`Trajectory.copy_point` guards both `from_idx` and `to_idx` against
+    the *fixed-size* extent of the underlying buffer. Pin the IndexError
+    on each side so a refactor that dropped one of the two checks
+    surfaces here.
+    """
+    traj = make_test_trajectory(5, 1)
+    # Sanity in-range copy succeeds.
+    traj.copy_point(0, 4)
+    # from_idx out of range.
+    with pytest.raises(IndexError, match='from_idx out of range'):
+        traj.copy_point(99, 0)
+    with pytest.raises(IndexError, match='from_idx out of range'):
+        traj.copy_point(-1, 0)
+    # to_idx out of range.
+    with pytest.raises(IndexError, match='to_idx out of range'):
+        traj.copy_point(0, 99)
+    with pytest.raises(IndexError, match='to_idx out of range'):
+        traj.copy_point(0, -1)
+
+
 def test_dateline_splitting_no_split(performance_model, fuel):
     # Create trajectory that does not cross the dateline and check that it is
     # not split into sub-trajectories.
