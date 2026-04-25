@@ -42,8 +42,13 @@ def test_dimensions_equality():
     assert dims1 == dims2
     assert dims1 != dims3
     assert dims1 != 'not a Dimensions object'
-    assert str(dims1) == 'Dimensions(TP)'
-    assert repr(dims3) == 'Dimensions(TM)'
+
+
+def test_dimensions_str_repr():
+    dims_tp = Dimensions(Dimension.TRAJECTORY, Dimension.POINT)
+    dims_tm = Dimensions(Dimension.TRAJECTORY, Dimension.THRUST_MODE)
+    assert str(dims_tp) == 'Dimensions(TP)'
+    assert repr(dims_tm) == 'Dimensions(TM)'
 
 
 def test_dimensions_add():

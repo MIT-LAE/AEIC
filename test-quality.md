@@ -411,9 +411,9 @@ other tests via imports / instantiation paths).
   *Suggested fix:* add targeted single-assertion tests. *[DONE]* See
   `test_dimension_dim_name`, `test_dimensions_remove`, and
   `test_dimensions_from_dim_names`.
-- 🟢 **[Low][HYGIENE]** `test_dimensions_equality` mixes equality semantics
+- **[Low][HYGIENE]** `test_dimensions_equality` mixes equality semantics
   with `str` / `repr` formatting assertions. Low-impact but splits are
-  clearer. *Suggested fix:* extract `test_dimensions_str_repr`.
+  clearer. *Suggested fix:* extract `test_dimensions_str_repr`. *[DONE]*
 
 ### `tests/test_storage.py` (~30 tests)
 
