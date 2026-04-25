@@ -383,14 +383,16 @@ override is deliberate; documented by the inline comment.
   `core.py:153`) is untested. *Suggested fix:* add a one-liner
   `pytest.raises(FileNotFoundError)` case. *[DONE]* See
   `tests/test_config.py::test_default_data_file_location_missing_raises`.
-- 🟢 **[Low][HYGIENE]** Local `default_config` fixture in this file
+- **[Low][HYGIENE]** Local `default_config` fixture in this file
   (`test_config.py:13–16`) takes no `request` argument, so a
   `@pytest.mark.config_updates(...)` applied to a test in this file
   would be silently discarded (no error, no effect). Not currently
   exercised, but a footgun. *Suggested fix:* either accept `request` and
   assert no marker is present, or drop the override entirely for tests
   that already do their own `Config.load()` and let the global fixture
-  run.
+  run. *[DONE]* The override now accepts `request` and asserts no
+  `config_updates` marker is attached, surfacing the silent-drop case
+  rather than letting it pass.
 
 ### `tests/test_dimensions.py` (7 tests)
 

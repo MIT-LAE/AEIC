@@ -9,9 +9,18 @@ from AEIC.config import Config, config
 from AEIC.config.emissions import ClimbDescentMode, EINOxMethod
 
 
-# Disable default configuration loading fixture just for this file.
+# Disable default configuration loading fixture just for this file. Tests in
+# this file drive `Config.load()` themselves, so we deliberately skip the
+# initial load that the global fixture would otherwise do.
 @pytest.fixture(autouse=True)
-def default_config():
+def default_config(request):
+    # Accept `request` and assert no `config_updates` marker is present —
+    # without this argument, such a marker on a test in this file would be
+    # silently dropped instead of running the global fixture's overlay logic.
+    assert request.node.get_closest_marker('config_updates') is None, (
+        'tests/test_config.py shadows the global default_config fixture, so '
+        'the @pytest.mark.config_updates marker has no effect here'
+    )
     yield None
     Config.reset()
 
