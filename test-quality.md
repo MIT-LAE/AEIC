@@ -668,11 +668,11 @@ stability but leaves the execution path thinly tested.
   `load_factor` = 1.0 OAG placeholder, plus a `gc_distance` envelope
   check) and `test_mission_from_toml_minimal` (covers the TOML
   field mapping plus a `gc_distance` ↔ `GEOD.inv` identity check).
-- 🟢 **[Low][HYGIENE]** `test_filter` — single function with ~12
+- **[Low][HYGIENE]** `test_filter` — single function with ~12
   filter-configuration scenarios and no `pytest.mark.parametrize`;
   failures report the whole function, not the specific scenario.
   *Suggested fix:* parametrize by `(filter_kwargs, expected_sql,
-  expected_params)` tuples or split into focused sub-tests.
+  expected_params)` tuples or split into focused sub-tests. *[DONE]*
 
 ### `tests/test_mission_db_creation.py` (3 tests)
 

@@ -16,107 +16,123 @@ from AEIC.missions import (
 from AEIC.missions.query import QueryResult, date_to_timestamp
 from AEIC.utils import GEOD
 
+_AUSTRIA_BBOX = BoundingBox(
+    min_longitude=11.343,
+    max_longitude=16.570,
+    min_latitude=46.642,
+    max_latitude=48.234,
+)
 
-def test_filter():
-    # Simple range filter.
-    cond, params = Filter(min_distance=1000, max_distance=5000).to_sql()
-    assert cond == 'distance >= ? AND distance <= ?'
-    assert params == [1000, 5000]
 
-    # Combined airport filter: is either origin or destination a given airport?
-    cond, params = Filter(airport='LHR').to_sql()
-    assert cond == (
-        '(origin IN (SELECT id FROM airports WHERE iata_code IN (?)) OR '
-        'destination IN (SELECT id FROM airports WHERE iata_code IN (?)))'
-    )
-    assert params == ['LHR', 'LHR']
-
-    # Combined country filter: is either origin or destination (or both) in the
-    # given countries?
-    cond, params = Filter(country='US').to_sql()
-    assert cond == (
-        '(origin IN (SELECT id FROM airports WHERE country IN (?)) OR '
-        'destination IN (SELECT id FROM airports WHERE country IN (?)))'
-    )
-    assert params == ['US', 'US']
-
-    # Combined continent filter: is either origin or destination (or both) in
-    # the given continents?
-    cond, params = Filter(continent='SA').to_sql()
-    assert cond == (
-        '(origin IN (SELECT id FROM airports WHERE country IN '
-        '(SELECT code FROM countries WHERE continent IN (?))) OR '
-        'destination IN (SELECT id FROM airports WHERE country IN '
-        '(SELECT code FROM countries WHERE continent IN (?))))'
-    )
-    assert params == ['SA', 'SA']
-
-    # Origin airport only.
-    cond, params = Filter(origin_airport='LAX').to_sql()
-    assert cond == ('origin IN (SELECT id FROM airports WHERE iata_code IN (?))')
-    assert params == ['LAX']
-
-    # Origin country only.
-    cond, params = Filter(origin_country='US').to_sql()
-    assert cond == ('origin IN (SELECT id FROM airports WHERE country IN (?))')
-    assert params == ['US']
-
-    # Bounding box for Austria: either origin or destination or both.
-    bbox = BoundingBox(
-        min_longitude=11.343,
-        max_longitude=16.570,
-        min_latitude=46.642,
-        max_latitude=48.234,
-    )
-    cond, params = Filter(bounding_box=bbox).to_sql()
-    assert cond == (
-        '(origin IN (SELECT id FROM airport_location_idx '
-        'WHERE min_latitude >= ? AND max_latitude <= ? AND '
-        'min_longitude >= ? AND max_longitude <= ?) OR '
-        'destination IN (SELECT id FROM airport_location_idx '
-        'WHERE min_latitude >= ? AND max_latitude <= ? AND '
-        'min_longitude >= ? AND max_longitude <= ?))'
-    )
-    assert params == [46.642, 48.234, 11.343, 16.57, 46.642, 48.234, 11.343, 16.57]
-
-    # Complex spatial filter #1: origin in Austria, destination in Germany.
-    cond, params = Filter(origin_country='AT', destination_country='DE').to_sql()
-    assert cond == (
-        'origin IN (SELECT id FROM airports WHERE country IN (?)) AND '
-        'destination IN (SELECT id FROM airports WHERE country IN (?))'
-    )
-    assert params == ['AT', 'DE']
-
-    # Complex spatial filter #2: origin in France, destination in South
-    # America.
-    cond, params = Filter(origin_country='FR', destination_continent='SA').to_sql()
-    assert cond == (
-        'origin IN (SELECT id FROM airports WHERE country IN (?)) AND '
-        'destination IN (SELECT id FROM airports WHERE country IN '
-        '(SELECT code FROM countries WHERE continent IN (?)))'
-    )
-    assert params == ['FR', 'SA']
-
-    # Simple service type filter.
-    cond, params = Filter(service_type=['J', 'S', 'Q']).to_sql()
-    assert cond == 'service_type IN (?, ?, ?)'
-    assert params == ['J', 'S', 'Q']
-
-    # Simple aircraft type filter.
-    cond, params = Filter(aircraft_type=['B737', '777']).to_sql()
-    assert cond == 'aircraft_type IN (?, ?)'
-    assert params == ['B737', '777']
-
-    # Combined filter.
-    cond, params = Filter(
-        min_distance=2000, min_seat_capacity=200, country=['US', 'CA']
-    ).to_sql(table='f')
-    assert cond == (
-        'f.distance >= ? AND f.seat_capacity >= ? AND '
-        '(f.origin IN (SELECT id FROM airports WHERE country IN (?, ?)) OR '
-        'f.destination IN (SELECT id FROM airports WHERE country IN (?, ?)))'
-    )
-    assert params == [2000, 200, 'US', 'CA', 'US', 'CA']
+@pytest.mark.parametrize(
+    'name,filter_kwargs,table,expected_cond,expected_params',
+    [
+        (
+            'distance_range',
+            dict(min_distance=1000, max_distance=5000),
+            None,
+            'distance >= ? AND distance <= ?',
+            [1000, 5000],
+        ),
+        (
+            'airport_either_end',
+            dict(airport='LHR'),
+            None,
+            '(origin IN (SELECT id FROM airports WHERE iata_code IN (?)) OR '
+            'destination IN (SELECT id FROM airports WHERE iata_code IN (?)))',
+            ['LHR', 'LHR'],
+        ),
+        (
+            'country_either_end',
+            dict(country='US'),
+            None,
+            '(origin IN (SELECT id FROM airports WHERE country IN (?)) OR '
+            'destination IN (SELECT id FROM airports WHERE country IN (?)))',
+            ['US', 'US'],
+        ),
+        (
+            'continent_either_end',
+            dict(continent='SA'),
+            None,
+            '(origin IN (SELECT id FROM airports WHERE country IN '
+            '(SELECT code FROM countries WHERE continent IN (?))) OR '
+            'destination IN (SELECT id FROM airports WHERE country IN '
+            '(SELECT code FROM countries WHERE continent IN (?))))',
+            ['SA', 'SA'],
+        ),
+        (
+            'origin_airport_only',
+            dict(origin_airport='LAX'),
+            None,
+            'origin IN (SELECT id FROM airports WHERE iata_code IN (?))',
+            ['LAX'],
+        ),
+        (
+            'origin_country_only',
+            dict(origin_country='US'),
+            None,
+            'origin IN (SELECT id FROM airports WHERE country IN (?))',
+            ['US'],
+        ),
+        (
+            'bounding_box_either_end',
+            dict(bounding_box=_AUSTRIA_BBOX),
+            None,
+            '(origin IN (SELECT id FROM airport_location_idx '
+            'WHERE min_latitude >= ? AND max_latitude <= ? AND '
+            'min_longitude >= ? AND max_longitude <= ?) OR '
+            'destination IN (SELECT id FROM airport_location_idx '
+            'WHERE min_latitude >= ? AND max_latitude <= ? AND '
+            'min_longitude >= ? AND max_longitude <= ?))',
+            [46.642, 48.234, 11.343, 16.57, 46.642, 48.234, 11.343, 16.57],
+        ),
+        (
+            'origin_country_destination_country',
+            dict(origin_country='AT', destination_country='DE'),
+            None,
+            'origin IN (SELECT id FROM airports WHERE country IN (?)) AND '
+            'destination IN (SELECT id FROM airports WHERE country IN (?))',
+            ['AT', 'DE'],
+        ),
+        (
+            'origin_country_destination_continent',
+            dict(origin_country='FR', destination_continent='SA'),
+            None,
+            'origin IN (SELECT id FROM airports WHERE country IN (?)) AND '
+            'destination IN (SELECT id FROM airports WHERE country IN '
+            '(SELECT code FROM countries WHERE continent IN (?)))',
+            ['FR', 'SA'],
+        ),
+        (
+            'service_type_list',
+            dict(service_type=['J', 'S', 'Q']),
+            None,
+            'service_type IN (?, ?, ?)',
+            ['J', 'S', 'Q'],
+        ),
+        (
+            'aircraft_type_list',
+            dict(aircraft_type=['B737', '777']),
+            None,
+            'aircraft_type IN (?, ?)',
+            ['B737', '777'],
+        ),
+        (
+            'combined_with_table_alias',
+            dict(min_distance=2000, min_seat_capacity=200, country=['US', 'CA']),
+            'f',
+            'f.distance >= ? AND f.seat_capacity >= ? AND '
+            '(f.origin IN (SELECT id FROM airports WHERE country IN (?, ?)) OR '
+            'f.destination IN (SELECT id FROM airports WHERE country IN (?, ?)))',
+            [2000, 200, 'US', 'CA', 'US', 'CA'],
+        ),
+    ],
+)
+def test_filter(name, filter_kwargs, table, expected_cond, expected_params):
+    f = Filter(**filter_kwargs)
+    cond, params = f.to_sql(table=table) if table else f.to_sql()
+    assert cond == expected_cond
+    assert params == expected_params
 
 
 def test_query():
