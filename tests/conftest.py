@@ -17,6 +17,16 @@ TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
 os.environ['AEIC_PATH'] = str(TEST_DATA_DIR)
 
 
+def pytest_addoption(parser):
+    """Register CLI flags."""
+    parser.addoption(
+        '--run-slow',
+        action='store_true',
+        default=False,
+        help='also run tests marked @pytest.mark.slow (skipped by default)',
+    )
+
+
 def pytest_configure(config):
     """Register custom markers."""
     config.addinivalue_line(
@@ -24,6 +34,20 @@ def pytest_configure(config):
         'config_updates(**kwargs): '
         'Mark test to update default config with given key-value pairs.',
     )
+    config.addinivalue_line(
+        'markers',
+        'slow: long-running test, skipped unless --run-slow is passed.',
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip @pytest.mark.slow tests unless --run-slow was passed."""
+    if config.getoption('--run-slow'):
+        return
+    skip_slow = pytest.mark.skip(reason='slow test; pass --run-slow to enable')
+    for item in items:
+        if 'slow' in item.keywords:
+            item.add_marker(skip_slow)
 
 
 @pytest.fixture

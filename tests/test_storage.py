@@ -125,7 +125,7 @@ def test_create_append_reopen(tmp_path: Path):
     simple_check_ts(path, 'append case', [10, 15, 20])
 
 
-@pytest.mark.skip(reason='long test case, enable manually')
+@pytest.mark.slow
 @pytest.mark.forked
 def test_create_reopen_large(tmp_path: Path):
     # Create large TrajectoryStore linked with NetCDF file (~13 Gb) for

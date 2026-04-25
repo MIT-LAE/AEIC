@@ -483,11 +483,15 @@ file.
   `_assert_trajectories_equal` helper. The `iter_range` / `iter_flight_ids`
   family already does this, so the create-and-reopen path was the
   notable gap.
-- 🟢 **[Low][HYGIENE]** `test_create_reopen_large` is
+- **[Low][HYGIENE]** `test_create_reopen_large` is
   `@pytest.mark.skip(reason='long test case, enable manually')`. Fine
   as a gated scaling test; consider `@pytest.mark.slow` + a CLI flag so
   it's rediscoverable, rather than permanent skip. *Suggested fix:*
-  switch to a custom marker and document in `pyproject.toml`.
+  switch to a custom marker and document in `pyproject.toml`. *[DONE]*
+  *Actual remediation:* registered `slow` and a `--run-slow` flag in
+  `tests/conftest.py` (mirroring the existing `config_updates` marker
+  pattern there) rather than `pyproject.toml`, since `pytest_configure`
+  / `pytest_addoption` is where this project already declares markers.
 
 ### `tests/test_emissions_storage.py` (2 tests)
 
