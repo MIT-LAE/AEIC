@@ -654,13 +654,20 @@ stability but leaves the execution path thinly tested.
   third run with a different seed pins that the sequence actually
   changes — without it, a stub `set_random_seed` that ignored the seed
   would still pass equality.
-- 🟢 **[Low][COVERAGE-GAP]** `Mission.from_query_result` /
+- **[Low][COVERAGE-GAP]** `Mission.from_query_result` /
   `Mission.from_toml` — coverage of `missions/mission.py` is only
   42 % for the phase. These constructors sit on the critical path
   from DB query → downstream simulation. *Suggested fix:* add unit
   tests that build a synthetic `QueryResult` and verify the resulting
   `Mission`'s geographic properties (distance, midpoint); do the same
-  for a minimal `Mission.from_toml` input.
+  for a minimal `Mission.from_toml` input. *[DONE]* *Actual remediation:*
+  the audit-named `Mission.from_query_result` does not exist — the
+  actual SUT method is `QueryResult.from_row` (in `missions/query.py`).
+  Added `test_mission_from_query_result_row` (covers the row-tuple
+  field mapping including the `flight_id` = `row[2]` quirk and the
+  `load_factor` = 1.0 OAG placeholder, plus a `gc_distance` envelope
+  check) and `test_mission_from_toml_minimal` (covers the TOML
+  field mapping plus a `gc_distance` ↔ `GEOD.inv` identity check).
 - 🟢 **[Low][HYGIENE]** `test_filter` — single function with ~12
   filter-configuration scenarios and no `pytest.mark.parametrize`;
   failures report the whole function, not the specific scenario.

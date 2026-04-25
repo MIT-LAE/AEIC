@@ -2,6 +2,7 @@ from collections.abc import Generator
 from datetime import date
 
 import pandas as pd
+import pytest
 
 from AEIC.missions import (
     BoundingBox,
@@ -9,9 +10,11 @@ from AEIC.missions import (
     Database,
     Filter,
     FrequentFlightQuery,
+    Mission,
     Query,
 )
-from AEIC.missions.query import date_to_timestamp
+from AEIC.missions.query import QueryResult, date_to_timestamp
+from AEIC.utils import GEOD
 
 
 def test_filter():
@@ -303,6 +306,117 @@ def test_query_result(test_data_dir):
         for r in results:
             assert 'DTW' in (r.airport1, r.airport2)
         assert sum(r.number_of_flights for r in results) == 13
+
+
+def test_mission_from_query_result_row():
+    """`QueryResult.from_row` is on the critical path from DB query →
+    downstream simulation. Cover the timestamp / IATA / load-factor
+    placeholder mapping with a synthetic row that uses real airport codes
+    so `gc_distance` (and thus `origin_position` / `destination_position`)
+    can be checked too."""
+    # Row order matches the SELECT in `Query.to_sql`:
+    # (departure_ts, arrival_ts, schedule_id, flight_id, carrier,
+    #  flight_number, origin_iata, origin_country, destination_iata,
+    #  destination_country, service_type, aircraft_type, engine_type,
+    #  distance, seat_capacity)
+    dep_ts = int(date_to_timestamp(date(2024, 6, 1)).timestamp())
+    arr_ts = dep_ts + 6 * 3600
+    row = (
+        dep_ts,
+        arr_ts,
+        4242,  # schedule id → flight_id field on Mission
+        7,  # flight number id
+        'AA',
+        '100',
+        'BOS',
+        'US',
+        'LAX',
+        'US',
+        'J',
+        '738',
+        'CFM56',
+        4170,
+        180,
+    )
+
+    mission = QueryResult.from_row(row)
+
+    assert mission.origin == 'BOS'
+    assert mission.destination == 'LAX'
+    assert mission.aircraft_type == '738'
+    assert mission.carrier == 'AA'
+    assert mission.flight_number == '100'
+    assert mission.origin_country == 'US'
+    assert mission.destination_country == 'US'
+    assert mission.service_type == 'J'
+    assert mission.engine_type == 'CFM56'
+    assert mission.seat_capacity == 180
+    # `flight_id` comes from row[2] (the schedule id), not row[3].
+    assert mission.flight_id == 4242
+    # OAG data has no load factor, so the SUT inserts 1.0 as a placeholder.
+    assert mission.load_factor == 1.0
+    # Timestamps survive the int → UTC pd.Timestamp round-trip.
+    assert mission.departure == pd.Timestamp(dep_ts, unit='s', tz='UTC')
+    assert mission.arrival == pd.Timestamp(arr_ts, unit='s', tz='UTC')
+    # `gc_distance` is in metres; BOS-LAX great-circle is ~4170 km.
+    assert mission.gc_distance == pytest.approx(4170_000, rel=0.01)
+    assert mission.label == 'BOS_LAX_738'
+
+
+def test_mission_from_toml_minimal():
+    """`Mission.from_toml` is the entry point for the sample-mission TOML
+    fixture used elsewhere in the suite. Pin the field mapping for a
+    minimal two-flight payload, including the geographic identity that
+    `gc_distance` should match `GEOD.inv` directly on the airport
+    positions.
+    """
+    data = {
+        'flight': [
+            {
+                'origin': 'BOS',
+                'destination': 'LAX',
+                'departure': '2024-06-01T08:00:00+00:00',
+                'arrival': '2024-06-01T14:00:00+00:00',
+                'load_factor': 0.85,
+                'aircraft_type': '738',
+            },
+            {
+                'origin': 'JFK',
+                'destination': 'ORD',
+                'departure': '2024-06-02T12:00:00+00:00',
+                'arrival': '2024-06-02T14:00:00+00:00',
+                'load_factor': 1.0,
+                'aircraft_type': '739',
+            },
+        ]
+    }
+
+    missions = Mission.from_toml(data)
+    assert len(missions) == 2
+    assert all(isinstance(m, Mission) for m in missions)
+    m0, m1 = missions
+
+    assert m0.origin == 'BOS'
+    assert m0.destination == 'LAX'
+    assert m0.aircraft_type == '738'
+    assert m0.load_factor == 0.85
+    assert m0.departure == pd.Timestamp('2024-06-01T08:00:00+00:00')
+    assert m0.arrival == pd.Timestamp('2024-06-01T14:00:00+00:00')
+    # Optional fields default to None when from_toml is given the minimal
+    # required set.
+    assert m0.carrier is None
+    assert m0.flight_id is None
+
+    # Geographic identity: gc_distance must match GEOD directly on the
+    # cached airport positions for both flights.
+    for m in (m0, m1):
+        expected = GEOD.inv(
+            m.origin_position.longitude,
+            m.origin_position.latitude,
+            m.destination_position.longitude,
+            m.destination_position.latitude,
+        )[2]
+        assert m.gc_distance == pytest.approx(expected, rel=1e-9)
 
 
 def test_set_random_seed_determinism(test_data_dir):
