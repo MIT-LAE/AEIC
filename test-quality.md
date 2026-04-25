@@ -767,7 +767,7 @@ branches is exercised by any test in this phase. Reported inline below.
   loading them would fail at Pydantic validation, not at `__post_init__`.
   Replaced with inline-parametrized mutate-one-cell tests in
   `test_performance_table.py`.)
-- 🟡 **[Medium][COVERAGE-GAP]** `test_performance_model_selection` exercises
+- **[Medium][COVERAGE-GAP]** `test_performance_model_selection` exercises
   three branches of `SimplePerformanceModelSelector.__call__`: direct
   file match (`738`), synonym lookup (`319 → 380`), and default
   fallback (`739`, `73H`, `7M8`, `73J`). It does **not** exercise: the
@@ -778,7 +778,11 @@ branches is exercised by any test in this phase. Reported inline below.
   small parametrized test that builds a temporary selector directory
   per error case using `tmp_path`, and add a single repeat-aircraft
   test asserting `selector(m1) is selector(m2)` for two missions of
-  the same type (cache identity).
+  the same type (cache identity). *[DONE]* Each error guard gets its
+  own focused test (`test_simple_selector_init_*`) plus a
+  `test_simple_selector_caches_repeated_lookups` that pins the cache
+  identity contract via `is` equality on two same-aircraft-type
+  missions from `sample_missions`.
 - 🟢 **[Low][HYGIENE]** `test_performance_model_selection` — the
   10-element expected list has no comment explaining the
   intent (which entries test default fallback vs synonym vs exact
