@@ -16,9 +16,11 @@ def test_emissions_storage(tmp_path, sample_missions, performance_model, fuel):
     builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
     ts = TrajectoryStore.create(base_file=fname)
 
+    original_totals = []
     for mis in sample_missions:
         traj = builder.fly(performance_model, mis)
         emissions = compute_emissions(performance_model, fuel, traj)
+        original_totals.append(dict(emissions.total_emissions))
         traj.add_fields(emissions)
         ts.add(traj)
 
@@ -26,8 +28,11 @@ def test_emissions_storage(tmp_path, sample_missions, performance_model, fuel):
 
     ts_loaded = TrajectoryStore.open(base_file=fname)
     assert len(ts_loaded) == len(ts)
-    traj = ts_loaded[0]
-    assert hasattr(traj, 'total_emissions')
+    for i, expected in enumerate(original_totals):
+        loaded = ts_loaded[i].total_emissions
+        assert set(loaded) == set(expected)
+        for sp, value in expected.items():
+            np.testing.assert_allclose(loaded[sp], value)
 
 
 @pytest.mark.forked

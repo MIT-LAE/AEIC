@@ -488,7 +488,7 @@ leakage requires subprocess isolation").
   `original_emissions = [compute_emissions(...) for mis in ...]` before
   writing, and after reopening assert
   `ts_loaded[i].total_emissions == original_emissions[i].total_emissions`
-  for each species.
+  for each species. *[DONE]*
 - 🟡 **[Medium][WEAK-ASSERTION]** `test_separate_emissions` — checks types
   (`isinstance(..., SpeciesValues)`, `isinstance(..., np.ndarray)`) but
   not values. The branch under test is the associated-file round trip,
