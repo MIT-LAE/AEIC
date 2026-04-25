@@ -1207,10 +1207,19 @@ across classes provide "standard atmosphere"-style inputs.
   appropriately tight. *Suggested fix:* add a rounded-results cell to
   Section 2 of `test-cases.ipynb` and change the comment to cite that
   cell specifically.
-- 🟢 **[Low][HYGIENE]** `test_thrust_categorization` mocks
+- **[Low][HYGIENE]** `test_thrust_categorization` mocks
   `get_thrust_cat_cruise` but only asserts outputs are finite. The
   mock is therefore a no-op for correctness. *Suggested fix:* assert
   the expected thrust-category-to-NOx scaling, or drop the mock.
+  *[DONE]* *Actual remediation:* the mock was not just a no-op for
+  correctness — it patched the wrong target (`AEIC.emissions.utils.get_thrust_cat_cruise`
+  instead of the bound reference inside `ei/nox.py`), so the SUT
+  always ran unmocked. Drop the mock entirely; pick an
+  evaluation-flow array spanning all three categories; assert
+  `BFFM2_EINOx`'s `noProp` / `no2Prop` / `honoProp` arrays equal the
+  per-point lookup through `get_thrust_cat_cruise` + `NOx_speciation`.
+  Pre-checks that at least two distinct categories were exercised
+  prevent a constant-category regression from satisfying the identity.
 
 #### `TestNOxSpeciation`
 

@@ -1,5 +1,4 @@
 import tomllib
-from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -11,6 +10,7 @@ from AEIC.emissions.ei.nox import BFFM2_EINOx, BFFM2EINOxResult, NOx_speciation
 from AEIC.emissions.ei.nvpm import calculate_nvPM_scope11_LTO, nvPM_MEEM
 from AEIC.emissions.ei.sox import EI_SOx, SOxEmissionResult
 from AEIC.emissions.types import AtmosphericState
+from AEIC.emissions.utils import get_thrust_cat_cruise
 from AEIC.performance.apu import APU
 from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import ThrustMode, ThrustModeValues
@@ -288,25 +288,50 @@ class TestBFFM2_EINOx:
         for array in self._components(result):
             assert np.all(np.isfinite(array))
 
-    @patch('AEIC.emissions.utils.get_thrust_cat_cruise')
-    def test_thrust_categorization(self, mock_get_thrust_cat_cruise):
-        """Test thrust categorization functionality"""
-        # Mock thrust categories
-        mock_get_thrust_cat_cruise.return_value = np.array(
-            [1, 2, 3, 1]
-        )  # High, Low, Approach, High
+    def test_thrust_categorization(self):
+        """The speciation proportions returned by `BFFM2_EINOx` must equal
+        the per-thrust-category values from `NOx_speciation()` once each
+        evaluation point has been mapped through `get_thrust_cat_cruise`.
+
+        Previously this `@patch`'d `'AEIC.emissions.utils.get_thrust_cat_cruise'`,
+        but `ei/nox.py` imports the name into its own module, so the
+        patch missed the bound reference and the SUT ran unmocked — the
+        test was effectively a finiteness smoke duplicating
+        `test_finiteness`. Drop the mock and pin the actual
+        category-to-speciation contract.
+
+        Construct an evaluation-flow array that spans all three thrust
+        categories so a regression that collapsed the categorization to
+        a single bucket would change `noProp` / `no2Prop` / `honoProp`
+        and trip this test.
+        """
+        # Spans IDLE (≤0.6), APPROACH ((0.6, 1.0]), and CLIMB/TO (>1.0)
+        # given `fuelflow_performance = (0.4, 0.8, 1.2, 1.8)`.
+        ff_eval = np.array([0.2, 0.5, 0.9, 1.5])
+        Tamb = np.full_like(ff_eval, 288.15)
+        Pamb = np.full_like(ff_eval, 101325.0)
 
         result = BFFM2_EINOx(
-            self.fuelflow_trajectory,
+            ff_eval,
             self.EI_NOx_matrix,
             self.fuelflow_performance,
-            self.Tamb,
-            self.Pamb,
+            Tamb,
+            Pamb,
         )
 
-        # Should still return valid results
-        for array in self._components(result):
-            assert np.all(np.isfinite(array))
+        cats = get_thrust_cat_cruise(ff_eval, self.fuelflow_performance)
+        # Sanity check that we actually exercised more than one bucket —
+        # without this, a regression that made `get_thrust_cat_cruise`
+        # return a constant could still satisfy the per-point identity.
+        assert len(set(cats.data.tolist())) >= 2
+
+        spec = NOx_speciation()
+        expected_no = np.array([spec.no[cat] for cat in cats])
+        expected_no2 = np.array([spec.no2[cat] for cat in cats])
+        expected_hono = np.array([spec.hono[cat] for cat in cats])
+        np.testing.assert_allclose(result.noProp, expected_no)
+        np.testing.assert_allclose(result.no2Prop, expected_no2)
+        np.testing.assert_allclose(result.honoProp, expected_hono)
 
     def test_matches_reference_component_values(self):
         """Reference regression to guard against inadvertent logic changes"""
