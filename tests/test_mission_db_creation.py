@@ -1,3 +1,5 @@
+import csv
+
 import pytest
 
 import AEIC.utils.airports as airports
@@ -166,3 +168,97 @@ def test_oag_conversion(tmp_path, test_data_dir):
     # that started emitting spurious warnings on valid rows would fail here.
     assert not warnings_path.exists()
     assert Warning.Type  # exercise the import so a future refactor catches the rename
+
+
+def test_oag_warning_categories(tmp_path):
+    """Each `Warning.Type` is exercised by mutating one cell of a known-good
+    AS 1011 ORD->SEA template, so the trigger for each category is visible
+    inline. Without this, a regression in any warning branch would only
+    surface during a real OAG ingestion.
+    """
+    header = [
+        'carrier',
+        'fltno',
+        'depapt',
+        'arrapt',
+        'deptim',
+        'arrtim',
+        'arrday',
+        'days',
+        'stops',
+        'genacft',
+        'inpacft',
+        'service',
+        'seats',
+        'efffrom',
+        'effto',
+        'longest',
+        'distance',
+        'operating',
+    ]
+    good = [
+        'AS',
+        '1011',
+        'ORD',
+        'SEA',
+        '0805',
+        '1053',
+        '',
+        '2',
+        '00',
+        '320',
+        '320',
+        'J',
+        '0146',
+        '20190101',
+        '20190101',
+        'L',
+        '0001715',
+        'O',
+    ]
+    field = {h: i for i, h in enumerate(header)}
+
+    def with_changes(**kw) -> list[str]:
+        row = list(good)
+        for k, v in kw.items():
+            row[field[k]] = v
+        return row
+
+    csv_path = tmp_path / 'bad_rows.csv'
+    with open(csv_path, 'w', newline='') as fp:
+        writer = csv.writer(fp, quoting=csv.QUOTE_ALL)
+        writer.writerow(header)
+        # UNKNOWN_AIRPORT — bogus arrival IATA.
+        writer.writerow(with_changes(fltno='100', arrapt='XYZ'))
+        # ZERO_DISTANCE — origin == destination (gc < 1 km trips before any
+        # given-distance check).
+        writer.writerow(with_changes(fltno='101', arrapt='ORD'))
+        # SUSPICIOUS_DISTANCE — valid airports, given distance ~6× the
+        # great-circle value.
+        writer.writerow(with_changes(fltno='102', distance='0009999'))
+        # TIME_MISORDERING — ORD->LAX 0500→0100 same-day; in UTC the arrival
+        # (0900Z) precedes the departure (1100Z) so the schedule guard fires.
+        writer.writerow(
+            with_changes(
+                fltno='103',
+                arrapt='LAX',
+                deptim='0500',
+                arrtim='0100',
+                distance='0001745',
+            )
+        )
+
+    warnings_path = tmp_path / 'warnings.txt'
+    convert_oag_data(
+        csv_path,
+        2019,
+        tmp_path / 'out.sqlite',
+        warnings_file=warnings_path,
+    )
+
+    assert warnings_path.exists()
+    text = warnings_path.read_text()
+    for warn_type in Warning.Type:
+        assert warn_type.value in text, (
+            f'expected {warn_type.value!r} in warnings file:\n{text}'
+        )

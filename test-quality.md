@@ -660,7 +660,7 @@ stability but leaves the execution path thinly tested.
   `2019-extract.csv` was produced and listing the 7 expected flights
   (carrier + flight number + date); reference it from the test
   comment. The literal `7` then has external grounding.
-- 🟡 **[Medium][COVERAGE-GAP]** `test_oag_conversion` —
+- **[Medium][COVERAGE-GAP]** `test_oag_conversion` —
   `convert_oag_data` emits structured warning categories
   (`UNKNOWN_AIRPORT`, `TIME_MISORDERING`, `SUSPICIOUS_DISTANCE`,
   `ZERO_DISTANCE`), none of which are exercised. An extract designed
@@ -668,7 +668,11 @@ stability but leaves the execution path thinly tested.
   *Suggested fix:* add a second small CSV fixture with known-bad
   rows (unknown IATA, inverted departure/arrival, zero-distance
   self-loop, etc.) and assert the warnings file contains each
-  category.
+  category. *[DONE]* *Actual remediation:* the bad rows are generated
+  inline in the test (`test_oag_warning_categories`) by mutating one
+  cell of a known-good AS 1011 ORD->SEA template per category, so the
+  trigger for each warning is visible at the call site rather than
+  buried in a static fixture file.
 - 🟡 **[Medium][COVERAGE-GAP]** `test_airport_handling` (lines 37–57)
   — calls `db._get_or_add_airport(cur, 1234, 'CDG')` but never
   queries the `airports` table to verify the "add" half of the
