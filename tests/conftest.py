@@ -13,7 +13,11 @@ from AEIC.types import Fuel
 # Absolute path to test data directory.
 TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
 
-# Set the path to include the test data directory.
+# Set the path to include the test data directory. This is done at module
+# import time deliberately so the value is inherited by subprocesses spawned
+# via `tests/subproc.py::run_in_subprocess`, which need the same AEIC_PATH
+# when they re-import this conftest. Mutating it here on import (vs. inside
+# a fixture) keeps the parent and child processes in agreement.
 os.environ['AEIC_PATH'] = str(TEST_DATA_DIR)
 
 

@@ -529,12 +529,12 @@ leakage requires subprocess isolation").
 
 ### `tests/conftest.py` (context)
 
-- 🟢 **[Low][HYGIENE]** `os.environ['AEIC_PATH'] = str(TEST_DATA_DIR)` at
+- **[Low][HYGIENE]** `os.environ['AEIC_PATH'] = str(TEST_DATA_DIR)` at
   module import time (line 17) is a side effect that leaks into any
   process importing this file — including subprocesses spawned by
   `run_in_subprocess`, which is probably *intended*, but the coupling
   is implicit. *Suggested fix:* add a one-line comment documenting the
-  cross-subprocess expectation.
+  cross-subprocess expectation. *[DONE]*
 - 🟢 **[Low][ISOLATION]** `default_config` fixture at lines 36–65 is
   `autouse=True` and runs `Config.load(**config_data, …)` unconditionally.
   Any test that wants to skip it must locally redefine a fixture of the
