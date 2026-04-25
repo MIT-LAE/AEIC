@@ -907,10 +907,10 @@ branches is exercised by any test in this phase. Reported inline below.
   `n_masses>1`, exact cell + four-corner-centroid average) and
   `test_interpolate_fl_only_fallback_for_descent` (descent →
   `n_masses==1`).
-- 🟢 **[Low][COVERAGE-GAP]** `LegacyPerformanceModel.empty_mass` /
+- **[Low][COVERAGE-GAP]** `LegacyPerformanceModel.empty_mass` /
   `maximum_mass` are simple derived properties. Neither is asserted
   in this phase. *Suggested fix:* one-line assertions in
-  `test_performance_model_initialization`.
+  `test_performance_model_initialization`. *[DONE]*
 
 ### `tests/test_model_utilities.py` (3 tests)
 

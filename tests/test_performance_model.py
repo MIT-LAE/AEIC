@@ -34,6 +34,14 @@ def test_performance_model_initialization():
     assert table.fl
     assert table.mass
 
+    # Pin the BADA-3 derived mass properties: empty_mass = min / 1.2 and
+    # maximum_mass = max — aggregated across all three phase tables since
+    # #139 split the legacy table into climb / cruise / descent.
+    all_masses = [m for f in ROCDFilter for m in model.performance_table(f).mass]
+    assert model.maximum_mass == max(all_masses)
+    assert model.empty_mass == pytest.approx(min(all_masses) / 1.2)
+    assert model.empty_mass < model.maximum_mass
+
     # End-to-end sanity check on the table-was-built-and-wired contract:
     # cruise evaluation at min mass should return finite, positive
     # airspeed and fuel flow.
