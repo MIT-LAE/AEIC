@@ -618,13 +618,15 @@ stability but leaves the execution path thinly tested.
   *Suggested fix:* commit the verification SQL as
   `tests/data/missions/oag-2019-test-subset.README.md` with each
   expected count beside its reference query.
-- 🟢 **[Low][WEAK-ASSERTION]** `test_query_result` sampling branch
+- **[Low][WEAK-ASSERTION]** `test_query_result` sampling branch
   (lines 209–225) and every-nth branch (lines 236–250) — both
   terminate with `assert nflights < 307`, which passes even when
   `nflights == 0`. *Suggested fix:* add `assert nflights > 0`
   everywhere; for `every_nth=5` use the test DB to derive a concrete
   expected count and assert equality (the sampling case legitimately
-  needs the loose bound).
+  needs the loose bound). *[DONE]* Sampling branch gains
+  `assert nflights > 0` alongside the loose upper bound; every_nth=5
+  case pins the deterministic count (78) for this exact test DB.
 - 🟢 **[Low][WEAK-ASSERTION]** `test_query_result` frequent-flight
   branch (lines 252–257) — the DTW-touches invariant is asserted only
   on `results[0]`, not on the whole result set; a regression that

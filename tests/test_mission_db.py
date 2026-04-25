@@ -230,8 +230,10 @@ def test_query_result(test_data_dir):
             ) or flight.destination_country in ('US', 'CA')
             nflights += 1
         # With a 10% sample, we should get between 40 and 90 flights but for
-        # testing it's too dodgy to assert that. All we can say with complete
-        # certainty is that there should be less than the full 523 flights.
+        # testing it's too dodgy to assert an exact count. The loose
+        # `< 307` bound rules out the no-filter case; `> 0` is the bound
+        # that catches a regression that silently filters everything out.
+        assert nflights > 0
         assert nflights < 307
 
         # "Every nth day" filtering.
@@ -261,7 +263,11 @@ def test_query_result(test_data_dir):
                     saw_nonzero_gap = True
             last_day = day
             nflights += 1
-        assert nflights < 307
+        # `every_nth` is deterministic (no sampling RNG), so the count is
+        # reproducible against this exact test database — pinning it
+        # catches a regression that, say, drops every nth row instead of
+        # including only every nth day.
+        assert nflights == 78
         # Without at least one positive gap, the modulo check only ran on
         # same-day flights where `0 % 5 == 0` passes trivially — i.e. the
         # every_nth=5 contract was never actually exercised.
