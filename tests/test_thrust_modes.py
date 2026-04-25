@@ -124,6 +124,25 @@ def test_thrust_mode_values_invalid_init():
         ThrustModeValues(1.0, 2.0)
 
 
+def test_thrust_mode_values_immutable_by_default(tm1):
+    """Default `mutable=False` makes `__setitem__` raise — the SUT comment
+    at types.py:71-73 explicitly warns that flipping the default would
+    silently let downstream code mutate shared LTO data.
+    """
+    with pytest.raises(TypeError, match='frozen and cannot be modified'):
+        tm1[ThrustMode.IDLE] = 99.0
+
+
+def test_thrust_mode_values_copy_mutable_escape_hatch(tm1):
+    """`copy(mutable=True)` is the documented escape hatch from a frozen
+    instance — must produce an independent, writable copy.
+    """
+    writable = tm1.copy(mutable=True)
+    writable[ThrustMode.IDLE] = 99.0
+    assert writable[ThrustMode.IDLE] == 99.0
+    assert tm1[ThrustMode.IDLE] == 1.0  # original is independent
+
+
 def test_or_thrust_mode_values(tm1, tm3):
     result1 = tm3 | tm1
     assert result1[ThrustMode.IDLE] == 11.0

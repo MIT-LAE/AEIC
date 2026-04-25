@@ -909,7 +909,7 @@ mutability contract.
   untested. *Suggested fix:* parametrize a small constructor test
   per shape, plus one `pytest.raises(ValueError)` for the bad case.
   *[DONE]*
-- 🟡 **[Medium][COVERAGE-GAP]** Mutability contract — `__setitem__`
+- **[Medium][COVERAGE-GAP]** Mutability contract — `__setitem__`
   raises `TypeError` when `_mutable` is False (the *default*), and
   `freeze()` / `copy(mutable=...)` are the documented escape hatches.
   None of this is tested. A regression that flipped the default to
@@ -918,7 +918,7 @@ mutability contract.
   against this). *Suggested fix:* one test asserting
   `tm = ThrustModeValues({...}); pytest.raises(TypeError, lambda: tm.__setitem__(ThrustMode.IDLE, 5.0))`,
   and one asserting `tm.copy(mutable=True)[ThrustMode.IDLE] = 5.0`
-  succeeds.
+  succeeds. *[DONE]*
 - 🟢 **[Low][WEAK-ASSERTION]** `test_or_thrust_mode_values` — the `__or__`
   implementation iterates `self._data.items()`, so
   `tm3 | tm1` produces a result containing only IDLE and TAKEOFF
