@@ -14,6 +14,10 @@ def test_ci_str_enum():
     assert Color("green") == Color.GREEN
     assert Color("BlUe") == Color.BLUE
     assert Color._missing_("yellow") is None
+    # Non-string inputs short-circuit at the outer `isinstance(value, str)`
+    # guard and return None directly — pin the branch.
+    assert Color._missing_(42) is None
+    assert Color._missing_(None) is None
 
 
 def test_ci_base_model():

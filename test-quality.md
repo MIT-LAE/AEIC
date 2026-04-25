@@ -942,11 +942,11 @@ branches is exercised by any test in this phase. Reported inline below.
   leg via `RootModel[list[Item]]` and the inner `else v` (non-dict
   pass-through) leg via a direct `normalize_keys` call on a
   mixed-shape list.
-- 🟢 **[Low][COVERAGE-GAP]** `CIStrEnum._missing_` is only tested with
+- **[Low][COVERAGE-GAP]** `CIStrEnum._missing_` is only tested with
   one miss case (`"yellow"`). The non-string branch
   (`_missing_(42)` → returns `None` via the outer `if isinstance(value,
   str)`) is untested. Trivial. *Suggested fix:* add
-  `assert Color._missing_(42) is None`.
+  `assert Color._missing_(42) is None`. *[DONE]*
 
 ### `tests/test_thrust_modes.py` (8 tests)
 
