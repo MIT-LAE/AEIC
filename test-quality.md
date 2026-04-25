@@ -1138,14 +1138,14 @@ helper pattern).
   reciprocal `test_lto_respects_traj_flag_false` pins the mirrored
   contract — non-zero APPROACH/CLIMB LTO columns and trajectory
   emissions zero outside the cruise slice.
-- 🟢 **[Low][WEAK-ASSERTION]** `test_scope11_profile_caching`
+- **[Low][WEAK-ASSERTION]** `test_scope11_profile_caching`
   (`test_emissions.py:234–237`) — asserts `profile_first.mass is
   profile_second.mass` (object identity) only. Does not verify that
   the profile is non-empty or that its mass/number matrices are
   populated, so a cache returning the same empty placeholder twice
   would pass. *Suggested fix:* additionally assert
   `profile_first.mass[ThrustMode.TAKEOFF] > 0` (or similar) and that
-  per-mode values are finite.
+  per-mode values are finite. *[DONE]*
 - 🟢 **[Low][WEAK-ASSERTION]** `test_sum_total_emissions_matches_components`
   (`test_emissions.py:219–231`) — only verifies the arithmetic
   identity `total[s] == sum(trajectory + lto + apu + gse)`. It does

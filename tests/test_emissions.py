@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
 
@@ -291,7 +293,17 @@ def test_apu_disabled_short_circuits(perf_model, fuel, trajectory):
 def test_scope11_profile_caching(perf_model):
     profile_first = scope11_profile(perf_model.edb)
     profile_second = scope11_profile(perf_model.edb)
+    # Identity of the cached `mass` object pins the `functools.cache` hit.
     assert profile_first.mass is profile_second.mass
+    # But identity alone would pass even if the cache stored an empty
+    # placeholder. Pin per-mode positivity and finiteness on a TAKEOFF
+    # canary (the highest-thrust mode, where mass/number are largest)
+    # plus a finite check across the rest of the modes.
+    assert profile_first.mass[ThrustMode.TAKEOFF] > 0
+    assert profile_first.number[ThrustMode.TAKEOFF] > 0
+    for mode in ThrustMode:
+        assert math.isfinite(profile_first.mass[mode])
+        assert math.isfinite(profile_first.number[mode])
 
 
 @pytest.mark.config_updates(emissions__climb_descent_mode=ClimbDescentMode.TRAJECTORY)
