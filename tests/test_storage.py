@@ -141,23 +141,29 @@ def test_read_nulls(tmp_path: Path):
 
 @pytest.mark.forked
 def test_multi_threading(tmp_path: Path):
-    result = None
+    """TrajectoryStore is documented as single-threaded; constructing one
+    from a worker thread after the main thread has used the class must
+    raise the guard `RuntimeError` (see store.py:378), not silently
+    proceed and corrupt netCDF state.
+    """
+    captured: BaseException | None = None
 
     def worker(idx: int):
-        nonlocal result
-        path = tmp_path / f'test{idx}.nc'
+        nonlocal captured
         try:
-            simple_create_ts(base_file=path, title=f'thread {idx}')
-            result = 'OK'
-        except Exception:
-            result = 'FAILED'
+            simple_create_ts(
+                base_file=tmp_path / f'test{idx}.nc', title=f'thread {idx}'
+            )
+        except BaseException as e:
+            captured = e
 
-    path = tmp_path / 'test.nc'
-    simple_create_ts(base_file=path, title='main thread')
+    simple_create_ts(base_file=tmp_path / 'test.nc', title='main thread')
     t = threading.Thread(target=worker, args=(1,))
     t.start()
     t.join()
-    assert result == 'FAILED'
+
+    assert isinstance(captured, RuntimeError), captured
+    assert 'multiple TrajectoryStore instances' in str(captured)
 
 
 @pytest.mark.forked

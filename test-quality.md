@@ -434,7 +434,10 @@ file.
   test pass. No docstring explains the invariant. *Suggested fix:* catch
   a specific expected exception type (document which NetCDF-layer error
   is expected), and assert the message / class, not a literal string
-  `'FAILED'`.
+  `'FAILED'`. *[DONE]* *Actual remediation:* the guard the test was
+  exercising turned out to be `TrajectoryStore.active_in_thread`
+  (store.py:378), not a NetCDF-layer error — assertion now pins the
+  `RuntimeError` class and matches the guard message substring.
 - 🟢 **[Low][LOGIC-ERROR]** `test_init_checking` — body ends with
   `# TODO: MORE HERE...` (line 213). Incomplete test. *Suggested fix:*
   finish enumerating the guard-clause cases or remove the TODO.
