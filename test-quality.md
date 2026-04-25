@@ -732,7 +732,7 @@ branches is exercised by any test in this phase. Reported inline below.
 
 ### `tests/test_performance_model.py` (2 tests)
 
-- 🟡 **[Medium][LOGIC-ERROR]** `test_performance_model_initialization` —
+- **[Medium][LOGIC-ERROR]** `test_performance_model_initialization` —
   the docstring claims "PerformanceModel builds config, **and
   performance tables**", but the body ends with a literal
   `# TODO: Add tests for performance table.` comment (line 18) and
@@ -742,7 +742,10 @@ branches is exercised by any test in this phase. Reported inline below.
   `model.performance_table.fl`, `model.performance_table.mass` are
   non-empty, and that `interpolate(state, ROCDFilter.ZERO)` returns a
   finite `Performance`. Or remove the misleading docstring clause if
-  the table-side check is intentionally elsewhere.
+  the table-side check is intentionally elsewhere. *[DONE]* *Actual
+  remediation:* the cruise sanity call goes through
+  `model.evaluate(state, SimpleFlightRules.CRUISE)` rather than the
+  private `interpolate(...)` API — same coverage, public surface.
 - 🟢 **[Low][WEAK-ASSERTION]** `test_performance_model_initialization` —
   asserts `model.lto_performance is not None`. The field type is
   `LTOPerformanceInput | None`, so this catches a TOML omission, but
