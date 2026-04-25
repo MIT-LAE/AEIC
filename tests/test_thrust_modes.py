@@ -79,6 +79,30 @@ def test_div_float_thrust_mode_values(tm1):
     assert result[ThrustMode.TAKEOFF] == 2.0
 
 
+def test_add_int_and_right_directions(tm1):
+    """Cover the int branch of `__add__` (only float was tested) and the
+    `tm + scalar` direction (only `scalar + tm` was tested via
+    `__radd__`).
+    """
+    # Right-hand: `tm + scalar` goes through `__add__` directly.
+    result = tm1 + 1
+    assert result[ThrustMode.IDLE] == 2.0
+    assert result[ThrustMode.TAKEOFF] == 5.0
+    # Left-hand int: `int + tm` goes through `__radd__` → `__add__` int branch.
+    result = 1 + tm1
+    assert result[ThrustMode.IDLE] == 2.0
+    assert result[ThrustMode.TAKEOFF] == 5.0
+
+
+def test_mul_thrust_mode_values_pairwise(tm1, tm2):
+    """The TMV × TMV branch of `__mul__` was untested (only float scalar)."""
+    result = tm1 * tm2
+    assert result[ThrustMode.IDLE] == 0.5
+    assert result[ThrustMode.APPROACH] == 3.0
+    assert result[ThrustMode.CLIMB] == 7.5
+    assert result[ThrustMode.TAKEOFF] == 14.0
+
+
 @pytest.mark.parametrize(
     'args, expected',
     [

@@ -985,13 +985,16 @@ mutability contract.
   would change the resulting key set and pass the test.
   *Suggested fix:* `assert set(iter(result1)) == {ThrustMode.IDLE,
   ThrustMode.TAKEOFF}` and similarly for `result2`. *[DONE]*
-- 🟢 **[Low][COVERAGE-GAP]** `__add__` / `__mul__` / `__truediv__`
+- **[Low][COVERAGE-GAP]** `__add__` / `__mul__` / `__truediv__`
   each have two branches (TMV vs scalar). For `__add__` only the
   float-scalar branch is exercised via `1.0 + tm1` (the int branch
   and the `tm1 + 1.0` direction are untested — `__radd__` exists
   for the latter). For `__mul__`, only `2.0 * tm1` is tested
   (float scalar); the TMV × TMV branch is untested. *Suggested fix:*
-  one-line tests per missing branch.
+  one-line tests per missing branch. *[DONE]* `__truediv__` branches
+  were already both covered (`tm3 / tm1` and `tm1 / 2.0`); two new
+  tests cover the missing `__add__` int + right-direction case and
+  the `__mul__` TMV × TMV case.
 - 🟢 **[Low][COVERAGE-GAP]** Untested utility methods on
   `ThrustModeValues`: `as_array`, `sum`, `broadcast` (the only
   non-trivial one — it interacts with `ThrustModeArray`),
