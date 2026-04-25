@@ -54,7 +54,9 @@ def test_airport_handling(tmp_path):
         assert airport_info.airport.country == 'FR'
         assert airport_info.airport.municipality is not None
         assert airport_info.airport.municipality.startswith('Paris')
-        assert int(airport_info.airport.latitude) == 49
+        # CDG is at 49.0097°N — `int(...) == 49` would silently swallow a
+        # +49.9 drift, so use a tight tolerance instead.
+        assert airport_info.airport.latitude == pytest.approx(49.01, abs=0.01)
         assert airport_info.timezone == 'Europe/Paris'
 
         # _get_or_add_airport for an unseen IATA must actually persist a

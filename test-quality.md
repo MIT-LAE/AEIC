@@ -728,12 +728,12 @@ stability but leaves the execution path thinly tested.
   and surfaced via `airport_info.id`. The persistence assertion now
   matches against `airport_info.id` instead. A negative case for the
   unknown 'QPX' airport asserts no row is left behind.
-- 🟢 **[Low][WEAK-ASSERTION]** `test_airport_handling` (line 53) —
+- **[Low][WEAK-ASSERTION]** `test_airport_handling` (line 53) —
   `int(airport_info.airport.latitude) == 49` is a truncation-based
   coarseness check for CDG (49.0097°N); a sign flip to -49.9 would
   still fail (truncates to -49), but a +49.9 drift would pass.
   *Suggested fix:* assert `airport_info.airport.latitude ==
-  pytest.approx(49.01, abs=0.01)` for a tighter contract.
+  pytest.approx(49.01, abs=0.01)` for a tighter contract. *[DONE]*
 - 🟢 **[Low][HYGIENE]** `test_airport_handling` — exercises private
   methods (`_lookup_timezone`, `_get_or_add_airport`). Appropriate as
   a white-box unit test but the intent is undocumented; naïve
