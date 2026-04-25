@@ -49,12 +49,28 @@ test_fields = FieldSet(
 
 
 def test_trajectory_simulation_single(sample_missions, performance_model):
+    """A simulated trajectory has all three required flight phases
+    populated and respects basic mass invariants. Pure `len(traj) > 10`
+    would have passed even if `LegacyBuilder` truncated every trajectory
+    to 11 points or skipped an entire phase.
+    """
     builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
 
     mis = sample_missions[0]
     traj = builder.fly(performance_model, mis)
 
     assert len(traj) > 10
+    assert traj.n_climb > 0
+    assert traj.n_cruise > 0
+    assert traj.n_descent > 0
+    assert traj.n_climb + traj.n_cruise + traj.n_descent <= len(traj)
+
+    # Fuel was burned but nothing else changed: aircraft mass finishes
+    # heavier than empty and lighter than the starting mass; fuel mass
+    # strictly decreases.
+    assert performance_model.empty_mass < float(traj.aircraft_mass[-1])
+    assert float(traj.aircraft_mass[-1]) < float(traj.starting_mass)
+    assert float(traj.fuel_mass[0]) > float(traj.fuel_mass[-1]) >= 0
 
 
 @pytest.mark.forked

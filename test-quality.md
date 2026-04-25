@@ -1376,13 +1376,20 @@ Exercises `LegacyBuilder.fly()` end-to-end, plus one
   IO regression appears only for certain value ranges). *Suggested
   fix:* seed `np.random.default_rng(...)` (or module-level
   `np.random.seed`) at the top of the test.
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_trajectory_simulation_single`
+- **[Medium][WEAK-ASSERTION]** `test_trajectory_simulation_single`
   (`:51–57`) asserts only `len(traj) > 10`. A `LegacyBuilder` bug
   that truncated every trajectory to 11 points would pass. No
   check on starting/ending altitudes, total fuel, or phase-counter
   consistency. *Suggested fix:* at minimum assert
   `traj.n_climb + traj.n_cruise + traj.n_descent == len(traj)` and
-  `traj.starting_mass > traj.fuel_mass[-1] + empty_mass`.
+  `traj.starting_mass > traj.fuel_mass[-1] + empty_mass`. *[DONE]*
+  *Actual remediation:* `fly_descent` decrements `n_descent` by 1
+  (legacy.py:258), so the SUT contract is the inequality
+  `n_climb + n_cruise + n_descent <= len(traj)`, not strict equality.
+  Each phase is also asserted non-zero (catches a phase being skipped
+  entirely), and the mass invariants are split into three: aircraft
+  finishes above empty, below starting, and fuel mass strictly
+  decreases.
 - 🟡 **[Medium][WEAK-ASSERTION]** `test_trajectory_simulation_weather`
   (`:94`) asserts only `len(traj) > 0`. Same smoke-only problem
   as above, and here the weather path is what's supposedly under
