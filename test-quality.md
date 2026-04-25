@@ -820,13 +820,16 @@ branches is exercised by any test in this phase. Reported inline below.
   good baseline; two additional tests cover the mass-count guard
   (positive-only n≠3 and negative-only n≠1). Orphan fixtures deleted
   rather than rewritten (schema drift).
-- 🟡 **[Medium][COVERAGE-GAP]** `test_create_performance_table_missing_output_column`
+- **[Medium][COVERAGE-GAP]** `test_create_performance_table_missing_output_column`
   only covers the missing-`fuel_flow` branch of `PerformanceTableInput.validate_names_and_sizes`.
   The validator also raises on duplicate columns, missing `fl` /
   `tas` / `rocd` / `mass`, insufficient data columns, and
   inconsistent row lengths — none tested. *Suggested fix:*
   parametrize the test with one row per error message in the
-  validator.
+  validator. *[DONE]* The original `test_create_performance_table_missing_output_column`
+  was folded into the new parametrized
+  `test_performance_table_input_rejects` (8 cases — one per raise
+  branch).
 - 🟡 **[Medium][COVERAGE-GAP]** `test_performance_table_subsetting` —
   exercises only `ROCDFilter.POSITIVE` and `ROCDFilter.NEGATIVE`. The
   `ZERO` (cruise) branch — which is what `SimpleFlightRules.CRUISE`

@@ -51,11 +51,54 @@ def test_create_performance_table_descent():
     _verify_rows_recoverable(rows, model)
 
 
-def test_create_performance_table_missing_output_column():
-    with pytest.raises(
-        ValueError, match='Missing required "fuel_flow" column in performance table'
-    ):
-        _ = PerformanceTableInput(cols=['FL', 'TAS'], data=[[330, 220]])
+@pytest.mark.parametrize(
+    'cols, data, match',
+    [
+        (
+            ['fl', 'fl', 'fuel_flow', 'tas', 'rocd', 'mass'],
+            [[330.0, 330.0, 0.5, 220.0, 0.0, 60000.0]],
+            r'Duplicate column names in performance table',
+        ),
+        (
+            ['FUEL_FLOW', 'TAS', 'ROCD', 'MASS'],
+            [[0.5, 220.0, 0.0, 60000.0]],
+            r'Missing required "fl" column',
+        ),
+        (
+            ['FL', 'FUEL_FLOW', 'ROCD', 'MASS'],
+            [[330.0, 0.5, 0.0, 60000.0]],
+            r'Missing required "tas" column',
+        ),
+        (
+            ['FL', 'FUEL_FLOW', 'TAS', 'MASS'],
+            [[330.0, 0.5, 220.0, 60000.0]],
+            r'Missing required "rocd" column',
+        ),
+        (
+            ['FL', 'FUEL_FLOW', 'TAS', 'ROCD'],
+            [[330.0, 0.5, 220.0, 0.0]],
+            r'Missing required "mass" column',
+        ),
+        (
+            ['FL', 'TAS'],
+            [[330.0, 220.0]],
+            r'Missing required "fuel_flow" column',
+        ),
+        (
+            ['FL', 'FUEL_FLOW', 'TAS', 'ROCD', 'MASS', 'EXTRA'],
+            [[330.0, 0.5, 220.0, 0.0, 60000.0]],
+            r'Not enough data columns in performance table',
+        ),
+        (
+            ['FL', 'FUEL_FLOW', 'TAS', 'ROCD', 'MASS'],
+            [[330.0, 0.5, 220.0, 0.0, 60000.0], [330.0, 0.5, 220.0, 0.0]],
+            r'Inconsistent number of data columns in performance table',
+        ),
+    ],
+)
+def test_performance_table_input_rejects(cols, data, match):
+    with pytest.raises(ValueError, match=match):
+        _ = PerformanceTableInput(cols=cols, data=data)
 
 
 # Shared scaffolding for PerformanceTable.__post_init__ negative-path tests.
