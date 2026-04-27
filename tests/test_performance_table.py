@@ -327,6 +327,28 @@ def _sample_model() -> LegacyPerformanceModel:
     return model
 
 
+def test_sample_model_per_phase_contracts():
+    """Pin the BADA-3 per-phase shape on the sample model: cruise is
+    non-empty with all-zero ROCD, climb carries three masses, descent
+    carries one. The validator's mass-count rule on main allows climb /
+    cruise to be (2, 3); a TOML edit that silently dropped one cruise
+    or climb mass would fall through that rule. This test pins the
+    sample's actual shape so any drift surfaces as a clear failure.
+    """
+    model = _sample_model()
+
+    cruise = model.performance_table(ROCDFilter.ZERO)
+    assert len(cruise) > 0
+    assert all(abs(rocd) <= PerformanceTable.ZERO_ROCD_TOL for rocd in cruise.df.rocd)
+    assert len(cruise.mass) == 3
+
+    climb = model.performance_table(ROCDFilter.POSITIVE)
+    assert len(climb.mass) == 3
+
+    descent = model.performance_table(ROCDFilter.NEGATIVE)
+    assert len(descent.mass) == 1
+
+
 def test_interpolate_bilinear_recovers_cell_and_midpoint():
     """The cruise (ROCDFilter.ZERO) phase table on the sample model has
     n_masses>1, so interpolate goes through the bilinear branch of

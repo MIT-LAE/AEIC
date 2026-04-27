@@ -876,13 +876,13 @@ branches is exercised by any test in this phase. Reported inline below.
   was folded into the new parametrized
   `test_performance_table_input_rejects` (8 cases — one per raise
   branch).
-- 🟡 **[Medium][COVERAGE-GAP]** `test_performance_table_subsetting` —
+- **[Medium][COVERAGE-GAP]** `test_performance_table_subsetting` —
   exercises only `ROCDFilter.POSITIVE` and `ROCDFilter.NEGATIVE`. The
   `ZERO` (cruise) branch — which is what `SimpleFlightRules.CRUISE`
   resolves to and is the most-traversed path in real trajectory
   evaluation — is not subsetted. *Suggested fix:* add the third
-  filter case asserting all `abs(rocd) <= ZERO_ROCD_TOL`.
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_performance_table_subsetting`
+  filter case asserting all `abs(rocd) <= ZERO_ROCD_TOL`. *[DONE]*
+- **[Medium][WEAK-ASSERTION]** `test_performance_table_subsetting`
   (lines 64, 65, 69) — the `len(sub_table_1.fl) <= len(table.fl)` /
   `len(sub_table_1.mass) <= len(table.mass)` assertions are
   trivially satisfied even if `subset()` returned the full table
@@ -891,7 +891,12 @@ branches is exercised by any test in this phase. Reported inline below.
   assert at all. *Suggested fix:* assert
   `len(sub_table_2.mass) == 1` for the negative branch and
   `len(sub_table_1.mass) == 3` for positive (matching BADA's
-  documented climb / cruise / descent shape).
+  documented climb / cruise / descent shape). *[DONE]* `subset()`
+  was removed in #139 (per-phase tables replace the combined-table
+  subsetting). Both findings now land via
+  `test_sample_model_per_phase_contracts`, which pins the cruise
+  non-emptiness, all-zero-ROCD invariant, and per-phase mass-count
+  contract (climb=3 / descent=1) directly on the sample model.
 - **[Medium][COVERAGE-GAP]** `PerformanceTable.interpolate` /
   `Interpolator.__call__` — neither bilinear interpolation
   (`n_masses > 1`) nor the FL-only fallback (`n_masses == 1`) is
