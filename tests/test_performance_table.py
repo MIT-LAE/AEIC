@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import pytest
 
+from AEIC.config import config
+from AEIC.performance.models import LegacyPerformanceModel, PerformanceModel
 from AEIC.performance.models.legacy import (
     PerformanceTable,
     PerformanceTableInput,
     ROCDFilter,
 )
+from AEIC.performance.types import AircraftState
+from AEIC.units import METERS_TO_FL
 
 # Per-phase per-input-row recovery checks. A single-cell verification
 # would still pass a regression that, e.g., transposed FL ↔ mass on
@@ -313,3 +317,69 @@ def test_performance_table_wrong_mass_count(rocd_type, build, match):
 def test_performance_table_post_init_rejects(rows_fn, rocd_type, mutate, match):
     with pytest.raises(ValueError, match=match):
         _build(mutate(rows_fn()), rocd_type)
+
+
+def _sample_model() -> LegacyPerformanceModel:
+    model = PerformanceModel.load(
+        config.file_location('performance/sample_performance_model.toml')
+    )
+    assert isinstance(model, LegacyPerformanceModel)
+    return model
+
+
+def test_interpolate_bilinear_recovers_cell_and_midpoint():
+    """The cruise (ROCDFilter.ZERO) phase table on the sample model has
+    n_masses>1, so interpolate goes through the bilinear branch of
+    `Interpolator.__call__`. Pin both: at an exact (fl, mass) cell the
+    returned values equal the cell's stored values; at the centroid of
+    four corners the result equals the simple corner average.
+    """
+    table = _sample_model().performance_table(ROCDFilter.ZERO)
+    fl_a, fl_b = table.fl[0], table.fl[1]
+    mass_a, mass_b = table.mass[0], table.mass[1]
+
+    def cell(fl, mass, col):
+        match = table.df[(table.df.fl == fl) & (table.df.mass == mass)]
+        return match[col].values[0]
+
+    # Exact cell.
+    state_corner = AircraftState(altitude=fl_a / METERS_TO_FL, aircraft_mass=mass_a)
+    perf_corner = table.interpolate(state_corner)
+    assert table._interpolator.n_masses > 1  # bilinear path
+    assert perf_corner.true_airspeed == pytest.approx(cell(fl_a, mass_a, 'tas'))
+    assert perf_corner.fuel_flow == pytest.approx(cell(fl_a, mass_a, 'fuel_flow'))
+
+    # Centroid of four corners — bilinear result is the simple mean.
+    expected_tas = (
+        sum(cell(f, m, 'tas') for f in (fl_a, fl_b) for m in (mass_a, mass_b)) / 4
+    )
+    expected_ff = (
+        sum(cell(f, m, 'fuel_flow') for f in (fl_a, fl_b) for m in (mass_a, mass_b)) / 4
+    )
+    state_mid = AircraftState(
+        altitude=(fl_a + fl_b) / 2 / METERS_TO_FL,
+        aircraft_mass=(mass_a + mass_b) / 2,
+    )
+    perf_mid = table.interpolate(state_mid)
+    assert perf_mid.true_airspeed == pytest.approx(expected_tas)
+    assert perf_mid.fuel_flow == pytest.approx(expected_ff)
+
+
+def test_interpolate_fl_only_fallback_for_descent():
+    """The descent (ROCDFilter.NEGATIVE) phase table on a BADA-shape
+    sample has n_masses==1, so interpolate goes through the FL-only
+    fallback in `Interpolator`. At an exact FL cell the returned values
+    equal the cell's stored values.
+    """
+    table = _sample_model().performance_table(ROCDFilter.NEGATIVE)
+    assert len(table.mass) == 1
+    mass = table.mass[0]
+    fl = table.fl[0]
+    cell = table.df[table.df.fl == fl].iloc[0]
+
+    state = AircraftState(altitude=fl / METERS_TO_FL, aircraft_mass=mass)
+    perf = table.interpolate(state)
+    assert table._interpolator.n_masses == 1  # FL-only path
+    assert perf.true_airspeed == pytest.approx(cell.tas)
+    assert perf.fuel_flow == pytest.approx(cell.fuel_flow)
+    assert perf.rate_of_climb == pytest.approx(cell.rocd)

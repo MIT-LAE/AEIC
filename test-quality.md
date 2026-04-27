@@ -846,7 +846,7 @@ branches is exercised by any test in this phase. Reported inline below.
   `len(sub_table_2.mass) == 1` for the negative branch and
   `len(sub_table_1.mass) == 3` for positive (matching BADA's
   documented climb / cruise / descent shape).
-- 🟡 **[Medium][COVERAGE-GAP]** `PerformanceTable.interpolate` /
+- **[Medium][COVERAGE-GAP]** `PerformanceTable.interpolate` /
   `Interpolator.__call__` — neither bilinear interpolation
   (`n_masses > 1`) nor the FL-only fallback (`n_masses == 1`) is
   exercised by this file. The end-to-end `LegacyPerformanceModel.evaluate_impl`
@@ -855,7 +855,12 @@ branches is exercised by any test in this phase. Reported inline below.
   fix:* add a test that calls `model.evaluate(AircraftState(...),
   SimpleFlightRules.CRUISE)` on a known table cell and asserts the
   returned `Performance.fuel_flow` equals the input, then a second
-  call between two cells and verifies linear interpolation.
+  call between two cells and verifies linear interpolation. *[DONE]*
+  Two tests on the sample model pin both paths:
+  `test_interpolate_bilinear_recovers_cell_and_midpoint` (cruise →
+  `n_masses>1`, exact cell + four-corner-centroid average) and
+  `test_interpolate_fl_only_fallback_for_descent` (descent →
+  `n_masses==1`).
 - 🟢 **[Low][COVERAGE-GAP]** `LegacyPerformanceModel.empty_mass` /
   `maximum_mass` are simple derived properties. Neither is asserted
   in this phase. *Suggested fix:* one-line assertions in
