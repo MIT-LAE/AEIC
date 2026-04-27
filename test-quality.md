@@ -792,7 +792,7 @@ branches is exercised by any test in this phase. Reported inline below.
 
 ### `tests/test_performance_table.py` (3 tests)
 
-- 🟡 **[Medium][WEAK-ASSERTION]** `test_create_performance_table` —
+- **[Medium][WEAK-ASSERTION]** `test_create_performance_table` —
   builds an 18-row synthetic table from inline `tas()` and `fuel_flow()`
   closures (excellent first-principles provenance — no SUSPICIOUS-DATA
   flag), but only verifies a single `(FL=350, ROCD=0, mass=60000)`
@@ -801,7 +801,7 @@ branches is exercised by any test in this phase. Reported inline below.
   if FL=350 and mass=60000 happened to coincide there. *Suggested fix:*
   loop over all 18 input rows and assert each one is recoverable from
   `model.df` at the matching `(fl, rocd, mass)` key, asserting
-  equality of `tas` and `fuel_flow` against the closures.
+  equality of `tas` and `fuel_flow` against the closures. *[DONE]*
 - **[High][COVERAGE-GAP]** `PerformanceTable.__post_init__` (in
   `legacy.py:191–251`) runs six structural-integrity checks on the
   BADA-shape contract — `check_coverage` for each of zero / positive /

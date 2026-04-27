@@ -9,34 +9,46 @@ from AEIC.performance.models.legacy import (
     ROCDFilter,
 )
 
+# Per-phase per-input-row recovery checks. A single-cell verification
+# would still pass a regression that, e.g., transposed FL ↔ mass on
+# construction if it happened to keep one coordinate fixed. Loop over
+# every input row and assert each is recoverable at its (fl, mass) key
+# with the original tas / fuel_flow / rocd values. The phase-split
+# means we cover three tables (climb / cruise / descent) of differing
+# shape, including the descent single-mass case.
 
-def test_create_performance_table():
-    def fuel_flow(fl: int, tas: int) -> float:
-        return round(0.5 + 0.001 * fl + 0.0001 * tas, 6)
 
-    def tas(fl: int) -> int:
-        return 220 + (fl - 300) // 10
+def _verify_rows_recoverable(rows, model):
+    for fl, ff, tas, rocd, mass in rows:
+        match = model.df[(model.df.fl == fl) & (model.df.mass == mass)]
+        assert len(match) == 1, f'no row at fl={fl}, mass={mass}'
+        assert match.tas.values[0] == tas
+        assert match.fuel_flow.values[0] == ff
+        assert match.rocd.values[0] == rocd
 
-    cols = ['FL', 'FUEL_FLOW', 'TAS', 'ROCD', 'MASS']
-    rows = []
-    for fl in (330, 350):
-        for mass in (60000, 70000, 80000):
-            v = tas(fl)
-            ff = fuel_flow(fl, v)
-            rows.append([fl, ff, v, 0.0, mass])
-    model = PerformanceTable.from_input(
-        PerformanceTableInput(cols=cols, data=rows), rocd_type=ROCDFilter.ZERO
-    )
 
+def test_create_performance_table_cruise():
+    rows = _cruise_rows()
+    model = _build(rows, ROCDFilter.ZERO)
     assert model.fl == [330, 350]
     assert model.mass == [60000, 70000, 80000]
+    _verify_rows_recoverable(rows, model)
 
-    assert model.df[
-        (model.df.fl == 350)
-        & (model.df.tas == tas(350))
-        & (model.df.rocd == 0)
-        & (model.df.mass == 60000)
-    ].fuel_flow.values[0] == fuel_flow(350, tas(350))
+
+def test_create_performance_table_climb():
+    rows = _climb_rows()
+    model = _build(rows, ROCDFilter.POSITIVE)
+    assert model.fl == [330, 350]
+    assert model.mass == [60000, 70000, 80000]
+    _verify_rows_recoverable(rows, model)
+
+
+def test_create_performance_table_descent():
+    rows = _descent_rows()
+    model = _build(rows, ROCDFilter.NEGATIVE)
+    assert model.fl == [330, 350]
+    assert model.mass == [70000]
+    _verify_rows_recoverable(rows, model)
 
 
 def test_create_performance_table_missing_output_column():
