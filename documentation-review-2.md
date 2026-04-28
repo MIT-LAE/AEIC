@@ -266,6 +266,9 @@ surface), or **Minor** (cosmetic, duplication, typos).
   *currently* unfinished (e.g., extra LTO flight phase helpers, which is
   the second clause and may still be true — verify against
   `trajectories/builders/legacy.py` before keeping that wording).
+  **DONE** — dropped the obsolete extensibility-and-smoother-API
+  language; kept and tightened the still-accurate note that there are
+  no built-in helpers for the "extra" LTO flight phases.
 
 ### Major — undocumented public symbols introduced after the prior review
 

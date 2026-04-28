@@ -53,12 +53,10 @@ simple, but implementing one is more involved.
 
 ```{eval-rst}
 .. WARNING::
-   Some of this code is definitely unfinished. There needs to be a way to
-   incrementally extend trajectories instead of having to specify the length
-   of the trajectory up-front, and there needs to be a smoother API for the
-   builders to save trajectory data for different flight phases. At the
-   moment, there are no helper methods to deal with the "extra" LTO flight
-   phases at all.
+   The builder API is still settling. There are no helper methods on the
+   `Trajectory` or `Builder` classes for the "extra" LTO flight phases
+   (taxi, take-off roll, etc.) — those still need to be handled in the
+   concrete builder.
 ```
 
 ```{eval-rst}
