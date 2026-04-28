@@ -12,6 +12,15 @@ subcommands covering the end-to-end inventory workflow:
 | `aeic make-file-bundle` | Build a reproducibility bundle containing every file referenced by a trajectory store. See [below](#aeic-make-file-bundle). |
 | `aeic trajectories-to-grid` | Convert a trajectory store into a gridded NetCDF inventory. See [Gridding module](gridding.md). |
 
+```{note}
+The full flag reference for each subcommand lives in one place:
+`aeic run`, `aeic merge-stores`, and `aeic make-file-bundle` are
+documented inline below; `aeic convert-oag-data`,
+`aeic make-performance-model`, and `aeic trajectories-to-grid` have
+flag tables on their dedicated topic pages, linked from the table
+above.
+```
+
 ## `aeic run`
 
 Run trajectory simulations for every mission returned by a mission database

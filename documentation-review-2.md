@@ -337,6 +337,11 @@ surface), or **Minor** (cosmetic, duplication, typos).
   `cli.md` and trimming the per-command pages to prose, or (b) adding a
   short "Common options" line to each table-row entry so users skimming
   cli.md can predict whether the linked page covers flags.
+  **DONE** — added a `note` block immediately after the subcommand
+  table in `cli.md` calling out which three commands are documented
+  inline below and which three have flag tables on dedicated topic
+  pages, so readers skimming the table can predict where the flag
+  reference will be without clicking through.
 
 - **Minor** `docs/src/storage.md:23-27`
   > "The public surface is re-exported at package level so that
