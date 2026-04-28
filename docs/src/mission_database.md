@@ -65,6 +65,9 @@ The main classes of interest in the API are:
   {py:class}`FrequentFlightQuery <AEIC.missions.FrequentFlightQuery>` query;
 - {py:class}`CountQuery <AEIC.missions.CountQuery>`: a query that counts
   **flight instances** matching given conditions;
+- {py:class}`TimeRangeQuery <AEIC.missions.TimeRangeQuery>`: a query that
+  returns the earliest and latest scheduled departure timestamps matching
+  the filter conditions;
 - {py:class}`Filter <AEIC.missions.Filter>`: a filter on **flight** characteristics usable with all query
   types.
 
@@ -114,7 +117,7 @@ instance** in the database in departure time order. An empty {py:class}`Query
 
 ### Queries
 
-Database queries come in three flavors. **Flight instance** queries,
+Database queries come in four flavors. **Flight instance** queries,
 represented by the {py:class}`AEIC.missions.Query` class, return **flight
 instances** in departure time order, filtered by various criteria. Frequent
 flight queries, represented by the
@@ -122,7 +125,10 @@ flight queries, represented by the
 and destination airports that have the most flights between them, again
 filtered by various criteria. Count queries, represented by the
 {py:class}`AEIC.missions.CountQuery` class, count the number of **flight
-instances** that match given conditions.
+instances** that match given conditions. Time-range queries, represented
+by the {py:class}`AEIC.missions.TimeRangeQuery` class, return the
+minimum and maximum scheduled departure timestamps matching the filter
+conditions.
 
 The filtering criteria for the different query types share some features in
 common, so the query classes are derived from a {py:class}`QueryBase
@@ -269,6 +275,28 @@ in the database, we can do:
 
 ```{eval-rst}
 .. autoclass:: AEIC.missions.CountQuery
+   :members: RESULT_TYPE
+   :exclude-members: to_sql
+```
+
+#### Time-range queries
+
+The {py:class}`AEIC.missions.TimeRangeQuery` class returns a single
+`(min_ts, max_ts)` tuple of Unix epoch seconds (UTC) covering the
+scheduled departure timestamps matching the filter conditions. Both
+values are `None` if no flight instances match. This is useful for
+discovering the date range of a mission database without iterating
+every row.
+
+```python
+>>> from AEIC import missions
+>>> db = missions.Database('oag-2019.sqlite')
+>>> db(missions.TimeRangeQuery())
+(1546300800, 1577750400)
+```
+
+```{eval-rst}
+.. autoclass:: AEIC.missions.TimeRangeQuery
    :members: RESULT_TYPE
    :exclude-members: to_sql
 ```

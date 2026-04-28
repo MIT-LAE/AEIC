@@ -37,7 +37,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 7 | Major | `docs/src/weather.md:11-12` | Prose still says `valid_time` is "sliced using `mission.departure.hour` if present". After #138, slicing is by `data_resolution`-aware nearest-time selection, not by hour. **DONE** |
 | 8 | Major | `docs/src/configuration.md` (no entry) | PR #138 added a public enum `TemporalResolution` and helper functions `default_file_format` / `resolution_le` in `AEIC.config.weather`. None are mentioned in prose; only `WeatherConfig` is documented. **DONE** |
 | 9 | Major | `src/AEIC/trajectories/builders/base.py:157` | `Builder.fly` docstring lists the third argument as `startMass`. The actual parameter is `starting_mass`. The autodoc render in `trajectory_builders.md` therefore documents a non-existent kwarg. **DONE** |
-| 10 | Major | `docs/src/mission_database.md` | `TimeRangeQuery` is exported via `AEIC.missions.__all__` (added in #134) but is not mentioned anywhere in `mission_database.md`. |
+| 10 | Major | `docs/src/mission_database.md` | `TimeRangeQuery` is exported via `AEIC.missions.__all__` (added in #134) but is not mentioned anywhere in `mission_database.md`. **DONE** |
 
 ---
 
@@ -184,6 +184,10 @@ surface), or **Minor** (cosmetic, duplication, typos).
   "three flavors" prose, and add a `### Time-range queries` subsection
   with an `autoclass` directive parallel to the existing
   `CountQuery` block.
+  **DONE** — added `TimeRangeQuery` to the "main classes of interest"
+  bullet list, updated the queries overview to "four flavors", and
+  added a `#### Time-range queries` subsection with a usage example
+  and an `autoclass` directive parallel to `CountQuery`.
 
 - **Major** `docs/src/mission_database.md:156` → `src/AEIC/missions/query.py:87-110`
   Prose: "These queries return results as a generator of
