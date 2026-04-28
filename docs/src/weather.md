@@ -19,18 +19,32 @@ derived from the ground track (or an override supplied via `azimuth`).
 Example:
 
 ```python
-   mission = Mission(...)
-   track = GroundTrack.great_circle(
-       mission.origin_position.location,
-       mission.destination_position.location,
-   )
+import pandas as pd
 
-   weather = Weather('data/weather/sample_weather_subset.nc', mission, track)
-   ground_speed = weather.get_ground_speed(
-       ground_distance=5000.0,  # meters from departure
-       altitude=10000.0,        # meters
-       true_airspeed=230.0,      # m/s
-   )
+from AEIC.config import Config
+from AEIC.config.weather import TemporalResolution
+from AEIC.trajectories.ground_track import GroundTrack
+from AEIC.types.spatial import Location
+from AEIC.weather import Weather
+
+Config.load()
+
+# Construct a Weather instance pointing at a directory of daily ERA5
+# NetCDF files (one file per UTC day, named YYYY-MM-DD.nc by default).
+weather = Weather('data/weather', file_resolution=TemporalResolution.DAILY)
+
+# Build a great-circle track between two locations.
+track = GroundTrack.great_circle(
+    Location(longitude=-71.0, latitude=42.4),   # origin
+    Location(longitude=-0.5, latitude=51.5),    # destination
+)
+
+ground_speed = weather.get_ground_speed(
+    time=pd.Timestamp('2024-09-01 12:00:00', tz='UTC'),
+    gt_point=track.location(5000.0),  # 5 km along the track
+    altitude=10000.0,                  # meters above sea level
+    true_airspeed=230.0,               # m/s
+)
 ```
 
 ## Class members
