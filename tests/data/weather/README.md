@@ -33,10 +33,20 @@ include the BOS→ATL and BOS→JFK routes used by the
 | `v`  | Northward wind      | m/s   |
 | `t`  | Temperature         | K     |
 
-## Note on `test_compute_ground_speed` expected value
+## Note on `test_compute_ground_speed` assertion strategy
 
-The assertion `gs == pytest.approx(191.02855126751604, rel=1e-4)` was
-derived by running the test against this specific file.  The relaxed
-tolerance (`rel=1e-4` rather than the default `1e-6`) was chosen when
-the pressure-level interpolation was adjusted; the value itself has no
-independent notebook provenance (SUSPICIOUS-DATA, Phase 5 High finding).
+`test_compute_ground_speed` no longer checks a single fixture-specific
+floating-point value with `pytest.approx(...)`. Instead, it asserts that
+the computed ground speed falls within a physically reasonable envelope
+(finite, and `100 m/s < gs < 300 m/s` for a TAS of 200 m/s in ERA5
+upper-level winds) for the scenario exercised against this slice.
+
+This keeps the test focused on the behavior that matters: `Weather`
+should incorporate real atmospheric data and produce a plausible ground
+speed, without making the fixture documentation depend on one exact
+interpolated result. That is more robust to small numerical differences
+from interpolation, backend, or dataset handling changes while still
+validating that the weather lookup meaningfully affects the outcome.
+The algorithm itself is exhaustively covered by the synthetic-fixture
+tests in `test_weather.py`, which assert exact expected values
+derivable on paper.

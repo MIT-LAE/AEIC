@@ -52,7 +52,7 @@ def test_weather_init_with_bad_str():
 
 @pytest.mark.forked
 def test_compute_ground_speed(sample_weather, ground_track):
-    # Integration smoke test against the real ERA5 fixture (20240901.nc). The
+    # Integration smoke test against the real ERA5 fixture (2024-09-01.nc). The
     # algorithm is exhaustively covered by the synthetic-fixture tests below
     # — which assert exact expected values derivable on paper — so this test
     # exists only to confirm the on-disk fixture still parses via Weather
