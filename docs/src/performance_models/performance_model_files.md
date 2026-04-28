@@ -121,7 +121,7 @@ mach = 0.80
 [LTO_performance]
 source = "EDB"
 ICAO_UID = "01P11CM121" # Add UID for EDB data
-Foo_kN = 102.695
+rated_thrust = 102.695
 
 [LTO_performance.mode_data.approach]
 thrust_frac = 0.3
