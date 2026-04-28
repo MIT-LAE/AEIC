@@ -36,7 +36,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 6 | Critical | `docs/src/emission.md:94` | Cross-ref target `<AEIC.emissions.types.Emissions>` does not exist. The class lives at `AEIC.emissions.emission.Emissions` (re-exported as `AEIC.emissions.Emissions`). Broken link. **DONE** |
 | 7 | Major | `docs/src/weather.md:11-12` | Prose still says `valid_time` is "sliced using `mission.departure.hour` if present". After #138, slicing is by `data_resolution`-aware nearest-time selection, not by hour. **DONE** |
 | 8 | Major | `docs/src/configuration.md` (no entry) | PR #138 added a public enum `TemporalResolution` and helper functions `default_file_format` / `resolution_le` in `AEIC.config.weather`. None are mentioned in prose; only `WeatherConfig` is documented. **DONE** |
-| 9 | Major | `src/AEIC/trajectories/builders/base.py:157` | `Builder.fly` docstring lists the third argument as `startMass`. The actual parameter is `starting_mass`. The autodoc render in `trajectory_builders.md` therefore documents a non-existent kwarg. |
+| 9 | Major | `src/AEIC/trajectories/builders/base.py:157` | `Builder.fly` docstring lists the third argument as `startMass`. The actual parameter is `starting_mass`. The autodoc render in `trajectory_builders.md` therefore documents a non-existent kwarg. **DONE** |
 | 10 | Major | `docs/src/mission_database.md` | `TimeRangeQuery` is exported via `AEIC.missions.__all__` (added in #134) but is not mentioned anywhere in `mission_database.md`. |
 
 ---
@@ -167,6 +167,8 @@ surface), or **Minor** (cosmetic, duplication, typos).
   `base.py:157`. (Spotted by visual inspection; the docstring was also
   using camelCase `startMass` in the AEIC v1 codebase, suggesting it
   predates the project's snake_case convention.)
+  **DONE** — renamed the docstring parameter from `startMass` to
+  `starting_mass` so it matches the actual signature.
 
 - **Major** `docs/src/mission_database.md` (entire file, no occurrence)
   → `src/AEIC/missions/__init__.py:13`, `query.py:289-319`

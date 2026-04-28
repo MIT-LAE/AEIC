@@ -154,8 +154,8 @@ class Builder(ABC):
                 trajectory simulation.
             mission (Mission): Data dictating the mission to be flown
                 (departure/arrival info, etc.).
-            startMass (float, optional): Starting mass of the aircraft; leave as
-                default to calculate starting mass during simulation.
+            starting_mass (float, optional): Starting mass of the aircraft;
+                leave as default to calculate starting mass during simulation.
 
         Returns:
             trajectory (Trajectory): Trajectory object.
