@@ -35,7 +35,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 5 | Critical | `docs/src/performance_models/performance_model_files.md:36-47` | The `aeic make-performance-model legacy` example is missing the **required** `--maximum-payload` flag (see `commands/make_performance_model.py:324-329`). The command will exit with "Missing option '--maximum-payload'". **DONE** |
 | 6 | Critical | `docs/src/emission.md:94` | Cross-ref target `<AEIC.emissions.types.Emissions>` does not exist. The class lives at `AEIC.emissions.emission.Emissions` (re-exported as `AEIC.emissions.Emissions`). Broken link. **DONE** |
 | 7 | Major | `docs/src/weather.md:11-12` | Prose still says `valid_time` is "sliced using `mission.departure.hour` if present". After #138, slicing is by `data_resolution`-aware nearest-time selection, not by hour. **DONE** |
-| 8 | Major | `docs/src/configuration.md` (no entry) | PR #138 added a public enum `TemporalResolution` and helper functions `default_file_format` / `resolution_le` in `AEIC.config.weather`. None are mentioned in prose; only `WeatherConfig` is documented. |
+| 8 | Major | `docs/src/configuration.md` (no entry) | PR #138 added a public enum `TemporalResolution` and helper functions `default_file_format` / `resolution_le` in `AEIC.config.weather`. None are mentioned in prose; only `WeatherConfig` is documented. **DONE** |
 | 9 | Major | `src/AEIC/trajectories/builders/base.py:157` | `Builder.fly` docstring lists the third argument as `startMass`. The actual parameter is `starting_mass`. The autodoc render in `trajectory_builders.md` therefore documents a non-existent kwarg. |
 | 10 | Major | `docs/src/mission_database.md` | `TimeRangeQuery` is exported via `AEIC.missions.__all__` (added in #134) but is not mentioned anywhere in `mission_database.md`. |
 
@@ -224,6 +224,11 @@ surface), or **Minor** (cosmetic, duplication, typos).
   Optionally surface `default_file_format` and `resolution_le` via
   `autofunction` if they are intended as public utilities; otherwise
   prefix them with `_`.
+  **DONE** — added a "Weather module configuration" preamble to
+  `configuration.md` describing `file_resolution` / `data_resolution` /
+  `file_format` and the strftime-token rules, plus `autoenum` and
+  `autofunction` directives for `TemporalResolution`,
+  `default_file_format`, and `resolution_le`.
 
 - **Major** `docs/src/trajectories/trajectory_builders.md:48-51` → `base.py`
   Prose: "Documentation for the base `Builder` class is currently sparse,

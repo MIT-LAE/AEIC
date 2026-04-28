@@ -131,8 +131,43 @@ you should not be doing it in "normal" AEIC code!
 
 ## Weather module configuration class
 
+The `[weather]` block of the AEIC configuration tells the
+{py:class}`Weather <AEIC.weather.Weather>` class where to find ERA5
+NetCDF files and how those files are laid out in time.
+
+The temporal layout is described by two
+{py:class}`TemporalResolution <AEIC.config.weather.TemporalResolution>`
+values:
+
+- `file_resolution` — one file per period (`annual`, `monthly`, or
+  `daily`). Per-hour files are not supported.
+- `data_resolution` — temporal resolution of the data within each file.
+  Defaults to `file_resolution` (one period-mean per file). Must be
+  finer-or-equal to `file_resolution`; when it is strictly finer, files
+  carry a `valid_time` coordinate that is sliced by nearest-time
+  selection.
+
+`file_format` is a `strftime`-style filename pattern (relative to
+`weather_data_dir`). When omitted it defaults to `%Y.nc` for annual,
+`%Y-%m.nc` for monthly, and `%Y-%m-%d.nc` for daily files. The set of
+allowed `strftime` tokens depends on `file_resolution`: annual files
+allow a literal filename, monthly files require `%m`, and daily files
+require either `%d` or `%j`.
+
 ```{eval-rst}
 .. autoclass:: AEIC.config.weather.WeatherConfig
     :members:
     :exclude-members: model_config
+```
+
+```{eval-rst}
+.. autoenum:: AEIC.config.weather.TemporalResolution
+```
+
+```{eval-rst}
+.. autofunction:: AEIC.config.weather.default_file_format
+```
+
+```{eval-rst}
+.. autofunction:: AEIC.config.weather.resolution_le
 ```
