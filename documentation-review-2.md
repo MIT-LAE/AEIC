@@ -204,6 +204,10 @@ surface), or **Minor** (cosmetic, duplication, typos).
   drop the trailing `autoclass:: AEIC.missions.query.QueryResult` directive
   at L198-201 (it documents an effectively internal helper) or replace it
   with prose noting it is a database-driver detail.
+  **DONE** — updated the prose to say "`AEIC.missions.Mission` instances",
+  removed the `QueryResult` bullet from the main-classes list (it is an
+  internal database-driver helper, not part of the user-facing API), and
+  dropped the `autoclass:: AEIC.missions.query.QueryResult` directive.
 
 - **Major** `docs/src/configuration.md` (entire file, no occurrence)
   → `src/AEIC/config/weather.py:9-15,67-74`
