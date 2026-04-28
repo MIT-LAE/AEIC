@@ -8,8 +8,12 @@ The dataset is read from disk (no pre-processing required) and must contain:
  * variables: temperature `t` [K], eastward wind `u` [m/s], northward wind `v`
    [m/s];
  * coordinates: `pressure_level` [hPa], `latitude`, `longitude`;
- * optional dimension: `valid_time` (sliced using `mission.departure.hour` if
-  present).
+ * `valid_time` coordinate: required when the configured `data_resolution` is
+   finer than the configured `file_resolution` (i.e., a single file holds
+   multiple time steps). In that case `valid_time` is sliced via
+   `xarray.Dataset.sel(method='nearest', tolerance=1h)` for the requested
+   timestamp. If `data_resolution` equals `file_resolution`, `valid_time` is
+   absent or length-1 and no slicing is performed.
 
 During a ground-speed query, altitude is converted to a pressure level using a
 standard-atmosphere approximation, winds are interpolated at the requested
