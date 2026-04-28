@@ -85,32 +85,45 @@ They are listed here so that consumers who notice them in the public API are
 aware of their status; expect signatures, behaviour, and option sets to
 change as the implementations land.
 
+Each WIP builder ships with a matching `*Options` dataclass that is also
+re-exported from {py:mod}`AEIC.trajectories.builders`. These option
+classes are placeholders; their fields and defaults will change as the
+corresponding builder is implemented.
+
 ### TASOPT builder
 
 {py:class}`TASOPTBuilder <AEIC.trajectories.builders.tasopt.TASOPTBuilder>`
 will drive trajectory simulation from TASOPT-based performance data.
+Configured via
+{py:class}`TASOPTOptions <AEIC.trajectories.builders.tasopt.TASOPTOptions>`.
 
 ```{eval-rst}
 .. WARNING::
-   This builder is a stub and cannot yet fly trajectories end-to-end.
+   This builder and its options class are stubs and cannot yet fly
+   trajectories end-to-end.
 ```
 
 ### ADS-B builder
 
 {py:class}`ADSBBuilder <AEIC.trajectories.builders.ads_b.ADSBBuilder>`
-will reconstruct trajectories from ADS-B track data.
+will reconstruct trajectories from ADS-B track data. Configured via
+{py:class}`ADSBOptions <AEIC.trajectories.builders.ads_b.ADSBOptions>`.
 
 ```{eval-rst}
 .. WARNING::
-   This builder is a stub and cannot yet fly trajectories end-to-end.
+   This builder and its options class are stubs and cannot yet fly
+   trajectories end-to-end.
 ```
 
 ### Dymos builder
 
 {py:class}`DymosBuilder <AEIC.trajectories.builders.dymos.DymosBuilder>`
 will drive trajectory simulation using the Dymos optimal-control library.
+Configured via
+{py:class}`DymosOptions <AEIC.trajectories.builders.dymos.DymosOptions>`.
 
 ```{eval-rst}
 .. WARNING::
-   This builder is a stub and cannot yet fly trajectories end-to-end.
+   This builder and its options class are stubs and cannot yet fly
+   trajectories end-to-end.
 ```

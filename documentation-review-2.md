@@ -288,6 +288,12 @@ surface), or **Minor** (cosmetic, duplication, typos).
   *Fix:* either (a) add a note in each WIP subsection that the matching
   `*Options` class is unimplemented, or (b) drop the `*Options` classes
   from `__all__` until the corresponding builders are implemented.
+  **DONE** — added a top-level note in the "Work-in-progress builders"
+  section flagging that each builder has a matching `*Options` class
+  whose fields will change, and named the relevant `TASOPTOptions`,
+  `ADSBOptions`, `DymosOptions` cross-refs in their respective
+  subsections. Updated each per-builder warning to make clear both the
+  builder *and* its options class are stubs.
 
 ### Minor
 
