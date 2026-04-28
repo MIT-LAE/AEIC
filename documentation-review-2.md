@@ -32,7 +32,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 2 | Critical | `docs/src/performance_models/performance_model_files.md:101-114` | Example TOML uses `cas_lo` / `cas_hi`. The current model rejects these — fields are `cas_low` / `cas_high` (see `src/AEIC/data/performance/sample_performance_model.toml:23-36`). **DONE** |
 | 3 | Critical | `docs/src/performance_models/performance_model_files.md:124` | Example TOML uses `Foo_kN`. Current field is `rated_thrust`. **DONE** |
 | 4 | Critical | `docs/src/performance_models/performance_model_files.md:164-181` | Example TOML shows a single `[flight_performance]` table with 6 columns. PR #135 changed the generated layout to three separate tables (`[climb_flight_performance]`, `[cruise_flight_performance]`, `[descent_flight_performance]`) with 5 columns each. **DONE** |
-| 5 | Critical | `docs/src/performance_models/performance_model_files.md:36-47` | The `aeic make-performance-model legacy` example is missing the **required** `--maximum-payload` flag (see `commands/make_performance_model.py:324-329`). The command will exit with "Missing option '--maximum-payload'". |
+| 5 | Critical | `docs/src/performance_models/performance_model_files.md:36-47` | The `aeic make-performance-model legacy` example is missing the **required** `--maximum-payload` flag (see `commands/make_performance_model.py:324-329`). The command will exit with "Missing option '--maximum-payload'". **DONE** |
 | 6 | Critical | `docs/src/emission.md:94` | Cross-ref target `<AEIC.emissions.types.Emissions>` does not exist. The class lives at `AEIC.emissions.emission.Emissions` (re-exported as `AEIC.emissions.Emissions`). Broken link. |
 | 7 | Major | `docs/src/weather.md:11-12` | Prose still says `valid_time` is "sliced using `mission.departure.hour` if present". After #138, slicing is by `data_resolution`-aware nearest-time selection, not by hour. |
 | 8 | Major | `docs/src/configuration.md` (no entry) | PR #138 added a public enum `TemporalResolution` and helper functions `default_file_format` / `resolution_le` in `AEIC.config.weather`. None are mentioned in prose; only `WeatherConfig` is documented. |
@@ -121,6 +121,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
   is missing the **required** `--maximum-payload` option. Click rejects
   the call before any work is done.
   *Fix:* add `--maximum-payload 22422 \` (matching the sample model).
+  **DONE** — added `--maximum-payload 22422` to the example invocation.
 
 - **Critical** `docs/src/emission.md:94` → `src/AEIC/emissions/__init__.py:1`
   Step 8 of the workflow says "Collects together all emissions data into a

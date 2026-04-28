@@ -40,6 +40,7 @@ aeic make-performance-model \
   --apu-name 'APU 131-9' \
   --number-of-engines 2 \
   --aircraft-class narrow \
+  --maximum-payload 22422 \
   --ptf-file /home/bada/B738__.PTF \
   --lto-source edb \
   --engine-file engines/sample_edb.xlsx \
