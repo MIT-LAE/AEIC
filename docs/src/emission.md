@@ -91,7 +91,7 @@ steps:
 7. If requested, calculates a lifecycle CO₂ emissions adjustment and applies
    it to the totals.
 8. Collects together all emissions data into a single {py:class}`Emissions
-   <AEIC.emissions.types.Emissions>` value and returns it.
+   <AEIC.emissions.Emissions>` value and returns it.
 
 ```{eval-rst}
 .. autofunction:: AEIC.emissions.compute_emissions
