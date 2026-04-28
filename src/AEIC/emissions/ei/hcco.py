@@ -30,6 +30,9 @@ def EI_HCCO(
         Ambient temperature [K] for cruise correction.
     Pamb : ndarray, shape (n_points,)
         Ambient pressure [Pa] for cruise correction.
+    label : str, optional
+        Optional engine/aircraft tag included in calibration warnings,
+        e.g. when ``x_EI`` or ``ff_cal`` contain non-positive values.
 
     Returns
     -------

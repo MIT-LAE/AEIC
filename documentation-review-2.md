@@ -304,6 +304,8 @@ surface), or **Minor** (cosmetic, duplication, typos).
   block was not updated to mention `label`.
   *Fix:* add a `label` entry under Parameters describing it as an
   optional engine/aircraft tag included in calibration warnings.
+  **DONE** — added a `label` entry to the Numpydoc Parameters block
+  describing it as an optional tag included in calibration warnings.
 
 - **Minor** `docs/src/emission.md:18,113` — inconsistent xref style
   Line 18 uses `<AEIC.emissions.Emissions>` (top-level re-export); line
