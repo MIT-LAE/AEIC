@@ -313,6 +313,9 @@ surface), or **Minor** (cosmetic, duplication, typos).
   resolve, but the inconsistency makes the doc harder to maintain.
   *Fix:* settle on one style across the file. `AEIC.emissions.Emissions`
   is shorter and matches the `__all__` re-export.
+  **DONE** — switched the line-113 cross-ref and the autoclass directive
+  to the `AEIC.emissions.Emissions` re-export, matching the other
+  references on the page.
 
 - **Minor** `docs/src/oag.md:21-30` — option summary uses a slightly
   awkward double-bullet style ("`-i` / `--in-file` (required)") while
