@@ -29,7 +29,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | # | Severity | Where | Summary |
 |---|----------|-------|---------|
 | 1 | Critical | `docs/src/weather.md:21-34` | Example uses the pre-#138 `Weather('path', mission, track)` signature. The current constructor takes `(data_dir, file_resolution, data_resolution=None, file_format=None)` — the example will not run. **DONE** |
-| 2 | Critical | `docs/src/performance_models/performance_model_files.md:101-114` | Example TOML uses `cas_lo` / `cas_hi`. The current model rejects these — fields are `cas_low` / `cas_high` (see `src/AEIC/data/performance/sample_performance_model.toml:23-36`). |
+| 2 | Critical | `docs/src/performance_models/performance_model_files.md:101-114` | Example TOML uses `cas_lo` / `cas_hi`. The current model rejects these — fields are `cas_low` / `cas_high` (see `src/AEIC/data/performance/sample_performance_model.toml:23-36`). **DONE** |
 | 3 | Critical | `docs/src/performance_models/performance_model_files.md:124` | Example TOML uses `Foo_kN`. Current field is `rated_thrust`. |
 | 4 | Critical | `docs/src/performance_models/performance_model_files.md:164-181` | Example TOML shows a single `[flight_performance]` table with 6 columns. PR #135 changed the generated layout to three separate tables (`[climb_flight_performance]`, `[cruise_flight_performance]`, `[descent_flight_performance]`) with 5 columns each. |
 | 5 | Critical | `docs/src/performance_models/performance_model_files.md:36-47` | The `aeic make-performance-model legacy` example is missing the **required** `--maximum-payload` flag (see `commands/make_performance_model.py:324-329`). The command will exit with "Missing option '--maximum-payload'". |
@@ -72,6 +72,8 @@ surface), or **Minor** (cosmetic, duplication, typos).
   the canonical names (and the names emitted by `make-performance-model`)
   are `cas_low` / `cas_high`.
   *Fix:* rename in all three `[speeds.*]` blocks.
+  **DONE** — renamed `cas_lo` → `cas_low` and `cas_hi` → `cas_high` in all
+  three `[speeds.*]` blocks in `performance_model_files.md`.
 
 - **Critical** `docs/src/performance_models/performance_model_files.md:124`
   → `sample_performance_model.toml:46`

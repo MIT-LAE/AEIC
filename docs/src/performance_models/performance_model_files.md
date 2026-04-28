@@ -99,18 +99,18 @@ APU_name = "APU 131-9" # None: APU emissions not calculated
 #
 
 [speeds.climb]
-cas_lo = 128.611
-cas_hi = 154.3332
+cas_low = 128.611
+cas_high = 154.3332
 mach = 0.80
 
 [speeds.cruise]
-cas_lo = 128.611
-cas_hi = 144.04432
+cas_low = 128.611
+cas_high = 144.04432
 mach = 0.80
 
 [speeds.descent]
-cas_lo = 128.611
-cas_hi = 149.18876
+cas_low = 128.611
+cas_high = 149.18876
 mach = 0.80
 
 # ------------------------------------------------------------------------------
