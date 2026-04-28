@@ -45,10 +45,11 @@ minimum. These methods are passed the `Trajectory` being constructed, plus a
 set of additional builder-specific keyword arguments passed through from
 `fly`, used for any builder-specific specials.
 
-Documentation for the base `Builder` class is currently sparse, and the best
-reference to how to use these things is to look at the `LegacyBuilder`
-implementation. Actually *using* the trajectory builders is simple, but
-implementing a builder is more complicated!
+The base `Builder` class, the shared `Options` dataclass, and the
+`Context` dataclass are documented below. `LegacyBuilder` is the most
+complete reference implementation and the recommended starting point for
+anyone writing a new builder. Actually *using* the trajectory builders is
+simple, but implementing one is more involved.
 
 ```{eval-rst}
 .. WARNING::

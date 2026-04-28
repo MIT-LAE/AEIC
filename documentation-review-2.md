@@ -251,6 +251,9 @@ surface), or **Minor** (cosmetic, duplication, typos).
   > The base `Builder` class, the `Options` dataclass, and the `Context`
   > dataclass are documented below. `LegacyBuilder` is the most complete
   > reference implementation.
+  **DONE** — replaced the obsolete "documentation is sparse" paragraph
+  with one pointing readers to the autoclass-rendered reference below
+  and to `LegacyBuilder` as the working example.
 
 - **Major** `docs/src/trajectories/trajectory_builders.md:53-61` (warning
   block) → `src/AEIC/trajectories/trajectory.py`
