@@ -354,6 +354,9 @@ surface), or **Minor** (cosmetic, duplication, typos).
   *Fix:* add a single-line callout for `track_file_accesses` /
   `access_recorder`, noting that they wrap the entire `aeic run` command
   and shouldn't be entered manually inside a normal Python session.
+  **DONE** — added a `note` block in `storage.md` calling out
+  `track_file_accesses` as a CLI-level context manager, not something to
+  open per-trajectory in interactive use.
 
 ---
 
