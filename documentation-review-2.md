@@ -435,6 +435,11 @@ that review have been resolved.
   re-exposed via `automodule`. Worth verifying in the rendered output
   that they show up under the `WeatherConfig` reference. If they don't,
   add `:members:` explicitly listing them.
+  **DONE** — verified via `uv run sphinx-build -b html` that both
+  `effective_data_resolution` and `effective_file_format` appear in the
+  rendered `configuration.html` under the `WeatherConfig` reference. The
+  bare `:members:` directive picks them up because they are
+  `@property`-decorated; no source change is required.
 
 ---
 
