@@ -323,6 +323,9 @@ surface), or **Minor** (cosmetic, duplication, typos).
   from a consistent style for CLI reference.
   *Fix:* convert the bullet list at L26-30 to a four-column option table
   (Option | Type | Required | Description), matching `cli.md`.
+  **DONE** — replaced the bullet list with a four-column option table
+  matching the format used in `cli.md` for `aeic run`, `merge-stores`,
+  and `make-file-bundle`.
 
 - **Minor** `docs/src/cli.md:8,9,13` — the CLI table sends the user to
   three different pages (`oag.md`, `performance_model_files.md`,

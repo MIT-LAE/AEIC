@@ -23,11 +23,12 @@ aeic convert-oag-data -i 2024.csv -y 2024 -d oag-2024.sqlite -w warnings-2024.tx
 
 The options to the `aeic convert-oag-data` subcommand are:
 
- - `-i` / `--in-file` (required): input OAG CSV file;
- - `-d` / `--db-file` (required): output SQLite database file;
- - `-y` / `--year` (required): input data year;
- - `-w` / `--warnings-file` (optional): additional output file for data
-   quality control warnings (defaults to standard output).
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `-i` / `--in-file` | Path | Yes | Input OAG CSV file. |
+| `-d` / `--db-file` | Path | Yes | Output SQLite database file. |
+| `-y` / `--year` | Integer | Yes | Input data year. |
+| `-w` / `--warnings-file` | Path | No | Additional output file for data-quality warnings. Defaults to standard output. |
 
 ### Input record filtering
 
