@@ -31,7 +31,7 @@ surface), or **Minor** (cosmetic, duplication, typos).
 | 1 | Critical | `docs/src/weather.md:21-34` | Example uses the pre-#138 `Weather('path', mission, track)` signature. The current constructor takes `(data_dir, file_resolution, data_resolution=None, file_format=None)` — the example will not run. **DONE** |
 | 2 | Critical | `docs/src/performance_models/performance_model_files.md:101-114` | Example TOML uses `cas_lo` / `cas_hi`. The current model rejects these — fields are `cas_low` / `cas_high` (see `src/AEIC/data/performance/sample_performance_model.toml:23-36`). **DONE** |
 | 3 | Critical | `docs/src/performance_models/performance_model_files.md:124` | Example TOML uses `Foo_kN`. Current field is `rated_thrust`. **DONE** |
-| 4 | Critical | `docs/src/performance_models/performance_model_files.md:164-181` | Example TOML shows a single `[flight_performance]` table with 6 columns. PR #135 changed the generated layout to three separate tables (`[climb_flight_performance]`, `[cruise_flight_performance]`, `[descent_flight_performance]`) with 5 columns each. |
+| 4 | Critical | `docs/src/performance_models/performance_model_files.md:164-181` | Example TOML shows a single `[flight_performance]` table with 6 columns. PR #135 changed the generated layout to three separate tables (`[climb_flight_performance]`, `[cruise_flight_performance]`, `[descent_flight_performance]`) with 5 columns each. **DONE** |
 | 5 | Critical | `docs/src/performance_models/performance_model_files.md:36-47` | The `aeic make-performance-model legacy` example is missing the **required** `--maximum-payload` flag (see `commands/make_performance_model.py:324-329`). The command will exit with "Missing option '--maximum-payload'". |
 | 6 | Critical | `docs/src/emission.md:94` | Cross-ref target `<AEIC.emissions.types.Emissions>` does not exist. The class lives at `AEIC.emissions.emission.Emissions` (re-exported as `AEIC.emissions.Emissions`). Broken link. |
 | 7 | Major | `docs/src/weather.md:11-12` | Prose still says `valid_time` is "sliced using `mission.departure.hour` if present". After #138, slicing is by `data_resolution`-aware nearest-time selection, not by hour. |
@@ -97,6 +97,11 @@ surface), or **Minor** (cosmetic, duplication, typos).
   *Fix:* replace the single `[flight_performance]` block with the three
   per-phase tables (5 columns each: `fuel_flow, fl, tas, rocd, mass`).
   Linking to `sample_performance_model.toml` would also work.
+  **DONE** — replaced the single `[flight_performance]` block with three
+  per-phase tables (`[climb_flight_performance]`,
+  `[cruise_flight_performance]`, `[descent_flight_performance]`), each
+  with the current 5-column schema and a few representative data rows
+  taken from `sample_performance_model.toml`.
 
 - **Critical** `docs/src/performance_models/performance_model_files.md:36-47`
   → `commands/make_performance_model.py:324-329`
