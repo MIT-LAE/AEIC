@@ -234,8 +234,10 @@ class Builder(ABC):
             raise
         finally:
             # Remove the context: this only exists during the simulation of a
-            # trajectory.
-            del self.ctx
+            # trajectory. Context construction itself can fail, so only delete
+            # it if assignment succeeded.
+            if hasattr(self, 'ctx'):
+                del self.ctx
 
     def _iterate_mass(self) -> Trajectory:
         """Iterate on starting mass to minimize residual fuel mass."""

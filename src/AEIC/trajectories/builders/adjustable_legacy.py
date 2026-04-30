@@ -1,4 +1,8 @@
-from dataclasses import dataclass
+# TODO: Remove this when we move to Python 3.14+.
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Protocol
 
 import numpy as np
 
@@ -19,32 +23,82 @@ from AEIC.weather import Weather
 
 from .. import GroundTrack, Trajectory
 from .base import Builder, Context, Options
+from .legacy import LegacyOptions
 
 
-@dataclass
-class LegacyOptions:
-    """Additional options for the legacy trajectory builder."""
+class AdjustableLegacyContext(Context):
+    """Context for adjustable legacy trajectory builder."""
 
-    altitude_step: float = 1000 * FEET_TO_METERS
-    """Altitude step to use in climb and descent phases (m)."""
+    class AdjustmentFunction(Protocol):
+        """Protocol for context adjustment functions.
 
-    cruise_step: float = 125 * NAUTICAL_MILES_TO_METERS
-    """Ground distance step to use in cruise phase (m)."""
+        An adjustment function takes in the context, mission, performance model
+        possibly additional optional keyword arguments and returns a float
+        value."""
 
-    fuel_LHV: float = 43.8e6
-    """Lower heating value of the fuel used (J/kg)."""
+        def __call__(
+            self,
+            context: AdjustableLegacyContext,
+            mission: Mission,
+            performance: LegacyPerformanceModel,
+            **kwargs,
+        ) -> float: ...
 
-
-class LegacyContext(Context):
-    """Context for legacy trajectory builder."""
+    # A context adjustment is either an adjustment function, a fixed float
+    # value, or None (in which case no adjustment is applied and the behavior
+    # falls back to the standard legacy trajectory builder behavior).
+    ContextAdjustment = AdjustmentFunction | float | None
 
     def __init__(
         self,
-        builder: 'LegacyBuilder',
+        builder: AdjustableLegacyBuilder,
         ac_performance: LegacyPerformanceModel,
         mission: Mission,
         starting_mass: float | None,
+        climb_start_altitude: ContextAdjustment = None,
+        cruise_altitude: ContextAdjustment = None,
+        descent_end_altitude: ContextAdjustment = None,
+        descent_distance: ContextAdjustment = None,
+        reserve_fuel: ContextAdjustment = None,
+        divert_distance: ContextAdjustment = None,
+        hold_time: ContextAdjustment = None,
     ):
+        """Adjustment parameters (a "simple" adjustment is one that takes no
+        additional arguments beyond the context, mission and performance
+        model):
+
+        - `climb_start_altitude`: Simple adjustment for climb start altitude,
+          which defaults to 3000' above departure airport altitude if not
+          provided.
+
+        - `cruise_altitude`: Simple adjustment for cruise altitude, which
+           defaults to 7000' below aircraft operating ceiling if not provided.
+
+        - `descent_end_altitude`: Simple adjustment for descent end altitude,
+           which defaults to 3000' above arrival airport altitude if not
+           provided.
+
+        - `descent_distance`: Simple adjustment for descent distance, which
+           defaults to a value based on the difference between cruise altitude
+           and descent end altitude if not provided.
+
+        - `reserve_fuel`: Adjustment for reserve fuel mass, which defaults to
+           5% of total fuel mass if not provided (additional parameter:
+           `fuel_mass`, total fuel mass consumed based on approximate flight
+           time and nominal fuel flow).
+
+        - `divert_distance`: Adjustment for diversion distance, which defaults
+          to 200 NM if flight time is over 3 hours and 100 NM if flight time is
+          under 3 hours if not provided (additional parameter: `approx_time`,
+          approximate flight time based on distance and nominal cruise speed).
+
+        - `hold_time`: Adjustment for hold time, which defaults to 30 minutes
+          if flight time is over 3 hours and 45 minutes if flight time is under
+          3 hours if not provided (additional parameter: `approx_time`,
+          approximate flight time based on distance and nominal cruise speed).
+
+        """
+
         # The context constructor calculates all of the fixed information used
         # throughout the simulation by the trajectory builder.
 
@@ -67,20 +121,30 @@ class LegacyContext(Context):
             allow_overstep=True,
         )
 
-        # Climb defined as starting 3000' above airport.
-        self.clm_start_altitude = (
-            mission.origin_position.altitude + 3000.0 * FEET_TO_METERS
-        )
+        # Climb defined as starting 3000' above airport (adjustable).
+        if climb_start_altitude is None:
+            self.clm_start_altitude = (
+                mission.origin_position.altitude + 3000.0 * FEET_TO_METERS
+            )
+        else:
+            self.clm_start_altitude = self.apply_adjustment(
+                climb_start_altitude, mission, ac_performance
+            )
 
         # If starting altitude is above operating ceiling, set start altitude
         # to departure airport altitude.
         if self.clm_start_altitude >= ac_performance.maximum_altitude:
             self.clm_start_altitude = mission.origin_position.altitude
 
-        # Cruise altitude is the operating ceiling - 7000 feet.
-        self.crz_start_altitude = (
-            ac_performance.maximum_altitude - 7000.0 * FEET_TO_METERS
-        )
+        # Cruise altitude is the operating ceiling - 7000 feet (adjustable).
+        if cruise_altitude is None:
+            self.crz_start_altitude = (
+                ac_performance.maximum_altitude - 7000.0 * FEET_TO_METERS
+            )
+        else:
+            self.crz_start_altitude = self.apply_adjustment(
+                cruise_altitude, mission, ac_performance
+            )
 
         # Ensure cruise altitude is above the starting altitude.
         if self.crz_start_altitude < self.clm_start_altitude:
@@ -96,27 +160,38 @@ class LegacyContext(Context):
         self.des_start_altitude = self.crz_start_altitude
 
         # Set descent altitude based on 3000' above arrival airport altitude;
-        # clamp to aircraft operating ceiling if needed.
-        self.des_end_altitude = (
-            mission.destination_position.altitude + 3000.0 * FEET_TO_METERS
-        )
+        # clamp to aircraft operating ceiling if needed (adjustable).
+        if descent_end_altitude is None:
+            self.des_end_altitude = (
+                mission.destination_position.altitude + 3000.0 * FEET_TO_METERS
+            )
+        else:
+            self.des_end_altitude = self.apply_adjustment(
+                descent_end_altitude, mission, ac_performance
+            )
+
         if self.des_end_altitude >= ac_performance.maximum_altitude:
             self.des_end_altitude = ac_performance.maximum_altitude
 
         if self.crz_start_altitude < self.clm_start_altitude:
             raise ValueError(
-                "Departure airport + 3000ft should not be higher"
+                "Departure airport + 3000ft should not be higher "
                 "than start of cruise point"
             )
         if self.des_end_altitude > self.des_start_altitude:
             raise ValueError(
                 "Arrival airport + 3000ft should not be higher than end of cruise point"
             )
-        self.descent_dist_approx = 18.228347 * (
-            self.des_start_altitude - self.des_end_altitude
-        )
+        if descent_distance is None:
+            self.descent_dist_approx = 18.228347 * (
+                self.des_start_altitude - self.des_end_altitude
+            )
+        else:
+            self.descent_dist_approx = self.apply_adjustment(
+                descent_distance, mission, ac_performance
+            )
         if self.descent_dist_approx < 0:
-            raise ValueError('Arrival airport should not be above cruise altitude')
+            raise ValueError('Descent distance must be non-negative')
 
         # Initialize weather regridding when requested.
         self.weather: Weather | None = None
@@ -128,6 +203,12 @@ class LegacyContext(Context):
                 file_format=config.weather.file_format,
             )
 
+        # Save reserve fuel, divert distance and hold time adjustments for use
+        # in starting mass calculation.
+        self.reserve_fuel = reserve_fuel
+        self.divert_distance = divert_distance
+        self.hold_time = hold_time
+
         # Pass information to base context class constructor.
         super().__init__(
             builder,
@@ -138,18 +219,33 @@ class LegacyContext(Context):
             starting_mass=starting_mass,
         )
 
+    def apply_adjustment(
+        self,
+        adjustment: ContextAdjustment,
+        mission: Mission,
+        performance: LegacyPerformanceModel,
+        **kwargs,
+    ) -> float:
+        """Helper function to apply a context adjustment."""
+        if adjustment is None:
+            raise RuntimeError('Attempting to apply an empty ContextAdjustment.')
+        elif isinstance(adjustment, Callable):
+            return adjustment(self, mission, performance, **kwargs)
+        else:
+            return adjustment
 
-class LegacyBuilder(Builder):
+
+class AdjustableLegacyBuilder(Builder):
     """Model for determining flight trajectories using the legacy method
     from AEIC v2.
 
     Args:
         options (Options): Base options for trajectory building.
-        legacy_options (LegactyOptions): Builder-specific options for legacy
+        legacy_options (LegacyOptions): Builder-specific options for legacy
             trajectory builder.
     """
 
-    CONTEXT_CLASS = LegacyContext
+    CONTEXT_CLASS = AdjustableLegacyContext
 
     def __init__(
         self,
@@ -210,15 +306,42 @@ class LegacyBuilder(Builder):
         fuel_mass = approx_time * perf.fuel_flow
 
         # Reserve fuel (assumed 5%).
-        reserve_mass = fuel_mass * 0.05
+        if self.reserve_fuel is None:
+            reserve_mass = fuel_mass * 0.05
+        else:
+            reserve_mass = self.apply_adjustment(
+                self.reserve_fuel,
+                self.mission,
+                self.ac_performance,
+                fuel_mass=fuel_mass,
+            )
 
         # Diversion and hold fuel per AEIC v2.
-        if approx_time > 180 * MINUTES_TO_SECONDS:
-            divert_dist = 200.0 * NAUTICAL_MILES_TO_METERS
-            hold_time = 30 * MINUTES_TO_SECONDS
+        # TODO: ADJUSTMENT POINT
+        if self.divert_distance is None:
+            if approx_time > 180 * MINUTES_TO_SECONDS:
+                divert_dist = 200.0 * NAUTICAL_MILES_TO_METERS
+            else:
+                divert_dist = 100.0 * NAUTICAL_MILES_TO_METERS
         else:
-            divert_dist = 100.0 * NAUTICAL_MILES_TO_METERS
-            hold_time = 45 * MINUTES_TO_SECONDS
+            divert_dist = self.apply_adjustment(
+                self.divert_distance,
+                self.mission,
+                self.ac_performance,
+                approx_time=approx_time,
+            )
+        if self.hold_time is None:
+            if approx_time > 180 * MINUTES_TO_SECONDS:
+                hold_time = 30 * MINUTES_TO_SECONDS
+            else:
+                hold_time = 45 * MINUTES_TO_SECONDS
+        else:
+            hold_time = self.apply_adjustment(
+                self.hold_time,
+                self.mission,
+                self.ac_performance,
+                approx_time=approx_time,
+            )
         divert_mass = divert_dist / perf.true_airspeed * perf.fuel_flow
         hold_mass = hold_time * perf_low.fuel_flow
 
@@ -267,7 +390,8 @@ class LegacyBuilder(Builder):
             SimpleFlightRules.DESCEND,
             self.des_end_altitude,
         )
-        traj.n_descent -= 1
+        if traj.n_descent > 0:
+            traj.n_descent -= 1
 
     def _fly_level_change(
         self,
@@ -300,6 +424,8 @@ class LegacyBuilder(Builder):
             if flight_phase == FlightPhase.CLIMB
             else -self.altitude_step,
         )
+        if len(altitudes) == 0:
+            return
         if (flight_phase == FlightPhase.CLIMB and altitudes[-1] < final_altitude) or (
             flight_phase == FlightPhase.DESCENT and altitudes[-1] > final_altitude
         ):
@@ -373,6 +499,7 @@ class LegacyBuilder(Builder):
 
                     # NOTE: I have no idea where AEIC v2 got the efficiency of
                     # 0.15 from.
+                    # TODO: ADJUSTMENT POINT
                     efficiency = 0.15
                     accel_fuel = kinetic_energy_chg / self.fuel_LHV / efficiency
                     seg_fuel += accel_fuel

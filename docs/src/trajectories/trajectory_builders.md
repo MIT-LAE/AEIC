@@ -77,6 +77,118 @@ altitude ($7000\,\text{ft}$ below operating ceiling).
    :members:
 ```
 
+## Adjustable legacy trajectory builder
+
+`AdjustableLegacyBuilder` is a variant of `LegacyBuilder` with the same
+phase-integration logic and the same default behavior, but with additional
+per-flight hooks for changing the assumptions that are normally hard-coded in
+the legacy builder. It is intended for sensitivity studies, policy scenarios,
+or workflows where the basic AEIC v2 trajectory model is still desired but
+where cruise altitude, reserve policy, descent planning, or similar inputs need
+to vary by mission.
+
+With no adjustment arguments, `AdjustableLegacyBuilder` should produce the same
+trajectory as `LegacyBuilder` for the same mission, performance model, and
+builder options.
+
+```python
+import AEIC.trajectories.builders as tb
+
+builder = tb.AdjustableLegacyBuilder(
+    options=tb.Options(iterate_mass=False),
+    legacy_options=tb.LegacyOptions(),
+)
+
+traj = builder.fly(performance_model, mission)
+```
+
+### Adjustment arguments
+
+Adjustments are passed as keyword arguments to `fly`. Each adjustment may be:
+
+- `None`, which uses the standard legacy default;
+- a `float`, which is used directly; or
+- a callable, which receives the current adjustable context, the mission, the
+  performance model, and any adjustment-specific keyword arguments.
+
+The supported adjustment keywords are:
+
+| Keyword | Units | Legacy default |
+| --- | --- | --- |
+| `climb_start_altitude` | m | departure airport altitude + $3000\,\text{ft}$ |
+| `cruise_altitude` | m | aircraft maximum altitude - $7000\,\text{ft}$ |
+| `descent_end_altitude` | m | arrival airport altitude + $3000\,\text{ft}$ |
+| `descent_distance` | m | proportional to `des_start_altitude - des_end_altitude` |
+| `reserve_fuel` | kg | 5% of nominal trip fuel |
+| `divert_distance` | m | 100 NM for flights up to 3 hours, otherwise 200 NM |
+| `hold_time` | s | 45 minutes for flights up to 3 hours, otherwise 30 minutes |
+
+For example, fixed values can be used to pin a scenario:
+
+```python
+traj = builder.fly(
+    performance_model,
+    mission,
+    climb_start_altitude=1500.0,
+    cruise_altitude=9000.0,
+    descent_end_altitude=1200.0,
+    descent_distance=200_000.0,
+    reserve_fuel=1_500.0,
+    divert_distance=150_000.0,
+    hold_time=30 * 60.0,
+)
+```
+
+Callable adjustments are useful when the value depends on mission or aircraft
+properties:
+
+```python
+def cruise_altitude(context, mission, performance):
+    # Fly 1000 m below the aircraft ceiling, but never below the climb start.
+    return max(context.clm_start_altitude, performance.maximum_altitude - 1000.0)
+
+
+def reserve_fuel(context, mission, performance, *, fuel_mass):
+    # Use a larger reserve fraction for this scenario.
+    return 0.10 * fuel_mass
+
+
+traj = builder.fly(
+    performance_model,
+    mission,
+    cruise_altitude=cruise_altitude,
+    reserve_fuel=reserve_fuel,
+)
+```
+
+The fuel-policy callables receive additional keyword-only inputs:
+
+- `reserve_fuel(..., fuel_mass=...)`, where `fuel_mass` is the nominal trip
+  fuel estimate used by the starting-mass calculation;
+- `divert_distance(..., approx_time=...)`, where `approx_time` is the nominal
+  flight time estimate;
+- `hold_time(..., approx_time=...)`, using the same nominal flight time
+  estimate.
+
+### Validation and clamping
+
+The adjustable builder preserves the legacy guardrails where possible:
+
+- a climb start altitude at or above the aircraft ceiling is reset to the
+  departure airport altitude;
+- a cruise altitude below the climb start altitude is raised to the climb start
+  altitude;
+- a cruise altitude above the aircraft ceiling is lowered to the ceiling;
+- a descent end altitude at or above the ceiling is lowered to the ceiling;
+- a descent end altitude above the descent start altitude raises a
+  `ValueError`;
+- a negative descent distance raises a `ValueError`.
+
+```{eval-rst}
+.. automodule:: AEIC.trajectories.builders.adjustable_legacy
+   :members:
+```
+
 ## Work-in-progress builders
 
 The following builders are re-exported from
