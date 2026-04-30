@@ -1,0 +1,1456 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trajectory builders &mdash; AEIC 0.3.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=e259d695"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Trajectory stores" href="trajectory_stores.html" />
+    <link rel="prev" title="Trajectory data" href="trajectory_data.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            AEIC
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main_page.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../main_page.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../main_page.html#units">Units</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">AEIC modules</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">System configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#file-paths">File paths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#configuration-initialization-and-access">Configuration initialization and access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#configuration-uniqueness-and-immutability">Configuration uniqueness and immutability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#main-configuration-class">Main configuration class</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration.html#AEIC.config.Config"><code class="docutils literal notranslate"><span class="pre">Config</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.data_file_location"><code class="docutils literal notranslate"><span class="pre">Config.data_file_location</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.data_path_overrides"><code class="docutils literal notranslate"><span class="pre">Config.data_path_overrides</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.default_data_file_location"><code class="docutils literal notranslate"><span class="pre">Config.default_data_file_location</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.default_data_path"><code class="docutils literal notranslate"><span class="pre">Config.default_data_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.emissions"><code class="docutils literal notranslate"><span class="pre">Config.emissions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.engine_file"><code class="docutils literal notranslate"><span class="pre">Config.engine_file</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.escape"><code class="docutils literal notranslate"><span class="pre">Config.escape</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.file_location"><code class="docutils literal notranslate"><span class="pre">Config.file_location</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.get"><code class="docutils literal notranslate"><span class="pre">Config.get</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.load"><code class="docutils literal notranslate"><span class="pre">Config.load</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.normalize_search_paths"><code class="docutils literal notranslate"><span class="pre">Config.normalize_search_paths</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.path"><code class="docutils literal notranslate"><span class="pre">Config.path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.performance_model"><code class="docutils literal notranslate"><span class="pre">Config.performance_model</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.reset"><code class="docutils literal notranslate"><span class="pre">Config.reset</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.Config.weather"><code class="docutils literal notranslate"><span class="pre">Config.weather</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#emissions-module-configuration-classes">Emissions module configuration classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.DEFAULT_METHOD_HCCO"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.DEFAULT_METHOD_HCCO</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.DEFAULT_METHOD_NOx"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.DEFAULT_METHOD_NOx</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.apu_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.apu_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.climb_descent_mode"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.climb_descent_mode</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.co2_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.co2_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.co_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.co_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.co_method"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.co_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.fuel"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.fuel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.fuel_file"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.fuel_file</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.gse_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.gse_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.h2o_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.h2o_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.hc_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.hc_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.hc_method"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.hc_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.lifecycle_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.lifecycle_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.nox_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.nox_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.nox_method"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.nox_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.nvpm_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.nvpm_enabled</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.nvpm_method"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.nvpm_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EmissionsConfig.sox_enabled"><code class="docutils literal notranslate"><span class="pre">EmissionsConfig.sox_enabled</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.ClimbDescentMode"><code class="docutils literal notranslate"><span class="pre">ClimbDescentMode</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.ClimbDescentMode.TRAJECTORY"><code class="docutils literal notranslate"><span class="pre">ClimbDescentMode.TRAJECTORY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.ClimbDescentMode.LTO"><code class="docutils literal notranslate"><span class="pre">ClimbDescentMode.LTO</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EINOxMethod"><code class="docutils literal notranslate"><span class="pre">EINOxMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EINOxMethod.BFFM2"><code class="docutils literal notranslate"><span class="pre">EINOxMethod.BFFM2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EINOxMethod.P3T3"><code class="docutils literal notranslate"><span class="pre">EINOxMethod.P3T3</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EINOxMethod.NONE"><code class="docutils literal notranslate"><span class="pre">EINOxMethod.NONE</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EInvPMMethod"><code class="docutils literal notranslate"><span class="pre">EInvPMMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EInvPMMethod.MEEM"><code class="docutils literal notranslate"><span class="pre">EInvPMMethod.MEEM</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.emissions.EInvPMMethod.NONE"><code class="docutils literal notranslate"><span class="pre">EInvPMMethod.NONE</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#weather-module-configuration-class">Weather module configuration class</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration.html#AEIC.config.weather.WeatherConfig"><code class="docutils literal notranslate"><span class="pre">WeatherConfig</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.WeatherConfig.data_resolution"><code class="docutils literal notranslate"><span class="pre">WeatherConfig.data_resolution</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.WeatherConfig.effective_data_resolution"><code class="docutils literal notranslate"><span class="pre">WeatherConfig.effective_data_resolution</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.WeatherConfig.effective_file_format"><code class="docutils literal notranslate"><span class="pre">WeatherConfig.effective_file_format</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.WeatherConfig.file_format"><code class="docutils literal notranslate"><span class="pre">WeatherConfig.file_format</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.WeatherConfig.file_resolution"><code class="docutils literal notranslate"><span class="pre">WeatherConfig.file_resolution</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.WeatherConfig.use_weather"><code class="docutils literal notranslate"><span class="pre">WeatherConfig.use_weather</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.WeatherConfig.weather_data_dir"><code class="docutils literal notranslate"><span class="pre">WeatherConfig.weather_data_dir</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration.html#AEIC.config.weather.TemporalResolution"><code class="docutils literal notranslate"><span class="pre">TemporalResolution</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.TemporalResolution.HOURLY"><code class="docutils literal notranslate"><span class="pre">TemporalResolution.HOURLY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.TemporalResolution.DAILY"><code class="docutils literal notranslate"><span class="pre">TemporalResolution.DAILY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.TemporalResolution.MONTHLY"><code class="docutils literal notranslate"><span class="pre">TemporalResolution.MONTHLY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../configuration.html#AEIC.config.weather.TemporalResolution.ANNUAL"><code class="docutils literal notranslate"><span class="pre">TemporalResolution.ANNUAL</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration.html#AEIC.config.weather.default_file_format"><code class="docutils literal notranslate"><span class="pre">default_file_format</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration.html#AEIC.config.weather.resolution_le"><code class="docutils literal notranslate"><span class="pre">resolution_le</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cli.html#aeic-run"><code class="docutils literal notranslate"><span class="pre">aeic</span> <span class="pre">run</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli.html#command-line-options">Command-line options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli.html#single-process-example">Single-process example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli.html#parallel-example">Parallel example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cli.html#aeic-merge-stores"><code class="docutils literal notranslate"><span class="pre">aeic</span> <span class="pre">merge-stores</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli.html#id2">Command-line options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cli.html#aeic-make-file-bundle"><code class="docutils literal notranslate"><span class="pre">aeic</span> <span class="pre">make-file-bundle</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli.html#id4">Command-line options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli.html#id5">Example</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../performance_models/performance_models.html">Performance models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../performance_models/performance_model_api.html">Performance model API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/performance_model_api.html#loading-performance-models">Loading performance models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/performance_model_api.html#mission-based-performance-model-selection">Mission-based performance model selection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/performance_model_api.html#performance-evaluation">Performance evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/performance_model_api.html#usage-example">Usage example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/performance_model_api.html#performance-model-members">Performance model members</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/performance_model_api.html#api-reference">API reference</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.models.BasePerformanceModel"><code class="docutils literal notranslate"><span class="pre">BasePerformanceModel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.models.PerformanceModel"><code class="docutils literal notranslate"><span class="pre">PerformanceModel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.model_selector.PerformanceModelSelector"><code class="docutils literal notranslate"><span class="pre">PerformanceModelSelector</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.model_selector.SimplePerformanceModelSelector"><code class="docutils literal notranslate"><span class="pre">SimplePerformanceModelSelector</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.types.AircraftState"><code class="docutils literal notranslate"><span class="pre">AircraftState</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.types.Performance"><code class="docutils literal notranslate"><span class="pre">Performance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.types.SimpleFlightRules"><code class="docutils literal notranslate"><span class="pre">SimpleFlightRules</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.types.LTOPerformance"><code class="docutils literal notranslate"><span class="pre">LTOPerformance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.types.ThrustMode"><code class="docutils literal notranslate"><span class="pre">ThrustMode</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.apu.APU"><code class="docutils literal notranslate"><span class="pre">APU</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.types.Speeds"><code class="docutils literal notranslate"><span class="pre">Speeds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.types.SpeedData"><code class="docutils literal notranslate"><span class="pre">SpeedData</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../performance_models/legacy_performance_model.html">Legacy performance model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/legacy_performance_model.html#input-file-format">Input file format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/legacy_performance_model.html#performance-table">Performance table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/legacy_performance_model.html#performance-evaluation">Performance evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/legacy_performance_model.html#api-reference">API reference</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/legacy_performance_model.html#AEIC.performance.models.LegacyPerformanceModel"><code class="docutils literal notranslate"><span class="pre">LegacyPerformanceModel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/legacy_performance_model.html#AEIC.performance.models.legacy.PerformanceTable"><code class="docutils literal notranslate"><span class="pre">PerformanceTable</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/legacy_performance_model.html#AEIC.performance.models.legacy.ROCDFilter"><code class="docutils literal notranslate"><span class="pre">ROCDFilter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/legacy_performance_model.html#AEIC.performance.models.legacy.Interpolator"><code class="docutils literal notranslate"><span class="pre">Interpolator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../performance_models/legacy_performance_model.html#AEIC.performance.models.legacy.PerformanceTableInput"><code class="docutils literal notranslate"><span class="pre">PerformanceTableInput</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../performance_models/performance_model_files.html">Performance model files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/performance_model_files.html#creating-performance-model-files">Creating performance model files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../performance_models/performance_model_files.html#example-file">Example file</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="trajectories.html">Trajectories</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="trajectory_data.html">Trajectory data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.BASE_FIELDS"><code class="docutils literal notranslate"><span class="pre">BASE_FIELDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="trajectory_data.html#AEIC.emissions.emission.EMISSIONS_FIELDS"><code class="docutils literal notranslate"><span class="pre">EMISSIONS_FIELDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory"><code class="docutils literal notranslate"><span class="pre">Trajectory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.__init__"><code class="docutils literal notranslate"><span class="pre">Trajectory.__init__</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.append"><code class="docutils literal notranslate"><span class="pre">Trajectory.append</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.compare"><code class="docutils literal notranslate"><span class="pre">Trajectory.compare</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.copy_point"><code class="docutils literal notranslate"><span class="pre">Trajectory.copy_point</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.interpolate_time"><code class="docutils literal notranslate"><span class="pre">Trajectory.interpolate_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.nbytes"><code class="docutils literal notranslate"><span class="pre">Trajectory.nbytes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory.set_phase"><code class="docutils literal notranslate"><span class="pre">Trajectory.set_phase</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="trajectory_data.html#field-sets">Field sets</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.BASE_FIELDSET_NAME"><code class="docutils literal notranslate"><span class="pre">BASE_FIELDSET_NAME</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.storage.field_sets.FieldMetadata"><code class="docutils literal notranslate"><span class="pre">FieldMetadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.storage.field_sets.FieldSet"><code class="docutils literal notranslate"><span class="pre">FieldSet</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.storage.dimensions.Dimension"><code class="docutils literal notranslate"><span class="pre">Dimension</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.storage.dimensions.Dimensions"><code class="docutils literal notranslate"><span class="pre">Dimensions</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="trajectory_data.html#module-AEIC.storage.phase">Flight phases</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.storage.phase.FlightPhase"><code class="docutils literal notranslate"><span class="pre">FlightPhase</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.storage.phase.FlightPhases"><code class="docutils literal notranslate"><span class="pre">FlightPhases</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.storage.phase.PHASE_FIELDS"><code class="docutils literal notranslate"><span class="pre">PHASE_FIELDS</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.storage.phase.REQUIRED_PHASES"><code class="docutils literal notranslate"><span class="pre">REQUIRED_PHASES</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="trajectory_data.html#ground-tracks">Ground tracks</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_data.html#AEIC.trajectories.ground_track.GroundTrack"><code class="docutils literal notranslate"><span class="pre">GroundTrack</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Trajectory builders</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#AEIC.trajectories.builders.base.Builder"><code class="docutils literal notranslate"><span class="pre">Builder</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#AEIC.trajectories.builders.base.Builder.options"><code class="docutils literal notranslate"><span class="pre">Builder.options</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#AEIC.trajectories.builders.base.Builder.CONTEXT_CLASS"><code class="docutils literal notranslate"><span class="pre">Builder.CONTEXT_CLASS</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#AEIC.trajectories.builders.base.Builder.calc_starting_mass"><code class="docutils literal notranslate"><span class="pre">Builder.calc_starting_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#AEIC.trajectories.builders.base.Builder.fly"><code class="docutils literal notranslate"><span class="pre">Builder.fly</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#legacy-trajectory-builder">Legacy trajectory builder</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#AEIC.trajectories.builders.legacy.LegacyBuilder"><code class="docutils literal notranslate"><span class="pre">LegacyBuilder</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#AEIC.trajectories.builders.legacy.LegacyContext"><code class="docutils literal notranslate"><span class="pre">LegacyContext</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#AEIC.trajectories.builders.legacy.LegacyOptions"><code class="docutils literal notranslate"><span class="pre">LegacyOptions</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#adjustable-legacy-trajectory-builder">Adjustable legacy trajectory builder</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#adjustment-arguments">Adjustment arguments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#validation-and-clamping">Validation and clamping</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#work-in-progress-builders">Work-in-progress builders</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tasopt-builder">TASOPT builder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ads-b-builder">ADS-B builder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dymos-builder">Dymos builder</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="trajectory_stores.html">Trajectory stores</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.FileMode"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.FileMode</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.NcFiles"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.NcFiles</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.active_in_thread"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.active_in_thread</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.add"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.add</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.add_comment"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.add_comment</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.append"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.append</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.close"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.close</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.combine"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.combine</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.create"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.create</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.create_associated"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.create_associated</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.files"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.files</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.get_flight"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.get_flight</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.iter_flight_ids"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.iter_flight_ids</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.iter_range"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.iter_range</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.merge"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.merge</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.nc_linked"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.nc_linked</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.open"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.open</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.reproducibility_data"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.reproducibility_data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.save"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.save</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.set_sampling_info"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.set_sampling_info</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="trajectory_stores.html#AEIC.trajectories.store.TrajectoryStore.sync"><code class="docutils literal notranslate"><span class="pre">TrajectoryStore.sync</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../emission.html">Emissions module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../emission.html#usage-example">Usage example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../emission.html#computation-workflow">Computation workflow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.compute_emissions"><code class="docutils literal notranslate"><span class="pre">compute_emissions</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../emission.html#types">Types</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#chemical-species">Chemical species</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../emission.html#AEIC.types.Species"><code class="docutils literal notranslate"><span class="pre">Species</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#emissions-output">Emissions output</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../emission.html#AEIC.emissions.Emissions"><code class="docutils literal notranslate"><span class="pre">Emissions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../emission.html#AEIC.types.species.SpeciesValues"><code class="docutils literal notranslate"><span class="pre">SpeciesValues</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../emission.html#AEIC.performance.types.ThrustModeValues"><code class="docutils literal notranslate"><span class="pre">ThrustModeValues</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../emission.html#helper-functions">Helper functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.trajectory.get_trajectory_emissions"><code class="docutils literal notranslate"><span class="pre">get_trajectory_emissions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.lto.get_LTO_emissions"><code class="docutils literal notranslate"><span class="pre">get_LTO_emissions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.apu.get_APU_emissions"><code class="docutils literal notranslate"><span class="pre">get_APU_emissions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.gse.get_GSE_emissions"><code class="docutils literal notranslate"><span class="pre">get_GSE_emissions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.sox.EI_SOx"><code class="docutils literal notranslate"><span class="pre">EI_SOx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.sox.SOxEmissionResult"><code class="docutils literal notranslate"><span class="pre">SOxEmissionResult</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.hcco.EI_HCCO"><code class="docutils literal notranslate"><span class="pre">EI_HCCO</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.nox.BFFM2EINOxResult"><code class="docutils literal notranslate"><span class="pre">BFFM2EINOxResult</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.nox.BFFM2_EINOx"><code class="docutils literal notranslate"><span class="pre">BFFM2_EINOx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.nox.NOXSpeciation"><code class="docutils literal notranslate"><span class="pre">NOXSpeciation</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.nox.NOXSpeciation.hono"><code class="docutils literal notranslate"><span class="pre">NOXSpeciation.hono</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.nox.NOXSpeciation.no"><code class="docutils literal notranslate"><span class="pre">NOXSpeciation.no</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.nox.NOXSpeciation.no2"><code class="docutils literal notranslate"><span class="pre">NOXSpeciation.no2</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.nvpm.calculate_nvPM_scope11_LTO"><code class="docutils literal notranslate"><span class="pre">calculate_nvPM_scope11_LTO</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.nvpm.nvPMProfileLTO"><code class="docutils literal notranslate"><span class="pre">nvPMProfileLTO</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.nvpm.nvPMProfileTrajectory"><code class="docutils literal notranslate"><span class="pre">nvPMProfileTrajectory</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.ei.nvpm.nvPM_MEEM"><code class="docutils literal notranslate"><span class="pre">nvPM_MEEM</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.utils.constant_species_values"><code class="docutils literal notranslate"><span class="pre">constant_species_values</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.utils.get_SLS_equivalent_fuel_flow"><code class="docutils literal notranslate"><span class="pre">get_SLS_equivalent_fuel_flow</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../emission.html#AEIC.emissions.utils.get_thrust_cat_cruise"><code class="docutils literal notranslate"><span class="pre">get_thrust_cat_cruise</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../bada.html">BADA methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../bada.html#engine-and-fuel-burn-models">Engine and fuel burn models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3EngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_descent_thrust_app"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_app</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_descent_thrust_high"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_high</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_descent_thrust_land"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_land</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_descent_thrust_low"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_descent_thrust_low</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_max_climb_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_max_climb_thrust</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3EngineModel.calculate_max_cruise_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3EngineModel.calculate_max_cruise_thrust</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3JetEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3JetEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_cruise_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3JetEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_max_climb_thrust_isa</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3JetEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_nominal_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3JetEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3JetEngineModel.calculate_specific_fuel_consumption</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3TurbopropEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3TurbopropEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_cruise_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3TurbopropEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_max_climb_thrust_isa</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3TurbopropEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_nominal_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3TurbopropEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3TurbopropEngineModel.calculate_specific_fuel_consumption</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3PistonEngineModel"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3PistonEngineModel.calculate_cruise_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_cruise_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3PistonEngineModel.calculate_max_climb_thrust_isa"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_max_climb_thrust_isa</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3PistonEngineModel.calculate_nominal_fuel_flow"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_nominal_fuel_flow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3PistonEngineModel.calculate_specific_fuel_consumption"><code class="docutils literal notranslate"><span class="pre">Bada3PistonEngineModel.calculate_specific_fuel_consumption</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_cd"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_cd</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_cl"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_cl</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_drag"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_drag</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_specific_ground_range"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_specific_ground_range</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_thrust"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_thrust</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel.calculate_thrust_by_total_energy"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.calculate_thrust_by_total_energy</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_constant_final_mass"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_constant_final_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_constant_initial_mass"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_constant_initial_mass</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_fraction"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_fraction</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.model.Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_value"><code class="docutils literal notranslate"><span class="pre">Bada3FuelBurnModel.iterate_flight_simulation_fuel_burn_dependent_initial_mass_rf_value</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../bada.html#aircraft-parameters">Aircraft parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.aircraft_parameters.Bada3AircraftParameters"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.aircraft_parameters.Bada3AircraftParameters.assign_parameters_fromdict"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters.assign_parameters_fromdict</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../bada.html#AEIC.BADA.aircraft_parameters.Bada3AircraftParameters.get_params_asdict"><code class="docutils literal notranslate"><span class="pre">Bada3AircraftParameters.get_params_asdict</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../bada.html#fuel-burn-base-classes">Fuel burn base classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.fuel_burn_base.BaseAircraftParameters"><code class="docutils literal notranslate"><span class="pre">BaseAircraftParameters</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.fuel_burn_base.BaseFuelBurnModel"><code class="docutils literal notranslate"><span class="pre">BaseFuelBurnModel</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../bada.html#module-AEIC.BADA.helper_functions">Helper functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.helper_functions.get_aircraft_params_for_all_aircraft_types"><code class="docutils literal notranslate"><span class="pre">get_aircraft_params_for_all_aircraft_types</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.helper_functions.get_all_available_aircraft_types"><code class="docutils literal notranslate"><span class="pre">get_all_available_aircraft_types</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.helper_functions.get_directly_available_aircraft_types"><code class="docutils literal notranslate"><span class="pre">get_directly_available_aircraft_types</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.helper_functions.get_models_for_all_implemented_aircraft_types"><code class="docutils literal notranslate"><span class="pre">get_models_for_all_implemented_aircraft_types</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../bada.html#AEIC.BADA.helper_functions.read_synonym_file_to_dict"><code class="docutils literal notranslate"><span class="pre">read_synonym_file_to_dict</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../gridding.html">Gridding module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../gridding.html#the-trajectories-to-grid-command">The <code class="docutils literal notranslate"><span class="pre">trajectories-to-grid</span></code> command</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#command-line-options">Command-line options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#map-mode">Map mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#reduce-mode">Reduce mode</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../gridding.html#grid-definition-files">Grid definition files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#horizontal-axes">Horizontal axes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#vertical-axis">Vertical axis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#examples">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../gridding.html#filtering-trajectories">Filtering trajectories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../gridding.html#map-reduce-architecture">Map-reduce architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#map-phase">Map phase</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#reduce-phase">Reduce phase</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../gridding.html#parallel-execution">Parallel execution</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#example-with-gnu-parallel">Example with GNU parallel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#slurm-job-arrays">SLURM job arrays</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../gridding.html#output-format">Output format</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#dimensions">Dimensions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#coordinate-variables">Coordinate variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#species-variables">Species variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#reproducibility-provenance">Reproducibility provenance</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../gridding.html#api-reference">API reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#grid-classes">Grid classes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../gridding.html#AEIC.gridding.grid.Grid"><code class="docutils literal notranslate"><span class="pre">Grid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../gridding.html#AEIC.gridding.grid.LatitudeGrid"><code class="docutils literal notranslate"><span class="pre">LatitudeGrid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../gridding.html#AEIC.gridding.grid.LongitudeGrid"><code class="docutils literal notranslate"><span class="pre">LongitudeGrid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../gridding.html#AEIC.gridding.grid.HeightGrid"><code class="docutils literal notranslate"><span class="pre">HeightGrid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../gridding.html#AEIC.gridding.grid.ISAPressureGrid"><code class="docutils literal notranslate"><span class="pre">ISAPressureGrid</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../gridding.html#output">Output</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../gridding.html#AEIC.gridding.output.OutputGrid"><code class="docutils literal notranslate"><span class="pre">OutputGrid</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../missions.html">Missions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../missions.html#AEIC.missions.Mission"><code class="docutils literal notranslate"><span class="pre">Mission</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.aircraft_type"><code class="docutils literal notranslate"><span class="pre">Mission.aircraft_type</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.arrival"><code class="docutils literal notranslate"><span class="pre">Mission.arrival</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.carrier"><code class="docutils literal notranslate"><span class="pre">Mission.carrier</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.departure"><code class="docutils literal notranslate"><span class="pre">Mission.departure</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.destination"><code class="docutils literal notranslate"><span class="pre">Mission.destination</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.destination_country"><code class="docutils literal notranslate"><span class="pre">Mission.destination_country</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.destination_position"><code class="docutils literal notranslate"><span class="pre">Mission.destination_position</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.engine_type"><code class="docutils literal notranslate"><span class="pre">Mission.engine_type</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.flight_id"><code class="docutils literal notranslate"><span class="pre">Mission.flight_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.flight_number"><code class="docutils literal notranslate"><span class="pre">Mission.flight_number</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.from_toml"><code class="docutils literal notranslate"><span class="pre">Mission.from_toml</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.gc_distance"><code class="docutils literal notranslate"><span class="pre">Mission.gc_distance</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.label"><code class="docutils literal notranslate"><span class="pre">Mission.label</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.load_factor"><code class="docutils literal notranslate"><span class="pre">Mission.load_factor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.origin"><code class="docutils literal notranslate"><span class="pre">Mission.origin</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.origin_country"><code class="docutils literal notranslate"><span class="pre">Mission.origin_country</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.origin_position"><code class="docutils literal notranslate"><span class="pre">Mission.origin_position</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.seat_capacity"><code class="docutils literal notranslate"><span class="pre">Mission.seat_capacity</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../missions.html#AEIC.missions.Mission.service_type"><code class="docutils literal notranslate"><span class="pre">Mission.service_type</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../mission_database.html">Mission database</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../mission_database.html#usage-example">Usage example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mission_database.html#reference-documentation">Reference documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../mission_database.html#database-class">Database class</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../mission_database.html#AEIC.missions.Database"><code class="docutils literal notranslate"><span class="pre">Database</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../mission_database.html#queries">Queries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../mission_database.html#base-query-class">Base query class</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../mission_database.html#scheduled-flight-queries">Scheduled flight queries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../mission_database.html#frequent-flights-queries">Frequent flights queries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../mission_database.html#count-queries">Count queries</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../mission_database.html#time-range-queries">Time-range queries</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../mission_database.html#filters">Filters</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../mission_database.html#AEIC.missions.Filter"><code class="docutils literal notranslate"><span class="pre">Filter</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../mission_database.html#database-schema">Database schema</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../oag.html">OAG flight data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../oag.html#database-creation">Database creation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../oag.html#input-record-filtering">Input record filtering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../oag.html#file-sizes">File sizes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../parsers.html">Available parsers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../parsers.html#ptf-reader">PTF reader</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.ClimbPhaseData"><code class="docutils literal notranslate"><span class="pre">ClimbPhaseData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.ClimbPhaseData.fl"><code class="docutils literal notranslate"><span class="pre">ClimbPhaseData.fl</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.ClimbPhaseData.fuel_flow_nom"><code class="docutils literal notranslate"><span class="pre">ClimbPhaseData.fuel_flow_nom</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.ClimbPhaseData.rocd_high"><code class="docutils literal notranslate"><span class="pre">ClimbPhaseData.rocd_high</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.ClimbPhaseData.rocd_low"><code class="docutils literal notranslate"><span class="pre">ClimbPhaseData.rocd_low</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.ClimbPhaseData.rocd_nom"><code class="docutils literal notranslate"><span class="pre">ClimbPhaseData.rocd_nom</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.ClimbPhaseData.tas"><code class="docutils literal notranslate"><span class="pre">ClimbPhaseData.tas</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.CruisePhaseData"><code class="docutils literal notranslate"><span class="pre">CruisePhaseData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.CruisePhaseData.fl"><code class="docutils literal notranslate"><span class="pre">CruisePhaseData.fl</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.CruisePhaseData.fuel_flow_high"><code class="docutils literal notranslate"><span class="pre">CruisePhaseData.fuel_flow_high</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.CruisePhaseData.fuel_flow_low"><code class="docutils literal notranslate"><span class="pre">CruisePhaseData.fuel_flow_low</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.CruisePhaseData.fuel_flow_nom"><code class="docutils literal notranslate"><span class="pre">CruisePhaseData.fuel_flow_nom</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.CruisePhaseData.tas"><code class="docutils literal notranslate"><span class="pre">CruisePhaseData.tas</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.DescentPhaseData"><code class="docutils literal notranslate"><span class="pre">DescentPhaseData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.DescentPhaseData.fl"><code class="docutils literal notranslate"><span class="pre">DescentPhaseData.fl</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.DescentPhaseData.fuel_flow_nom"><code class="docutils literal notranslate"><span class="pre">DescentPhaseData.fuel_flow_nom</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.DescentPhaseData.rocd_nom"><code class="docutils literal notranslate"><span class="pre">DescentPhaseData.rocd_nom</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.DescentPhaseData.tas"><code class="docutils literal notranslate"><span class="pre">DescentPhaseData.tas</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.PTFData"><code class="docutils literal notranslate"><span class="pre">PTFData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.PTFData.isa_offset"><code class="docutils literal notranslate"><span class="pre">PTFData.isa_offset</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../parsers.html#AEIC.parsers.ptf_reader.PTFData.load"><code class="docutils literal notranslate"><span class="pre">PTFData.load</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../parsers.html#opf-reader">OPF reader</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../parsers.html#AEIC.parsers.opf_reader.parse_OPF"><code class="docutils literal notranslate"><span class="pre">parse_OPF</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../parsers.html#lto-reader">LTO reader</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../parsers.html#AEIC.parsers.lto_reader.parseLTO"><code class="docutils literal notranslate"><span class="pre">parseLTO</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../storage.html">Storage module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../storage.html#module-AEIC.storage">API reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../storage.html#AEIC.storage.Container"><code class="docutils literal notranslate"><span class="pre">Container</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Container.CAPACITY_EXPANSION"><code class="docutils literal notranslate"><span class="pre">Container.CAPACITY_EXPANSION</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Container.STARTING_CAPACITY"><code class="docutils literal notranslate"><span class="pre">Container.STARTING_CAPACITY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Container.add_fields"><code class="docutils literal notranslate"><span class="pre">Container.add_fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Container.approx_eq"><code class="docutils literal notranslate"><span class="pre">Container.approx_eq</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Container.copy"><code class="docutils literal notranslate"><span class="pre">Container.copy</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Container.fix"><code class="docutils literal notranslate"><span class="pre">Container.fix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Container.make_point"><code class="docutils literal notranslate"><span class="pre">Container.make_point</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Container.species"><code class="docutils literal notranslate"><span class="pre">Container.species</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../storage.html#AEIC.storage.Dimension"><code class="docutils literal notranslate"><span class="pre">Dimension</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Dimension.TRAJECTORY"><code class="docutils literal notranslate"><span class="pre">Dimension.TRAJECTORY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Dimension.SPECIES"><code class="docutils literal notranslate"><span class="pre">Dimension.SPECIES</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Dimension.POINT"><code class="docutils literal notranslate"><span class="pre">Dimension.POINT</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Dimension.THRUST_MODE"><code class="docutils literal notranslate"><span class="pre">Dimension.THRUST_MODE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Dimension.dim_name"><code class="docutils literal notranslate"><span class="pre">Dimension.dim_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.Dimension.from_dim_name"><code class="docutils literal notranslate"><span class="pre">Dimension.from_dim_name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata"><code class="docutils literal notranslate"><span class="pre">FieldMetadata</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata.convert_in"><code class="docutils literal notranslate"><span class="pre">FieldMetadata.convert_in</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata.default"><code class="docutils literal notranslate"><span class="pre">FieldMetadata.default</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata.description"><code class="docutils literal notranslate"><span class="pre">FieldMetadata.description</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata.digest_info"><code class="docutils literal notranslate"><span class="pre">FieldMetadata.digest_info</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata.dimensions"><code class="docutils literal notranslate"><span class="pre">FieldMetadata.dimensions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata.empty"><code class="docutils literal notranslate"><span class="pre">FieldMetadata.empty</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata.field_type"><code class="docutils literal notranslate"><span class="pre">FieldMetadata.field_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata.nbytes"><code class="docutils literal notranslate"><span class="pre">FieldMetadata.nbytes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata.required"><code class="docutils literal notranslate"><span class="pre">FieldMetadata.required</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldMetadata.units"><code class="docutils literal notranslate"><span class="pre">FieldMetadata.units</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet"><code class="docutils literal notranslate"><span class="pre">FieldSet</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet.REGISTRY"><code class="docutils literal notranslate"><span class="pre">FieldSet.REGISTRY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet.calc_hash"><code class="docutils literal notranslate"><span class="pre">FieldSet.calc_hash</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet.digest"><code class="docutils literal notranslate"><span class="pre">FieldSet.digest</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet.dimensions"><code class="docutils literal notranslate"><span class="pre">FieldSet.dimensions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet.fields"><code class="docutils literal notranslate"><span class="pre">FieldSet.fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet.from_netcdf_group"><code class="docutils literal notranslate"><span class="pre">FieldSet.from_netcdf_group</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet.from_registry"><code class="docutils literal notranslate"><span class="pre">FieldSet.from_registry</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet.known"><code class="docutils literal notranslate"><span class="pre">FieldSet.known</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet.merge"><code class="docutils literal notranslate"><span class="pre">FieldSet.merge</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FieldSet.single_point"><code class="docutils literal notranslate"><span class="pre">FieldSet.single_point</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase"><code class="docutils literal notranslate"><span class="pre">FlightPhase</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.IDLE_ORIGIN"><code class="docutils literal notranslate"><span class="pre">FlightPhase.IDLE_ORIGIN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.TAXI_ORIGIN"><code class="docutils literal notranslate"><span class="pre">FlightPhase.TAXI_ORIGIN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.TAKEOFF"><code class="docutils literal notranslate"><span class="pre">FlightPhase.TAKEOFF</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.CLIMB"><code class="docutils literal notranslate"><span class="pre">FlightPhase.CLIMB</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.CRUISE"><code class="docutils literal notranslate"><span class="pre">FlightPhase.CRUISE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.DESCENT"><code class="docutils literal notranslate"><span class="pre">FlightPhase.DESCENT</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.APPROACH"><code class="docutils literal notranslate"><span class="pre">FlightPhase.APPROACH</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.TAXI_DESTINATION"><code class="docutils literal notranslate"><span class="pre">FlightPhase.TAXI_DESTINATION</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.IDLE_DESTINATION"><code class="docutils literal notranslate"><span class="pre">FlightPhase.IDLE_DESTINATION</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.field_name"><code class="docutils literal notranslate"><span class="pre">FlightPhase.field_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.method_name"><code class="docutils literal notranslate"><span class="pre">FlightPhase.method_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.field_label"><code class="docutils literal notranslate"><span class="pre">FlightPhase.field_label</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.FlightPhase.from_field_name"><code class="docutils literal notranslate"><span class="pre">FlightPhase.from_field_name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../storage.html#AEIC.storage.HasFieldSets"><code class="docutils literal notranslate"><span class="pre">HasFieldSets</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData.config"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData.config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData.files"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData.files</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData.git_branch"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData.git_branch</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData.git_commit"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData.git_commit</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData.git_dirty"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData.git_dirty</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData.python_version"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData.python_version</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData.sample_fraction"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData.sample_fraction</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData.sample_seed"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData.sample_seed</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData.software_version"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData.software_version</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../storage.html#AEIC.storage.ReproducibilityData.union"><code class="docutils literal notranslate"><span class="pre">ReproducibilityData.union</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../storage.html#AEIC.storage.track_file_accesses"><code class="docutils literal notranslate"><span class="pre">track_file_accesses</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../utilities.html">Utilities</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../utilities.html#custom-types">Custom types</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.types.Location"><code class="docutils literal notranslate"><span class="pre">Location</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Location.latitude"><code class="docutils literal notranslate"><span class="pre">Location.latitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Location.longitude"><code class="docutils literal notranslate"><span class="pre">Location.longitude</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.types.Position"><code class="docutils literal notranslate"><span class="pre">Position</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Position.altitude"><code class="docutils literal notranslate"><span class="pre">Position.altitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Position.latitude"><code class="docutils literal notranslate"><span class="pre">Position.latitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Position.location"><code class="docutils literal notranslate"><span class="pre">Position.location</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Position.longitude"><code class="docutils literal notranslate"><span class="pre">Position.longitude</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.types.DayOfWeek"><code class="docutils literal notranslate"><span class="pre">DayOfWeek</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.DayOfWeek.from_pandas"><code class="docutils literal notranslate"><span class="pre">DayOfWeek.from_pandas</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.types.TimeOfDay"><code class="docutils literal notranslate"><span class="pre">TimeOfDay</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.TimeOfDay.hour"><code class="docutils literal notranslate"><span class="pre">TimeOfDay.hour</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.TimeOfDay.minute"><code class="docutils literal notranslate"><span class="pre">TimeOfDay.minute</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.types.AircraftClass"><code class="docutils literal notranslate"><span class="pre">AircraftClass</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.AircraftClass.WIDE"><code class="docutils literal notranslate"><span class="pre">AircraftClass.WIDE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.AircraftClass.NARROW"><code class="docutils literal notranslate"><span class="pre">AircraftClass.NARROW</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.AircraftClass.SMALL"><code class="docutils literal notranslate"><span class="pre">AircraftClass.SMALL</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.AircraftClass.FREIGHT"><code class="docutils literal notranslate"><span class="pre">AircraftClass.FREIGHT</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.types.FloatOrNDArray"><code class="docutils literal notranslate"><span class="pre">FloatOrNDArray</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../utilities.html#airport-handling">Airport handling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Airport"><code class="docutils literal notranslate"><span class="pre">Airport</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Airport.country"><code class="docutils literal notranslate"><span class="pre">Airport.country</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Airport.elevation"><code class="docutils literal notranslate"><span class="pre">Airport.elevation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Airport.iata_code"><code class="docutils literal notranslate"><span class="pre">Airport.iata_code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Airport.latitude"><code class="docutils literal notranslate"><span class="pre">Airport.latitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Airport.longitude"><code class="docutils literal notranslate"><span class="pre">Airport.longitude</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Airport.municipality"><code class="docutils literal notranslate"><span class="pre">Airport.municipality</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Airport.name"><code class="docutils literal notranslate"><span class="pre">Airport.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Airport.position"><code class="docutils literal notranslate"><span class="pre">Airport.position</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.AirportsData"><code class="docutils literal notranslate"><span class="pre">AirportsData</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.CountriesData"><code class="docutils literal notranslate"><span class="pre">CountriesData</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Country"><code class="docutils literal notranslate"><span class="pre">Country</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Country.code"><code class="docutils literal notranslate"><span class="pre">Country.code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Country.continent"><code class="docutils literal notranslate"><span class="pre">Country.continent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.Country.name"><code class="docutils literal notranslate"><span class="pre">Country.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.airport"><code class="docutils literal notranslate"><span class="pre">airport</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.airports.country"><code class="docutils literal notranslate"><span class="pre">country</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../utilities.html#unit-conversion">Unit conversion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.FEET_TO_METERS"><code class="docutils literal notranslate"><span class="pre">FEET_TO_METERS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.FL_TO_METERS"><code class="docutils literal notranslate"><span class="pre">FL_TO_METERS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.FPM_TO_MPS"><code class="docutils literal notranslate"><span class="pre">FPM_TO_MPS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.KG_TO_GRAMS"><code class="docutils literal notranslate"><span class="pre">KG_TO_GRAMS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.KNOTS_TO_MPS"><code class="docutils literal notranslate"><span class="pre">KNOTS_TO_MPS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.METERS_TO_FEET"><code class="docutils literal notranslate"><span class="pre">METERS_TO_FEET</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.METERS_TO_FL"><code class="docutils literal notranslate"><span class="pre">METERS_TO_FL</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.MINUTES_TO_SECONDS"><code class="docutils literal notranslate"><span class="pre">MINUTES_TO_SECONDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.MPS_TO_KNOTS"><code class="docutils literal notranslate"><span class="pre">MPS_TO_KNOTS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.NAUTICAL_MILES_TO_METERS"><code class="docutils literal notranslate"><span class="pre">NAUTICAL_MILES_TO_METERS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.PPM"><code class="docutils literal notranslate"><span class="pre">PPM</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.units.STATUTE_MILES_TO_KM"><code class="docutils literal notranslate"><span class="pre">STATUTE_MILES_TO_KM</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../utilities.html#geospatial-utilities">Geospatial utilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.GEOD"><code class="docutils literal notranslate"><span class="pre">GEOD</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../utilities.html#module-AEIC.utils.files">File handling functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.files.download"><code class="docutils literal notranslate"><span class="pre">download</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../utilities.html#module-AEIC.utils.standard_atmosphere">Standard atmosphere</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.standard_atmosphere.altitude_from_pressure_isa_bada4"><code class="docutils literal notranslate"><span class="pre">altitude_from_pressure_isa_bada4</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.standard_atmosphere.calculate_air_density"><code class="docutils literal notranslate"><span class="pre">calculate_air_density</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.standard_atmosphere.calculate_speed_of_sound"><code class="docutils literal notranslate"><span class="pre">calculate_speed_of_sound</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.standard_atmosphere.pressure_at_altitude_isa_bada4"><code class="docutils literal notranslate"><span class="pre">pressure_at_altitude_isa_bada4</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.standard_atmosphere.speed_of_sound_at_altitude"><code class="docutils literal notranslate"><span class="pre">speed_of_sound_at_altitude</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.standard_atmosphere.temperature_at_altitude_isa_bada4"><code class="docutils literal notranslate"><span class="pre">temperature_at_altitude_isa_bada4</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../utilities.html#fuel">Fuel</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.types.Fuel"><code class="docutils literal notranslate"><span class="pre">Fuel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Fuel.EI_CO2"><code class="docutils literal notranslate"><span class="pre">Fuel.EI_CO2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Fuel.EI_H2O"><code class="docutils literal notranslate"><span class="pre">Fuel.EI_H2O</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Fuel.energy_MJ_per_kg"><code class="docutils literal notranslate"><span class="pre">Fuel.energy_MJ_per_kg</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Fuel.fuel_sulfur_content_nom"><code class="docutils literal notranslate"><span class="pre">Fuel.fuel_sulfur_content_nom</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Fuel.lifecycle_CO2"><code class="docutils literal notranslate"><span class="pre">Fuel.lifecycle_CO2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Fuel.model_config"><code class="docutils literal notranslate"><span class="pre">Fuel.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Fuel.name"><code class="docutils literal notranslate"><span class="pre">Fuel.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Fuel.non_volatile_carbon_fraction"><code class="docutils literal notranslate"><span class="pre">Fuel.non_volatile_carbon_fraction</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.types.Fuel.sulfate_yield_nom"><code class="docutils literal notranslate"><span class="pre">Fuel.sulfate_yield_nom</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../utilities.html#module-AEIC.utils.models">Data modeling utility classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.models.CIBaseModel"><code class="docutils literal notranslate"><span class="pre">CIBaseModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../utilities.html#AEIC.utils.models.CIBaseModel.model_config"><code class="docutils literal notranslate"><span class="pre">CIBaseModel.model_config</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../utilities.html#AEIC.utils.models.CIStrEnum"><code class="docutils literal notranslate"><span class="pre">CIStrEnum</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../weather.html">Weather</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../weather.html#class-members">Class members</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../weather.html#AEIC.weather.Weather"><code class="docutils literal notranslate"><span class="pre">Weather</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../weather.html#AEIC.weather.Weather.get_ground_speed"><code class="docutils literal notranslate"><span class="pre">Weather.get_ground_speed</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../developer/tools.html">Setup and tools</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../developer/tools.html#project-setup-and-dependency-management">Project setup and dependency management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/tools.html#local-development">Local Development</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/tools.html#uv">uv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/tools.html#pre-commit">pre-commit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/tools.html#testing">Testing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/conventions.html">Conventions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../developer/conventions.html#coding-standards">Coding standards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/conventions.html#units">Units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/conventions.html#data-dictionary">Data dictionary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/releases.html">Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/grid-map-optimization.html">Grid map phase optimization report</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../developer/grid-map-optimization.html#summary">Summary</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#unfiltered-path">Unfiltered path</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#filtered-path">Filtered path</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/grid-map-optimization.html#step-1-eliminate-redundant-scalar-reads-in-read-from-nc-var">Step 1: eliminate redundant scalar reads in <code class="docutils literal notranslate"><span class="pre">_read_from_nc_var</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#the-problem">The problem</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#the-fix">The fix</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/grid-map-optimization.html#step-2-batched-slab-reads-via-iter-range">Step 2: batched slab reads via <code class="docutils literal notranslate"><span class="pre">iter_range</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#id1">The problem</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#id2">The fix</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/grid-map-optimization.html#step-3-skip-type-checking-on-trusted-internal-reads">Step 3: skip type-checking on trusted internal reads</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#id3">The problem</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#id4">The fix</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/grid-map-optimization.html#step-4-bulk-index-lookup-and-batched-reads-via-iter-flight-ids">Step 4: bulk index lookup and batched reads via <code class="docutils literal notranslate"><span class="pre">iter_flight_ids</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#id5">The problem</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#id6">The fix</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../developer/grid-map-optimization.html#lessons-avoiding-netcdf-performance-bugs">Lessons: avoiding NetCDF performance bugs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#every-var-index-is-expensive-never-read-the-same-index-twice">1. Every <code class="docutils literal notranslate"><span class="pre">var[index]</span></code> is expensive – never read the same index twice</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#prefer-slab-reads-over-scalar-loops">2. Prefer slab reads over scalar loops</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#watch-out-for-negative-indexing-in-slices">3. Watch out for negative indexing in slices</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#profile-before-optimizing">4. Profile before optimizing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#validation-has-a-cost-bypass-it-on-trusted-internal-paths">5. Validation has a cost – bypass it on trusted internal paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#understand-the-library-stack-beneath-you">6. Understand the library stack beneath you</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../developer/grid-map-optimization.html#collect-all-ids-before-entering-a-read-loop">7. Collect all IDs before entering a read loop</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">AEIC</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="trajectories.html">Trajectories</a></li>
+      <li class="breadcrumb-item active">Trajectory builders</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/src/trajectories/trajectory_builders.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="trajectory-builders">
+<h1>Trajectory builders<a class="headerlink" href="#trajectory-builders" title="Link to this heading"></a></h1>
+<p>This is a system of organization for the different classes that do trajectory
+simulation.</p>
+<p>The basic idea here is to separate the logic of flying trajectories from the
+data container representing a trajectory (the <code class="docutils literal notranslate"><span class="pre">Trajectory</span></code> class and the
+associated idea of field sets), and to allow for easy swapping of different
+trajectory building algorithms (the current AEIC v2 “legacy” one, and later
+TASOPT-based, simulations based on ADS-B data, or whatever). The builder API
+has a base abstract <code class="docutils literal notranslate"><span class="pre">Builder</span></code> class, plus a concrete class derived from that
+for each type of trajectory builder. (The only one of these that’s fully
+implemented so far is <code class="docutils literal notranslate"><span class="pre">LegacyBuilder</span></code>, which does AEIC v2 trajectories.) Each
+builder class has an options class that wraps up any options that the builder
+supports. The main method used to simulate a trajectory is called <code class="docutils literal notranslate"><span class="pre">fly</span></code>: you
+pass a performance model and a mission and get back a trajectory.</p>
+<p>The part of all this that probably requires some explanation is the <code class="docutils literal notranslate"><span class="pre">Context</span></code>
+classes. Each of the trajectory builders will have state that it needs to keep
+track of during the calculations that go on in the <code class="docutils literal notranslate"><span class="pre">fly</span></code> method and the
+subsidiary methods that <code class="docutils literal notranslate"><span class="pre">fly</span></code> calls. Instead of either a). threading lots of
+parameters through all the function calls; or b). having a bunch of instance
+variables on the builder classes that have poorly defined lifecycles and
+initialization states (lots of things being set to <code class="docutils literal notranslate"><span class="pre">None</span></code> in constructors, for
+example), there is the idea of a “context”, which is a separate object which
+maintains all of the required state in one place. Because there is a single
+context object whose lifecycle is bounded by any particular call to the <code class="docutils literal notranslate"><span class="pre">fly</span></code>
+method, managing the lifecycle is easy. To avoid saying
+<code class="docutils literal notranslate"><span class="pre">self.context.whatever</span></code> all over the place, there is some more Python magic
+using <code class="docutils literal notranslate"><span class="pre">__getattr__</span></code> to route attribute accesses on the builder to the context
+instead. It ends up being quite comfortable to program against. (One
+disadvantage is that it isn’t thread-safe: if you share a trajectory builder
+across threads, the context will get mixed up. But trajectory builders are
+lightweight things, so it’s not a problem to create them in each thread where
+you need one.)</p>
+<p>You can see how all of this works together in the
+<code class="docutils literal notranslate"><span class="pre">tests/test_trajectory_simulation.py</span></code> test file. There’s a test function there
+that simulates a list of sample missions from an input file, saves them to a
+NetCDF file and reloads them.</p>
+<p>A trajectory builder class should have a <code class="docutils literal notranslate"><span class="pre">fly_...</span></code> method for each flight
+phase that it implements, e.g. <code class="docutils literal notranslate"><span class="pre">fly_climb</span></code>, <code class="docutils literal notranslate"><span class="pre">fly_cruise</span></code>, <code class="docutils literal notranslate"><span class="pre">fly_descent</span></code> at a
+minimum. These methods are passed the <code class="docutils literal notranslate"><span class="pre">Trajectory</span></code> being constructed, plus a
+set of additional builder-specific keyword arguments passed through from
+<code class="docutils literal notranslate"><span class="pre">fly</span></code>, used for any builder-specific specials.</p>
+<p>The base <code class="docutils literal notranslate"><span class="pre">Builder</span></code> class, the shared <code class="docutils literal notranslate"><span class="pre">Options</span></code> dataclass, and the
+<code class="docutils literal notranslate"><span class="pre">Context</span></code> dataclass are documented below. <code class="docutils literal notranslate"><span class="pre">LegacyBuilder</span></code> is the most
+complete reference implementation and the recommended starting point for
+anyone writing a new builder. Actually <em>using</em> the trajectory builders is
+simple, but implementing one is more involved.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The builder API is still settling. There are no helper methods on the
+<cite>Trajectory</cite> or <cite>Builder</cite> classes for the “extra” LTO flight phases
+(taxi, take-off roll, etc.) — those still need to be handled in the
+concrete builder.</p>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.base.Builder">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.trajectories.builders.base.</span></span><span class="sig-name descname"><span class="pre">Builder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Options(optimize_traj=False,</span> <span class="pre">iterate_mass=True,</span> <span class="pre">use_weather=False,</span> <span class="pre">max_mass_iters=5,</span> <span class="pre">mass_iter_reltol=0.01)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.base.Builder" title="Link to this definition"></a></dt>
+<dd><p>Abstract parent class for all AEIC trajectory builders. Contains overall
+<cite>fly</cite> logic.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>options</strong> (<em>Options</em>)</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.base.Builder.options">
+<span class="sig-name descname"><span class="pre">options</span></span><a class="headerlink" href="#AEIC.trajectories.builders.base.Builder.options" title="Link to this definition"></a></dt>
+<dd><p>Options for trajectory building.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Options</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.base.Builder.CONTEXT_CLASS">
+<span class="sig-name descname"><span class="pre">CONTEXT_CLASS</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">type</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#AEIC.trajectories.builders.base.Builder.CONTEXT_CLASS" title="Link to this definition"></a></dt>
+<dd><p>Class for trajectory building context. Should be derived from base
+Context class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.base.Builder.calc_starting_mass">
+<em class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">calc_starting_mass</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.base.Builder.calc_starting_mass" title="Link to this definition"></a></dt>
+<dd><p>Calculate the starting mass of the aircraft for the flight.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.base.Builder.fly">
+<span class="sig-name descname"><span class="pre">fly</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ac_performance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mission</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">starting_mass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.base.Builder.fly" title="Link to this definition"></a></dt>
+<dd><p>Top-level function that initiates and runs flights.</p>
+<p>As well as the fixed arguments listed below, this can also take
+builder-specific additional keyword arguments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ac_performance</strong> (<a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.models.BasePerformanceModel" title="AEIC.performance.models.BasePerformanceModel"><em>BasePerformanceModel</em></a>) – Performance model used for
+trajectory simulation.</p></li>
+<li><p><strong>mission</strong> (<a class="reference internal" href="../missions.html#AEIC.missions.Mission" title="AEIC.missions.Mission"><em>Mission</em></a>) – Data dictating the mission to be flown
+(departure/arrival info, etc.).</p></li>
+<li><p><strong>starting_mass</strong> (<em>float</em><em>, </em><em>optional</em>) – Starting mass of the aircraft;
+leave as default to calculate starting mass during simulation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Trajectory object.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>trajectory (<a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory" title="AEIC.trajectories.trajectory.Trajectory">Trajectory</a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<section id="legacy-trajectory-builder">
+<h2>Legacy trajectory builder<a class="headerlink" href="#legacy-trajectory-builder" title="Link to this heading"></a></h2>
+<p>The legacy trajectory relies on
+<a class="reference external" href="https://www.eurocontrol.int/model/bada">BADA-3</a>-like performane data in the
+AEIC performance data format. Specifically, it requires data that has
+prescribed climb and descent profiles, as well as cruise data at a single
+altitude (<span class="math notranslate nohighlight">\(7000\,\text{ft}\)</span> below operating ceiling).</p>
+<dl class="py class" id="module-AEIC.trajectories.builders.legacy">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyBuilder">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.trajectories.builders.legacy.</span></span><span class="sig-name descname"><span class="pre">LegacyBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Options(optimize_traj=False,</span> <span class="pre">iterate_mass=True,</span> <span class="pre">use_weather=False,</span> <span class="pre">max_mass_iters=5,</span> <span class="pre">mass_iter_reltol=0.01)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legacy_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LegacyOptions(altitude_step=304.8,</span> <span class="pre">cruise_step=231500,</span> <span class="pre">fuel_LHV=43800000.0)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyBuilder" title="Link to this definition"></a></dt>
+<dd><p>Model for determining flight trajectories using the legacy method
+from AEIC v2.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>options</strong> (<em>Options</em>) – Base options for trajectory building.</p></li>
+<li><p><strong>legacy_options</strong> (<em>LegactyOptions</em>) – Builder-specific options for legacy
+trajectory builder.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyBuilder.CONTEXT_CLASS">
+<span class="sig-name descname"><span class="pre">CONTEXT_CLASS</span></span><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyBuilder.CONTEXT_CLASS" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference internal" href="#AEIC.trajectories.builders.legacy.LegacyContext" title="AEIC.trajectories.builders.legacy.LegacyContext"><code class="xref py py-class docutils literal notranslate"><span class="pre">LegacyContext</span></code></a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyBuilder.calc_starting_mass">
+<span class="sig-name descname"><span class="pre">calc_starting_mass</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyBuilder.calc_starting_mass" title="Link to this definition"></a></dt>
+<dd><p>Calculates the starting mass using AEIC v2 methods.
+Sets both starting mass and non-reserve/hold/divert fuel mass.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyBuilder.fly_climb">
+<span class="sig-name descname"><span class="pre">fly_climb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">traj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyBuilder.fly_climb" title="Link to this definition"></a></dt>
+<dd><p>Simulate the climb phase of a trajectory.</p>
+<p>Delegates to <code class="xref py py-meth docutils literal notranslate"><span class="pre">_fly_level_change</span></code> with climb flight rules, integrating
+from the end of the previous phase up to the cruise-start altitude.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>traj</strong> (<a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory" title="AEIC.trajectories.trajectory.Trajectory"><em>Trajectory</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyBuilder.fly_cruise">
+<span class="sig-name descname"><span class="pre">fly_cruise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">traj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyBuilder.fly_cruise" title="Link to this definition"></a></dt>
+<dd><p>Simulate cruise phase.</p>
+<p>Computes state over cruise segment using AEIC v2 methods based on
+BADA-3 formulas.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>traj</strong> (<a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory" title="AEIC.trajectories.trajectory.Trajectory"><em>Trajectory</em></a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyBuilder.fly_descent">
+<span class="sig-name descname"><span class="pre">fly_descent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">traj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyBuilder.fly_descent" title="Link to this definition"></a></dt>
+<dd><p>Simulate the descent phase of a trajectory.</p>
+<p>Delegates to <code class="xref py py-meth docutils literal notranslate"><span class="pre">_fly_level_change</span></code> with descent flight rules,
+integrating from the cruise altitude down to the descent-end altitude.
+The final per-phase point count is decremented by one to account for
+the shared boundary point with the next phase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>traj</strong> (<a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory" title="AEIC.trajectories.trajectory.Trajectory"><em>Trajectory</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyContext">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.trajectories.builders.legacy.</span></span><span class="sig-name descname"><span class="pre">LegacyContext</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ac_performance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mission</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">starting_mass</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyContext" title="Link to this definition"></a></dt>
+<dd><p>Context for legacy trajectory builder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>builder</strong> (<a class="reference internal" href="#AEIC.trajectories.builders.base.Builder" title="AEIC.trajectories.builders.base.Builder"><em>Builder</em></a>)</p></li>
+<li><p><strong>ac_performance</strong> (<a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.models.BasePerformanceModel" title="AEIC.performance.models.base.BasePerformanceModel"><em>BasePerformanceModel</em></a>)</p></li>
+<li><p><strong>mission</strong> (<a class="reference internal" href="../missions.html#AEIC.missions.Mission" title="AEIC.missions.mission.Mission"><em>Mission</em></a>)</p></li>
+<li><p><strong>starting_mass</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyOptions">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.trajectories.builders.legacy.</span></span><span class="sig-name descname"><span class="pre">LegacyOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">altitude_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">304.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cruise_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">231500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fuel_LHV</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">43800000.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyOptions" title="Link to this definition"></a></dt>
+<dd><p>Additional options for the legacy trajectory builder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>altitude_step</strong> (<em>float</em>)</p></li>
+<li><p><strong>cruise_step</strong> (<em>float</em>)</p></li>
+<li><p><strong>fuel_LHV</strong> (<em>float</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyOptions.altitude_step">
+<span class="sig-name descname"><span class="pre">altitude_step</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">304.8</span></em><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyOptions.altitude_step" title="Link to this definition"></a></dt>
+<dd><p>Altitude step to use in climb and descent phases (m).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyOptions.cruise_step">
+<span class="sig-name descname"><span class="pre">cruise_step</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">231500</span></em><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyOptions.cruise_step" title="Link to this definition"></a></dt>
+<dd><p>Ground distance step to use in cruise phase (m).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.legacy.LegacyOptions.fuel_LHV">
+<span class="sig-name descname"><span class="pre">fuel_LHV</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">43800000.0</span></em><a class="headerlink" href="#AEIC.trajectories.builders.legacy.LegacyOptions.fuel_LHV" title="Link to this definition"></a></dt>
+<dd><p>Lower heating value of the fuel used (J/kg).</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="adjustable-legacy-trajectory-builder">
+<h2>Adjustable legacy trajectory builder<a class="headerlink" href="#adjustable-legacy-trajectory-builder" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">AdjustableLegacyBuilder</span></code> is a variant of <code class="docutils literal notranslate"><span class="pre">LegacyBuilder</span></code> with the same
+phase-integration logic and the same default behavior, but with additional
+per-flight hooks for changing the assumptions that are normally hard-coded in
+the legacy builder. It is intended for sensitivity studies, policy scenarios,
+or workflows where the basic AEIC v2 trajectory model is still desired but
+where cruise altitude, reserve policy, descent planning, or similar inputs need
+to vary by mission.</p>
+<p>With no adjustment arguments, <code class="docutils literal notranslate"><span class="pre">AdjustableLegacyBuilder</span></code> should produce the same
+trajectory as <code class="docutils literal notranslate"><span class="pre">LegacyBuilder</span></code> for the same mission, performance model, and
+builder options.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">AEIC.trajectories.builders</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tb</span>
+
+<span class="n">builder</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">AdjustableLegacyBuilder</span><span class="p">(</span>
+    <span class="n">options</span><span class="o">=</span><span class="n">tb</span><span class="o">.</span><span class="n">Options</span><span class="p">(</span><span class="n">iterate_mass</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+    <span class="n">legacy_options</span><span class="o">=</span><span class="n">tb</span><span class="o">.</span><span class="n">LegacyOptions</span><span class="p">(),</span>
+<span class="p">)</span>
+
+<span class="n">traj</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">fly</span><span class="p">(</span><span class="n">performance_model</span><span class="p">,</span> <span class="n">mission</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="adjustment-arguments">
+<h3>Adjustment arguments<a class="headerlink" href="#adjustment-arguments" title="Link to this heading"></a></h3>
+<p>Adjustments are passed as keyword arguments to <code class="docutils literal notranslate"><span class="pre">fly</span></code>. Each adjustment may be:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">None</span></code>, which uses the standard legacy default;</p></li>
+<li><p>a <code class="docutils literal notranslate"><span class="pre">float</span></code>, which is used directly; or</p></li>
+<li><p>a callable, which receives the current adjustable context, the mission, the
+performance model, and any adjustment-specific keyword arguments.</p></li>
+</ul>
+<p>The supported adjustment keywords are:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Keyword</p></th>
+<th class="head"><p>Units</p></th>
+<th class="head"><p>Legacy default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">climb_start_altitude</span></code></p></td>
+<td><p>m</p></td>
+<td><p>departure airport altitude + <span class="math notranslate nohighlight">\(3000\,\text{ft}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cruise_altitude</span></code></p></td>
+<td><p>m</p></td>
+<td><p>aircraft maximum altitude - <span class="math notranslate nohighlight">\(7000\,\text{ft}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">descent_end_altitude</span></code></p></td>
+<td><p>m</p></td>
+<td><p>arrival airport altitude + <span class="math notranslate nohighlight">\(3000\,\text{ft}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">descent_distance</span></code></p></td>
+<td><p>m</p></td>
+<td><p>proportional to <code class="docutils literal notranslate"><span class="pre">des_start_altitude</span> <span class="pre">-</span> <span class="pre">des_end_altitude</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reserve_fuel</span></code></p></td>
+<td><p>kg</p></td>
+<td><p>5% of nominal trip fuel</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">divert_distance</span></code></p></td>
+<td><p>m</p></td>
+<td><p>100 NM for flights up to 3 hours, otherwise 200 NM</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">hold_time</span></code></p></td>
+<td><p>s</p></td>
+<td><p>45 minutes for flights up to 3 hours, otherwise 30 minutes</p></td>
+</tr>
+</tbody>
+</table>
+<p>For example, fixed values can be used to pin a scenario:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">traj</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">fly</span><span class="p">(</span>
+    <span class="n">performance_model</span><span class="p">,</span>
+    <span class="n">mission</span><span class="p">,</span>
+    <span class="n">climb_start_altitude</span><span class="o">=</span><span class="mf">1500.0</span><span class="p">,</span>
+    <span class="n">cruise_altitude</span><span class="o">=</span><span class="mf">9000.0</span><span class="p">,</span>
+    <span class="n">descent_end_altitude</span><span class="o">=</span><span class="mf">1200.0</span><span class="p">,</span>
+    <span class="n">descent_distance</span><span class="o">=</span><span class="mf">200_000.0</span><span class="p">,</span>
+    <span class="n">reserve_fuel</span><span class="o">=</span><span class="mf">1_500.0</span><span class="p">,</span>
+    <span class="n">divert_distance</span><span class="o">=</span><span class="mf">150_000.0</span><span class="p">,</span>
+    <span class="n">hold_time</span><span class="o">=</span><span class="mi">30</span> <span class="o">*</span> <span class="mf">60.0</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Callable adjustments are useful when the value depends on mission or aircraft
+properties:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">cruise_altitude</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">mission</span><span class="p">,</span> <span class="n">performance</span><span class="p">):</span>
+    <span class="c1"># Fly 1000 m below the aircraft ceiling, but never below the climb start.</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">clm_start_altitude</span><span class="p">,</span> <span class="n">performance</span><span class="o">.</span><span class="n">maximum_altitude</span> <span class="o">-</span> <span class="mf">1000.0</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">reserve_fuel</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">mission</span><span class="p">,</span> <span class="n">performance</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fuel_mass</span><span class="p">):</span>
+    <span class="c1"># Use a larger reserve fraction for this scenario.</span>
+    <span class="k">return</span> <span class="mf">0.10</span> <span class="o">*</span> <span class="n">fuel_mass</span>
+
+
+<span class="n">traj</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">fly</span><span class="p">(</span>
+    <span class="n">performance_model</span><span class="p">,</span>
+    <span class="n">mission</span><span class="p">,</span>
+    <span class="n">cruise_altitude</span><span class="o">=</span><span class="n">cruise_altitude</span><span class="p">,</span>
+    <span class="n">reserve_fuel</span><span class="o">=</span><span class="n">reserve_fuel</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The fuel-policy callables receive additional keyword-only inputs:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">reserve_fuel(...,</span> <span class="pre">fuel_mass=...)</span></code>, where <code class="docutils literal notranslate"><span class="pre">fuel_mass</span></code> is the nominal trip
+fuel estimate used by the starting-mass calculation;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">divert_distance(...,</span> <span class="pre">approx_time=...)</span></code>, where <code class="docutils literal notranslate"><span class="pre">approx_time</span></code> is the nominal
+flight time estimate;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hold_time(...,</span> <span class="pre">approx_time=...)</span></code>, using the same nominal flight time
+estimate.</p></li>
+</ul>
+</section>
+<section id="validation-and-clamping">
+<h3>Validation and clamping<a class="headerlink" href="#validation-and-clamping" title="Link to this heading"></a></h3>
+<p>The adjustable builder preserves the legacy guardrails where possible:</p>
+<ul class="simple">
+<li><p>a climb start altitude at or above the aircraft ceiling is reset to the
+departure airport altitude;</p></li>
+<li><p>a cruise altitude below the climb start altitude is raised to the climb start
+altitude;</p></li>
+<li><p>a cruise altitude above the aircraft ceiling is lowered to the ceiling;</p></li>
+<li><p>a descent end altitude at or above the ceiling is lowered to the ceiling;</p></li>
+<li><p>a descent end altitude above the descent start altitude raises a
+<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>;</p></li>
+<li><p>a negative descent distance raises a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p></li>
+</ul>
+<dl class="py class" id="module-AEIC.trajectories.builders.adjustable_legacy">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.trajectories.builders.adjustable_legacy.</span></span><span class="sig-name descname"><span class="pre">AdjustableLegacyBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Options(optimize_traj=False,</span> <span class="pre">iterate_mass=True,</span> <span class="pre">use_weather=False,</span> <span class="pre">max_mass_iters=5,</span> <span class="pre">mass_iter_reltol=0.01)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legacy_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">LegacyOptions(altitude_step=304.8,</span> <span class="pre">cruise_step=231500,</span> <span class="pre">fuel_LHV=43800000.0)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder" title="Link to this definition"></a></dt>
+<dd><p>Model for determining flight trajectories using the legacy method
+from AEIC v2.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>options</strong> (<em>Options</em>) – Base options for trajectory building.</p></li>
+<li><p><strong>legacy_options</strong> (<a class="reference internal" href="#AEIC.trajectories.builders.legacy.LegacyOptions" title="AEIC.trajectories.builders.legacy.LegacyOptions"><em>LegacyOptions</em></a>) – Builder-specific options for legacy
+trajectory builder.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder.CONTEXT_CLASS">
+<span class="sig-name descname"><span class="pre">CONTEXT_CLASS</span></span><a class="headerlink" href="#AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder.CONTEXT_CLASS" title="Link to this definition"></a></dt>
+<dd><p>alias of <a class="reference internal" href="#AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyContext" title="AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyContext"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdjustableLegacyContext</span></code></a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder.calc_starting_mass">
+<span class="sig-name descname"><span class="pre">calc_starting_mass</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder.calc_starting_mass" title="Link to this definition"></a></dt>
+<dd><p>Calculates the starting mass using AEIC v2 methods.
+Sets both starting mass and non-reserve/hold/divert fuel mass.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder.fly_climb">
+<span class="sig-name descname"><span class="pre">fly_climb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">traj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder.fly_climb" title="Link to this definition"></a></dt>
+<dd><p>Simulate the climb phase of a trajectory.</p>
+<p>Delegates to <code class="xref py py-meth docutils literal notranslate"><span class="pre">_fly_level_change</span></code> with climb flight rules, integrating
+from the end of the previous phase up to the cruise-start altitude.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>traj</strong> (<a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory" title="AEIC.trajectories.trajectory.Trajectory"><em>Trajectory</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder.fly_cruise">
+<span class="sig-name descname"><span class="pre">fly_cruise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">traj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder.fly_cruise" title="Link to this definition"></a></dt>
+<dd><p>Simulate cruise phase.</p>
+<p>Computes state over cruise segment using AEIC v2 methods based on
+BADA-3 formulas.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>traj</strong> (<a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory" title="AEIC.trajectories.trajectory.Trajectory"><em>Trajectory</em></a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder.fly_descent">
+<span class="sig-name descname"><span class="pre">fly_descent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">traj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyBuilder.fly_descent" title="Link to this definition"></a></dt>
+<dd><p>Simulate the descent phase of a trajectory.</p>
+<p>Delegates to <code class="xref py py-meth docutils literal notranslate"><span class="pre">_fly_level_change</span></code> with descent flight rules,
+integrating from the cruise altitude down to the descent-end altitude.
+The final per-phase point count is decremented by one to account for
+the shared boundary point with the next phase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>traj</strong> (<a class="reference internal" href="trajectory_data.html#AEIC.trajectories.trajectory.Trajectory" title="AEIC.trajectories.trajectory.Trajectory"><em>Trajectory</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyContext">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">AEIC.trajectories.builders.adjustable_legacy.</span></span><span class="sig-name descname"><span class="pre">AdjustableLegacyContext</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ac_performance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mission</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">starting_mass</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">climb_start_altitude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cruise_altitude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descent_end_altitude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descent_distance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reserve_fuel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">divert_distance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hold_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyContext" title="Link to this definition"></a></dt>
+<dd><p>Context for adjustable legacy trajectory builder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>builder</strong> (<a class="reference internal" href="#AEIC.trajectories.builders.base.Builder" title="AEIC.trajectories.builders.base.Builder"><em>Builder</em></a>)</p></li>
+<li><p><strong>ac_performance</strong> (<a class="reference internal" href="../performance_models/performance_model_api.html#AEIC.performance.models.BasePerformanceModel" title="AEIC.performance.models.base.BasePerformanceModel"><em>BasePerformanceModel</em></a>)</p></li>
+<li><p><strong>mission</strong> (<a class="reference internal" href="../missions.html#AEIC.missions.Mission" title="AEIC.missions.mission.Mission"><em>Mission</em></a>)</p></li>
+<li><p><strong>starting_mass</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>climb_start_altitude</strong> (<em>ContextAdjustment</em>)</p></li>
+<li><p><strong>cruise_altitude</strong> (<em>ContextAdjustment</em>)</p></li>
+<li><p><strong>descent_end_altitude</strong> (<em>ContextAdjustment</em>)</p></li>
+<li><p><strong>descent_distance</strong> (<em>ContextAdjustment</em>)</p></li>
+<li><p><strong>reserve_fuel</strong> (<em>ContextAdjustment</em>)</p></li>
+<li><p><strong>divert_distance</strong> (<em>ContextAdjustment</em>)</p></li>
+<li><p><strong>hold_time</strong> (<em>ContextAdjustment</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyContext.AdjustmentFunction">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AdjustmentFunction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyContext.AdjustmentFunction" title="Link to this definition"></a></dt>
+<dd><p>Protocol for context adjustment functions.</p>
+<p>An adjustment function takes in the context, mission, performance model
+possibly additional optional keyword arguments and returns a float
+value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyContext.apply_adjustment">
+<span class="sig-name descname"><span class="pre">apply_adjustment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adjustment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mission</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">performance</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#AEIC.trajectories.builders.adjustable_legacy.AdjustableLegacyContext.apply_adjustment" title="Link to this definition"></a></dt>
+<dd><p>Helper function to apply a context adjustment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adjustment</strong> (<em>ContextAdjustment</em>)</p></li>
+<li><p><strong>mission</strong> (<a class="reference internal" href="../missions.html#AEIC.missions.Mission" title="AEIC.missions.Mission"><em>Mission</em></a>)</p></li>
+<li><p><strong>performance</strong> (<a class="reference internal" href="../performance_models/legacy_performance_model.html#AEIC.performance.models.LegacyPerformanceModel" title="AEIC.performance.models.LegacyPerformanceModel"><em>LegacyPerformanceModel</em></a>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="work-in-progress-builders">
+<h2>Work-in-progress builders<a class="headerlink" href="#work-in-progress-builders" title="Link to this heading"></a></h2>
+<p>The following builders are re-exported from
+<code class="xref py py-mod docutils literal notranslate"><span class="pre">AEIC.trajectories.builders</span></code> but are <strong>not yet fully implemented</strong>.
+They are listed here so that consumers who notice them in the public API are
+aware of their status; expect signatures, behaviour, and option sets to
+change as the implementations land.</p>
+<p>Each WIP builder ships with a matching <code class="docutils literal notranslate"><span class="pre">*Options</span></code> dataclass that is also
+re-exported from <code class="xref py py-mod docutils literal notranslate"><span class="pre">AEIC.trajectories.builders</span></code>. These option
+classes are placeholders; their fields and defaults will change as the
+corresponding builder is implemented.</p>
+<section id="tasopt-builder">
+<h3>TASOPT builder<a class="headerlink" href="#tasopt-builder" title="Link to this heading"></a></h3>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">TASOPTBuilder</span></code>
+will drive trajectory simulation from TASOPT-based performance data.
+Configured via
+<code class="xref py py-class docutils literal notranslate"><span class="pre">TASOPTOptions</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This builder and its options class are stubs and cannot yet fly
+trajectories end-to-end.</p>
+</div>
+</section>
+<section id="ads-b-builder">
+<h3>ADS-B builder<a class="headerlink" href="#ads-b-builder" title="Link to this heading"></a></h3>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">ADSBBuilder</span></code>
+will reconstruct trajectories from ADS-B track data. Configured via
+<code class="xref py py-class docutils literal notranslate"><span class="pre">ADSBOptions</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This builder and its options class are stubs and cannot yet fly
+trajectories end-to-end.</p>
+</div>
+</section>
+<section id="dymos-builder">
+<h3>Dymos builder<a class="headerlink" href="#dymos-builder" title="Link to this heading"></a></h3>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">DymosBuilder</span></code>
+will drive trajectory simulation using the Dymos optimal-control library.
+Configured via
+<code class="xref py py-class docutils literal notranslate"><span class="pre">DymosOptions</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This builder and its options class are stubs and cannot yet fly
+trajectories end-to-end.</p>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="trajectory_data.html" class="btn btn-neutral float-left" title="Trajectory data" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="trajectory_stores.html" class="btn btn-neutral float-right" title="Trajectory stores" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Wyatt Giroux, Prashanth Prakash, Prateek Ranjan, Aditeya Shukla, Raymond Speth.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
