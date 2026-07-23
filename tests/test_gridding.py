@@ -10,13 +10,16 @@ import zarr
 
 from AEIC.commands.trajectories_to_grid import (
     _read_and_validate_zarr_metadata,
+    map_phase,
     reduce_phase,
 )
 from AEIC.config import config
+from AEIC.emissions.emission import EMISSIONS_FIELDS
 from AEIC.gridding.grid import Grid, ISAPressureGrid
 from AEIC.missions import Filter
 from AEIC.storage.reproducibility import ReproducibilityData
-from AEIC.types import Species
+from AEIC.types import Species, SpeciesValues
+from tests.utils import make_test_trajectory
 
 
 def test_height_grid_load():
@@ -49,6 +52,60 @@ def test_pressure_grid_load():
     edges = grid.altitude.edges
     assert len(edges) == 8
     assert np.all(np.diff(edges) > 0)  # ascending
+
+
+@pytest.mark.parametrize(
+    ('longitude', 'latitude', 'altitude', 'segment_emissions'),
+    [
+        (
+            [-10.0, -8.0, -6.0],
+            [10.0, 11.0, 12.0],
+            [1000.0, 2500.0, 4000.0],
+            [25.0, 75.0, 0.0],
+        ),
+        (
+            [179.0, -179.0],
+            [10.0, 11.0],
+            [1000.0, 2000.0],
+            [100.0, 0.0],
+        ),
+    ],
+    ids=['ordinary', 'dateline'],
+)
+def test_map_phase_conserves_start_indexed_segment_emissions(
+    tmp_path,
+    longitude,
+    latitude,
+    altitude,
+    segment_emissions,
+):
+    """Trajectory-to-grid mapping conserves ordinary and date-line segments."""
+    npoints = len(longitude)
+    traj = make_test_trajectory(npoints, seed=41)
+    traj.longitude = np.asarray(longitude)
+    traj.latitude = np.asarray(latitude)
+    traj.altitude = np.asarray(altitude)
+    traj.add_fields(EMISSIONS_FIELDS)
+    traj.trajectory_emissions = SpeciesValues[np.ndarray](
+        {Species.CO2: np.asarray(segment_emissions)}
+    )
+
+    grid = Grid.load(config.file_location('grids/basic-4x4.toml'))
+    map_output = tmp_path / 'mapped.zarr'
+    map_phase(
+        ntrajs=1,
+        species=[Species.CO2],
+        traj_iter=iter([traj]),
+        grid=grid,
+        map_output=str(map_output),
+    )
+
+    mapped = zarr.open_array(store=str(map_output), mode='r')
+    np.testing.assert_allclose(
+        np.sum(mapped[..., 0]),
+        np.sum(segment_emissions[:-1]),
+        rtol=1e-6,
+    )
 
 
 # ---------------------------------------------------------------------------

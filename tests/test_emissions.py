@@ -5,6 +5,7 @@ import math
 import numpy as np
 import pytest
 
+import AEIC.trajectories.builders as tb
 from AEIC.config.emissions import ClimbDescentMode
 from AEIC.emissions import compute_emissions
 from AEIC.emissions.ei.hcco import EI_HCCO
@@ -131,7 +132,7 @@ def test_emissions_species(emissions):
     assert emissions.species == set(Species)
 
 
-def testsegment_fuel_burn_is_start_indexed_and_conservative():
+def test_segment_fuel_burn_is_start_indexed_and_conservative():
     """Segment fuel belongs to its start point and conserves total fuel."""
     rng = np.random.default_rng(42)
 
@@ -391,13 +392,45 @@ def test_lto_respects_traj_flag_false(perf_model, fuel, trajectory):
         assert any(
             output.lto_emissions[species][m] > 0 for species in output.lto_emissions
         )
-    climb_slice = slice(0, trajectory.n_climb)
-    cruise_slice = slice(trajectory.n_climb, len(trajectory) - trajectory.n_descent)
-    descent_slice = slice(len(trajectory) - trajectory.n_descent, len(trajectory))
+    cruise_start = trajectory.n_climb - 1
+    cruise_stop = cruise_start + trajectory.n_cruise
+    climb_slice = slice(0, cruise_start)
+    cruise_slice = slice(cruise_start, cruise_stop)
+    descent_slice = slice(cruise_stop, len(trajectory))
     for species, arr in output.trajectory_emissions.items():
         assert np.sum(arr[cruise_slice]) > 0
         assert np.allclose(arr[climb_slice], 0)
         assert np.allclose(arr[descent_slice], 0)
+
+
+@pytest.mark.config_updates(
+    emissions__climb_descent_mode=ClimbDescentMode.LTO,
+    emissions__lifecycle_enabled=False,
+)
+@pytest.mark.parametrize(
+    'builder_type',
+    [tb.LegacyBuilder, tb.AdjustableLegacyBuilder],
+)
+def test_lto_trajectory_emissions_match_physical_cruise_segments(
+    builder_type, sample_missions, performance_model, fuel
+):
+    """LTO mode retains exactly the level-flight physical segments.
+
+    Rate of climb is stored at each segment's start point, so this is an
+    independent physical oracle for cruise ownership rather than a repetition
+    of ``_trajectory_slice``.
+    """
+    traj = builder_type(options=tb.Options(iterate_mass=False)).fly(
+        performance_model, sample_missions[0]
+    )
+    output = compute_emissions(performance_model, fuel, traj)
+
+    expected_cruise = np.isclose(traj.rate_of_climb[:-1], 0.0)
+    actual_nonzero = output.trajectory_emissions[Species.CO2][:-1] > 0.0
+
+    np.testing.assert_array_equal(actual_nonzero, expected_cruise)
+    assert np.count_nonzero(actual_nonzero) == traj.n_cruise
+    assert output.trajectory_emissions[Species.CO2][-1] == 0.0
 
 
 def test_lto_nox_split_consistent_with_speciation_factors(emissions):

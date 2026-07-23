@@ -179,6 +179,7 @@ def _trajectory_slice(traj: Trajectory) -> slice:
     if config.emissions.climb_descent_mode != ClimbDescentMode.TRAJECTORY:
         # Climb and descent segments are handled in the LTO emissions
         # calculations.
-        return slice(traj.n_climb, len(traj) - traj.n_descent)
+        cruise_start = traj.n_climb - 1
+        return slice(cruise_start, cruise_start + traj.n_cruise)
     else:
         return slice(0, len(traj))
