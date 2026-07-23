@@ -86,7 +86,11 @@ class Emissions:
     FIELD_SETS: ClassVar[list[FieldSet]] = [EMISSIONS_FIELDS]
 
     trajectory_emissions: SpeciesValues[np.ndarray]
-    """Per-segment emissions along the trajectory for each species [g]."""
+    """Per-segment emissions along the trajectory for each species [g].
+
+    Element ``i`` belongs to the segment from trajectory point ``i`` to
+    ``i + 1``. The final element is zero.
+    """
 
     trajectory_indices: SpeciesValues[np.ndarray]
     """Per-segment emission indices along the trajectory for each species."""
@@ -167,8 +171,7 @@ def compute_emissions(
     object."""
 
     # Calculate cruise trajectory emissions (CO₂, H₂O, SOₓ, NOₓ, HC, CO, nvPM).
-    fuel_burn_per_segment = np.zeros_like(traj.fuel_mass)
-    fuel_burn_per_segment[1:] = traj.fuel_mass[:-1] - traj.fuel_mass[1:]
+    fuel_burn_per_segment = segment_fuel_burn(traj.fuel_mass)
     trajectory = get_trajectory_emissions(pm, traj, fuel_burn_per_segment, fuel)
     total_fuel_burn = trajectory.fuel_burn
 
@@ -220,6 +223,17 @@ def compute_emissions(
         emissions.lifecycle_co2 = lifecycle_adjustment
 
     return emissions
+
+
+def segment_fuel_burn(fuel_mass: np.ndarray) -> np.ndarray:
+    """Return fuel burn indexed by the point where each segment starts.
+
+    Element ``i`` belongs to the segment from point ``i`` to point ``i + 1``.
+    The final element is zero because no segment starts at the final point.
+    """
+    fuel_burn = np.zeros_like(fuel_mass)
+    fuel_burn[:-1] = fuel_mass[:-1] - fuel_mass[1:]
+    return fuel_burn
 
 
 def sum_total_emissions(
