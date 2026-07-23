@@ -9,6 +9,7 @@ from AEIC.config.emissions import ClimbDescentMode
 from AEIC.emissions import compute_emissions
 from AEIC.emissions.ei.hcco import EI_HCCO
 from AEIC.emissions.ei.nox import BFFM2_EINOx, NOx_speciation
+from AEIC.emissions.emission import segment_fuel_burn
 from AEIC.emissions.gse import get_GSE_emissions
 from AEIC.emissions.trajectory import (
     _calculate_EI_nvPM,
@@ -128,6 +129,47 @@ def test_emissions_species(emissions):
     species and added a stray duplicate.
     """
     assert emissions.species == set(Species)
+
+
+def testsegment_fuel_burn_is_start_indexed_and_conservative():
+    """Segment fuel belongs to its start point and conserves total fuel."""
+    rng = np.random.default_rng(42)
+
+    for npoints in range(2, 20):
+        expected_burn = rng.uniform(0.01, 100.0, npoints - 1)
+        fuel_mass = 10_000.0 - np.concatenate(([0.0], np.cumsum(expected_burn)))
+
+        actual = segment_fuel_burn(fuel_mass)
+
+        np.testing.assert_allclose(actual[:-1], expected_burn)
+        assert actual[-1] == 0.0
+        assert np.sum(actual) == pytest.approx(fuel_mass[0] - fuel_mass[-1])
+
+
+@pytest.mark.config_updates(
+    emissions__climb_descent_mode=ClimbDescentMode.TRAJECTORY,
+    emissions__lifecycle_enabled=False,
+)
+def test_trajectory_emissions_use_segment_start_index(perf_model, fuel, trajectory):
+    """A sharp EI change distinguishes start-point from endpoint indexing."""
+    trajectory._npoints = 3
+    trajectory.n_climb = trajectory.n_cruise = trajectory.n_descent = 1
+    trajectory.fuel_mass = np.array([100.0, 91.0, 89.0])
+    trajectory.fuel_flow = np.array([0.30, 0.55, 0.32])
+    trajectory.altitude = trajectory.altitude[:3]
+    trajectory.rate_of_climb = trajectory.rate_of_climb[:3]
+    trajectory.true_airspeed = trajectory.true_airspeed[:3]
+
+    output = compute_emissions(perf_model, fuel, trajectory)
+
+    np.testing.assert_allclose(output.fuel_burn_per_segment, [9.0, 2.0, 0.0])
+    hc_indices = output.trajectory_indices[Species.HC]
+    expected = np.array([9.0 * hc_indices[0], 2.0 * hc_indices[1], 0.0])
+    endpoint_indexed_total = 9.0 * hc_indices[1] + 2.0 * hc_indices[2]
+
+    np.testing.assert_allclose(output.trajectory_emissions[Species.HC], expected)
+    assert np.sum(expected) != pytest.approx(endpoint_indexed_total)
+    assert np.sum(output.fuel_burn_per_segment) == pytest.approx(11.0)
 
 
 def _expected_trajectory_indices(perf_model, trajectory):
