@@ -11,7 +11,7 @@ from AEIC.missions import Mission
 from AEIC.missions.mission import iso_to_timestamp
 from AEIC.trajectories.ground_track import GroundTrack
 from AEIC.types import Location
-from AEIC.weather import Weather
+from AEIC.weather import Weather, solve_track_vector
 
 # Sample mission
 sample_mission = Mission(
@@ -85,11 +85,51 @@ _PROBE_LOCATION = Location(longitude=-75.0, latitude=40.0)
 _PROBE_POINT = GroundTrack.Point(location=_PROBE_LOCATION, azimuth=0.0)
 _PROBE_ALT = 9144.0  # ~300 hPa by ISA
 _PROBE_TAS = 200.0
-# Constants in synthetic fields; with azimuth=0, cos=1 sin=0 →
-# u_air=200, v_air=0, so ground speed = hypot(200 + 5, 0 + 0) = 205.
-_WIND_U = 5.0
-_WIND_V = 0.0
+# Constants in synthetic fields; positive northward wind is a tailwind for the
+# default northbound probe.
+_WIND_U = 0.0
+_WIND_V = 5.0
 _EXPECTED_GS = 205.0
+
+
+@pytest.mark.parametrize(
+    ('azimuth', 'wind_east', 'wind_north'),
+    [(0.0, 0.0, 5.0), (90.0, 5.0, 0.0)],
+)
+def test_track_vector_uses_compass_azimuth(azimuth, wind_east, wind_north):
+    vector = solve_track_vector(azimuth, 200.0, wind_east, wind_north)
+    assert vector.ground_speed == pytest.approx(205.0)
+    assert vector.heading == pytest.approx(azimuth)
+
+
+def test_track_vector_headwind_and_tailwind():
+    assert solve_track_vector(0, 200, 0, 20).ground_speed == pytest.approx(220)
+    assert solve_track_vector(0, 200, 0, -20).ground_speed == pytest.approx(180)
+
+
+def test_track_vector_crosswind_crabs_to_hold_track():
+    right = solve_track_vector(0, 200, 20, 0)
+    left = solve_track_vector(0, 200, -20, 0)
+
+    assert right.ground_speed == pytest.approx(np.sqrt(200**2 - 20**2))
+    assert left.ground_speed == pytest.approx(right.ground_speed)
+    assert right.heading == pytest.approx(360 - left.heading)
+
+    heading_rad = np.deg2rad(right.heading)
+    aircraft_east = 200 * np.sin(heading_rad)
+    assert aircraft_east + 20 == pytest.approx(0)
+
+
+@pytest.mark.parametrize(
+    ('wind_east', 'wind_north', 'message'),
+    [
+        (200.0, 0.0, 'crosswind is too strong'),
+        (0.0, -200.0, 'non-positive along-track ground speed'),
+    ],
+)
+def test_track_vector_rejects_impossible_wind(wind_east, wind_north, message):
+    with pytest.raises(ValueError, match=message):
+        solve_track_vector(0, 200, wind_east, wind_north)
 
 
 def _make_field(shape: tuple[int, ...], value: float) -> np.ndarray:
@@ -420,14 +460,14 @@ def test_monthly_in_annual_picks_correct_month_at_period_boundary(tmp_path):
     lat_count = len(_LATITUDES)
     lon_count = len(_LONGITUDES)
 
-    # Per-month wind_u: month 1 → 1.0, month 2 → 2.0, ..., month 12 → 12.0.
+    # Per-month northward wind: month 1 → 1.0, ..., month 12 → 12.0.
     months = list(range(1, 13))
     vt = pd.DatetimeIndex([pd.Timestamp(f'2024-{m:02d}-15') for m in months])
-    u_vals = np.zeros((12, pl_count, lat_count, lon_count), dtype=np.float32)
+    v_vals = np.zeros((12, pl_count, lat_count, lon_count), dtype=np.float32)
     for i, m in enumerate(months):
-        u_vals[i, ...] = float(m)
-    v_vals = np.zeros_like(u_vals)
-    t_vals = np.full_like(u_vals, 220.0)
+        v_vals[i, ...] = float(m)
+    u_vals = np.zeros_like(v_vals)
+    t_vals = np.full_like(v_vals, 220.0)
 
     ds = xr.Dataset(
         {
@@ -458,11 +498,10 @@ def test_monthly_in_annual_picks_correct_month_at_period_boundary(tmp_path):
         file_resolution=TemporalResolution.ANNUAL,
         data_resolution=TemporalResolution.MONTHLY,
     )
-    # Query on 2024-03-31. Expected u_air = 200 (TAS, azimuth=0); wind_u for
-    # March is 3.0; ground speed = hypot(203, 0) = 203.
+    # Query on 2024-03-31. March's northward tailwind is 3 m/s.
     gs = _run_probe(w, pd.Timestamp('2024-03-31T23:00'))
     assert gs == pytest.approx(203.0, rel=1e-4)
-    # Sanity check: querying in April returns wind_u=4 → gs=204.
+    # Sanity check: querying in April returns a 4 m/s tailwind.
     gs = _run_probe(w, pd.Timestamp('2024-04-15T00:00'))
     assert gs == pytest.approx(204.0, rel=1e-4)
 
@@ -652,8 +691,8 @@ def test_explicit_azimuth_overrides_ground_track_azimuth(tmp_path):
         file_resolution=TemporalResolution.ANNUAL,
         file_format='annual.nc',
     )
-    # azimuth=0 (gt_point default) → u_air=TAS, gs = hypot(TAS+wind_u, 0).
-    # azimuth=90 (east) → v_air=TAS, gs = hypot(wind_u, TAS).
+    # The default northbound track gets a tailwind; the eastbound override gets
+    # the same wind as a crosswind.
     gs_auto = w.get_ground_speed(
         time=pd.Timestamp('2024-06-15'),
         gt_point=_PROBE_POINT,
@@ -668,7 +707,7 @@ def test_explicit_azimuth_overrides_ground_track_azimuth(tmp_path):
         azimuth=90.0,
     )
     assert gs_auto == pytest.approx(_EXPECTED_GS, rel=1e-4)
-    assert gs_east == pytest.approx(float(np.hypot(_WIND_U, _PROBE_TAS)), rel=1e-4)
+    assert gs_east == pytest.approx(np.sqrt(_PROBE_TAS**2 - _WIND_V**2), rel=1e-4)
     assert gs_auto != gs_east
 
 

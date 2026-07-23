@@ -133,6 +133,7 @@ def test_trajectory_simulation_weather(example_mission_with_weather, performance
 
     assert len(traj_wx) > 0
     assert np.any(traj_wx.ground_speed != traj_nowx.ground_speed)
+    assert np.any(~np.isclose(traj_wx.heading, traj_wx.azimuth))
 
 
 def test_trajectory_mass_iter(performance_model, example_mission, iteration_params):

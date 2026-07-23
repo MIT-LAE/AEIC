@@ -327,15 +327,19 @@ class LegacyBuilder(Builder):
             # Ground speed, including weather effects if required.
             if self.weather is None:
                 pt.ground_speed = fwd_tas
+                pt.heading = pt.azimuth
             else:
-                pt.ground_speed = self.weather.get_ground_speed(
+                track_vector = self.weather.get_track_vector(
                     time=self.mission.departure,
                     gt_point=self.ground_track.location(pt.ground_distance),
                     altitude=start_altitude,
-                    true_airspeed=fwd_tas,
-                    azimuth=pt.azimuth,
+                    horizontal_airspeed=fwd_tas,
+                    track_azimuth=pt.azimuth,
                 )
-            pt.heading = pt.azimuth
+                pt.ground_speed, pt.heading = (
+                    track_vector.ground_speed,
+                    track_vector.heading,
+                )
 
             pt.altitude = end_altitude
             pt.flight_level = pt.altitude * METERS_TO_FL
@@ -446,16 +450,20 @@ class LegacyBuilder(Builder):
             )
 
             if self.weather is not None:
-                pt.ground_speed = self.weather.get_ground_speed(
+                track_vector = self.weather.get_track_vector(
                     time=self.mission.departure,
                     gt_point=self.ground_track.location(distance),
                     altitude=pt.altitude,
-                    true_airspeed=perf.true_airspeed,
-                    azimuth=pt.azimuth,
+                    horizontal_airspeed=perf.true_airspeed,
+                    track_azimuth=pt.azimuth,
+                )
+                pt.ground_speed, pt.heading = (
+                    track_vector.ground_speed,
+                    track_vector.heading,
                 )
             else:
                 pt.ground_speed = perf.true_airspeed
-            pt.heading = pt.azimuth
+                pt.heading = pt.azimuth
 
             # Take step along great circle route.
             gpt = self.ground_track.location(distance)

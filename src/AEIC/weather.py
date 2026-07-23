@@ -1,4 +1,5 @@
 import gc
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +14,43 @@ from AEIC.config.weather import (
 )
 from AEIC.trajectories.ground_track import GroundTrack
 from AEIC.utils.standard_atmosphere import pressure_at_altitude_isa_bada4
+
+
+@dataclass(frozen=True)
+class GroundTrackVector:
+    """Aircraft ground speed and heading required
+    to follow a prescribed ground track."""
+
+    ground_speed: float
+    heading: float
+
+
+def solve_track_vector(
+    track_azimuth: float,
+    horizontal_airspeed: float,
+    wind_east: float,
+    wind_north: float,
+) -> GroundTrackVector:
+    """Solve the wind triangle for a prescribed ground-track azimuth."""
+    if horizontal_airspeed <= 0:
+        raise ValueError('horizontal airspeed must be positive')
+
+    track_rad = np.deg2rad(track_azimuth)
+    wind_parallel = wind_east * np.sin(track_rad) + wind_north * np.cos(track_rad)
+    wind_cross = wind_east * np.cos(track_rad) - wind_north * np.sin(track_rad)
+    if abs(wind_cross) >= horizontal_airspeed:
+        raise ValueError('crosswind is too strong to maintain the prescribed track')
+
+    air_parallel = np.sqrt(horizontal_airspeed**2 - wind_cross**2)
+    ground_speed = air_parallel + wind_parallel
+    if ground_speed <= 0:
+        raise ValueError('wind produces non-positive along-track ground speed')
+
+    # Difference between an aircraft's heading (where the nose is pointed)
+    # and its actual track over the ground
+    crab_angle = np.arctan2(-wind_cross, air_parallel)
+    heading = (track_azimuth + np.rad2deg(crab_angle)) % 360
+    return GroundTrackVector(float(ground_speed), float(heading))
 
 
 class Weather:
@@ -243,6 +281,19 @@ class Weather:
             Ground speed [m/s]
         """
 
+        return self.get_track_vector(
+            time, gt_point, altitude, true_airspeed, azimuth
+        ).ground_speed
+
+    def get_track_vector(
+        self,
+        time: pd.Timestamp,
+        gt_point: GroundTrack.Point,
+        altitude: float,
+        horizontal_airspeed: float,
+        track_azimuth: float | None = None,
+    ) -> GroundTrackVector:
+        """Compute ground speed and crabbed heading along a prescribed track."""
         self._require_data(time)
         assert self._ds is not None
 
@@ -260,12 +311,11 @@ class Weather:
         if wind_u.isnull().values.any() or wind_v.isnull().values.any():
             raise ValueError('ground track point is outside weather data domain')
 
-        if azimuth is None:
-            heading_rad = np.deg2rad(gt_point.azimuth)
-        else:
-            heading_rad = np.deg2rad(azimuth)
-
-        u_air = true_airspeed * np.cos(heading_rad)
-        v_air = true_airspeed * np.sin(heading_rad)
-
-        return float(np.hypot(u_air + wind_u, v_air + wind_v))
+        if track_azimuth is None:
+            track_azimuth = gt_point.azimuth
+        return solve_track_vector(
+            track_azimuth,
+            horizontal_airspeed,
+            wind_east=wind_u.item(),
+            wind_north=wind_v.item(),
+        )
