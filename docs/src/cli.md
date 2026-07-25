@@ -1,12 +1,13 @@
 # CLI reference
 
-AEIC installs a single entry-point command, `aeic`, which exposes six
+AEIC installs a single entry-point command, `aeic`, which exposes seven
 subcommands covering the end-to-end inventory workflow:
 
 | Subcommand | Purpose |
 |------------|---------|
 | `aeic convert-oag-data` | Convert an OAG CSV file to a mission database. See [OAG flight data](oag.md). |
-| `aeic make-performance-model` | Build a performance model TOML file. See [Performance model files](performance_models/performance_model_files.md). |
+| `aeic make-performance-model` | Build a `legacy` (BADA-derived) performance model TOML file. See [Performance model files](performance_models/performance_model_files.md). |
+| `aeic make-piano-performance-model` | Build a `piano`-derived performance model TOML file. See [Piano performance model](performance_models/piano_performance_model.md). |
 | `aeic run` | Simulate trajectories for the missions in a database. See [below](#aeic-run). |
 | `aeic merge-stores` | Merge per-slice trajectory stores produced by parallel simulation runs. See [below](#aeic-merge-stores). |
 | `aeic make-file-bundle` | Build a reproducibility bundle containing every file referenced by a trajectory store. See [below](#aeic-make-file-bundle). |

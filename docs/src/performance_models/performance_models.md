@@ -20,5 +20,6 @@ intended to be extensible to more complex use cases.
 
 performance_model_api.md
 legacy_performance_model.md
+piano_performance_model.md
 performance_model_files.md
 ```
