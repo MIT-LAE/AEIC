@@ -1,13 +1,15 @@
 import tomllib
 
+import numpy as np
 import pandas as pd
 import pytest
 
 import AEIC.trajectories.builders as tb
+from AEIC.config.emissions import ClimbDescentMode
 from AEIC.emissions import compute_emissions
 from AEIC.missions import Mission
 from AEIC.performance.models import PerformanceModel
-from AEIC.types import Fuel
+from AEIC.types import Fuel, Species
 from AEIC.verification.legacy import LegacyTrajectory, process_matlab_csvs
 from AEIC.verification.metrics import out_of_tolerance
 
@@ -91,6 +93,20 @@ def test_matlab_verification(test_data_dir) -> None:
 
         # Record any metrics that are outside tolerance.
         bad_metrics = out_of_tolerance(metrics, mape_pct_tol=0.25)
+
+        # MATLAB computes per-leg fuel burn with diff(fuelBurnFlight), so its
+        # aircraft-mass differences are an independent oracle for both the
+        # amount and point alignment of Python's fuel_burn_per_segment.
+        matlab_fuel_burn = (
+            legacy_traj.aircraft_mass[:-1] - legacy_traj.aircraft_mass[1:]
+        )
+        python_fuel_burn = new_traj.fuel_burn_per_segment[:-1]
+        normalized_mae = np.mean(np.abs(python_fuel_burn - matlab_fuel_burn)) / (
+            np.mean(matlab_fuel_burn)
+        )
+        if normalized_mae > 0.01 or new_traj.fuel_burn_per_segment[-1] != 0.0:
+            bad_metrics.append('fuel_burn_per_segment')
+
         if len(bad_metrics) > 0:
             failed.append((mission.label, bad_metrics))
 
@@ -102,6 +118,43 @@ def test_matlab_verification(test_data_dir) -> None:
                 print(f'    {m}')
 
     assert len(failed) == 0, 'Missions with metrics outside tolerance'
+
+
+@pytest.mark.config_updates(
+    use_weather=False,
+    emissions__climb_descent_mode=ClimbDescentMode.LTO,
+)
+def test_lto_cruise_segments_match_matlab(test_data_dir) -> None:
+    """The Python LTO slice selects the same physical legs as MATLAB.
+
+    ``cruiseEmissions_byFlight.m`` classifies a leg from point ``i`` to
+    ``i + 1`` as cruise when ``diff(altFlight) == 0`` and evaluates that leg
+    at point ``i``. The committed MATLAB trajectories provide the independent
+    altitude profile used here.
+    """
+    data_dir = test_data_dir / 'verification/legacy'
+    legacy_dir = data_dir / 'matlab-output'
+    pm = PerformanceModel.load(data_dir / 'performance-model.toml')
+
+    with open(data_dir / 'missions.toml', 'rb') as fp:
+        missions = Mission.from_toml(tomllib.load(fp))
+    with open(data_dir / 'fuel.toml', 'rb') as fp:
+        fuel = Fuel.model_validate(tomllib.load(fp))
+
+    builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+    for mission in missions:
+        matlab_traj = LegacyTrajectory(legacy_dir / f'{mission.label}.csv').trajectory()
+        python_traj = builder.fly(pm, mission)
+        emissions = compute_emissions(pm, fuel, python_traj)
+
+        matlab_cruise_legs = np.diff(matlab_traj.altitude) == 0.0
+        python_emitted_legs = emissions.trajectory_emissions[Species.CO2][:-1] > 0.0
+
+        np.testing.assert_array_equal(
+            python_emitted_legs,
+            matlab_cruise_legs,
+            err_msg=f'Cruise segment mismatch for {mission.label}',
+        )
 
 
 def _write_csv(path, rows):
