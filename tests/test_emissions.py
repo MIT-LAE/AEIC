@@ -542,10 +542,10 @@ def test_get_gse_emissions_matches_reference_profile(fuel):
     kg_to_g = 1000.0
     eps = 0.02
     mw_o2, mw_so2, mw_so4 = 32.0, 64.0, 96.0
-    so4 = fsc * kg_to_g * eps * (mw_so4 / mw_o2)
-    so2 = fsc * kg_to_g * (1.0 - eps) * (mw_so2 / mw_o2)
-
     gse_fuel = co2_wide / fuel.EI_CO2
+    so4 = fsc * kg_to_g * eps * (mw_so4 / mw_o2) * gse_fuel
+    so2 = fsc * kg_to_g * (1.0 - eps) * (mw_so2 / mw_o2) * gse_fuel
+
     expected = SpeciesValues[float](
         {
             Species.CO2: co2_wide,

@@ -39,10 +39,11 @@ def get_GSE_emissions(
     MWT_O2 = 16.0 * 2
     MWT_SO2 = 32.0 + 16.0 * 2
     MWT_SO4 = 32.0 + 16.0 * 4
-    # g SO₄ per kg fuel:
-    gse[Species.SO4] = GSE_FSC * KG_TO_GRAMS * GSE_EPS * (MWT_SO4 / MWT_O2)
-    # g SO₂ per kg fuel:
-    gse[Species.SO2] = GSE_FSC * KG_TO_GRAMS * (1.0 - GSE_EPS) * (MWT_SO2 / MWT_O2)
+    # Convert the MATLAB emission indices [g / kg fuel] to per-cycle grams.
+    so4_ei = GSE_FSC * KG_TO_GRAMS * GSE_EPS * (MWT_SO4 / MWT_O2)
+    so2_ei = GSE_FSC * KG_TO_GRAMS * (1.0 - GSE_EPS) * (MWT_SO2 / MWT_O2)
+    gse[Species.SO4] = so4_ei * gse_fuel
+    gse[Species.SO2] = so2_ei * gse_fuel
     gse[Species.SOx] = gse[Species.SO4] + gse[Species.SO2]
 
     # Subtract sulfate from core PM₁₀ and map remainder to nvPM.
