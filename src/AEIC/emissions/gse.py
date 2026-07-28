@@ -53,6 +53,13 @@ def get_GSE_emissions(
     if Species.nvPM_N in config.emissions.enabled_species:
         gse[Species.nvPM_N] = 0.0
 
+    gse = SpeciesValues[float](
+        {
+            species: value
+            for species, value in gse.items()
+            if species in config.emissions.enabled_species
+        }
+    )
     return EmissionsSubset(emissions=gse, fuel_burn=gse_fuel)
 
 

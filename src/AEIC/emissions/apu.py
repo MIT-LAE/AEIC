@@ -6,6 +6,7 @@ from AEIC.performance.types import ThrustMode, ThrustModeValues
 from AEIC.types import Fuel, Species, SpeciesValues
 
 from .ei.nox import NOx_speciation
+from .ei.sox import EI_SOx
 
 
 def get_APU_emissions(
@@ -36,12 +37,9 @@ def get_APU_emissions(
     apu_fuel_burn = apu.fuel_kg_per_s * apu_time
 
     # SOx
-    indices[Species.SO2] = (
-        lto_indices[Species.SO2][ThrustMode.IDLE] if apu_running else 0.0
-    )
-    indices[Species.SO4] = (
-        lto_indices[Species.SO4][ThrustMode.IDLE] if apu_running else 0.0
-    )
+    sox = EI_SOx(fuel)
+    indices[Species.SO2] = sox.EI_SO2 if apu_running else 0.0
+    indices[Species.SO4] = sox.EI_SO4 if apu_running else 0.0
     indices[Species.SOx] = indices[Species.SO2] + indices[Species.SO4]
 
     # Non-volatile PM estimate (deterministic BC fraction of 0.95).
@@ -79,6 +77,13 @@ def get_APU_emissions(
     else:
         indices[Species.CO2] = 0.0
 
+    indices = SpeciesValues[float](
+        {
+            species: value
+            for species, value in indices.items()
+            if species in config.emissions.enabled_species
+        }
+    )
     for species in indices:
         emissions[species] = indices[species] * apu_fuel_burn
 

@@ -326,6 +326,24 @@ def test_apu_disabled_short_circuits(perf_model, fuel, trajectory):
     assert dict(output.apu_emissions) == {}
 
 
+@pytest.mark.config_updates(
+    emissions__co2_enabled=False,
+    emissions__h2o_enabled=False,
+    emissions__sox_enabled=False,
+    emissions__nox_method='none',
+    emissions__hc_method='none',
+    emissions__co_method='none',
+    emissions__nvpm_method='none',
+    emissions__lifecycle_enabled=False,
+)
+def test_apu_and_gse_exclude_disabled_species(perf_model, fuel, trajectory):
+    emissions = compute_emissions(perf_model, fuel, trajectory)
+
+    assert set(emissions.apu_indices) == set()
+    assert set(emissions.apu_emissions) == set()
+    assert set(emissions.gse_emissions) == set()
+
+
 @pytest.mark.config_updates(emissions__lifecycle_enabled=True)
 def test_lifecycle_co2_replaces_operational_co2_for_all_fuel(
     perf_model, fuel, trajectory
