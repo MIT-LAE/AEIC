@@ -326,6 +326,29 @@ def test_apu_disabled_short_circuits(perf_model, fuel, trajectory):
     assert dict(output.apu_emissions) == {}
 
 
+@pytest.mark.config_updates(emissions__lifecycle_enabled=True)
+def test_lifecycle_co2_replaces_operational_co2_for_all_fuel(
+    perf_model, fuel, trajectory
+):
+    emissions = compute_emissions(perf_model, fuel, trajectory)
+    operational_co2 = (
+        np.sum(emissions.trajectory_emissions[Species.CO2])
+        + emissions.lto_emissions[Species.CO2].sum()
+        + emissions.apu_emissions[Species.CO2]
+        + emissions.gse_emissions[Species.CO2]
+    )
+    expected_lifecycle_total = (
+        fuel.lifecycle_CO2 * fuel.energy_MJ_per_kg * emissions.total_fuel_burn
+    )
+
+    assert emissions.total_emissions[Species.CO2] == pytest.approx(
+        expected_lifecycle_total
+    )
+    assert emissions.lifecycle_co2 == pytest.approx(
+        expected_lifecycle_total - operational_co2
+    )
+
+
 def test_scope11_profile_caching(perf_model):
     profile_first = scope11_profile(perf_model.edb)
     profile_second = scope11_profile(perf_model.edb)

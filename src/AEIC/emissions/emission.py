@@ -215,7 +215,11 @@ def compute_emissions(
         Species.CO2 in config.emissions.enabled_species
         and config.emissions.lifecycle_enabled
     ):
-        lifecycle_adjustment = get_lifecycle_emissions(fuel, traj)
+        lifecycle_adjustment = get_lifecycle_emissions(
+            fuel,
+            total_fuel_burn,
+            emissions.total_emissions[Species.CO2],
+        )
         emissions.total_emissions[Species.CO2] += lifecycle_adjustment
         emissions.lifecycle_co2 = lifecycle_adjustment
 
@@ -248,9 +252,13 @@ def sum_total_emissions(
     return result
 
 
-def get_lifecycle_emissions(fuel: Fuel, traj) -> float:
-    """Calculate lifecycle CO₂ adjustments."""
+def get_lifecycle_emissions(
+    fuel: Fuel,
+    total_fuel_burn: float,
+    operational_co2: float,
+) -> float:
+    """Return the adjustment from operational to lifecycle CO₂ emissions."""
     if fuel.lifecycle_CO2 is None:
         raise RuntimeError('Lifecycle CO2 data not available for selected fuel.')
-    fuel_used = traj.fuel_mass[0] - traj.fuel_mass[-1]
-    return float(fuel.lifecycle_CO2 * (fuel_used * fuel.energy_MJ_per_kg))
+    lifecycle_total = fuel.lifecycle_CO2 * total_fuel_burn * fuel.energy_MJ_per_kg
+    return float(lifecycle_total - operational_co2)
