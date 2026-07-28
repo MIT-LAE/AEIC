@@ -13,6 +13,7 @@ from AEIC.emissions.gse import get_GSE_emissions
 from AEIC.emissions.trajectory import (
     _calculate_EI_nvPM,
     _trajectory_slice,
+    compute_EI_NOx,
 )
 from AEIC.emissions.types import AtmosphericState
 from AEIC.emissions.utils import (
@@ -128,6 +129,29 @@ def test_emissions_species(emissions):
     species and added a stray duplicate.
     """
     assert emissions.species == set(Species)
+
+
+def test_bffm2_failure_is_not_silently_dropped(monkeypatch, perf_model, trajectory):
+    """Match MATLAB's fail-fast BFFM2 call instead of omitting NOx."""
+    error = RuntimeError('invalid BFFM2 calibration')
+
+    def fail_bffm2(**_kwargs):
+        raise error
+
+    monkeypatch.setattr(
+        'AEIC.emissions.trajectory.BFFM2_EINOx',
+        fail_bffm2,
+    )
+    atmos_state = AtmosphericState(trajectory.altitude, trajectory.true_airspeed)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        compute_EI_NOx(
+            perf_model.lto,
+            atmos_state,
+            np.ones(len(trajectory)),
+        )
+
+    assert exc_info.value is error
 
 
 def _expected_trajectory_indices(perf_model, trajectory):
