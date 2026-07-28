@@ -34,11 +34,12 @@ query = missions.Query(
     # Filter on flight characteristics.
     filter=missions.Filter(
         # Flight distance between 9500 and 10000 kilometers.
-        min_distance=9500, max_distance=10000,
+        min_distance=9500,
+        max_distance=10000,
         # Seat capacity >= 500.
         min_seat_capacity=500,
         # Flight origin or destination in US or Canada.
-        country=['US', 'CA']
+        country=['US', 'CA'],
     )
 )
 
@@ -168,7 +169,9 @@ Return all **flight instances** for all **flights** with a distance between
 1000 and 5000 kilometers:
 
 ```python
-q = AEIC.missions.Query(filter=AEIC.missions.Filter(min_distance=1000, max_distance=5000))
+q = AEIC.missions.Query(
+    filter=AEIC.missions.Filter(min_distance=1000, max_distance=5000)
+)
 ```
 
 Return a random 5% sample of **flight instances** for all flights between
@@ -184,12 +187,10 @@ day starting on March 1 2019:
 ```python
 q = AEIC.missions.Query(
     filter=AEIC.missions.Filter(
-        origin_country='FR',
-        destination_country='CN',
-        aircraft_type='787'
+        origin_country='FR', destination_country='CN', aircraft_type='787'
     ),
     start_date=date(2019, 3, 1),
-    every_nth=8
+    every_nth=8,
 )
 ```
 

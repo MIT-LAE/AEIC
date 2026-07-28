@@ -138,11 +138,11 @@ instead of going through `__setattr__`:
 ```python
 # Before
 for k, v in per_traj_data[i].items():
-    setattr(traj, k, v)          # -> convert_in -> _cast per field
+    setattr(traj, k, v)  # -> convert_in -> _cast per field
 
 # After
 for k, v in per_traj_data[i].items():
-    traj._data[k] = v            # trusted: data is from NetCDF slab read
+    traj._data[k] = v  # trusted: data is from NetCDF slab read
 ```
 
 This bypass is confined to the private `_load_trajectories` method.
@@ -310,11 +310,11 @@ an entire index array — is paid once per element instead of once total.
 ```python
 # Bad: reads the full flight_id index array on every iteration
 for flight in result:
-    traj = store.get_flight(flight.flight_id)   # O(M) I/O × N times
+    traj = store.get_flight(flight.flight_id)  # O(M) I/O × N times
 
 # Good: read the index once, then map all IDs in one vectorized pass
 flight_ids = [flight.flight_id for flight in result]
-yield from store.iter_flight_ids(flight_ids)    # O(M) I/O × 1 time
+yield from store.iter_flight_ids(flight_ids)  # O(M) I/O × 1 time
 ```
 
 The pattern generalises: if a lookup helper re-reads any shared resource

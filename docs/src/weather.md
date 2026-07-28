@@ -39,15 +39,15 @@ weather = Weather('data/weather', file_resolution=TemporalResolution.DAILY)
 
 # Build a great-circle track between two locations.
 track = GroundTrack.great_circle(
-    Location(longitude=-71.0, latitude=42.4),   # origin
-    Location(longitude=-0.5, latitude=51.5),    # destination
+    Location(longitude=-71.0, latitude=42.4),  # origin
+    Location(longitude=-0.5, latitude=51.5),  # destination
 )
 
 ground_speed = weather.get_ground_speed(
     time=pd.Timestamp('2024-09-01 12:00:00', tz='UTC'),
     gt_point=track.location(5000.0),  # 5 km along the track
-    altitude=10000.0,                  # meters above sea level
-    true_airspeed=230.0,               # m/s
+    altitude=10000.0,  # meters above sea level
+    true_airspeed=230.0,  # m/s
 )
 ```
 

@@ -1881,8 +1881,7 @@ algorithm. The Phase 5 note already lists "atmospheric state" and
   ```python
   @contextmanager
   @staticmethod
-  def escape():
-      ...
+  def escape(): ...
   ```
   Applying `@contextmanager` *outside* `@staticmethod` is unusual —
   `staticmethod` produces a descriptor, which `contextmanager` then

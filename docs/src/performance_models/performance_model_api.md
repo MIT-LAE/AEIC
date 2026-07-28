@@ -89,8 +89,7 @@ from AEIC.performance.types import AircraftState, SimpleFlightRules
 from AEIC.units import FL_TO_METERS
 
 # Load default AEIC configuration.
-Config.load();
-
+Config.load()
 # Load (table-based legacy) performance model.
 model = PerformanceModel.load(
     config.file_location('performance/sample_performance_model.toml')
@@ -98,7 +97,7 @@ model = PerformanceModel.load(
 assert isinstance(model, LegacyPerformanceModel)
 
 # Create aircraft state.
-state = AircraftState(altitude=350*FL_TO_METERS, aircraft_mass=70000)
+state = AircraftState(altitude=350 * FL_TO_METERS, aircraft_mass=70000)
 
 # Evaluate performance model for state and flight rules.
 perf = model.evaluate(state, SimpleFlightRules.CLIMB)

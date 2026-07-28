@@ -32,11 +32,10 @@ from AEIC.emissions import compute_emissions
 from AEIC.performance.types import ThrustMode
 from AEIC.types import Fuel, Species
 
-Config.load();
-
-perf = PerformanceModel.load(config.file_location(
-    'performance/sample_performance_model.toml'
-))
+Config.load()
+perf = PerformanceModel.load(
+    config.file_location('performance/sample_performance_model.toml')
+)
 
 missions_file = config.file_location('missions/sample_missions_10.toml')
 with open(missions_file, 'rb') as f:

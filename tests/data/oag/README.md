@@ -23,7 +23,7 @@ columns including `carrier`, `fltno`, `depapt`, `arrapt`, `deptim`,
 `test_oag_conversion` asserts:
 
 ```python
-assert cur.fetchone()[0] == 8   # COUNT(*) FROM flights
+assert cur.fetchone()[0] == 8  # COUNT(*) FROM flights
 ```
 
 In this extract, 8 of the 29 input rows are converted into flight
