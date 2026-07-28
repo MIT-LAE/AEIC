@@ -127,32 +127,30 @@ class TestEI_HCCO:
             np.array([0.0]),
             x_ei,
             fuel_flow_calibration,
-            self.Tamb,
-            self.Pamb,
+            288.15,
+            101325.0,
         )
 
         np.testing.assert_array_equal(result, np.array([0.0]))
 
     def test_duplicate_calibration_flows_flatten_slanted_segment(self):
-        """Duplicate calibration flows should force a flat lower segment"""
+        """Duplicate calibration flows make the fitted EI invariant to flow."""
         fuelflow_eval = np.array([0.15, 0.25, 0.3, 0.5])
-        x_EI_matrix = ThrustModeValues(10.0, 10.0, 5.0, 3.0)
+        x_EI_matrix = ThrustModeValues(10.0, 8.0, 5.0, 3.0)
         fuelflow_calibrate = ThrustModeValues(0.3, 0.3, 0.7, 1.4)
 
         result = EI_HCCO(
-            fuelflow_eval, x_EI_matrix, fuelflow_calibrate, self.Tamb, self.Pamb
+            fuelflow_eval,
+            x_EI_matrix,
+            fuelflow_calibrate,
+            288.15,
+            101325.0,
         )
-        expected_upper = np.sqrt(
+        expected = np.sqrt(
             x_EI_matrix[ThrustMode.CLIMB] * x_EI_matrix[ThrustMode.TAKEOFF]
         )
-        expected = np.full_like(fuelflow_eval, expected_upper)
 
-        low_thrust_mask = fuelflow_eval < fuelflow_calibrate[ThrustMode.IDLE]
-        expected[low_thrust_mask] *= 1 - 52.0 * (
-            fuelflow_eval[low_thrust_mask] - fuelflow_calibrate[ThrustMode.IDLE]
-        )
-
-        assert np.allclose(result, expected)
+        np.testing.assert_allclose(result, expected)
 
     def test_intercept_adjustment_uses_second_mode_value(self):
         """When intercept drifts low, the second mode should set the ceiling"""

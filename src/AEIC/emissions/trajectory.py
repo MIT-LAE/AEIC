@@ -117,25 +117,17 @@ def compute_EI_NOx(
         case EINOxMethod.NONE:
             pass
         case EINOxMethod.BFFM2:
-            try:
-                bffm2_result = BFFM2_EINOx(
-                    sls_equiv_fuel_flow=sls_equiv_fuel_flow,
-                    EI_NOx_matrix=lto.EI_NOx,
-                    fuelflow_performance=lto.fuel_flow,
-                    Pamb=atmos_state.pressure,
-                    Tamb=atmos_state.temperature,
-                )
-                indices[Species.NOx] = bffm2_result.NOxEI
-                indices[Species.NO] = bffm2_result.NOEI
-                indices[Species.NO2] = bffm2_result.NO2EI
-                indices[Species.HONO] = bffm2_result.HONOEI
-            except Exception:
-                print('BBFM2 NOx calculation failed.')
-                print(f'sls_equiv_fuel_flow: {sls_equiv_fuel_flow}')
-                print(f'EI_NOx_matrix: {lto.EI_NOx}')
-                print(f'fuelflow_performance: {lto.fuel_flow}')
-                print(f'Pamb: {atmos_state.pressure}')
-                print(f'Tamb: {atmos_state.temperature}')
+            bffm2_result = BFFM2_EINOx(
+                sls_equiv_fuel_flow=sls_equiv_fuel_flow,
+                EI_NOx_matrix=lto.EI_NOx,
+                fuelflow_performance=lto.fuel_flow,
+                Pamb=atmos_state.pressure,
+                Tamb=atmos_state.temperature,
+            )
+            indices[Species.NOx] = bffm2_result.NOxEI
+            indices[Species.NO] = bffm2_result.NOEI
+            indices[Species.NO2] = bffm2_result.NO2EI
+            indices[Species.HONO] = bffm2_result.HONOEI
         case EINOxMethod.P3T3:
             print("P3T3 method not implemented yet..")
         case _:
