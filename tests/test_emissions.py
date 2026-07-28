@@ -585,3 +585,23 @@ def test_get_gse_emissions_matches_reference_profile(fuel):
         assert result[species] == pytest.approx(value)
     if Species.nvPM_N in result:
         assert result[Species.nvPM_N] == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize(
+    ('aircraft_class', 'matlab_pm10'),
+    [
+        (AircraftClass.WIDE, 55.0),
+        (AircraftClass.NARROW, 25.0),
+        (AircraftClass.SMALL, 20.0),
+        (AircraftClass.FREIGHT, 55.0),
+    ],
+)
+def test_gse_nvpm_matches_matlab_pm_remainder(aircraft_class, matlab_pm10, fuel):
+    gse = get_GSE_emissions(aircraft_class, fuel)
+    matlab_so4_ei = 5.0e-6 * 1000.0 * 0.02 * (96.0 / 32.0)
+    expected_so4 = matlab_so4_ei * gse.fuel_burn
+
+    assert gse.emissions[Species.SO4] == pytest.approx(expected_so4)
+    assert gse.emissions[Species.nvPM] + gse.emissions[Species.SO4] == pytest.approx(
+        matlab_pm10
+    )
