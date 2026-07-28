@@ -318,7 +318,7 @@ class LegacyBuilder(Builder):
                 flight_rule,
             )
 
-            fwd_tas = np.sqrt(perf.true_airspeed**2 - perf.rate_of_climb**2)
+            horizontal_airspeed = np.sqrt(perf.true_airspeed**2 - perf.rate_of_climb**2)
 
             # Time to complete altitude change segment and total fuel burned.
             seg_time = (end_altitude - start_altitude) / perf.rate_of_climb
@@ -326,14 +326,14 @@ class LegacyBuilder(Builder):
 
             # Ground speed, including weather effects if required.
             if self.weather is None:
-                pt.ground_speed = fwd_tas
+                pt.ground_speed = horizontal_airspeed
                 pt.heading = pt.azimuth
             else:
                 track_vector = self.weather.get_track_vector(
                     time=self.mission.departure,
                     gt_point=self.ground_track.location(pt.ground_distance),
                     altitude=start_altitude,
-                    horizontal_airspeed=fwd_tas,
+                    horizontal_airspeed=horizontal_airspeed,
                     track_azimuth=pt.azimuth,
                 )
                 pt.ground_speed, pt.heading = (
