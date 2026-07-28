@@ -127,7 +127,7 @@ def EI_HCCO(
     # Lower segment: log_ff < x_intercept
     lower_mask = positive_mask & (log_ff < x_intercept)
     # Upper segment: log_ff >= x_intercept
-    upper_mask = log_ff >= x_intercept
+    upper_mask = positive_mask & (log_ff >= x_intercept)
 
     # Slanted‐line formula for "lower" points
     if np.any(lower_mask):
