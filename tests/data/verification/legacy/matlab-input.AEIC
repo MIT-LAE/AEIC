@@ -1,0 +1,60 @@
+%==============================================================================
+% Deterministic B738 MATLAB/Python verification run.
+% Generated schedule times are UTC and wind is disabled with
+% AEIC_USE_WEATHER=0 when the job is submitted.
+%==============================================================================
+%%% GENERAL MENU %%%     :
+Required year [YYYY]     : 2019
+Scenario name            : verification_738_nowx
+BADA location            : BADA
+Output folder            : Emission_Files/%s
+Time frequency [Y/M/D/H] : Y
+-------------------------+
+Monte Carlo?             : F
+Monte Carlo loops        : 1
+-------------------------+-----------------------------------------------------
+%%% POST-PROCESSORS %%%  :
+Post-process GEOS-Chem   : F
+=> Output folder         : GEOS-Chem_Emission
+-------------------------+
+Post-process CERM        : F
+=> Output folder         : cerm_inputs/%s
+=> Overwrite?            : T
+-------------------------+-------------------------------------------------------
+%%% SCHEDULE MENU %%%    :
+Schedule folder          : Schedule_Files/
+Airport folder           : Airport_Files_verification_738_nowx_24
+Airport files ready?     : F
+--- If no ---------------:
+Schedule for target Y?   : T
+=> Path to schedule      : Schedule_Files/matlab-verification-738-nowx-24.csv
+=> OAG format?           : OAG
+=> Local times?          : F
+=> Airport filter list   : ALLAirports.txt
+-------------------------+-------------------------------------------------------
+%%% EMISSION MENU %%%    :
+Grid emissions?          : T
+Cruise emissions?        : T
+Engine Eqp input         : EQP_ENG_2022_newENGINEnames.csv
+Engine LTO input         : ENG_EI_UIDs_modeSN_2022_newENGINEnames_CFM56_7B_modified.csv
+-------------------------+
+Methods                  :
+=> PMnvol_LTO            : FOA3
+=> PMnvol_Cruise         : FOA3
+=> PMvol                 : FOA3
+=> NOx                   : BFFM2
+-------------------------+
+Tech. improvement?       : -1
+=> Rate [%/year]         : 1.0
+-------------------------+
+Vary altitude            : F
+Aircraft codes input     : /home/aditeya/ZEN_AEIC/Schedule_Files/aircraftCodes.txt
+Fuel EI CO2              : 3160
+Fuel EI H2O              : 1230
+Fuel LHV [MJ/kg]         : 43.8
+Grid LTO?                : F
+-------------------------+-------------------------------------------------------
+%%% DEBUG MENU %%%       :
+Profile code?            : F
+ => Memory profiling?    : F
+ => Output folder        : Profiling
