@@ -1,47 +1,243 @@
-[[flight]]
-origin = "SFO"
-destination = "ATL"
-departure = "2019-01-01T06:00:00"
-arrival = "2019-01-01T13:33:00"
-aircraft_type = "738"
-load_factor = 1.0
+# Consistent mission input for MATLAB/Python legacy verification.
+#
+# Departure and arrival timestamps are UTC.
 
-[[flight]]
-origin = "BOS"
-destination = "LAX"
-departure = "2019-01-01T12:00:00"
-arrival = "2019-01-01T18:33:00"
-aircraft_type = "738"
-load_factor = 1.0
-
-[[flight]]
-origin = "JFK"
-destination = "ORD"
-departure = "2019-01-01T13:00:00"
-arrival = "2019-01-01T14:48:00"
-aircraft_type = "738"
-load_factor = 1.0
-
-[[flight]]
-origin = "BOS"
-destination = "MIA"
-departure = "2019-01-01T05:45:00"
-arrival = "2019-01-01T09:26:00"
-aircraft_type = "738"
-load_factor = 1.0
-
+# Short: US west coast regional route.
 [[flight]]
 origin = "SJC"
 destination = "LAX"
-departure = "2019-01-01T09:40:00"
-arrival = "2019-01-01T11:00:00"
+departure = "2019-01-01T09:40:00Z"
+arrival = "2019-01-01T11:00:00Z"
 aircraft_type = "738"
 load_factor = 1.0
+seats = 154
 
+# Very short: US west coast.
 [[flight]]
-origin = "PHX"
-destination = "IAD"
-departure = "2019-01-01T09:40:00"
-arrival = "2019-01-01T11:00:00"
+origin = "LAX"
+destination = "SFO"
+departure = "2019-01-12T13:00:00Z"
+arrival = "2019-01-12T14:39:00Z"
 aircraft_type = "738"
 load_factor = 1.0
+seats = 154
+
+# Very short: high-elevation origin in South America.
+[[flight]]
+origin = "LPB"
+destination = "VVI"
+departure = "2019-08-01T09:50:00Z"
+arrival = "2019-08-01T10:55:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 168
+
+# Short: northern Pacific.
+[[flight]]
+origin = "HND"
+destination = "CTS"
+departure = "2019-01-07T21:15:00Z"
+arrival = "2019-01-07T22:45:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 166
+
+# Short: near-equatorial international.
+[[flight]]
+origin = "SIN"
+destination = "CGK"
+departure = "2019-01-07T23:25:00Z"
+arrival = "2019-01-08T01:15:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 156
+
+# Short: high latitude.
+[[flight]]
+origin = "OSL"
+destination = "TOS"
+departure = "2019-01-14T06:00:00Z"
+arrival = "2019-01-14T07:55:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 181
+
+# Short: southern Africa.
+[[flight]]
+origin = "JNB"
+destination = "CPT"
+departure = "2019-01-02T03:55:00Z"
+arrival = "2019-01-02T06:05:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 186
+
+# Medium: South Asia, elevated destination.
+[[flight]]
+origin = "DEL"
+destination = "BLR"
+departure = "2019-01-01T02:40:00Z"
+arrival = "2019-01-01T05:20:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 168
+
+# Medium: east-west China.
+[[flight]]
+origin = "PEK"
+destination = "SZX"
+departure = "2019-01-17T23:55:00Z"
+arrival = "2019-01-18T03:35:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 125
+
+# Medium: southwest Pacific international.
+[[flight]]
+origin = "AKL"
+destination = "NAN"
+departure = "2019-05-04T14:25:00Z"
+arrival = "2019-05-04T17:35:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 165
+
+# Medium: high-latitude North America.
+[[flight]]
+origin = "ANC"
+destination = "SEA"
+departure = "2019-01-01T08:30:00Z"
+arrival = "2019-01-01T11:56:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 154
+
+# Medium-long: western Pacific.
+[[flight]]
+origin = "GUM"
+destination = "NRT"
+departure = "2019-01-01T03:05:00Z"
+arrival = "2019-01-01T07:00:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 154
+
+# Medium-long: Caribbean.
+[[flight]]
+origin = "JFK"
+destination = "SJU"
+departure = "2019-01-05T16:57:00Z"
+arrival = "2019-01-05T21:51:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 154
+
+# Medium-long: equatorial South America.
+[[flight]]
+origin = "GRU"
+destination = "MAO"
+departure = "2019-01-01T14:40:00Z"
+arrival = "2019-01-01T17:30:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 177
+
+# Medium-long: southern South America.
+[[flight]]
+origin = "EZE"
+destination = "LIM"
+departure = "2019-01-01T22:00:00Z"
+arrival = "2019-01-02T02:50:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 170
+
+# Medium-long: high-elevation endpoints.
+[[flight]]
+origin = "BOG"
+destination = "MEX"
+departure = "2019-10-29T01:46:00Z"
+arrival = "2019-10-29T05:37:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 180
+
+# Long: transcontinental US.
+[[flight]]
+origin = "SFO"
+destination = "ATL"
+departure = "2019-01-05T17:40:00Z"
+arrival = "2019-01-05T22:15:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 154
+
+# Long: Southeast Asia.
+[[flight]]
+origin = "HKG"
+destination = "DPS"
+departure = "2019-03-31T07:45:00Z"
+arrival = "2019-03-31T12:45:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 156
+
+# Long: overnight Europe to North Africa.
+[[flight]]
+origin = "LHR"
+destination = "CAI"
+departure = "2019-01-01T21:30:00Z"
+arrival = "2019-01-02T03:10:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 144
+
+# Long: crosses the international date line.
+[[flight]]
+origin = "HNL"
+destination = "MAJ"
+departure = "2019-01-07T17:25:00Z"
+arrival = "2019-01-07T22:35:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 154
+
+# Near range limit: crosses the equator.
+[[flight]]
+origin = "ADD"
+destination = "JNB"
+departure = "2019-01-01T12:30:00Z"
+arrival = "2019-01-01T17:55:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 154
+
+# Near range limit: eastern Africa.
+[[flight]]
+origin = "CPT"
+destination = "NBO"
+departure = "2019-01-01T21:00:00Z"
+arrival = "2019-01-02T02:45:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 145
+
+# Near range limit: oceanic.
+[[flight]]
+origin = "LAX"
+destination = "HNL"
+departure = "2019-04-27T16:25:00Z"
+arrival = "2019-04-27T22:20:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 183
+
+# Longest case: transcontinental US.
+[[flight]]
+origin = "BOS"
+destination = "LAX"
+departure = "2019-01-11T11:45:00Z"
+arrival = "2019-01-11T18:20:00Z"
+aircraft_type = "738"
+load_factor = 1.0
+seats = 154

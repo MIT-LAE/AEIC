@@ -300,7 +300,11 @@ class LegacyBuilder(Builder):
             if flight_phase == FlightPhase.CLIMB
             else -self.altitude_step,
         )
-        if (flight_phase == FlightPhase.CLIMB and altitudes[-1] < final_altitude) or (
+        # Snap floating-point step accumulation to the exact endpoint
+        # to avoid a near-zero extra segment.
+        if np.isclose(altitudes[-1], final_altitude, rtol=0.0, atol=1e-9):
+            altitudes[-1] = final_altitude
+        elif (flight_phase == FlightPhase.CLIMB and altitudes[-1] < final_altitude) or (
             flight_phase == FlightPhase.DESCENT and altitudes[-1] > final_altitude
         ):
             altitudes = np.append(altitudes, final_altitude)

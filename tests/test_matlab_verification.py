@@ -10,17 +10,15 @@ from AEIC.emissions import compute_emissions
 from AEIC.missions import Mission
 from AEIC.performance.models import PerformanceModel
 from AEIC.types import Fuel, Species
+from AEIC.units import NAUTICAL_MILES_TO_METERS
+from AEIC.utils import GEOD
 from AEIC.verification.legacy import LegacyTrajectory, process_matlab_csvs
 from AEIC.verification.metrics import out_of_tolerance
 
 TRAJ_FIELDS = [
-    'ground_distance',
-    'latitude',
-    'longitude',
     'altitude',
     'fuel_flow',
     'aircraft_mass',
-    'azimuth',
     'true_airspeed',
     'rate_of_climb',
 ]
@@ -35,6 +33,11 @@ TRAJ_FIELD_UNITS = {
 }
 
 COMPARISON_FIELDS = TRAJ_FIELDS + ['trajectory_indices']
+MAPE_PCT_TOL = 0.15
+GROUND_DISTANCE_MAE_M_TOL = 5.0 * NAUTICAL_MILES_TO_METERS
+POSITION_ROUTE_PCT_TOL = 0.15
+AZIMUTH_MAE_DEG_TOL = 0.2
+# Both codebases use different sphere logic so higher tol for azimuth
 
 # Fields whose final-point comparison is skipped (`Trajectory.compare`
 # drops the last index for these). At touchdown the legacy MATLAB
@@ -45,6 +48,30 @@ COMPARISON_FIELDS = TRAJ_FIELDS + ['trajectory_indices']
 # tail point for `true_airspeed` only; ground-distance / altitude /
 # fuel-flow agree at the endpoint and shouldn't be skipped.
 SKIP_FINAL_POINT_FIELDS = {'true_airspeed'}
+
+
+def _position_error_pct(legacy_traj, new_traj, route_distance: float) -> float:
+    """Mean WGS84 point separation as a percentage of route distance."""
+    _, _, distance = GEOD.inv(
+        legacy_traj.longitude,
+        legacy_traj.latitude,
+        new_traj.longitude,
+        new_traj.latitude,
+    )
+    return float(np.mean(distance) / route_distance * 100.0)
+
+
+def _ground_distance_mae_m(legacy_traj, new_traj) -> float:
+    """Mean absolute cumulative ground-distance error in meters."""
+    return float(
+        np.mean(np.abs(legacy_traj.ground_distance - new_traj.ground_distance))
+    )
+
+
+def _circular_mae_deg(reference: np.ndarray, actual: np.ndarray) -> float:
+    """Mean absolute heading error with 0/360-degree wraparound."""
+    difference = (actual - reference + 180.0) % 360.0 - 180.0
+    return float(np.mean(np.abs(difference)))
 
 
 @pytest.mark.config_updates(use_weather=False)
@@ -65,7 +92,9 @@ def test_matlab_verification(test_data_dir) -> None:
         fuel = Fuel.model_validate(tomllib.load(fp))
 
     # Create a single trajectory builder to fly all missions.
-    builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+    builder = tb.LegacyBuilder(
+        options=tb.Options(iterate_mass=False, use_weather=False)
+    )
 
     failed = []
 
@@ -78,6 +107,18 @@ def test_matlab_verification(test_data_dir) -> None:
         # Simulate mission and compute emissions with new AEIC.
         new_traj = builder.fly(pm, mission)
         new_traj.add_fields(compute_emissions(pm, fuel, new_traj))
+
+        if len(legacy_traj) != len(new_traj):
+            point_count = (
+                f'point count (MATLAB={len(legacy_traj)}, Python={len(new_traj)})'
+            )
+            failed.append(
+                (
+                    mission.label,
+                    [point_count],
+                )
+            )
+            continue
 
         # For comparison, we do *not* interpolate the new AEIC trajectory
         # onto the same time points as the legacy trajectory. The match
@@ -92,7 +133,29 @@ def test_matlab_verification(test_data_dir) -> None:
         )
 
         # Record any metrics that are outside tolerance.
-        bad_metrics = out_of_tolerance(metrics, mape_pct_tol=0.25)
+        bad_metrics = out_of_tolerance(metrics, mape_pct_tol=MAPE_PCT_TOL)
+
+        ground_distance_mae_m = _ground_distance_mae_m(legacy_traj, new_traj)
+        if ground_distance_mae_m > GROUND_DISTANCE_MAE_M_TOL:
+            ground_distance_mae_nm = ground_distance_mae_m / NAUTICAL_MILES_TO_METERS
+            bad_metrics.append(
+                f'ground_distance ({ground_distance_mae_nm:.4f} nmi MAE)'
+            )
+
+        position_error_pct = _position_error_pct(
+            legacy_traj, new_traj, mission.gc_distance
+        )
+        if position_error_pct > POSITION_ROUTE_PCT_TOL:
+            bad_metrics.append(
+                f'position ({position_error_pct:.4f}% of route distance)'
+            )
+
+        # The terminal point has no outgoing leg, so its azimuth is undefined.
+        azimuth_mae_deg = _circular_mae_deg(
+            legacy_traj.azimuth[:-1], new_traj.azimuth[:-1]
+        )
+        if azimuth_mae_deg > AZIMUTH_MAE_DEG_TOL:
+            bad_metrics.append(f'azimuth ({azimuth_mae_deg:.4f} deg MAE)')
 
         # MATLAB computes per-leg fuel burn with diff(fuelBurnFlight), so its
         # aircraft-mass differences are an independent oracle for both the
@@ -141,7 +204,9 @@ def test_lto_cruise_segments_match_matlab(test_data_dir) -> None:
     with open(data_dir / 'fuel.toml', 'rb') as fp:
         fuel = Fuel.model_validate(tomllib.load(fp))
 
-    builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+    builder = tb.LegacyBuilder(
+        options=tb.Options(iterate_mass=False, use_weather=False)
+    )
     for mission in missions:
         matlab_traj = LegacyTrajectory(legacy_dir / f'{mission.label}.csv').trajectory()
         python_traj = builder.fly(pm, mission)
@@ -157,8 +222,92 @@ def test_lto_cruise_segments_match_matlab(test_data_dir) -> None:
         )
 
 
+def test_matlab_verification_case_matrix(test_data_dir) -> None:
+    """Test to check that the input mission have the intended purpose/variety"""
+    data_dir = test_data_dir / 'verification/legacy'
+    with open(data_dir / 'missions.toml', 'rb') as fp:
+        missions = Mission.from_toml(tomllib.load(fp))
+    with open(data_dir / 'fuel.toml', 'rb') as fp:
+        fuel = Fuel.model_validate(tomllib.load(fp))
+
+    assert len(missions) >= 20
+    mission_labels = {mission.label for mission in missions}
+    assert len(mission_labels) == len(missions)
+    assert {path.stem for path in (data_dir / 'matlab-output').glob('*.csv')} == (
+        mission_labels
+    )
+    assert fuel.energy_MJ_per_kg == 43.8
+    assert fuel.EI_CO2 == 3160
+    assert fuel.EI_H2O == 1230
+
+    schedule = pd.read_csv(data_dir / 'matlab-schedule.csv', dtype=str)
+    schedule_labels = {
+        f'{row.depapt}_{row.arrapt}_{row.inpacft}'
+        for row in schedule.itertuples(index=False)
+    }
+    assert schedule_labels == mission_labels
+
+    distances_nm = np.array(
+        [mission.gc_distance / NAUTICAL_MILES_TO_METERS for mission in missions]
+    )
+    range_counts, _ = np.histogram(
+        distances_nm, bins=[0.0, 300.0, 750.0, 1500.0, 2000.0, np.inf]
+    )
+    assert np.all(range_counts > 0), range_counts
+    assert distances_nm.min() < 300.0
+    assert distances_nm.max() > 2200.0
+
+    departure_hours = np.array([mission.departure.hour for mission in missions])
+    time_counts, _ = np.histogram(departure_hours, bins=[0, 6, 12, 18, 24])
+    assert np.all(time_counts > 0), time_counts
+
+    positions = [
+        position
+        for mission in missions
+        for position in (mission.origin_position, mission.destination_position)
+    ]
+    assert min(position.latitude for position in positions) < -30.0
+    assert max(position.latitude for position in positions) > 60.0
+    assert any(
+        abs(mission.origin_position.longitude - mission.destination_position.longitude)
+        > 180.0
+        for mission in missions
+    )
+
+
+@pytest.mark.parametrize(
+    ('reference', 'actual', 'expected'),
+    [(359.0, 1.0, 2.0), (1.0, 359.0, 2.0), (45.0, 405.0, 0.0)],
+)
+def test_circular_mae_deg_wraparound(reference, actual, expected) -> None:
+    assert _circular_mae_deg(np.array([reference]), np.array([actual])) == expected
+
+
 def _write_csv(path, rows):
     pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def test_legacy_trajectory_normalizes_matlab_heading_reversals(tmp_path) -> None:
+    path = tmp_path / 'trajectory.csv'
+    data = {
+        't': [0.0, 1.0, 2.0],
+        'fuelFlow': [1.0, 1.0, 1.0],
+        'acMass': [1.0, 1.0, 1.0],
+        'horDist': [0.0, 1.0, 2.0],
+        'lat': [0.0, 0.0, 0.0],
+        'long': [0.0, 1.0, 2.0],
+        'az': [100.0, 280.0, 100.0],
+        'TAS': [1.0, 1.0, 1.0],
+        'alt': [1.0, 1.0, 1.0],
+        'roc_fpm': [0.0, 0.0, 0.0],
+    }
+    for field in ('CO2', 'H2O', 'HC', 'CO', 'NOx', 'SOx'):
+        data[f'EI_{field}'] = [1.0, 1.0, 1.0]
+    pd.DataFrame(data).to_csv(path, index=False)
+
+    trajectory = LegacyTrajectory(path).trajectory()
+
+    np.testing.assert_array_equal(trajectory.azimuth, [100.0, 100.0, 100.0])
 
 
 def test_process_matlab_csvs_per_mission_split(tmp_path):

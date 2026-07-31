@@ -1,7 +1,7 @@
 # Fuel and emissions properties.
 name = "Jet-A"
 
-energy_MJ_per_kg = 43.2
+energy_MJ_per_kg = 43.8
 
 EI_H2O = 1230 # gH₂O/kg fuel
 EI_CO2 = 3160 # gCO₂/kg fuel

@@ -17,6 +17,8 @@ from AEIC.performance.models import PerformanceModel
 from AEIC.storage import access_recorder, track_file_accesses
 from AEIC.trajectories import Trajectory
 from AEIC.types import Fuel, Species, SpeciesValues
+from AEIC.units import NAUTICAL_MILES_TO_METERS
+from AEIC.utils import GEOD
 from AEIC.verification.legacy import LegacyTrajectory
 from AEIC.verification.metrics import (
     ComparisonMetrics,
@@ -26,13 +28,9 @@ from AEIC.verification.metrics import (
 
 TRAJ_FIELDS = [
     'flight_time',
-    'ground_distance',
-    'latitude',
-    'longitude',
     'altitude',
     'fuel_flow',
     'aircraft_mass',
-    'azimuth',
     'true_airspeed',
     'rate_of_climb',
 ]
@@ -50,6 +48,36 @@ TRAJ_FIELD_UNITS = {
 COMPARISON_FIELDS = TRAJ_FIELDS + ['trajectory_indices']
 
 SKIP_FINAL_POINT_FIELDS = set(['true_airspeed'])
+MAPE_PCT_TOL = 0.25
+GROUND_DISTANCE_MAE_M_TOL = 5.0 * NAUTICAL_MILES_TO_METERS
+POSITION_ROUTE_PCT_TOL = 0.25
+AZIMUTH_MAE_DEG_TOL = 0.25
+
+
+def position_error_pct(
+    legacy_traj: Trajectory, new_traj: Trajectory, route_distance: float
+) -> float:
+    """Mean WGS84 point separation as a percentage of route distance."""
+    _, _, distance = GEOD.inv(
+        legacy_traj.longitude,
+        legacy_traj.latitude,
+        new_traj.longitude,
+        new_traj.latitude,
+    )
+    return float(np.mean(distance) / route_distance * 100.0)
+
+
+def circular_mae_deg(reference: np.ndarray, actual: np.ndarray) -> float:
+    """Mean absolute heading error with 0/360-degree wraparound."""
+    difference = (actual - reference + 180.0) % 360.0 - 180.0
+    return float(np.mean(np.abs(difference)))
+
+
+def ground_distance_mae_m(legacy_traj: Trajectory, new_traj: Trajectory) -> float:
+    """Mean absolute cumulative ground-distance error in meters."""
+    return float(
+        np.mean(np.abs(legacy_traj.ground_distance - new_traj.ground_distance))
+    )
 
 
 def metrics_page(
@@ -312,7 +340,9 @@ def main(report_file) -> None:
         fuel = Fuel.model_validate(tomllib.load(fp))
 
     # Create a single trajectory builder to fly all missions.
-    builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+    builder = tb.LegacyBuilder(
+        options=tb.Options(iterate_mass=False, use_weather=False)
+    )
 
     failed = []
 
@@ -340,7 +370,27 @@ def main(report_file) -> None:
             )
 
             # Record any metrics that are outside tolerance.
-            bad_metrics = out_of_tolerance(metrics, mape_pct_tol=0.25)
+            bad_metrics = out_of_tolerance(metrics, mape_pct_tol=MAPE_PCT_TOL)
+            ground_distance_error = ground_distance_mae_m(legacy_traj, new_traj)
+            if ground_distance_error > GROUND_DISTANCE_MAE_M_TOL:
+                ground_distance_error_nm = (
+                    ground_distance_error / NAUTICAL_MILES_TO_METERS
+                )
+                bad_metrics.append(
+                    f'ground_distance ({ground_distance_error_nm:.4f} nmi MAE)'
+                )
+            position_error = position_error_pct(
+                legacy_traj, new_traj, mission.gc_distance
+            )
+            if position_error > POSITION_ROUTE_PCT_TOL:
+                bad_metrics.append(
+                    f'position ({position_error:.4f}% of route distance)'
+                )
+            azimuth_error = circular_mae_deg(
+                legacy_traj.azimuth[:-1], new_traj.azimuth[:-1]
+            )
+            if azimuth_error > AZIMUTH_MAE_DEG_TOL:
+                bad_metrics.append(f'azimuth ({azimuth_error:.4f} deg MAE)')
             if len(bad_metrics) > 0:
                 failed.append((mission.label, bad_metrics))
 
