@@ -210,7 +210,12 @@ def run_simulations(
             fuel = Fuel.model_validate(tomllib.load(fp))
 
         # Make trajectory builder.
-        builder = tb.LegacyBuilder(options=tb.Options(iterate_mass=False))
+        builder = tb.LegacyBuilder(
+            options=tb.Options(
+                iterate_mass=False,
+                use_weather=config.weather.use_weather,
+            )
+        )
 
         simulate_slice(
             slice_index,
