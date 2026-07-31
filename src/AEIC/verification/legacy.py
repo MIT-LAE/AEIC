@@ -87,6 +87,8 @@ class LegacyTrajectory:
                 tmp_azimuth[i:] += 180
         retval.azimuth = tmp_azimuth
         retval.true_airspeed = self.df.TAS.values
+        retval.ground_speed = self.df.groundSpeed.values
+        retval.heading = self.df.heading.values
         retval.rate_of_climb = self.df.roc_fpm.values * FPM_TO_MPS
         retval.aircraft_mass = self.df.acMass.values
         retval.fuel_flow = self.df.fuelFlow.values / MINUTES_TO_SECONDS

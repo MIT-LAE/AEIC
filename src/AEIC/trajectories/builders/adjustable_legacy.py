@@ -461,7 +461,7 @@ class AdjustableLegacyBuilder(Builder):
             else:
                 track_vector = self.weather.get_track_vector(
                     time=self.mission.departure,
-                    gt_point=self.ground_track.location(pt.ground_distance),
+                    gt_point=self.ground_track.step(pt.ground_distance, 0.0),
                     altitude=start_altitude,
                     horizontal_airspeed=horizontal_airspeed,
                     track_azimuth=pt.azimuth,

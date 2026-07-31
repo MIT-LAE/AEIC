@@ -1,11 +1,10 @@
 %==============================================================================
-% Deterministic B738 MATLAB/Python verification run.
-% Generated schedule times are UTC and wind is disabled with
-% AEIC_USE_WEATHER=0 when the job is submitted.
+% Deterministic B738 MATLAB/Python verification run with shared synthetic wind.
+% Set AEIC_AIRPORTS_FILE and AEIC_WEATHER_FILE when submitting.
 %==============================================================================
 %%% GENERAL MENU %%%     :
 Required year [YYYY]     : 2019
-Scenario name            : verification_738_nowx
+Scenario name            : verification_738_shared_wind
 BADA location            : BADA
 Output folder            : Emission_Files/%s
 Time frequency [Y/M/D/H] : Y
@@ -24,7 +23,7 @@ Post-process CERM        : F
 %%% SCHEDULE MENU %%%    :
 Schedule folder          : Schedule_Files/
 Airport folder           : Airport_Files_verification_738_nowx_24
-Airport files ready?     : F
+Airport files ready?     : T
 --- If no ---------------:
 Schedule for target Y?   : T
 => Path to schedule      : Schedule_Files/matlab-verification-738-nowx-24.csv
@@ -48,7 +47,7 @@ Tech. improvement?       : -1
 => Rate [%/year]         : 1.0
 -------------------------+
 Vary altitude            : F
-Aircraft codes input     : /home/aditeya/ZEN_AEIC/Schedule_Files/aircraftCodes.txt
+Aircraft codes input     : Schedule_Files/aircraftCodes.txt
 Fuel EI CO2              : 3160
 Fuel EI H2O              : 1230
 Fuel LHV [MJ/kg]         : 43.8
