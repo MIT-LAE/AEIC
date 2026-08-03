@@ -64,8 +64,9 @@ class Weather:
         Path to directory containing ERA5 weather data NetCDF files. The
         filename for a given timestamp is resolved via ``file_format``.
         Files should contain variables ``t``, ``u``, ``v`` with coordinates
-        ``pressure_level``, ``latitude``, ``longitude``. A ``valid_time``
-        coord is required when ``data_resolution`` is finer than
+        ``pressure_level``, ``latitude``, ``longitude``. Longitude follows
+        ERA5's ``[0, 360)`` degrees-east convention. A ``valid_time`` coord is
+        required when ``data_resolution`` is finer than
         ``file_resolution`` and is otherwise either absent or length-1.
     file_resolution : TemporalResolution
         Temporal layout of files on disk: one file per ``file_resolution``
@@ -170,6 +171,34 @@ class Weather:
                     f'{valid_time_dtype}; a datetime64 valid_time coord is '
                     f'required.'
                 )
+
+    def _interp_wind(
+        self,
+        variable: str,
+        pressure_level: float,
+        latitude: float,
+        longitude: float,
+    ) -> xr.DataArray:
+        """Interpolate wind component, including across 360° = 0°."""
+        assert self._ds is not None
+        field = self._ds[variable]
+        longitude_max = self._ds['longitude'][-1].item()
+
+        if longitude <= longitude_max:
+            return field.interp(
+                pressure_level=pressure_level,
+                latitude=latitude,
+                longitude=longitude,
+            )
+
+        at_last = field.isel(longitude=-1).interp(
+            pressure_level=pressure_level, latitude=latitude
+        )
+        at_first = field.isel(longitude=0).interp(
+            pressure_level=pressure_level, latitude=latitude
+        )
+        weight = (longitude - longitude_max) / (360.0 - longitude_max)
+        return at_last + weight * (at_first - at_last)
 
     def _require_main_ds(self, time: pd.Timestamp):
         key = self._resolved_name(time)
@@ -297,16 +326,16 @@ class Weather:
         self._require_data(time)
         assert self._ds is not None
 
+        # Convert ERA5 longitude (0-360), into -180 to 180
+        longitude = gt_point.location.longitude % 360.0
+
         # NOTE: pressure levels in weather files are in hPa, not Pa.
-        wind_u = self._ds['u'].interp(
-            pressure_level=pressure_at_altitude_isa_bada4(altitude) / 100.0,
-            latitude=gt_point.location.latitude,
-            longitude=gt_point.location.longitude,
+        pressure_level = pressure_at_altitude_isa_bada4(altitude) / 100.0
+        wind_u = self._interp_wind(
+            'u', pressure_level, gt_point.location.latitude, longitude
         )
-        wind_v = self._ds['v'].interp(
-            pressure_level=pressure_at_altitude_isa_bada4(altitude) / 100.0,
-            latitude=gt_point.location.latitude,
-            longitude=gt_point.location.longitude,
+        wind_v = self._interp_wind(
+            'v', pressure_level, gt_point.location.latitude, longitude
         )
         if wind_u.isnull().values.any() or wind_v.isnull().values.any():
             raise ValueError('ground track point is outside weather data domain')

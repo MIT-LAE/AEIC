@@ -18,7 +18,7 @@ atmospheric data.
 | Dimension        | Range                  | Step    |
 |------------------|------------------------|---------|
 | Latitude         | 33.00°N – 43.00°N      | 0.25°   |
-| Longitude        | 85.00°W – 71.00°W      | 0.25°   |
+| Longitude        | 275.00°E – 289.00°E     | 0.25°   |
 | Pressure levels  | 225–1000 hPa (22 lvls) | various |
 
 The domain covers the northeastern US / mid-Atlantic region, chosen to

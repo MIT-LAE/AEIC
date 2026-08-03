@@ -7,7 +7,8 @@ The dataset is read from disk (no pre-processing required) and must contain:
 
  * variables: temperature `t` [K], eastward wind `u` [m/s], northward wind `v`
    [m/s];
- * coordinates: `pressure_level` [hPa], `latitude`, `longitude`;
+ * coordinates: `pressure_level` [hPa], `latitude`, and ERA5 `longitude` in
+   the `[0, 360)` degrees-east convention;
  * `valid_time` coordinate: required when the configured `data_resolution` is
    finer than the configured `file_resolution` (i.e., a single file holds
    multiple time steps). In that case `valid_time` is sliced via
@@ -19,6 +20,12 @@ During a ground-speed query, altitude is converted to a pressure level using a
 standard-atmosphere approximation, winds are interpolated at the requested
 longitude/latitude, and those winds are combined with the aircraft heading
 derived from the ground track (or an override supplied via `azimuth`).
+Ground-track longitudes in `[-180, 180]` are converted to ERA5's convention.
+Global grids are treated as cyclic across the `360° = 0°` seam.
+This follows ECMWF's
+[ERA5 spatial-reference definition](https://confluence.ecmwf.int/spaces/CKB/pages/65237704/ERA5+What+is+the+spatial+reference),
+where a global regular grid begins at `0°` and ends at `360° - r` for grid
+spacing `r`.
 
 Example:
 

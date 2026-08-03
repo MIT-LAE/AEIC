@@ -61,7 +61,8 @@ spatially and vertically uniform wind:
 - eastward wind (`u`): `10 m/s`
 - northward wind (`v`): `5 m/s`
 - latitude bounds: `-90` and `90` degrees
-- longitude bounds: `-180` and `180` degrees
+- longitude points: `0` and `180` degrees east, with the cyclic `360° = 0°`
+  endpoint supplied by AEIC during interpolation
 - pressure bounds: `200` and `1100 hPa`
 
 The constant field makes MATLAB AEIC's nearest-neighbor sampling and Python's linear interpolation return the same vector.

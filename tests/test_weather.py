@@ -78,7 +78,7 @@ def test_compute_ground_speed(sample_weather, ground_track):
 
 _PRESSURE_LEVELS = np.array([200.0, 300.0, 500.0])
 _LATITUDES = np.arange(35.0, 46.0, 2.0)  # 35, 37, ..., 45
-_LONGITUDES = np.arange(-80.0, -69.0, 2.0)  # -80, -78, ..., -70
+_LONGITUDES = np.arange(280.0, 291.0, 2.0)  # ERA5: 280, 282, ..., 290°E
 
 # Test probe — inside the grid, uses pressure level 300 hPa exactly.
 _PROBE_LOCATION = Location(longitude=-75.0, latitude=40.0)
@@ -734,6 +734,31 @@ def test_out_of_domain_raises(tmp_path):
             altitude=_PROBE_ALT,
             true_airspeed=_PROBE_TAS,
         )
+
+
+def test_global_era5_grid_is_cyclic_at_greenwich(tmp_path):
+    """Equivalent longitudes on either side of 0° interpolate continuously."""
+    longitudes = np.arange(0.0, 360.0, 90.0)
+    ds = _base_dataset().isel(longitude=slice(0, len(longitudes)))
+    ds = ds.assign_coords(longitude=longitudes)
+    ds.to_netcdf(tmp_path / 'annual.nc')
+    w = Weather(
+        data_dir=tmp_path,
+        file_resolution=TemporalResolution.ANNUAL,
+        file_format='annual.nc',
+    )
+
+    for longitude in (-0.1, 0.0, 0.1):
+        point = GroundTrack.Point(
+            location=Location(longitude=longitude, latitude=40.0),
+            azimuth=0.0,
+        )
+        assert w.get_ground_speed(
+            time=pd.Timestamp('2024-06-15'),
+            gt_point=point,
+            altitude=_PROBE_ALT,
+            true_airspeed=_PROBE_TAS,
+        ) == pytest.approx(_EXPECTED_GS, rel=1e-4)
 
 
 def test_non_datetime_valid_time_rejected(tmp_path):
