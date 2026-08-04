@@ -15,10 +15,13 @@ atmospheric data.
 
 ## Spatial coverage
 
+Note: longitude values here are in the ERA5 `[0, 360]` convention, not the
+`[-180, 180]` convention used elsewhere in AEIC.
+
 | Dimension        | Range                  | Step    |
 |------------------|------------------------|---------|
 | Latitude         | 33.00°N – 43.00°N      | 0.25°   |
-| Longitude        | 275.00°E – 289.00°E     | 0.25°   |
+| Longitude        | 275.00°E – 289.00°E    | 0.25°   |
 | Pressure levels  | 225–1000 hPa (22 lvls) | various |
 
 The domain covers the northeastern US / mid-Atlantic region, chosen to

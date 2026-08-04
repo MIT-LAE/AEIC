@@ -177,27 +177,35 @@ class Weather:
         variable: str,
         pressure_level: float,
         latitude: float,
-        longitude: float,
+        era5_longitude: float,
     ) -> xr.DataArray:
-        """Interpolate wind component, including across 360° = 0°."""
+        """Interpolate wind component, including across 360° = 0°.
+
+        Longitude in this function is ERA5-style [0, 360] degrees east, not
+        [-180, 180]."""
         assert self._ds is not None
         field = self._ds[variable]
+
+        # The maximum longitude in ERA5 coordinates is 360.0° minus the grid
+        # spacing.
         longitude_max = self._ds['longitude'][-1].item()
 
-        if longitude <= longitude_max:
+        if era5_longitude <= longitude_max:
+            # Normal interpolation in longitude.
             return field.interp(
                 pressure_level=pressure_level,
                 latitude=latitude,
-                longitude=longitude,
+                longitude=era5_longitude,
             )
 
+        # "Wrap-around" interpolation in longitude.
         at_last = field.isel(longitude=-1).interp(
             pressure_level=pressure_level, latitude=latitude
         )
         at_first = field.isel(longitude=0).interp(
             pressure_level=pressure_level, latitude=latitude
         )
-        weight = (longitude - longitude_max) / (360.0 - longitude_max)
+        weight = (era5_longitude - longitude_max) / (360.0 - longitude_max)
         return at_last + weight * (at_first - at_last)
 
     def _require_main_ds(self, time: pd.Timestamp):
@@ -326,7 +334,7 @@ class Weather:
         self._require_data(time)
         assert self._ds is not None
 
-        # Convert ERA5 longitude (0-360), into -180 to 180
+        # Ground track longitude ([-180, 180]) to ERA5 longitude ([0, 360]).
         longitude = gt_point.location.longitude % 360.0
 
         # NOTE: pressure levels in weather files are in hPa, not Pa.

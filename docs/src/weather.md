@@ -20,10 +20,10 @@ During a ground-speed query, altitude is converted to a pressure level using a
 standard-atmosphere approximation, winds are interpolated at the requested
 longitude/latitude, and those winds are combined with the aircraft heading
 derived from the ground track (or an override supplied via `azimuth`).
-Ground-track longitudes in `[-180, 180]` are converted to ERA5's convention.
-Global grids are treated as cyclic across the `360° = 0°` seam.
-This follows ECMWF's
-[ERA5 spatial-reference definition](https://confluence.ecmwf.int/spaces/CKB/pages/65237704/ERA5+What+is+the+spatial+reference),
+Ground-track longitudes in `[-180, 180]` are converted to ERA5's `0° - 360°`
+convention. Global grids are treated as cyclic across the date line (`360° =
+0°`). This follows ECMWF's [ERA5 spatial-reference
+definition](https://confluence.ecmwf.int/spaces/CKB/pages/65237704/ERA5+What+is+the+spatial+reference),
 where a global regular grid begins at `0°` and ends at `360° - r` for grid
 spacing `r`.
 
