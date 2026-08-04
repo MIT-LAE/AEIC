@@ -10,16 +10,16 @@ gridding, and weather.
 ## Installation
 
 `AEIC` is not currently available on PyPI, but you can install releases from
-GitHub. The latest available version is v0.3.0. If you are using `pip`, do
+GitHub. The latest available version is v0.4.0. If you are using `pip`, do
 
 ```shell
-pip install git+https://github.com/MIT-LAE/AEIC.git@v0.3.0
+pip install git+https://github.com/MIT-LAE/AEIC.git@v0.4.0
 ```
 
 If you are using `uv`, do
 
 ```shell
-uv add git+https://github.com/MIT-LAE/AEIC.git@v0.3.0
+uv add git+https://github.com/MIT-LAE/AEIC.git@v0.4.0
 ```
 
 ## Units
