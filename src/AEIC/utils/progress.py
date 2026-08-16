@@ -33,7 +33,9 @@ class Progress:
             now = time.time()
             if now - self.last_log > self.log_interval:
                 pct = 100.0 * self.count / self.total
-                print(f'{self.desc}: {pct:6.2f}% ({self.count}/{self.total})')
+                print(
+                    f'{self.desc}: {pct:6.2f}% ({self.count}/{self.total})', flush=True
+                )
                 self.last_log = now
 
     def close(self):
@@ -44,4 +46,6 @@ class Progress:
         else:
             # final log
             pct = 100.0 * self.count / self.total
-            print(f'{self.desc}: {pct:6.2f}% ({self.count}/{self.total}) DONE')
+            print(
+                f'{self.desc}: {pct:6.2f}% ({self.count}/{self.total}) DONE', flush=True
+            )
