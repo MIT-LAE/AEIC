@@ -25,13 +25,38 @@ fi
 PROJ_BASE=/home/iross/code/AEIC
 RUN_BASE=/home/iross/data/AEIC
 RUN=$RUN_BASE/oag-2019
-IN=$RUN/inputs
+IN_SRC=$RUN/inputs
 OUT=$RUN/run/slice
+IN=/tmp/AEIC/inputs
+
+if [[ ! -d /tmp/AEIC ]]
+then
+    mkdir -p /tmp/AEIC
+
+    if [[ ! -f /tmp/AEIC/oag-2019.sqlite ]]
+    then
+        cp $RUN_BASE/oag-2019.sqlite /tmp/AEIC
+    fi
+    if [[ ! -d $IN ]]
+    then
+        cp -r $IN_SRC /tmp/AEIC
+    fi
+
+    sed -i "s|${IN_SRC}|${IN}|g" $IN/config.toml
+
+    touch /tmp/AEIC/.ready
+fi
+
+while [[ ! -f /tmp/AEIC/.ready ]]
+do
+    echo "Waiting for /tmp/AEIC/.ready"
+    sleep 5
+done
 
 uv --project $PROJ_BASE run aeic run \
   --config-file $IN/config.toml \
   --performance-selector-dir $IN/performance \
-  --mission-db-file $RUN_BASE/oag-2019.sqlite \
+  --mission-db-file /tmp/AEIC/oag-2019.sqlite \
   --output-store $OUT \
   --slice-count $SLURM_ARRAY_TASK_COUNT \
   --slice-index $((SLURM_ARRAY_TASK_ID - 1))
