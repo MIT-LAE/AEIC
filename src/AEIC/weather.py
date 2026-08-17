@@ -281,9 +281,7 @@ class Weather:
         self._grid_key = self._data_sel_key
 
     @staticmethod
-    def _axis_weights(
-        vals_asc: np.ndarray, x: float
-    ) -> tuple[int, int, float] | None:
+    def _axis_weights(vals_asc: np.ndarray, x: float) -> tuple[int, int, float] | None:
         """Locate the bracketing indices and linear weight for ``x`` on a
         strictly-ascending axis. Returns ``None`` if ``x`` is outside the axis
         range (non-extrapolating, matching ``xarray.interp``'s NaN fill)."""
