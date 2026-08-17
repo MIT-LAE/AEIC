@@ -1,4 +1,6 @@
 import gc
+import math
+from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,6 +16,35 @@ from AEIC.config.weather import (
 )
 from AEIC.trajectories.ground_track import GroundTrack
 from AEIC.utils.standard_atmosphere import pressure_at_altitude_isa_bada4
+
+
+@dataclass(frozen=True)
+class _WindGrid:
+    """Materialized wind grid for fast point interpolation.
+
+    Coordinate axes are strictly ascending and the ``u``/``v`` arrays are
+    oriented to match, so a plain ``searchsorted`` locates bracketing samples.
+    """
+
+    plev_asc: np.ndarray
+    lat_asc: np.ndarray
+    lon_asc: np.ndarray
+    lon_max: float
+    u: np.ndarray
+    v: np.ndarray
+
+
+# Process-wide cache of materialized wind grids, keyed by ``(file, selection)``.
+# A fresh ``Weather`` instance is created for every simulated flight, but they
+# all read the same on-disk weather; without a shared cache each instance would
+# re-read and re-decode hundreds of MB per flight. The grids are read-only, so
+# sharing them across instances is safe. ``maxsize`` is intentionally small
+# because each entry can be hundreds of MB (e.g. a global ERA5 annual mean is
+# ~0.6 GB for u+v); an LRU of 2 bounds memory while still serving the common
+# single-file case with a permanent hit, and keeps at most one previous slice
+# resident while iterating finer-resolution data.
+_GRID_CACHE: OrderedDict[str, _WindGrid] = OrderedDict()
+_GRID_CACHE_MAXSIZE = 2
 
 
 @dataclass(frozen=True)
@@ -121,6 +152,21 @@ class Weather:
         self._ds: xr.Dataset | None = None
         self._last_sel_time: pd.Timestamp | None = None
 
+        # NumPy fast-path cache. The wind interpolation is called once per
+        # trajectory point (tens of millions of times for a full run), so the
+        # per-call overhead of ``xarray.DataArray.interp`` (which builds new
+        # datasets, dispatches through ``apply_ufunc``, and calls SciPy) is
+        # prohibitive. Instead we materialize the ``u``/``v`` grids and their
+        # coordinate axes into plain NumPy arrays once per data selection and
+        # interpolate points directly. The materialized grid is held in a
+        # process-wide cache (``_GRID_CACHE``) so that the per-flight ``Weather``
+        # instances share it; ``_grid`` is this instance's reference to the
+        # currently-selected grid and ``_grid_key`` records which selection it
+        # is for.
+        self._grid: _WindGrid | None = None
+        self._grid_key: str | None = None
+        self._data_sel_key: str | None = None
+
     @staticmethod
     def _to_utc_naive(time: pd.Timestamp) -> pd.Timestamp:
         """Coerce a timestamp to tz-naive UTC. Tz-naive inputs are assumed UTC."""
@@ -172,41 +218,143 @@ class Weather:
                     f'required.'
                 )
 
+    def _ensure_arrays(self) -> None:
+        """Materialize the currently-selected ``u``/``v`` grids and coordinate
+        axes into NumPy arrays for fast point interpolation.
+
+        Populates ``self._grid`` from the process-wide ``_GRID_CACHE`` (or
+        builds and inserts it on a miss). Axes are reoriented to be strictly
+        ascending so a plain ``searchsorted`` locates bracketing samples; the
+        data arrays are flipped to match. This mirrors the linear interpolation
+        semantics of ``xarray.DataArray.interp`` used previously (verified to
+        agree to ~1e-15)."""
+        assert self._ds is not None
+        assert self._data_sel_key is not None
+
+        if self._grid is not None and self._grid_key == self._data_sel_key:
+            return
+
+        cached = _GRID_CACHE.get(self._data_sel_key)
+        if cached is not None:
+            # Refresh LRU recency.
+            _GRID_CACHE.move_to_end(self._data_sel_key)
+            self._grid = cached
+            self._grid_key = self._data_sel_key
+            return
+
+        ds = self._ds
+        plev = np.asarray(ds['pressure_level'].values, dtype=float)
+        lat = np.asarray(ds['latitude'].values, dtype=float)
+        lon = np.asarray(ds['longitude'].values, dtype=float)
+        u = np.asarray(ds['u'].values, dtype=float)
+        v = np.asarray(ds['v'].values, dtype=float)
+
+        # Reorient pressure (axis 0) and latitude (axis 1) to ascending. ERA5
+        # stores both descending; longitude is already ascending [0, 360).
+        if plev.size > 1 and plev[0] > plev[-1]:
+            plev = plev[::-1]
+            u = u[::-1]
+            v = v[::-1]
+        if lat.size > 1 and lat[0] > lat[-1]:
+            lat = lat[::-1]
+            u = u[:, ::-1]
+            v = v[:, ::-1]
+
+        grid = _WindGrid(
+            plev_asc=plev,
+            lat_asc=lat,
+            lon_asc=lon,
+            # The maximum longitude in ERA5 coordinates is 360.0° minus the
+            # grid spacing; points beyond it interpolate across the 360° = 0°
+            # seam.
+            lon_max=float(lon[-1]),
+            u=np.ascontiguousarray(u),
+            v=np.ascontiguousarray(v),
+        )
+
+        _GRID_CACHE[self._data_sel_key] = grid
+        _GRID_CACHE.move_to_end(self._data_sel_key)
+        while len(_GRID_CACHE) > _GRID_CACHE_MAXSIZE:
+            _GRID_CACHE.popitem(last=False)
+
+        self._grid = grid
+        self._grid_key = self._data_sel_key
+
+    @staticmethod
+    def _axis_weights(
+        vals_asc: np.ndarray, x: float
+    ) -> tuple[int, int, float] | None:
+        """Locate the bracketing indices and linear weight for ``x`` on a
+        strictly-ascending axis. Returns ``None`` if ``x`` is outside the axis
+        range (non-extrapolating, matching ``xarray.interp``'s NaN fill)."""
+        if x < vals_asc[0] or x > vals_asc[-1]:
+            return None
+        i1 = int(np.searchsorted(vals_asc, x, side='left'))
+        if i1 == 0:
+            # x == vals_asc[0] exactly.
+            return (0, 0, 0.0)
+        i0 = i1 - 1
+        denom = vals_asc[i1] - vals_asc[i0]
+        weight = 0.0 if denom == 0 else (x - vals_asc[i0]) / denom
+        return (i0, i1, weight)
+
+    def _lon_weights(self, era5_longitude: float) -> tuple[int, int, float] | None:
+        """Longitude bracketing indices/weight, including wrap-around across
+        the 360° = 0° seam."""
+        assert self._grid is not None
+        if era5_longitude <= self._grid.lon_max:
+            return self._axis_weights(self._grid.lon_asc, era5_longitude)
+        # "Wrap-around" interpolation between the last and first longitudes.
+        weight = (era5_longitude - self._grid.lon_max) / (360.0 - self._grid.lon_max)
+        return (self._grid.lon_asc.size - 1, 0, weight)
+
+    @staticmethod
+    def _trilinear(
+        arr: np.ndarray,
+        pw: tuple[int, int, float],
+        yw: tuple[int, int, float],
+        xw: tuple[int, int, float],
+    ) -> float:
+        """Trilinear interpolation as nested bilinear-in-(pressure, latitude)
+        then linear-in-longitude, matching the original interpolation order."""
+        pi0, pi1, pt = pw
+        yi0, yi1, yt = yw
+        xi0, xi1, xt = xw
+
+        def bilinear(xi: int) -> float:
+            c00 = arr[pi0, yi0, xi]
+            c10 = arr[pi1, yi0, xi]
+            c01 = arr[pi0, yi1, xi]
+            c11 = arr[pi1, yi1, xi]
+            return (c00 * (1.0 - pt) + c10 * pt) * (1.0 - yt) + (
+                c01 * (1.0 - pt) + c11 * pt
+            ) * yt
+
+        return bilinear(xi0) * (1.0 - xt) + bilinear(xi1) * xt
+
     def _interp_wind(
         self,
         variable: str,
         pressure_level: float,
         latitude: float,
         era5_longitude: float,
-    ) -> xr.DataArray:
-        """Interpolate wind component, including across 360° = 0°.
+    ) -> float:
+        """Interpolate a wind component at a single point, including across
+        360° = 0°.
 
-        Longitude in this function is ERA5-style [0, 360] degrees east, not
-        [-180, 180]."""
-        assert self._ds is not None
-        field = self._ds[variable]
+        Longitude here is ERA5-style [0, 360] degrees east, not [-180, 180].
+        Returns NaN if the point lies outside the grid domain."""
+        self._ensure_arrays()
+        assert self._grid is not None
 
-        # The maximum longitude in ERA5 coordinates is 360.0° minus the grid
-        # spacing.
-        longitude_max = self._ds['longitude'][-1].item()
+        pw = self._axis_weights(self._grid.plev_asc, pressure_level)
+        yw = self._axis_weights(self._grid.lat_asc, latitude)
+        xw = self._lon_weights(era5_longitude)
+        if pw is None or yw is None or xw is None:
+            return math.nan
 
-        if era5_longitude <= longitude_max:
-            # Normal interpolation in longitude.
-            return field.interp(
-                pressure_level=pressure_level,
-                latitude=latitude,
-                longitude=era5_longitude,
-            )
-
-        # "Wrap-around" interpolation in longitude.
-        at_last = field.isel(longitude=-1).interp(
-            pressure_level=pressure_level, latitude=latitude
-        )
-        at_first = field.isel(longitude=0).interp(
-            pressure_level=pressure_level, latitude=latitude
-        )
-        weight = (era5_longitude - longitude_max) / (360.0 - longitude_max)
-        return at_last + weight * (at_first - at_last)
+        arr = self._grid.u if variable == 'u' else self._grid.v
+        return self._trilinear(arr, pw, yw, xw)
 
     def _require_main_ds(self, time: pd.Timestamp):
         key = self._resolved_name(time)
@@ -274,14 +422,30 @@ class Weather:
 
         assert self._main_ds is not None
 
+        # Build a process-wide cache key from the fully-resolved file path plus
+        # a stat signature (size + mtime), so that distinct files that merely
+        # share a basename (common in tests using tmp dirs) never collide and
+        # an updated file invalidates the cache.
+        path = self._nc_path(time)
+        try:
+            st = path.stat()
+            file_sig = f'{path}|{st.st_size}|{st.st_mtime_ns}'
+        except OSError:
+            file_sig = str(path)
+
         if self._data_resolution == self._file_resolution:
             # Squeeze a length-1 valid_time if present; otherwise use as-is.
             if 'valid_time' in self._main_ds.dims:
                 self._ds = self._main_ds.squeeze('valid_time', drop=True)
             else:
                 self._ds = self._main_ds
+            # One selection per file; independent of the query time.
+            self._data_sel_key = f'{file_sig}|all'
         else:
             self._ds = self._select_by_components(self._main_ds, time)
+            # Key on the actually-selected valid_time so that distinct query
+            # times that resolve to the same data slice share one cached grid.
+            self._data_sel_key = f'{file_sig}|{self._ds["valid_time"].values}'
 
         self._last_sel_time = time
 
@@ -333,19 +497,26 @@ class Weather:
         """Compute ground speed and crabbed heading along a prescribed track."""
         self._require_data(time)
         assert self._ds is not None
+        self._ensure_arrays()
+        assert self._grid is not None
 
         # Ground track longitude ([-180, 180]) to ERA5 longitude ([0, 360]).
         longitude = gt_point.location.longitude % 360.0
 
         # NOTE: pressure levels in weather files are in hPa, not Pa.
         pressure_level = pressure_at_altitude_isa_bada4(altitude) / 100.0
-        wind_u = self._interp_wind(
-            'u', pressure_level, gt_point.location.latitude, longitude
-        )
-        wind_v = self._interp_wind(
-            'v', pressure_level, gt_point.location.latitude, longitude
-        )
-        if wind_u.isnull().values.any() or wind_v.isnull().values.any():
+
+        # Locate bracketing samples once and share them between the u and v
+        # components (they live on the same grid).
+        pw = self._axis_weights(self._grid.plev_asc, pressure_level)
+        yw = self._axis_weights(self._grid.lat_asc, gt_point.location.latitude)
+        xw = self._lon_weights(longitude)
+        if pw is None or yw is None or xw is None:
+            raise ValueError('ground track point is outside weather data domain')
+
+        wind_u = self._trilinear(self._grid.u, pw, yw, xw)
+        wind_v = self._trilinear(self._grid.v, pw, yw, xw)
+        if math.isnan(wind_u) or math.isnan(wind_v):
             raise ValueError('ground track point is outside weather data domain')
 
         if track_azimuth is None:
@@ -353,6 +524,6 @@ class Weather:
         return solve_track_vector(
             track_azimuth,
             horizontal_airspeed,
-            wind_east=wind_u.item(),
-            wind_north=wind_v.item(),
+            wind_east=wind_u,
+            wind_north=wind_v,
         )

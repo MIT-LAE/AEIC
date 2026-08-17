@@ -339,6 +339,69 @@ def test_annual_mean_reads_single_file(tmp_path):
         assert _run_probe(w, t) == pytest.approx(_EXPECTED_GS, rel=1e-4)
 
 
+def test_separate_instances_share_cached_grid(tmp_path):
+    """A fresh ``Weather`` is built for every simulated flight, so the
+    materialized NumPy wind grid is held in a process-wide cache and must be
+    shared by identity across instances reading the same file. Reloading it
+    per flight (hundreds of MB) was a severe performance regression."""
+    import AEIC.weather as weather_mod
+
+    _write_mean_file(tmp_path / 'annual.nc', with_valid_time=False)
+
+    def make():
+        return Weather(
+            data_dir=tmp_path,
+            file_resolution=TemporalResolution.ANNUAL,
+            file_format='annual.nc',
+        )
+
+    weather_mod._GRID_CACHE.clear()
+    w1 = make()
+    assert _run_probe(w1, pd.Timestamp('2024-06-15T14:30')) == pytest.approx(
+        _EXPECTED_GS, rel=1e-4
+    )
+    w2 = make()
+    assert _run_probe(w2, pd.Timestamp('2024-01-01T00:00')) == pytest.approx(
+        _EXPECTED_GS, rel=1e-4
+    )
+
+    # Both instances resolved to the same cached grid object.
+    assert w1._grid is not None
+    assert w1._grid is w2._grid
+
+
+def test_distinct_files_sharing_basename_do_not_collide(tmp_path):
+    """Cache keys include the fully-resolved path (plus a stat signature), so
+    two different files that merely share a basename must not alias."""
+    import AEIC.weather as weather_mod
+
+    dir_a = tmp_path / 'a'
+    dir_b = tmp_path / 'b'
+    dir_a.mkdir()
+    dir_b.mkdir()
+    _write_mean_file(dir_a / 'annual.nc', with_valid_time=False)
+    # A grid with a different longitude extent -> different shape entirely.
+    ds = _base_dataset().isel(longitude=slice(0, 3))
+    ds.to_netcdf(dir_b / 'annual.nc')
+
+    weather_mod._GRID_CACHE.clear()
+    wa = Weather(
+        data_dir=dir_a,
+        file_resolution=TemporalResolution.ANNUAL,
+        file_format='annual.nc',
+    )
+    wb = Weather(
+        data_dir=dir_b,
+        file_resolution=TemporalResolution.ANNUAL,
+        file_format='annual.nc',
+    )
+    _run_probe(wa, pd.Timestamp('2024-06-15'))
+    _run_probe(wb, pd.Timestamp('2024-06-15'))
+    assert wa._grid is not None and wb._grid is not None
+    assert wa._grid is not wb._grid
+    assert wa._grid.lon_asc.size != wb._grid.lon_asc.size
+
+
 def test_annual_mean_with_length_one_valid_time_is_squeezed(tmp_path):
     _write_mean_file(tmp_path / 'annual.nc', with_valid_time=True)
     w = Weather(
