@@ -5,9 +5,10 @@ from tqdm import tqdm
 
 
 class Progress:
-    def __init__(self, total, desc=None, log_interval=10):
+    def __init__(self, total, desc=None, log_interval=10, logger=None):
         self.total = total
         self.desc = desc or ''
+        self.logger = logger
 
         if total == 0:
             self.noop = True
@@ -33,9 +34,11 @@ class Progress:
             now = time.time()
             if now - self.last_log > self.log_interval:
                 pct = 100.0 * self.count / self.total
-                print(
-                    f'{self.desc}: {pct:6.2f}% ({self.count}/{self.total})', flush=True
-                )
+                msg = f'{self.desc}: {pct:6.2f}% ({self.count}/{self.total})'
+                if self.logger is None:
+                    print(msg, flush=True)
+                else:
+                    self.logger.info(msg)
                 self.last_log = now
 
     def close(self):
@@ -46,6 +49,8 @@ class Progress:
         else:
             # final log
             pct = 100.0 * self.count / self.total
-            print(
-                f'{self.desc}: {pct:6.2f}% ({self.count}/{self.total}) DONE', flush=True
-            )
+            msg = f'{self.desc}: {pct:6.2f}% ({self.count}/{self.total}) DONE'
+            if self.logger is None:
+                print(msg, flush=True)
+            else:
+                self.logger.info(msg)

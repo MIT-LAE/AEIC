@@ -167,7 +167,12 @@ def run_simulations(
             'Exactly one of --performance-selector-dir or '
             '--performance-model-file must be provided.'
         )
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s.%(msecs)03d  %(levelname)s/%(name)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
+    logging.captureWarnings(True)
 
     if slice_count > 1:
         logger.info('Parallel mode: slice %s of %s.', slice_index, slice_count)

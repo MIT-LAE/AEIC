@@ -22,41 +22,32 @@ then
     exit 1
 fi
 
+export PYTHONUNBUFFERED=1
+
 PROJ_BASE=/home/iross/code/AEIC
 RUN_BASE=/home/iross/data/AEIC
 RUN=$RUN_BASE/oag-2019
 IN_SRC=$RUN/inputs
 OUT=$RUN/run/slice
-IN=/tmp/AEIC/inputs
+JOB_TMP=/tmp/AEIC-${SLURM_ARRAY_TASK_ID}
+IN=${JOB_TMP}/inputs
 
-if [[ ! -d /tmp/AEIC ]]
-then
-    mkdir -p /tmp/AEIC
+function cleanup {
+  rm -fr ${JOB_TMP}
+}
+trap cleanup EXIT
 
-    if [[ ! -f /tmp/AEIC/oag-2019.sqlite ]]
-    then
-        cp $RUN_BASE/oag-2019.sqlite /tmp/AEIC
-    fi
-    if [[ ! -d $IN ]]
-    then
-        cp -r $IN_SRC /tmp/AEIC
-    fi
+rm -fr ${JOB_TMP}
+mkdir -p ${JOB_TMP}
+cp $RUN_BASE/oag-2019.sqlite ${JOB_TMP}/oag-2019.sqlite
+cp -r $IN_SRC ${JOB_TMP}
 
-    sed -i "s|${IN_SRC}|${IN}|g" $IN/config.toml
-
-    touch /tmp/AEIC/.ready
-fi
-
-while [[ ! -f /tmp/AEIC/.ready ]]
-do
-    echo "Waiting for /tmp/AEIC/.ready"
-    sleep 5
-done
+sed -i "s|${IN_SRC}|${IN}|g" $IN/config.toml
 
 uv --project $PROJ_BASE run aeic run \
   --config-file $IN/config.toml \
   --performance-selector-dir $IN/performance \
-  --mission-db-file /tmp/AEIC/oag-2019.sqlite \
+  --mission-db-file ${JOB_TMP}/oag-2019.sqlite \
   --output-store $OUT \
   --slice-count $SLURM_ARRAY_TASK_COUNT \
   --slice-index $((SLURM_ARRAY_TASK_ID - 1))
