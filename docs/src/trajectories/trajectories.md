@@ -19,6 +19,7 @@ vertical, speed) trajectories.
 :maxdepth: 1
 
 trajectory_data.md
+trajectory_mass_iteration.md
 trajectory_builders.md
 trajectory_stores.md
 ```
