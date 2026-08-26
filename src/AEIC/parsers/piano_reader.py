@@ -23,7 +23,6 @@ import re
 from dataclasses import dataclass
 from typing import Self
 
-from AEIC.constants import a0, kappa, p0
 from AEIC.performance.types import SpeedData, TableInput
 from AEIC.units import (
     FEET_TO_METERS,
@@ -36,7 +35,7 @@ from AEIC.units import (
     POUNDS_TO_KG,
 )
 from AEIC.utils.standard_atmosphere import (
-    pressure_at_altitude_isa_bada4,
+    cas_to_tas,
     speed_of_sound_at_altitude,
 )
 
@@ -327,20 +326,6 @@ def _parse_schedule(lines: list[str], descending: bool) -> _Schedule | None:
     )
 
 
-def _cas_to_tas(cas: float, altitude_m: float) -> float:
-    """True airspeed from calibrated airspeed, subsonic compressible, ISA.
-
-    Uses the standard impact-pressure relation: convert CAS to impact pressure
-    at sea level, then back to a Mach number at the local static pressure.
-    """
-    pressure = float(pressure_at_altitude_isa_bada4(altitude_m))
-    qc = p0 * ((1 + 0.5 * (kappa - 1) * (cas / a0) ** 2) ** (kappa / (kappa - 1)) - 1)
-    mach = math.sqrt(
-        2 / (kappa - 1) * ((qc / pressure + 1) ** ((kappa - 1) / kappa) - 1)
-    )
-    return mach * float(speed_of_sound_at_altitude(altitude_m))
-
-
 def _tas_from_schedule(altitude_m: float, schedule: _Schedule) -> float:
     """True airspeed at an altitude flown on a PIANO airspeed schedule."""
     crossover_m = schedule.crossover_ft * FEET_TO_METERS
@@ -352,7 +337,7 @@ def _tas_from_schedule(altitude_m: float, schedule: _Schedule) -> float:
         if altitude_m < 100 * FL_TO_METERS
         else schedule.cas_high_kts
     )
-    return _cas_to_tas(cas_kts * KNOTS_TO_MPS, altitude_m)
+    return float(cas_to_tas(cas_kts * KNOTS_TO_MPS, altitude_m))
 
 
 def _deltas(values: list[float]) -> list[float]:
