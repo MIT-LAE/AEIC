@@ -30,6 +30,15 @@ MINUTES_TO_SECONDS = 60
 FPM_TO_MPS = FEET_TO_METERS / MINUTES_TO_SECONDS
 """Unit conversion factor for feet per minute to meters per second."""
 
+POUNDS_TO_KG = 0.45359237
+"""Unit conversion factor for pounds to kilograms."""
+
+POUNDS_FORCE_TO_NEWTONS = 4.4482216152605
+"""Unit conversion factor for pounds-force to newtons."""
+
+POUNDS_PER_HOUR_TO_KG_PER_S = POUNDS_TO_KG / 3600
+"""Unit conversion factor for pounds per hour to kilograms per second."""
+
 PPM = 1.0e-6
 """Parts per million as a unitless fraction."""
 
