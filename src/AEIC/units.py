@@ -1,5 +1,7 @@
 """Unit conversion factors for various measurements."""
 
+from .constants import g0
+
 FEET_TO_METERS = 0.3048
 """Unit conversion factor for feet to meters."""
 
@@ -33,7 +35,7 @@ FPM_TO_MPS = FEET_TO_METERS / MINUTES_TO_SECONDS
 POUNDS_TO_KG = 0.45359237
 """Unit conversion factor for pounds to kilograms."""
 
-POUNDS_FORCE_TO_NEWTONS = 4.4482216152605
+POUNDS_FORCE_TO_NEWTONS = POUNDS_TO_KG * g0
 """Unit conversion factor for pounds-force to newtons."""
 
 POUNDS_PER_HOUR_TO_KG_PER_S = POUNDS_TO_KG / 3600
