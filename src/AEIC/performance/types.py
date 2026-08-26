@@ -289,14 +289,17 @@ class SpeedData(CIBaseModel):
     model_config = ConfigDict(frozen=True)
     """Configuration is frozen after creation."""
 
-    cas_low: float
+    cas_low: float | None = None
     """Low speed calibrated airspeed (CAS) [m/s]."""
 
-    cas_high: float
+    cas_high: float | None = None
     """High speed calibrated airspeed (CAS) [m/s]."""
 
     mach: float
     """Mach number."""
+
+    crossover_altitude_m: float | None = None
+    """Altitude above which the schedule flies a constant Mach number [m]."""
 
 
 class Speeds(CIBaseModel):
@@ -308,7 +311,7 @@ class Speeds(CIBaseModel):
     climb: SpeedData
     """Speed data for climb phase."""
 
-    cruise: SpeedData
+    cruise: SpeedData | None = None
     """Speed data for cruise phase."""
 
     descent: SpeedData
