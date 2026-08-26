@@ -24,44 +24,8 @@ from scipy.interpolate import interpn
 
 from AEIC.performance.types import AircraftState, Performance, SimpleFlightRules
 from AEIC.units import METERS_TO_FL
-from AEIC.utils.models import CIBaseModel
 
-from .base import BasePerformanceModel
-
-
-class PerformanceTableInput(CIBaseModel):
-    """Performance table data from TOML file."""
-
-    cols: list[str]
-    """Performance table column labels."""
-
-    data: list[list[float]]
-    """Performance table data."""
-
-    @model_validator(mode='after')
-    def validate_names_and_sizes(self) -> Self:
-        """Normalize and check input column names and array sizes."""
-
-        self.cols = [c.lower() for c in self.cols]
-
-        # Validate column names.
-        if len(self.cols) != len(set(self.cols)):
-            raise ValueError('Duplicate column names in performance table')
-        for required in ['fuel_flow', 'fl', 'tas', 'rocd', 'mass']:
-            if required not in self.cols:
-                raise ValueError(
-                    f'Missing required "{required}" column in performance table'
-                )
-
-        # Validate data table dimensions.
-        ncols = len(self.cols)
-        ndata = len(self.data[0])
-        if ndata < ncols:
-            raise ValueError('Not enough data columns in performance table')
-        if any(len(row) != ndata for row in self.data):
-            raise ValueError('Inconsistent number of data columns in performance table')
-
-        return self
+from .base import BasePerformanceModel, PerformanceTableInput
 
 
 class ROCDFilter(Enum):

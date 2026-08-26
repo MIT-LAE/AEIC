@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Self
 
 import numpy as np
-from pydantic import ConfigDict
+from pydantic import ConfigDict, model_validator
 
 from AEIC.utils.models import CIBaseModel, CIStrEnum
 
@@ -313,3 +313,51 @@ class Speeds(CIBaseModel):
 
     descent: SpeedData
     """Speed data for descent phase."""
+
+
+class TableInput(CIBaseModel):
+    """Tabular data from a TOML file: column labels plus rows."""
+
+    cols: list[str]
+    """Table column labels."""
+
+    data: list[list[float]]
+    """Table data, one list per row."""
+
+    @model_validator(mode='after')
+    def validate_names_and_sizes(self) -> Self:
+        """Normalize and check input column names and array sizes."""
+
+        self.cols = [c.lower() for c in self.cols]
+
+        # Validate column names.
+        if len(self.cols) != len(set(self.cols)):
+            raise ValueError('Duplicate column names in performance table')
+
+        # An empty table is valid. It states that no row qualified, which a
+        # parser can legitimately produce.
+        if not self.data:
+            return self
+
+        # Validate data table dimensions. Extra data columns are tolerated:
+        # `PerformanceTable.from_input` truncates rows to the labelled columns.
+        ncols = len(self.cols)
+        ndata = len(self.data[0])
+        if ndata < ncols:
+            raise ValueError('Not enough data columns in performance table')
+        if any(len(row) != ndata for row in self.data):
+            raise ValueError('Inconsistent number of data columns in performance table')
+
+        return self
+
+    def column(self, name: str) -> list[float]:
+        """Values of one column, by name.
+
+        Raises:
+            ValueError: If the column is not present.
+        """
+        try:
+            index = self.cols.index(name.lower())
+        except ValueError:
+            raise ValueError(f'No "{name}" column in performance table') from None
+        return [row[index] for row in self.data]

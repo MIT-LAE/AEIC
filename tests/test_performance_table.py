@@ -10,7 +10,7 @@ from AEIC.performance.models.legacy import (
     PerformanceTableInput,
     ROCDFilter,
 )
-from AEIC.performance.types import AircraftState
+from AEIC.performance.types import AircraftState, TableInput
 from AEIC.units import METERS_TO_FL
 
 # Per-phase per-input-row recovery checks. A single-cell verification
@@ -103,6 +103,22 @@ def test_create_performance_table_descent():
 def test_performance_table_input_rejects(cols, data, match):
     with pytest.raises(ValueError, match=match):
         _ = PerformanceTableInput(cols=cols, data=data)
+
+
+def test_table_input_accepts_an_empty_table():
+    """An empty table states that no row qualified, which a parser can
+    legitimately produce. The row size checks have nothing to check."""
+    table = TableInput(cols=['FL', 'MASS'], data=[])
+    assert table.cols == ['fl', 'mass']
+    assert table.data == []
+    assert table.column('fl') == []
+
+
+def test_table_input_column_lookup():
+    table = TableInput(cols=['FL', 'MASS'], data=[[330.0, 60000.0], [340.0, 61000.0]])
+    assert table.column('MASS') == [60000.0, 61000.0]
+    with pytest.raises(ValueError, match='No "tas" column'):
+        table.column('tas')
 
 
 # Shared scaffolding for PerformanceTable.__post_init__ negative-path tests.
