@@ -35,8 +35,9 @@ from AEIC.utils.standard_atmosphere import speed_of_sound_at_altitude
 
 PIANO_DIR = (Path(__file__).parent / 'data' / 'performance' / 'piano').resolve()
 
-CLIMB_MASSES_KG = [54000.0, 50000.0, 46000.0, 42000.0]
-"""Climb block masses. The fixture states one only for the first block."""
+CLIMB_MASSES_KG = [150000.0 * POUNDS_TO_KG, 50000.0, 46000.0, 42000.0]
+"""Climb block masses. The fixture states one only for the first block, so
+the first entry restates that header mass to keep the cross-check quiet."""
 
 DESCENT_MASSES_LB = [100000.0, 100001.0, 100002.0, 100003.0]
 
@@ -46,7 +47,7 @@ def load(**overrides) -> PianoData:
         str(PIANO_DIR / 'cruise.txt'),
         str(PIANO_DIR / 'climb.txt'),
         str(PIANO_DIR / 'descent.txt'),
-        overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG, **overrides),
+        overrides=PianoOverrides(**{'climb_masses_kg': CLIMB_MASSES_KG, **overrides}),
     )
 
 
@@ -82,6 +83,25 @@ def test_climb_masses_required_when_blocks_have_no_header():
             str(PIANO_DIR / 'climb.txt'),
             str(PIANO_DIR / 'descent.txt'),
         )
+
+
+def test_supplied_climb_mass_contradicting_the_header_warns(caplog):
+    """The masses are all-or-nothing, so a user correcting the headerless
+    blocks must restate the first block's own mass. A typo there is caught."""
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        load(climb_masses_kg=[54000.0, 50000.0, 46000.0, 42000.0])
+    assert any(
+        'Climb block 1: the supplied initial mass of 54000.0 kg does not match '
+        'the 68038.9 kg its header states' in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_supplied_climb_mass_matching_the_header_is_quiet(caplog):
+    """Restating a header mass rounded to whole pounds is within tolerance."""
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        load(climb_masses_kg=[68039.0, 50000.0, 46000.0, 42000.0])
+    assert not any('supplied initial mass' in r.getMessage() for r in caplog.records)
 
 
 def test_climb_speed_schedule(piano):

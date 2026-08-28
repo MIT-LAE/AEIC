@@ -108,6 +108,13 @@ _TAS_CROSS_CHECK_TOLERANCE = 0.05
 _FUEL_BURN_CROSS_CHECK_TOLERANCE = 0.01
 """Relative deviation above which the block fuel burn cross-check warns."""
 
+_CLIMB_MASS_CROSS_CHECK_TOLERANCE = 0.01
+"""Relative deviation above which a supplied climb mass warns.
+
+Wide enough to absorb a mass restated in rounded pounds, narrow enough to
+catch a mistyped digit.
+"""
+
 _CLIMB_ROW_COLS = 7
 """Alt., Time, Dist., Burn, FN/eng, R.o.C., Drag."""
 
@@ -135,7 +142,12 @@ class PianoOverrides:
     """User-supplied values PIANO files do not always contain."""
 
     climb_masses_kg: list[float] | None = None
-    """Initial mass of each climb block, in file order [kg]."""
+    """Initial mass of each climb block, in file order [kg].
+
+    All-or-nothing: supply one mass per block, including the blocks whose
+    header already states one. A supplied mass that contradicts a stated one
+    warns.
+    """
 
     climb_cas_low_kts: float | None = None
     """Climb calibrated airspeed below FL100 [knots]."""
@@ -788,30 +800,58 @@ def _parse_isa_offset(lines: list[str]) -> int:
     return int(offset)
 
 
+def _header_climb_mass(block: _Block) -> float | None:
+    """Initial mass a climb block's header states [kg], or None if it states
+    none. PIANO omits the header of a block that follows a halted climb."""
+    match = _find(_CLIMB_MASS_RE, block.header_lines)
+    return None if match is None else float(match.group(1)) * POUNDS_TO_KG
+
+
 def _climb_masses(blocks: list[_Block], overrides: PianoOverrides) -> list[float]:
     """Resolve the initial mass of each climb block, in file order.
+
+    A supplied mass wins over the header, because a user supplies masses
+    precisely when the headers do not carry them. The override is
+    all-or-nothing though, so a user correcting the later blocks must restate
+    the first one too, and a typo there would otherwise pass unseen. Warn
+    when a supplied mass contradicts a mass the file does state.
 
     Raises:
         ValueError: If the supplied mass count does not match the block count,
             or if a block has no header mass and none was supplied.
     """
+    header_masses = [_header_climb_mass(block) for block in blocks]
+
     if overrides.climb_masses_kg is not None:
         if len(overrides.climb_masses_kg) != len(blocks):
             raise ValueError(
                 f'Got {len(overrides.climb_masses_kg)} climb mass(es) for '
                 f'{len(blocks)} climb block(s) in the PIANO climb file'
             )
+        for n, (supplied, header) in enumerate(
+            zip(overrides.climb_masses_kg, header_masses, strict=True)
+        ):
+            if header is None:
+                continue
+            if abs(supplied - header) > _CLIMB_MASS_CROSS_CHECK_TOLERANCE * header:
+                logger.warning(
+                    'Climb block %d: the supplied initial mass of %.1f kg does '
+                    'not match the %.1f kg its header states; using the '
+                    'supplied mass',
+                    n + 1,
+                    supplied,
+                    header,
+                )
         return list(overrides.climb_masses_kg)
 
     masses = []
-    for n, block in enumerate(blocks):
-        match = _find(_CLIMB_MASS_RE, block.header_lines)
-        if match is None:
+    for n, header in enumerate(header_masses):
+        if header is None:
             raise ValueError(
                 f'Climb block {n + 1} has no "Initial mass" header, so the '
                 'mass of every block must be supplied explicitly'
             )
-        masses.append(float(match.group(1)) * POUNDS_TO_KG)
+        masses.append(header)
     return masses
 
 
