@@ -313,6 +313,78 @@ def test_zero_time_rows_are_dropped(piano, caplog):
     assert any('spans no time' in r.getMessage() for r in caplog.records)
 
 
+def overflow(name: str, old: str, new: str, tmp_path) -> str:
+    """Write a copy of a fixture with one row's columns merged.
+
+    PIANO writes fixed-width columns, so a value that outgrows its field runs
+    into its neighbour and the two merge into one token. The row then holds
+    one column too few.
+    """
+    text = (PIANO_DIR / name).read_text()
+    assert old in text
+    path = tmp_path / name
+    path.write_text(text.replace(old, new, 1))
+    return str(path)
+
+
+def test_merged_climb_column_raises(tmp_path):
+    """A climb row that lost a column is refused rather than dropped. Dropping
+    it would leave the next row's fuel flow an average over two climb steps,
+    which none of the cross-checks here can detect."""
+    climb_file = overflow(
+        'climb.txt', '30000.    2000.     1000.', '30000.-2000000.     1000.', tmp_path
+    )
+
+    with pytest.raises(ValueError, match=r'Climb block 1: 1 line\(s\) start with'):
+        PianoData.load(
+            str(PIANO_DIR / 'cruise.txt'),
+            climb_file,
+            str(PIANO_DIR / 'descent.txt'),
+            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        )
+
+
+def test_merged_descent_column_raises(tmp_path):
+    """Descent rows carry the same deltas as climb rows, so they are refused
+    the same way."""
+    descent_file = overflow(
+        'descent.txt', '1400.     1500.', '1400.-15000000.', tmp_path
+    )
+
+    with pytest.raises(ValueError, match=r'Descent block 1: 1 line\(s\) start with'):
+        PianoData.load(
+            str(PIANO_DIR / 'cruise.txt'),
+            str(PIANO_DIR / 'climb.txt'),
+            descent_file,
+            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        )
+
+
+def test_merged_cruise_column_warns_and_drops_the_row(tmp_path, caplog):
+    """Cruise rows carry no deltas, so losing one only thins the interpolation
+    grid. Report it and keep the rest of the file."""
+    cruise_file = overflow('cruise.txt', '3000.      40.0', '3000.-40000.0', tmp_path)
+
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        piano = PianoData.load(
+            cruise_file,
+            str(PIANO_DIR / 'climb.txt'),
+            str(PIANO_DIR / 'descent.txt'),
+            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        )
+
+    assert any('Dropping 1 cruise line' in r.getMessage() for r in caplog.records)
+    # Only the overflowed row is gone; the other masses still hold this cell.
+    assert not [
+        row
+        for row in piano.cruise.data
+        if row[0] == 150.0
+        and row[2] == 0.350
+        and row[1] == pytest.approx(93000 * POUNDS_TO_KG)
+    ]
+    assert len(piano.cruise.data) == len(load().cruise.data) - 1
+
+
 def test_cruise_row_units(piano):
     """Spot-check every converted column of one cruise row."""
     row = piano.cruise.data[0]

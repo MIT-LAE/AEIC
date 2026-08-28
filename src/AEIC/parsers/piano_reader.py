@@ -11,7 +11,9 @@ except buffet onset and the NOx, HC and CO emission indices.
 
 Parsing never fabricates rows. A climb block that halts below its target
 altitude is kept exactly as PIANO wrote it, because the missing rows mean the
-aircraft cannot climb there.
+aircraft cannot climb there. A data line that does not parse is a different
+matter. Dropping it would corrupt the fuel flow of the row after it, so a
+climb or descent file holding one is refused.
 """
 
 # TODO: Remove this when we migrate to Python 3.14+.
@@ -226,6 +228,246 @@ class PianoData:
         )
 
 
+# ---------------------------------------------------------------------------
+# Shared helpers, used by all three files
+# ---------------------------------------------------------------------------
+
+
+def _read_lines(path: str) -> list[str]:
+    with open(path, encoding='utf-8', errors='ignore') as f:
+        return f.readlines()
+
+
+def _find(pattern: re.Pattern[str], lines: list[str]) -> re.Match[str] | None:
+    """First match of `pattern` across `lines`, if any."""
+    for line in lines:
+        match = pattern.search(line)
+        if match is not None:
+            return match
+    return None
+
+
+def _is_data_row(tokens: list[str]) -> bool:
+    """Whether PIANO wrote these tokens as a table row.
+
+    PIANO opens every data row with a number, and opens no heading, unit line
+    or metadata line with one. So the first token tells a row that failed to
+    parse apart from the text around the table. Without that test a parse
+    failure cannot be reported, because the column headings fail to parse too.
+    """
+    if not tokens:
+        return False
+    try:
+        float(tokens[0])
+    except ValueError:
+        return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Cruise table
+# ---------------------------------------------------------------------------
+
+
+def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
+    """Parse a PIANO cruise table export.
+
+    Returns the aircraft name, the cruise sweep and the reference Mach table.
+
+    Raises:
+        ValueError: If the file has no title, or if a data row holds anything
+            but the "|" separator or a reference Mach label in its fourth
+            column, which means the export does not match the layout read
+            here.
+    """
+    lines = _read_lines(path)
+
+    name_match = _find(_AIRCRAFT_NAME_RE, lines)
+    if name_match is None:
+        raise ValueError(f'No "Cruise table for" title found in {path}')
+    aircraft_name = name_match.group(1).strip()
+
+    # Keyed on (fl, mass, mach), so a labelled row landing exactly on the swept
+    # grid can be detected rather than silently duplicating a key.
+    rows: dict[tuple[float, float, float], tuple[list[float], bool]] = {}
+    labelled: dict[tuple[float, float], dict[str, float]] = {}
+
+    malformed = []
+    for line in lines:
+        tokens = line.split()
+        if not _is_data_row(tokens):
+            continue
+        values = _cruise_values(tokens)
+        if values is None:
+            malformed.append(line)
+            continue
+
+        # The fourth column holds the "|" separator or a reference Mach label.
+        # Any other token means the export does not follow the layout read
+        # here, so no column can be trusted to hold what is expected of it.
+        discriminator = tokens[3]
+        is_swept = discriminator == '|'
+        column = _REFERENCE_MACH_LABELS.get(discriminator)
+        if not is_swept and column is None:
+            labels = ', '.join(f'"{label}"' for label in _REFERENCE_MACH_LABELS)
+            raise ValueError(
+                f'Cruise row in {path} holds "{discriminator}" where "|" or a '
+                f'reference Mach label ({labels}) is expected, so the row does '
+                f'not match the PIANO cruise layout: {line.strip()}'
+            )
+
+        mass_lb, altitude_ft, mach = values[0], values[1], values[2]
+        (
+            tas_kts,
+            cas_kts,
+            drag_lbf,
+            mcr_pct,
+            lift_to_drag,
+            fuel_flow_lbh,
+            sfc_lb_h_lbf,
+            sar_nm_lb,
+            mcl_lbf,
+            rocd_mcl_fix_mach_fpm,
+            rocd_mcl_fix_cas_fpm,
+        ) = values[3:]
+
+        fl = altitude_ft / 100
+        mass = mass_lb * POUNDS_TO_KG
+        row = [
+            fl,
+            mass,
+            mach,
+            tas_kts * KNOTS_TO_MPS,
+            cas_kts * KNOTS_TO_MPS,
+            # Cruise is level flight, so every phase table carries the five
+            # columns a performance table requires.
+            0.0,
+            fuel_flow_lbh * POUNDS_PER_HOUR_TO_KG_PER_S,
+            drag_lbf * POUNDS_FORCE_TO_NEWTONS,
+            mcr_pct,
+            lift_to_drag,
+            # lb/(h.lbf) -> kg/(N.s)
+            sfc_lb_h_lbf * POUNDS_PER_HOUR_TO_KG_PER_S / POUNDS_FORCE_TO_NEWTONS,
+            # nm/lb -> m/kg
+            sar_nm_lb * NAUTICAL_MILES_TO_METERS / POUNDS_TO_KG,
+            mcl_lbf * POUNDS_FORCE_TO_NEWTONS,
+            # PIANO already reports these signed, so keep its sign.
+            rocd_mcl_fix_mach_fpm * FPM_TO_MPS,
+            rocd_mcl_fix_cas_fpm * FPM_TO_MPS,
+        ]
+
+        if column is not None:
+            labelled.setdefault((fl, mass), {})[column] = mach
+
+        _insert_cruise_row(rows, (fl, mass, mach), row, is_swept)
+
+    if malformed:
+        logger.warning(
+            'Dropping %d cruise line(s) that start with a number but do not '
+            'hold %d columns, which thins the interpolation grid. The first '
+            'is: "%s"',
+            len(malformed),
+            _CRUISE_ROW_COLS,
+            malformed[0].strip(),
+        )
+
+    cruise = TableInput(
+        cols=CRUISE_COLS,
+        data=[
+            row
+            for _, (row, _) in sorted(
+                rows.items(), key=lambda item: (item[0][1], item[0][0], item[0][2])
+            )
+        ],
+    )
+    return aircraft_name, cruise, _reference_mach_table(labelled)
+
+
+def _cruise_values(tokens: list[str]) -> list[float] | None:
+    """Parse the numeric columns of a cruise row, or return None.
+
+    The fourth column holds a separator or a label rather than a number, so it
+    is left to the caller.
+    """
+    if len(tokens) < _CRUISE_ROW_COLS:
+        return None
+    try:
+        return [float(t) for t in tokens[:3] + tokens[4:_CRUISE_ROW_COLS]]
+    except ValueError:
+        return None
+
+
+def _insert_cruise_row(
+    rows: dict[tuple[float, float, float], tuple[list[float], bool]],
+    key: tuple[float, float, float],
+    row: list[float],
+    is_swept: bool,
+) -> None:
+    """Add a cruise row, resolving a collision in favour of the swept row.
+
+    A labelled reference Mach can land exactly on the swept grid, and PIANO
+    does not always report the same values for the two. Keeping the swept row
+    keeps the sweep self-consistent.
+    """
+    existing = rows.get(key)
+    if existing is None:
+        rows[key] = (row, is_swept)
+        return
+
+    existing_row, existing_is_swept = existing
+    differing = [
+        CRUISE_COLS[i] for i in range(len(CRUISE_COLS)) if existing_row[i] != row[i]
+    ]
+    if differing:
+        logger.warning(
+            'Duplicate cruise row at (fl=%.2f, mass=%.1f kg, mach=%.3f); '
+            'keeping the swept row. Columns that disagree: %s',
+            *key,
+            ', '.join(differing),
+        )
+    if is_swept and not existing_is_swept:
+        rows[key] = (row, is_swept)
+
+
+def _reference_mach_table(
+    labelled: dict[tuple[float, float], dict[str, float]],
+) -> TableInput:
+    """Build the reference Mach table from the labelled cruise rows.
+
+    Only groups holding every label are emitted, because table data is a list
+    of numbers and TOML has no null.
+    """
+    required = CRUISE_REFERENCE_MACH_COLS[2:]
+    data = []
+    incomplete = []
+    for (fl, mass), machs in labelled.items():
+        if all(column in machs for column in required):
+            data.append([fl, mass] + [machs[column] for column in required])
+        else:
+            incomplete.append((fl, mass))
+
+    if incomplete:
+        logger.warning(
+            'Dropping %d incomplete cruise reference Mach group(s), at '
+            '(fl, mass) of %s',
+            len(incomplete),
+            ', '.join(f'({fl:.2f}, {mass:.1f})' for fl, mass in sorted(incomplete)),
+        )
+
+    return TableInput(
+        cols=CRUISE_REFERENCE_MACH_COLS,
+        data=sorted(data, key=lambda row: (row[1], row[0])),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Climb and descent detail blocks
+#
+# PIANO writes both files in the same shape: one block per initial
+# mass, holding a metadata header and a table of cumulative values.
+# ---------------------------------------------------------------------------
+
+
 @dataclass(frozen=True)
 class _Schedule:
     """A PIANO airspeed schedule, in the units the file reports."""
@@ -243,61 +485,6 @@ class _Schedule:
             mach=self.mach,
             crossover_altitude_m=self.crossover_ft * FEET_TO_METERS,
         )
-
-
-def _read_lines(path: str) -> list[str]:
-    with open(path, encoding='utf-8', errors='ignore') as f:
-        return f.readlines()
-
-
-def _numeric_row(line: str, ncols: int) -> list[float] | None:
-    """Parse a line as a row of exactly `ncols` numbers, or return None."""
-    tokens = line.split()
-    if len(tokens) != ncols:
-        return None
-    try:
-        return [float(t) for t in tokens]
-    except ValueError:
-        return None
-
-
-def _split_blocks(
-    lines: list[str], marker: str, ncols: int
-) -> list[tuple[list[str], list[list[float]]]]:
-    """Split a PIANO detail file into the blocks introduced by `marker`.
-
-    Returns one ``(header_lines, rows)`` pair per block. The header lines are
-    those between the previous block's marker and this one, which is where
-    PIANO writes block metadata when it writes any. Blocks that follow a
-    halted climb have no metadata there, so their header lines hold none.
-
-    Raises:
-        ValueError: If the file contains no block.
-    """
-    starts = [i for i, line in enumerate(lines) if marker in line]
-    if not starts:
-        raise ValueError(f'No "{marker}" block found in PIANO file')
-
-    blocks = []
-    for n, start in enumerate(starts):
-        header_start = starts[n - 1] + 1 if n > 0 else 0
-        end = starts[n + 1] if n + 1 < len(starts) else len(lines)
-        rows = []
-        for line in lines[start + 1 : end]:
-            row = _numeric_row(line, ncols)
-            if row is not None:
-                rows.append(row)
-        blocks.append((lines[header_start:start], rows))
-    return blocks
-
-
-def _find(pattern: re.Pattern[str], lines: list[str]) -> re.Match[str] | None:
-    """First match of `pattern` across `lines`, if any."""
-    for line in lines:
-        match = pattern.search(line)
-        if match is not None:
-            return match
-    return None
 
 
 def _parse_schedule(lines: list[str], descending: bool) -> _Schedule | None:
@@ -344,6 +531,92 @@ def _tas_from_schedule(altitude_m: float, schedule: _Schedule) -> float:
         else schedule.cas_high_kts
     )
     return float(cas_to_tas(cas_kts * KNOTS_TO_MPS, altitude_m))
+
+
+@dataclass(frozen=True)
+class _Block:
+    """One detail block of a PIANO climb or descent file."""
+
+    header_lines: list[str]
+    """Lines between the previous block's marker and this block's."""
+
+    rows: list[list[float]]
+    """Data lines that parsed, in file order."""
+
+    malformed: list[str]
+    """Data lines that did not parse, in file order."""
+
+
+def _numeric_row(tokens: list[str], ncols: int) -> list[float] | None:
+    """Parse `tokens` as a row of exactly `ncols` numbers, or return None.
+
+    Call this only on a row `_is_data_row` accepts. None then means the row is
+    malformed, rather than that the line was never a row.
+    """
+    if len(tokens) != ncols:
+        return None
+    try:
+        return [float(t) for t in tokens]
+    except ValueError:
+        return None
+
+
+def _split_blocks(lines: list[str], marker: str, ncols: int) -> list[_Block]:
+    """Split a PIANO detail file into the blocks introduced by `marker`.
+
+    A block's header lines are those between the previous block's marker and
+    this one, which is where PIANO writes block metadata when it writes any.
+    Blocks that follow a halted climb have no metadata there, so their header
+    lines hold none.
+
+    Raises:
+        ValueError: If the file contains no block.
+    """
+    starts = [i for i, line in enumerate(lines) if marker in line]
+    if not starts:
+        raise ValueError(f'No "{marker}" block found in PIANO file')
+
+    blocks = []
+    for n, start in enumerate(starts):
+        header_start = starts[n - 1] + 1 if n > 0 else 0
+        end = starts[n + 1] if n + 1 < len(starts) else len(lines)
+        rows = []
+        malformed = []
+        for line in lines[start + 1 : end]:
+            tokens = line.split()
+            if not _is_data_row(tokens):
+                continue
+            row = _numeric_row(tokens, ncols)
+            if row is None:
+                malformed.append(line)
+            else:
+                rows.append(row)
+        blocks.append(_Block(lines[header_start:start], rows, malformed))
+    return blocks
+
+
+def _reject_malformed(label: str, block: _Block, ncols: int) -> None:
+    """Refuse a block holding a data line that did not parse.
+
+    Dropping the line would lose more than one row. `_deltas` differences the
+    rows that survive, so the row after the gap reports the fuel burn of two
+    steps over the time of two steps. Its own cumulative columns stay right
+    and neither cross-check here can see the gap, so the result looks sound.
+
+    PIANO writes fixed-width columns, so the usual cause is a value that
+    outgrew its field and ran into its neighbour, merging both into one token.
+
+    Raises:
+        ValueError: If the block holds any malformed data line.
+    """
+    if not block.malformed:
+        return
+    raise ValueError(
+        f'{label}: {len(block.malformed)} line(s) start with a number but do '
+        f'not hold {ncols} numbers, and dropping a row would silently average '
+        'the fuel flow of the row after it. First such line: '
+        f'"{block.malformed[0].strip()}"'
+    )
 
 
 def _deltas(values: list[float]) -> list[float]:
@@ -410,175 +683,112 @@ def _cross_check_fuel_burn(label: str, burn_kg: float, header_lines: list[str]) 
         )
 
 
-def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
-    """Parse a PIANO cruise table export.
+# ---------------------------------------------------------------------------
+# Climb
+# ---------------------------------------------------------------------------
 
-    Returns the aircraft name, the cruise sweep and the reference Mach table.
 
-    Raises:
-        ValueError: If the file has no title, or if a data row holds anything
-            but the "|" separator or a reference Mach label in its fourth
-            column, which means the export does not match the layout read
-            here.
+def _parse_climb(
+    path: str, overrides: PianoOverrides
+) -> tuple[SpeedData, int, int, TableInput]:
+    """Parse a PIANO climb details export.
+
+    Returns the climb speed schedule, the ISA offset, the highest altitude
+    reached by any block, and the climb table.
     """
     lines = _read_lines(path)
+    blocks = _split_blocks(lines, 'Climb details', _CLIMB_ROW_COLS)
 
-    name_match = _find(_AIRCRAFT_NAME_RE, lines)
-    if name_match is None:
-        raise ValueError(f'No "Cruise table for" title found in {path}')
-    aircraft_name = name_match.group(1).strip()
+    isa_offset = _parse_isa_offset(lines)
+    masses = _climb_masses(blocks, overrides)
+    schedule = _climb_schedule(blocks, overrides)
 
-    # Keyed on (fl, mass, mach), so a labelled row landing exactly on the swept
-    # grid can be detected rather than silently duplicating a key.
-    rows: dict[tuple[float, float, float], tuple[list[float], bool]] = {}
-    labelled: dict[tuple[float, float], dict[str, float]] = {}
-
-    for line in lines:
-        tokens = line.split()
-        if len(tokens) < _CRUISE_ROW_COLS:
-            continue
-        try:
-            values = [float(t) for t in tokens[:3] + tokens[4:_CRUISE_ROW_COLS]]
-        except ValueError:
-            continue
-
-        # The fourth column holds the "|" separator or a reference Mach label.
-        # Any other token means the export does not follow the layout read
-        # here, so no column can be trusted to hold what is expected of it.
-        discriminator = tokens[3]
-        is_swept = discriminator == '|'
-        column = _REFERENCE_MACH_LABELS.get(discriminator)
-        if not is_swept and column is None:
-            labels = ', '.join(f'"{label}"' for label in _REFERENCE_MACH_LABELS)
-            raise ValueError(
-                f'Cruise row in {path} holds "{discriminator}" where "|" or a '
-                f'reference Mach label ({labels}) is expected, so the row does '
-                f'not match the PIANO cruise layout: {line.strip()}'
+    for match in (_HALTED_RE.search(line) for line in lines):
+        if match is not None:
+            logger.info(
+                'PIANO climb halted at %s feet, so the block stops there',
+                match.group(1).rstrip('.'),
             )
 
-        mass_lb, altitude_ft, mach = values[0], values[1], values[2]
-        (
-            tas_kts,
-            cas_kts,
-            drag_lbf,
-            mcr_pct,
-            lift_to_drag,
-            fuel_flow_lbh,
-            sfc_lb_h_lbf,
-            sar_nm_lb,
-            mcl_lbf,
-            rocd_mcl_fix_mach_fpm,
-            rocd_mcl_fix_cas_fpm,
-        ) = values[3:]
-
-        fl = altitude_ft / 100
-        mass = mass_lb * POUNDS_TO_KG
-        row = [
-            fl,
-            mass,
-            mach,
-            tas_kts * KNOTS_TO_MPS,
-            cas_kts * KNOTS_TO_MPS,
-            # Cruise is level flight, so every phase table carries the five
-            # columns a performance table requires.
-            0.0,
-            fuel_flow_lbh * POUNDS_PER_HOUR_TO_KG_PER_S,
-            drag_lbf * POUNDS_FORCE_TO_NEWTONS,
-            mcr_pct,
-            lift_to_drag,
-            # lb/(h.lbf) -> kg/(N.s)
-            sfc_lb_h_lbf * POUNDS_PER_HOUR_TO_KG_PER_S / POUNDS_FORCE_TO_NEWTONS,
-            # nm/lb -> m/kg
-            sar_nm_lb * NAUTICAL_MILES_TO_METERS / POUNDS_TO_KG,
-            mcl_lbf * POUNDS_FORCE_TO_NEWTONS,
-            # PIANO already reports these signed, so keep its sign.
-            rocd_mcl_fix_mach_fpm * FPM_TO_MPS,
-            rocd_mcl_fix_cas_fpm * FPM_TO_MPS,
-        ]
-
-        if column is not None:
-            labelled.setdefault((fl, mass), {})[column] = mach
-
-        _insert_cruise_row(rows, (fl, mass, mach), row, is_swept)
-
-    cruise = TableInput(
-        cols=CRUISE_COLS,
-        data=[
-            row
-            for _, (row, _) in sorted(
-                rows.items(), key=lambda item: (item[0][1], item[0][0], item[0][2])
-            )
-        ],
-    )
-    return aircraft_name, cruise, _reference_mach_table(labelled)
-
-
-def _insert_cruise_row(
-    rows: dict[tuple[float, float, float], tuple[list[float], bool]],
-    key: tuple[float, float, float],
-    row: list[float],
-    is_swept: bool,
-) -> None:
-    """Add a cruise row, resolving a collision in favour of the swept row.
-
-    A labelled reference Mach can land exactly on the swept grid, and PIANO
-    does not always report the same values for the two. Keeping the swept row
-    keeps the sweep self-consistent.
-    """
-    existing = rows.get(key)
-    if existing is None:
-        rows[key] = (row, is_swept)
-        return
-
-    existing_row, existing_is_swept = existing
-    differing = [
-        CRUISE_COLS[i] for i in range(len(CRUISE_COLS)) if existing_row[i] != row[i]
-    ]
-    if differing:
-        logger.warning(
-            'Duplicate cruise row at (fl=%.2f, mass=%.1f kg, mach=%.3f); '
-            'keeping the swept row. Columns that disagree: %s',
-            *key,
-            ', '.join(differing),
-        )
-    if is_swept and not existing_is_swept:
-        rows[key] = (row, is_swept)
-
-
-def _reference_mach_table(
-    labelled: dict[tuple[float, float], dict[str, float]],
-) -> TableInput:
-    """Build the reference Mach table from the labelled cruise rows.
-
-    Only groups holding every label are emitted, because table data is a list
-    of numbers and TOML has no null.
-    """
-    required = CRUISE_REFERENCE_MACH_COLS[2:]
     data = []
-    incomplete = []
-    for (fl, mass), machs in labelled.items():
-        if all(column in machs for column in required):
-            data.append([fl, mass] + [machs[column] for column in required])
-        else:
-            incomplete.append((fl, mass))
+    maximum_altitude_ft = 0.0
+    for n, (block, mass) in enumerate(zip(blocks, masses, strict=True)):
+        label = f'Climb block {n + 1}'
+        _reject_malformed(label, block, _CLIMB_ROW_COLS)
 
-    if incomplete:
-        logger.warning(
-            'Dropping %d incomplete cruise reference Mach group(s), at '
-            '(fl, mass) of %s',
-            len(incomplete),
-            ', '.join(f'({fl:.2f}, {mass:.1f})' for fl, mass in sorted(incomplete)),
-        )
+        rows = block.rows
+        if not rows:
+            logger.warning('%s: no data rows', label)
+            continue
 
-    return TableInput(
-        cols=CRUISE_REFERENCE_MACH_COLS,
-        data=sorted(data, key=lambda row: (row[1], row[0])),
+        altitude_ft = [row[0] for row in rows]
+        maximum_altitude_ft = max(maximum_altitude_ft, max(altitude_ft))
+        altitude_m = [ft * FEET_TO_METERS for ft in altitude_ft]
+        tas = [_tas_from_schedule(alt, schedule) for alt in altitude_m]
+        rocd = [row[5] * FPM_TO_MPS for row in rows]
+
+        d_time = _deltas([row[1] for row in rows])
+        d_distance = _deltas([row[2] * NAUTICAL_MILES_TO_METERS for row in rows])
+        d_burn = _deltas([row[3] * POUNDS_TO_KG for row in rows])
+
+        _cross_check_tas(label, tas, d_distance, d_time, rocd)
+        _cross_check_fuel_burn(label, rows[-1][3] * POUNDS_TO_KG, block.header_lines)
+
+        for i, row in enumerate(rows):
+            if d_time[i] == 0:
+                logger.warning(
+                    '%s: dropping the row at %.0f feet, which spans no time '
+                    'so has no defined fuel flow',
+                    label,
+                    row[0],
+                )
+                continue
+            data.append(
+                [
+                    row[0] / 100,
+                    mass,
+                    tas[i],
+                    rocd[i],
+                    d_burn[i] / d_time[i],
+                    row[1],
+                    row[2] * NAUTICAL_MILES_TO_METERS,
+                    row[3] * POUNDS_TO_KG,
+                    row[4] * POUNDS_FORCE_TO_NEWTONS,
+                    row[6] * POUNDS_FORCE_TO_NEWTONS,
+                ]
+            )
+
+    table = TableInput(
+        cols=CLIMB_COLS, data=sorted(data, key=lambda row: (row[1], row[0]))
+    )
+    return (
+        schedule.to_speed_data(),
+        isa_offset,
+        int(maximum_altitude_ft),
+        table,
     )
 
 
-def _climb_masses(
-    blocks: list[tuple[list[str], list[list[float]]]], overrides: PianoOverrides
-) -> list[float]:
+def _parse_isa_offset(lines: list[str]) -> int:
+    """Parse the ISA temperature offset from a PIANO climb file.
+
+    Raises:
+        ValueError: If the offset is non-zero. Deriving TAS from the airspeed
+            schedule assumes a standard atmosphere.
+    """
+    match = _find(_DELTA_ISA_RE, lines)
+    if match is None:
+        return 0
+    offset = float(match.group(1))
+    if offset != 0:
+        raise ValueError(
+            f'PIANO climb file reports a Delta-ISA of {offset:+g} deg C, but '
+            'true airspeed is derived assuming a standard atmosphere'
+        )
+    return int(offset)
+
+
+def _climb_masses(blocks: list[_Block], overrides: PianoOverrides) -> list[float]:
     """Resolve the initial mass of each climb block, in file order.
 
     Raises:
@@ -594,8 +804,8 @@ def _climb_masses(
         return list(overrides.climb_masses_kg)
 
     masses = []
-    for n, (header_lines, _) in enumerate(blocks):
-        match = _find(_CLIMB_MASS_RE, header_lines)
+    for n, block in enumerate(blocks):
+        match = _find(_CLIMB_MASS_RE, block.header_lines)
         if match is None:
             raise ValueError(
                 f'Climb block {n + 1} has no "Initial mass" header, so the '
@@ -605,9 +815,7 @@ def _climb_masses(
     return masses
 
 
-def _climb_schedule(
-    blocks: list[tuple[list[str], list[list[float]]]], overrides: PianoOverrides
-) -> _Schedule:
+def _climb_schedule(blocks: list[_Block], overrides: PianoOverrides) -> _Schedule:
     """Resolve the climb airspeed schedule.
 
     The schedule is a property of the export rather than of one run, so the
@@ -617,8 +825,8 @@ def _climb_schedule(
         ValueError: If no block states a schedule and the overrides do not
             supply a complete one.
     """
-    for header_lines, _ in blocks:
-        schedule = _parse_schedule(header_lines, descending=False)
+    for block in blocks:
+        schedule = _parse_schedule(block.header_lines, descending=False)
         if schedule is not None:
             return _apply_climb_overrides(schedule, overrides)
 
@@ -675,101 +883,9 @@ def _apply_climb_overrides(schedule: _Schedule, overrides: PianoOverrides) -> _S
     )
 
 
-def _parse_isa_offset(lines: list[str]) -> int:
-    """Parse the ISA temperature offset from a PIANO climb file.
-
-    Raises:
-        ValueError: If the offset is non-zero. Deriving TAS from the airspeed
-            schedule assumes a standard atmosphere.
-    """
-    match = _find(_DELTA_ISA_RE, lines)
-    if match is None:
-        return 0
-    offset = float(match.group(1))
-    if offset != 0:
-        raise ValueError(
-            f'PIANO climb file reports a Delta-ISA of {offset:+g} deg C, but '
-            'true airspeed is derived assuming a standard atmosphere'
-        )
-    return int(offset)
-
-
-def _parse_climb(
-    path: str, overrides: PianoOverrides
-) -> tuple[SpeedData, int, int, TableInput]:
-    """Parse a PIANO climb details export.
-
-    Returns the climb speed schedule, the ISA offset, the highest altitude
-    reached by any block, and the climb table.
-    """
-    lines = _read_lines(path)
-    blocks = _split_blocks(lines, 'Climb details', _CLIMB_ROW_COLS)
-
-    isa_offset = _parse_isa_offset(lines)
-    masses = _climb_masses(blocks, overrides)
-    schedule = _climb_schedule(blocks, overrides)
-
-    for match in (_HALTED_RE.search(line) for line in lines):
-        if match is not None:
-            logger.info(
-                'PIANO climb halted at %s feet, so the block stops there',
-                match.group(1).rstrip('.'),
-            )
-
-    data = []
-    maximum_altitude_ft = 0.0
-    for n, ((header_lines, rows), mass) in enumerate(zip(blocks, masses, strict=True)):
-        label = f'Climb block {n + 1}'
-        if not rows:
-            logger.warning('%s: no data rows', label)
-            continue
-
-        altitude_ft = [row[0] for row in rows]
-        maximum_altitude_ft = max(maximum_altitude_ft, max(altitude_ft))
-        altitude_m = [ft * FEET_TO_METERS for ft in altitude_ft]
-        tas = [_tas_from_schedule(alt, schedule) for alt in altitude_m]
-        rocd = [row[5] * FPM_TO_MPS for row in rows]
-
-        d_time = _deltas([row[1] for row in rows])
-        d_distance = _deltas([row[2] * NAUTICAL_MILES_TO_METERS for row in rows])
-        d_burn = _deltas([row[3] * POUNDS_TO_KG for row in rows])
-
-        _cross_check_tas(label, tas, d_distance, d_time, rocd)
-        _cross_check_fuel_burn(label, rows[-1][3] * POUNDS_TO_KG, header_lines)
-
-        for i, row in enumerate(rows):
-            if d_time[i] == 0:
-                logger.warning(
-                    '%s: dropping the row at %.0f feet, which spans no time '
-                    'so has no defined fuel flow',
-                    label,
-                    row[0],
-                )
-                continue
-            data.append(
-                [
-                    row[0] / 100,
-                    mass,
-                    tas[i],
-                    rocd[i],
-                    d_burn[i] / d_time[i],
-                    row[1],
-                    row[2] * NAUTICAL_MILES_TO_METERS,
-                    row[3] * POUNDS_TO_KG,
-                    row[4] * POUNDS_FORCE_TO_NEWTONS,
-                    row[6] * POUNDS_FORCE_TO_NEWTONS,
-                ]
-            )
-
-    table = TableInput(
-        cols=CLIMB_COLS, data=sorted(data, key=lambda row: (row[1], row[0]))
-    )
-    return (
-        schedule.to_speed_data(),
-        isa_offset,
-        int(maximum_altitude_ft),
-        table,
-    )
+# ---------------------------------------------------------------------------
+# Descent
+# ---------------------------------------------------------------------------
 
 
 def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
@@ -789,15 +905,16 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
     idle_thrust = []
     schedule: _Schedule | None = None
 
-    for n, (header_lines, rows) in enumerate(blocks):
+    for n, block in enumerate(blocks):
         label = f'Descent block {n + 1}'
+        _reject_malformed(label, block, _DESCENT_ROW_COLS)
 
-        mass_match = _find(_DESCENT_MASS_RE, header_lines)
+        mass_match = _find(_DESCENT_MASS_RE, block.header_lines)
         if mass_match is None:
             raise ValueError(f'{label} has no "Mass" header')
         mass = float(mass_match.group(1)) * POUNDS_TO_KG
 
-        block_schedule = _parse_schedule(header_lines, descending=True)
+        block_schedule = _parse_schedule(block.header_lines, descending=True)
         if block_schedule is None:
             raise ValueError(f'{label} has no "Airspeed schedule" header')
         if schedule is None:
@@ -809,12 +926,13 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
                 label,
             )
 
-        idle_match = _find(_IDLE_THRUST_RE, header_lines)
+        idle_match = _find(_IDLE_THRUST_RE, block.header_lines)
         if idle_match is None:
             logger.warning('%s has no "Idle thrust below" header', label)
         else:
             idle_thrust.append([mass, float(idle_match.group(1)) * FEET_TO_METERS])
 
+        rows = block.rows
         if not rows:
             logger.warning('%s: no data rows', label)
             continue
@@ -829,7 +947,7 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
         d_burn = _deltas([row[3] * POUNDS_TO_KG for row in rows])
 
         _cross_check_tas(label, tas, d_distance, d_time, rocd)
-        _cross_check_fuel_burn(label, rows[-1][3] * POUNDS_TO_KG, header_lines)
+        _cross_check_fuel_burn(label, rows[-1][3] * POUNDS_TO_KG, block.header_lines)
 
         for i, row in enumerate(rows):
             if d_time[i] == 0:
