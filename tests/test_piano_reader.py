@@ -227,6 +227,43 @@ def test_duplicate_cruise_row_disagreement_warns(tmp_path, caplog):
     )
 
 
+def test_unrecognised_cruise_label_raises(tmp_path):
+    """An unknown label in the fourth column means the export comes from a
+    PIANO layout this parser was not written against. Nothing in the file can
+    be trusted after that, so refuse it rather than drop rows."""
+    text = (PIANO_DIR / 'cruise.txt').read_text().replace('99%SAR', '98%SAR')
+    cruise_file = tmp_path / 'cruise.txt'
+    cruise_file.write_text(text)
+
+    with pytest.raises(ValueError, match='does not match the PIANO cruise'):
+        PianoData.load(
+            str(cruise_file),
+            str(PIANO_DIR / 'climb.txt'),
+            str(PIANO_DIR / 'descent.txt'),
+            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        )
+
+
+def test_cruise_row_without_the_separator_raises(tmp_path):
+    """If the "|" separator is missing, the fourth column holds a number and
+    every value after it is read one column early. Refuse the file instead."""
+    cruise_file = tmp_path / 'cruise.txt'
+    cruise_file.write_text(
+        '  Cruise table for some_airplane, some_engine\n'
+        # Fifteen numeric columns, so the row still parses once shifted.
+        '   93000.  15000.  0.350  100.0  200.0  3000.  40.0  150.0  6000. '
+        '  0.7000  0.08000  19000.  1000.  2000.  1.0\n'
+    )
+
+    with pytest.raises(ValueError, match='does not match the PIANO cruise'):
+        PianoData.load(
+            str(cruise_file),
+            str(PIANO_DIR / 'climb.txt'),
+            str(PIANO_DIR / 'descent.txt'),
+            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        )
+
+
 def test_cruise_reference_mach_complete_groups(piano):
     """The fixture labels all three reference Machs for every (fl, mass)."""
     assert piano.cruise_reference_mach.cols == CRUISE_REFERENCE_MACH_COLS

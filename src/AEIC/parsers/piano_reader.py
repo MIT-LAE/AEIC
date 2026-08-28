@@ -414,6 +414,12 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
     """Parse a PIANO cruise table export.
 
     Returns the aircraft name, the cruise sweep and the reference Mach table.
+
+    Raises:
+        ValueError: If the file has no title, or if a data row holds anything
+            but the "|" separator or a reference Mach label in its fourth
+            column, which means the export does not match the layout read
+            here.
     """
     lines = _read_lines(path)
 
@@ -426,7 +432,6 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
     # grid can be detected rather than silently duplicating a key.
     rows: dict[tuple[float, float, float], tuple[list[float], bool]] = {}
     labelled: dict[tuple[float, float], dict[str, float]] = {}
-    unknown_labels: set[str] = set()
 
     for line in lines:
         tokens = line.split()
@@ -436,6 +441,20 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
             values = [float(t) for t in tokens[:3] + tokens[4:_CRUISE_ROW_COLS]]
         except ValueError:
             continue
+
+        # The fourth column holds the "|" separator or a reference Mach label.
+        # Any other token means the export does not follow the layout read
+        # here, so no column can be trusted to hold what is expected of it.
+        discriminator = tokens[3]
+        is_swept = discriminator == '|'
+        column = _REFERENCE_MACH_LABELS.get(discriminator)
+        if not is_swept and column is None:
+            labels = ', '.join(f'"{label}"' for label in _REFERENCE_MACH_LABELS)
+            raise ValueError(
+                f'Cruise row in {path} holds "{discriminator}" where "|" or a '
+                f'reference Mach label ({labels}) is expected, so the row does '
+                f'not match the PIANO cruise layout: {line.strip()}'
+            )
 
         mass_lb, altitude_ft, mach = values[0], values[1], values[2]
         (
@@ -477,23 +496,10 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
             rocd_mcl_fix_cas_fpm * FPM_TO_MPS,
         ]
 
-        discriminator = tokens[3]
-        is_swept = discriminator == '|'
-        if not is_swept:
-            column = _REFERENCE_MACH_LABELS.get(discriminator)
-            if column is None:
-                unknown_labels.add(discriminator)
-            else:
-                labelled.setdefault((fl, mass), {})[column] = mach
+        if column is not None:
+            labelled.setdefault((fl, mass), {})[column] = mach
 
         _insert_cruise_row(rows, (fl, mass, mach), row, is_swept)
-
-    for label in sorted(unknown_labels):
-        logger.warning(
-            'Unrecognised cruise reference Mach label "%s"; the rows are kept '
-            'in the sweep but get no reference Mach entry',
-            label,
-        )
 
     cruise = TableInput(
         cols=CRUISE_COLS,
