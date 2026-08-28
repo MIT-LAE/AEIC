@@ -1,6 +1,6 @@
 """Unit conversion factors for various measurements."""
 
-from .constants import g0
+from AEIC.constants import g0
 
 FEET_TO_METERS = 0.3048
 """Unit conversion factor for feet to meters."""
