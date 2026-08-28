@@ -332,9 +332,12 @@ def _tas_from_schedule(altitude_m: float, schedule: _Schedule) -> float:
     if altitude_m > crossover_m:
         return schedule.mach * float(speed_of_sound_at_altitude(altitude_m))
 
+    # PIANO assumes per ATC rules that aircraft flying below FL 100 are at
+    # their low CAS (which is always? 250 kts)
+    ATC_FL_CAS_LOW = 100
     cas_kts = (
         schedule.cas_low_kts
-        if altitude_m < 100 * FL_TO_METERS
+        if altitude_m < ATC_FL_CAS_LOW * FL_TO_METERS
         else schedule.cas_high_kts
     )
     return float(cas_to_tas(cas_kts * KNOTS_TO_MPS, altitude_m))
