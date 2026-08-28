@@ -113,6 +113,64 @@ def test_climb_schedule_overrides(piano):
     assert overridden.climb_speeds.cas_high == piano.climb_speeds.cas_high
 
 
+def test_crossover_altitude_override(piano):
+    overridden = load(climb_crossover_altitude_ft=28000.0)
+    assert overridden.climb_speeds.crossover_altitude_m == pytest.approx(
+        28000 * FEET_TO_METERS
+    )
+    # Untouched values still come from the file.
+    assert overridden.climb_speeds.mach == piano.climb_speeds.mach
+
+
+def _climb_without_schedule(tmp_path: Path) -> Path:
+    """The climb fixture with its one airspeed schedule line removed."""
+    lines = (PIANO_DIR / 'climb.txt').read_text().splitlines(keepends=True)
+    climb_file = tmp_path / 'climb.txt'
+    kept = [line for line in lines if 'Airspeed schedule' not in line]
+    climb_file.write_text(''.join(kept))
+    return climb_file
+
+
+def test_climb_schedule_supplied_entirely_by_overrides(tmp_path):
+    """A climb file stating no schedule parses when every part is supplied,
+    the crossover altitude included."""
+    piano = PianoData.load(
+        str(PIANO_DIR / 'cruise.txt'),
+        str(_climb_without_schedule(tmp_path)),
+        str(PIANO_DIR / 'descent.txt'),
+        overrides=PianoOverrides(
+            climb_masses_kg=CLIMB_MASSES_KG,
+            climb_cas_low_kts=240.0,
+            climb_cas_high_kts=290.0,
+            climb_mach=0.72,
+            climb_crossover_altitude_ft=28000.0,
+        ),
+    )
+    assert piano.climb_speeds.cas_low == pytest.approx(240 * KNOTS_TO_MPS)
+    assert piano.climb_speeds.cas_high == pytest.approx(290 * KNOTS_TO_MPS)
+    assert piano.climb_speeds.mach == pytest.approx(0.72)
+    assert piano.climb_speeds.crossover_altitude_m == pytest.approx(
+        28000 * FEET_TO_METERS
+    )
+
+
+def test_missing_climb_schedule_names_every_missing_override(tmp_path):
+    with pytest.raises(ValueError, match='--climb-crossover-altitude-ft') as excinfo:
+        PianoData.load(
+            str(PIANO_DIR / 'cruise.txt'),
+            str(_climb_without_schedule(tmp_path)),
+            str(PIANO_DIR / 'descent.txt'),
+            overrides=PianoOverrides(
+                climb_masses_kg=CLIMB_MASSES_KG,
+                climb_cas_low_kts=240.0,
+                climb_cas_high_kts=290.0,
+                climb_mach=0.72,
+            ),
+        )
+    # The three supplied values are not reported as missing.
+    assert '--climb-mach' not in str(excinfo.value)
+
+
 def test_labelled_mach_on_the_swept_grid_keeps_one_row(piano, caplog):
     """A labelled reference Mach can land exactly on the swept grid. The
     fixture labels maxSAR at 0.450, which the sweep also visits."""

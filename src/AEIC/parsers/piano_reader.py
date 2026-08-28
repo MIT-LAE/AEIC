@@ -144,6 +144,9 @@ class PianoOverrides:
     climb_mach: float | None = None
     """Climb Mach number above the crossover altitude."""
 
+    climb_crossover_altitude_ft: float | None = None
+    """Altitude above which the climb flies its Mach number [feet]."""
+
 
 @dataclass
 class PianoData:
@@ -613,12 +616,18 @@ def _climb_schedule(
         if schedule is not None:
             return _apply_climb_overrides(schedule, overrides)
 
+    cas_low_kts = overrides.climb_cas_low_kts
+    cas_high_kts = overrides.climb_cas_high_kts
+    mach = overrides.climb_mach
+    crossover_ft = overrides.climb_crossover_altitude_ft
+
     missing = [
         name
         for name, value in (
-            ('--climb-cas-low-kts', overrides.climb_cas_low_kts),
-            ('--climb-cas-high-kts', overrides.climb_cas_high_kts),
-            ('--climb-mach', overrides.climb_mach),
+            ('--climb-cas-low-kts', cas_low_kts),
+            ('--climb-cas-high-kts', cas_high_kts),
+            ('--climb-mach', mach),
+            ('--climb-crossover-altitude-ft', crossover_ft),
         )
         if value is None
     ]
@@ -628,9 +637,11 @@ def _climb_schedule(
             f'supplied explicitly. Missing: {", ".join(missing)}'
         )
 
-    raise ValueError(
-        'No climb block states an airspeed schedule, so its crossover '
-        'altitude is unknown and TAS cannot be derived'
+    return _Schedule(
+        cas_low_kts=cas_low_kts,
+        cas_high_kts=cas_high_kts,
+        mach=mach,
+        crossover_ft=crossover_ft,
     )
 
 
@@ -650,7 +661,11 @@ def _apply_climb_overrides(schedule: _Schedule, overrides: PianoOverrides) -> _S
         mach=(
             overrides.climb_mach if overrides.climb_mach is not None else schedule.mach
         ),
-        crossover_ft=schedule.crossover_ft,
+        crossover_ft=(
+            overrides.climb_crossover_altitude_ft
+            if overrides.climb_crossover_altitude_ft is not None
+            else schedule.crossover_ft
+        ),
     )
 
 

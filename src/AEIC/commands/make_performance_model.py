@@ -286,6 +286,12 @@ def parse_climb_masses(value: str | None) -> list[float] | None:
     help='Climb Mach number above the crossover altitude, overriding the file.',
 )
 @click.option(
+    '--climb-crossover-altitude-ft',
+    type=float,
+    help='Altitude in feet above which the climb flies its Mach number, '
+    'overriding the file.',
+)
+@click.option(
     '--cruise-mach',
     type=float,
     help='Cruise Mach number. Omit to write no cruise speed data.',
@@ -324,6 +330,7 @@ def piano(
     climb_cas_low_kts,
     climb_cas_high_kts,
     climb_mach,
+    climb_crossover_altitude_ft,
     cruise_mach,
     operating_empty_mass,
     aircraft_name,
@@ -348,6 +355,7 @@ def piano(
                 climb_cas_low_kts=climb_cas_low_kts,
                 climb_cas_high_kts=climb_cas_high_kts,
                 climb_mach=climb_mach,
+                climb_crossover_altitude_ft=climb_crossover_altitude_ft,
             ),
         )
     except ValueError as e:

@@ -86,13 +86,19 @@ def format_table_section(section: str, cols: list[str], data: list[list[float]])
             col_lines.append(f'  {quoted}')
     cols_block = 'cols = [\n' + '\n'.join(col_lines) + '\n]'
 
-    cells = [[repr(float(v)) for v in row] for row in data]
-    widths = [max(len(row[c]) for row in cells) for c in range(len(cols))]
-    data_lines = []
-    for row in cells:
-        padded = ', '.join(row[c].rjust(widths[c]) for c in range(len(cols)))
-        data_lines.append(f'  [ {padded}],')
-    data_block = 'data = [\n' + '\n'.join(data_lines) + '\n]'
+    # An empty table is valid: it can happen for the descent idle thrust
+    # table which may be empty if there is never an idle thrust for that
+    # descent profile.
+    if not data:
+        data_block = 'data = []'
+    else:
+        cells = [[repr(float(v)) for v in row] for row in data]
+        widths = [max(len(row[c]) for row in cells) for c in range(len(cols))]
+        data_lines = []
+        for row in cells:
+            padded = ', '.join(row[c].rjust(widths[c]) for c in range(len(cols)))
+            data_lines.append(f'  [ {padded}],')
+        data_block = 'data = [\n' + '\n'.join(data_lines) + '\n]'
 
     return f'[{section}]\n' + cols_block + '\n\n' + data_block + '\n'
 
