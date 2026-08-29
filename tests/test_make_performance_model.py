@@ -5,7 +5,7 @@ import pytest
 from click.testing import CliRunner
 
 from AEIC.cli import cli
-from AEIC.commands._performance_model_toml import format_table_section
+from AEIC.commands.make_performance_model import _format_table_section
 from AEIC.config import Config
 
 TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
@@ -68,7 +68,7 @@ def test_legacy_output_byte_identical(tmp_path):
 def test_empty_table_section():
     """`TableInput` accepts an empty table, and the PIANO reader produces one
     when no row qualifies, so the writer must render it instead of crashing."""
-    section = format_table_section('descent_idle_thrust', ['mass', 'x'], [])
+    section = _format_table_section('descent_idle_thrust', ['mass', 'x'], [])
     assert 'data = []' in section
     assert tomllib.loads(section) == {
         'descent_idle_thrust': {'cols': ['mass', 'x'], 'data': []}
