@@ -1,17 +1,35 @@
+import copy
 import os
 import tomllib
 from pathlib import Path
 
 import pytest
 
+import AEIC
 from AEIC.config import Config, config
 from AEIC.missions import Mission
+from AEIC.parsers.piano_reader import PianoData, PianoOverrides
+from AEIC.parsers.ptf_reader import PTFData
+from AEIC.performance.edb import EDBEntry
 from AEIC.performance.model_selector import SimplePerformanceModelSelector
 from AEIC.performance.models import PerformanceModel
+from AEIC.performance.models.base import LTOPerformanceInput
 from AEIC.types import Fuel
 
 # Absolute path to test data directory.
 TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
+
+# Source data the performance model builders are tested against. These paths
+# are resolved directly rather than through `config.file_location`, so that the
+# fixtures reading them can be session-scoped: the autouse `default_config`
+# fixture below is function-scoped, and a session-scoped fixture cannot depend
+# on it.
+EDB_FILE = Path(AEIC.__file__).parent / 'data' / 'engines' / 'sample_edb.xlsx'
+EDB_UID = '01P11CM121'
+EDB_THRUST_FRACTIONS = (0.07, 0.30, 0.85, 1.0)
+PIANO_DIR = TEST_DATA_DIR / 'performance' / 'piano'
+PIANO_CLIMB_MASSES_KG = [54000.0, 50000.0, 46000.0, 42000.0]
+PTF_FILE = TEST_DATA_DIR / 'verification' / 'legacy' / 'legacy_performance.PTF'
 
 # Set the path to include the test data directory. This is done at module
 # import time deliberately so the value is inherited by subprocesses spawned
@@ -130,3 +148,38 @@ def performance_model_selector():
 def fuel():
     with open(config.emissions.fuel_file, 'rb') as fp:
         return Fuel.model_validate(tomllib.load(fp))
+
+
+@pytest.fixture(scope='session')
+def lto() -> LTOPerformanceInput:
+    """LTO data for the sample EDB engine, as performance model input."""
+    entry = EDBEntry.get_engine(EDB_FILE, EDB_UID)
+    return LTOPerformanceInput.from_internal(
+        entry.make_lto_performance(EDB_THRUST_FRACTIONS)
+    )
+
+
+@pytest.fixture(scope='session')
+def _piano_data_cached() -> PianoData:
+    """Parse the sample PIANO outputs once. Use `piano_data` instead."""
+    return PianoData.load(
+        str(PIANO_DIR / 'cruise.txt'),
+        str(PIANO_DIR / 'climb.txt'),
+        str(PIANO_DIR / 'descent.txt'),
+        overrides=PianoOverrides(climb_masses_kg=PIANO_CLIMB_MASSES_KG),
+    )
+
+
+@pytest.fixture
+def piano_data(_piano_data_cached) -> PianoData:
+    """Parsed sample PIANO exports, one copy per test.
+
+    Each test is given its copy because PianoData is a mutable
+    dataclass."""
+    return copy.deepcopy(_piano_data_cached)
+
+
+@pytest.fixture
+def ptf_data() -> PTFData:
+    """Parsed sample BADA PTF file."""
+    return PTFData.load(str(PTF_FILE))

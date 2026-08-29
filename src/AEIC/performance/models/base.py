@@ -178,6 +178,9 @@ class BasePerformanceModel[RulesT](CIBaseModel, ABC):
     aircraft_class: AircraftClass
     """Aircraft class (e.g., wide or narrow body)."""
 
+    isa_offset: int
+    """ISA temperature offset [deg C]."""
+
     maximum_altitude_ft: PositiveInt
     """Aircraft maximum altitude in feet."""
 
