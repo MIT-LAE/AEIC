@@ -1,9 +1,7 @@
 """Tests for the performance model TOML writer.
 
 These cover how a model is rendered: which fields are written, in what order,
-under what key, and how tabular data is laid out. What the builders decide is
-covered in `test_piano_performance_model.py` and
-`test_legacy_performance_model.py`.
+under what key, and how tabular data is laid out.
 """
 
 import tomllib
@@ -68,34 +66,39 @@ def read_toml(tmp_path, model, name: str = 'model.toml') -> dict:
         return tomllib.load(fp)
 
 
-@pytest.mark.parametrize('model_type', MODEL_TYPES, ids=lambda c: c.__name__)
+@pytest.mark.parametrize('model_type', MODEL_TYPES)
 def test_write_spec_covers_every_model_field(model_type):
-    """A field missing from the spec is never written, and no round-trip test
-    can catch a field that was never emitted in the first place."""
+    """Ensure the WRITER_SPECS dict is consistent with the fields of
+    each performance model.
+    Every field in model must have an entry in WRITE_SPEC,
+    and all WRITE_SPEC entries must be a valid model field."""
     spec_fields = {field for field, _ in WRITE_SPECS[model_type]}
     assert spec_fields == set(model_type.model_fields)
 
 
-@pytest.mark.parametrize('model_type', MODEL_TYPES, ids=lambda c: c.__name__)
+@pytest.mark.parametrize('model_type', MODEL_TYPES)
 def test_write_spec_output_keys_are_unique(model_type):
     keys = [key for _, key in WRITE_SPECS[model_type]]
     assert len(keys) == len(set(keys))
 
 
-def test_table_sections_are_written_in_spec_order(tmp_path, piano_model):
-    data = read_toml(tmp_path, piano_model)
-    written = [
-        key
-        for key, value in data.items()
-        if isinstance(value, dict) and 'cols' in value
-    ]
-    assert written == [
-        'climb_flight_performance',
-        'cruise_flight_performance',
-        'descent_flight_performance',
-        'cruise_reference_mach',
-        'descent_idle_thrust',
-    ]
+def test_table_sections_are_written_in_spec_order(tmp_path, piano_model, legacy_model):
+    for name, model in (('piano.toml', piano_model), ('legacy.toml', legacy_model)):
+        # Expected order of tables from reading the WRITE_SPECS
+        expected = [
+            key
+            for field, key in WRITE_SPECS[type(model)]
+            if isinstance(getattr(model, field), TableInput)
+        ]
+        assert expected, f'{name} states no tables, so this asserts nothing'
+
+        data = read_toml(tmp_path, model, name)
+        written = [
+            key
+            for key, value in data.items()
+            if isinstance(value, dict) and 'cols' in value
+        ]
+        assert written == expected
 
 
 def test_empty_table_writes_its_columns_and_no_rows(tmp_path, piano_model):
@@ -137,7 +140,7 @@ def test_unset_speed_phase_is_omitted(tmp_path, piano_model):
 
 
 def test_isa_offset_round_trips(tmp_path, piano_model, legacy_model):
-    """`ISA_offset` was written and then silently dropped on load, because no
+    """`ISA_offset` used to be written and then dropped on load, because no
     model declared the field."""
     for name, model in (('piano.toml', piano_model), ('legacy.toml', legacy_model)):
         out_file = write_toml(tmp_path, model, name)
