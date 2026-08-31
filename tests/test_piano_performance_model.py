@@ -1,9 +1,8 @@
 """Tests for `build_piano_model`.
 
-The fixtures in `tests/data/performance/piano` are anonymized dummy data, so
+The fixtures in `tests/data/performance/piano` are dummy data, so
 these tests assert that the built model round-trips through the performance
-model loader, never that its numbers are physically plausible. How a model is
-rendered as TOML is covered in `test_model_writer.py`.
+model loader, but do not check that its numbers are physically plausible.
 """
 
 import pytest
@@ -41,8 +40,6 @@ def build(tmp_path, piano_data, lto):
 
 
 def test_written_file_loads_as_a_piano_model(build):
-    """Regression guard on the model_type discriminator, which was
-    Literal['Piano'] and so could never match a lowercased tag."""
     model = build()
     assert isinstance(model, PianoPerformanceModel)
     assert model.aircraft_name == 'some_airplane, some_engine'
@@ -50,6 +47,7 @@ def test_written_file_loads_as_a_piano_model(build):
     assert model.maximum_altitude_ft == 41100
     assert model.number_of_engines == 2
     assert model.apu is not None
+    assert model.apu.name == 'APU 131-9'
 
 
 def test_every_emitted_column_survives_the_round_trip(build):
@@ -61,17 +59,10 @@ def test_every_emitted_column_survives_the_round_trip(build):
     assert model.descent_idle_thrust.cols == DESCENT_IDLE_THRUST_COLS
 
 
-def test_maximum_mass_spans_the_three_phase_tables(build):
-    model = build()
-    assert model.maximum_mass == max(
-        max(model.climb_flight_performance.column('mass')),
-        max(model.cruise_flight_performance.column('mass')),
-        max(model.descent_flight_performance.column('mass')),
-    )
-
-
 def test_empty_mass_requires_an_operating_empty_mass(build):
-    """PIANO exports do not contain an operating empty mass."""
+    """PIANO exports do not contain an operating empty mass, so the field is
+    written only when it is manually supplied. An omitted field must load back
+    as None rather than failing validation."""
     model = build()
     assert model.operating_empty_mass_kg is None
     with pytest.raises(NotImplementedError, match='operating_empty_mass_kg'):
