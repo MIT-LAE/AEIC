@@ -419,8 +419,8 @@ def build_piano_model(
         number_of_engines: Number of engines on the aircraft.
         maximum_payload: Maximum payload [kg].
         apu_name: APU name, or None if the aircraft has no APU data.
-        cruise_mach: Cruise Mach number. PIANO sweeps many, so the model states
-            one only when the caller picks it.
+        cruise_mach: Cruise Mach number. PIANO sweeps many and this optional
+            value is to fill the Speed.cruise_mach entry. #TODO maybe remove?
         operating_empty_mass: Operating empty mass [kg]. PIANO exports do not
             contain one.
         aircraft_name: Aircraft name, overriding the cruise file title.

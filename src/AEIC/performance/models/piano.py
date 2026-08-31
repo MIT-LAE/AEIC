@@ -1,12 +1,9 @@
 """This module implements a performance model built from PIANO aircraft
 performance exports.
 
-PIANO data is richer than the BADA PTF data behind the legacy performance
-model: cruise is swept over Mach number as well as flight level and mass, and
+PIANO cruise data is swept over Mach number as well as flight level and mass, and
 every phase carries thrust, drag and trajectory columns.
-
-Parsing and loading only. Performance evaluation over the PIANO sweep is not
-implemented yet, so :meth:`evaluate_impl` raises."""
+"""
 
 # TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations

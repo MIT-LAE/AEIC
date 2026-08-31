@@ -414,11 +414,7 @@ def _find(pattern: re.Pattern[str], lines: list[str]) -> re.Match[str] | None:
 
 def _is_data_row(tokens: list[str]) -> bool:
     """Whether PIANO wrote these tokens as a table row.
-
-    PIANO opens every data row with a number, and opens no heading, unit line
-    or metadata line with one. So the first token tells a row that failed to
-    parse apart from the text around the table. Without that test a parse
-    failure cannot be reported, because the column headings fail to parse too.
+    PIANO opens every data row with a number.
     """
     if not tokens:
         return False
@@ -455,6 +451,8 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
     # Keyed on (fl, mass, mach), so a labelled row landing exactly on the swept
     # grid can be detected rather than silently duplicating a key.
     rows: dict[tuple[float, float, float], tuple[list[float], bool]] = {}
+    # Labelled rows are the rows for the specific operating points saved by PIANO
+    # A dict: (fl, mass) -> another dict keyed (row_type) -> mach
     labelled: dict[tuple[float, float], dict[str, float]] = {}
 
     malformed = []
@@ -468,12 +466,12 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
             continue
 
         # The fourth column holds the "|" separator or a reference Mach label.
-        # Any other token means the export does not follow the layout read
-        # here, so no column can be trusted to hold what is expected of it.
+        # If the discriminator is another symbol then raise as this not the
+        # expected schema.
         discriminator = tokens[3]
         is_swept = discriminator == '|'
-        column = _REFERENCE_MACH_LABELS.get(discriminator)
-        if not is_swept and column is None:
+        row_type = _REFERENCE_MACH_LABELS.get(discriminator)
+        if not is_swept and row_type is None:
             labels = ', '.join(f'"{label}"' for label in _REFERENCE_MACH_LABELS)
             raise ValueError(
                 f'Cruise row in {path} holds "{discriminator}" where "|" or a '
@@ -504,8 +502,7 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
             mach,
             tas_kts * KNOTS_TO_MPS,
             cas_kts * KNOTS_TO_MPS,
-            # Cruise is level flight, so every phase table carries the five
-            # columns a performance table requires.
+            # Cruise is level flight so rate of climb/descend is 0.
             0.0,
             fuel_flow_lbh * POUNDS_PER_HOUR_TO_KG_PER_S,
             drag_lbf * POUNDS_FORCE_TO_NEWTONS,
@@ -521,8 +518,10 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
             rocd_mcl_fix_cas_fpm * FPM_TO_MPS,
         ]
 
-        if column is not None:
-            labelled.setdefault((fl, mass), {})[column] = mach
+        if row_type is not None:
+            # Create the inner dict if it does not exist yet
+            # and store the mapping row_type to corresponding mach
+            labelled.setdefault((fl, mass), {})[row_type] = mach
 
         _insert_cruise_row(rows, (fl, mass, mach), row, is_swept)
 
@@ -964,10 +963,10 @@ def _climb_masses(blocks: list[_Block], overrides: PianoOverrides) -> list[float
     """Resolve the initial mass of each climb block, in file order.
 
     A supplied mass wins over the header, because a user supplies masses
-    precisely when the headers do not carry them. The override is
-    all-or-nothing though, so a user correcting the later blocks must restate
-    the first one too, and a typo there would otherwise pass unseen. Warn
-    when a supplied mass contradicts a mass the file does state.
+    when the headers do not carry them.
+    The override is all-or-nothing: so a user passing any climb mass must pass masses
+    for all blocks in file order. Warns when a supplied mass contradicts a mass the
+    file states.
 
     Raises:
         ValueError: If the supplied mass count does not match the block count,
@@ -1011,8 +1010,8 @@ def _climb_masses(blocks: list[_Block], overrides: PianoOverrides) -> list[float
 def _climb_schedule(blocks: list[_Block], overrides: PianoOverrides) -> _Schedule:
     """Resolve the climb airspeed schedule.
 
-    The schedule is a property of the export rather than of one run, so the
-    first block that states one supplies it for every block.
+    The schedule is a property of the file, so the first block that has one supplies it
+    for every block.
 
     Raises:
         ValueError: If no block states a schedule and the overrides do not
