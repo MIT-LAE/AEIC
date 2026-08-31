@@ -1,11 +1,11 @@
-import copy
+import functools
 import os
 import tomllib
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
 
-import AEIC
 from AEIC.config import Config, config
 from AEIC.missions import Mission
 from AEIC.parsers.piano_reader import PianoData, PianoOverrides
@@ -18,18 +18,6 @@ from AEIC.types import Fuel
 
 # Absolute path to test data directory.
 TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
-
-# Source data the performance model builders are tested against. These paths
-# are resolved directly rather than through `config.file_location`, so that the
-# fixtures reading them can be session-scoped: the autouse `default_config`
-# fixture below is function-scoped, and a session-scoped fixture cannot depend
-# on it.
-EDB_FILE = Path(AEIC.__file__).parent / 'data' / 'engines' / 'sample_edb.xlsx'
-EDB_UID = '01P11CM121'
-EDB_THRUST_FRACTIONS = (0.07, 0.30, 0.85, 1.0)
-PIANO_DIR = TEST_DATA_DIR / 'performance' / 'piano'
-PIANO_CLIMB_MASSES_KG = [54000.0, 50000.0, 46000.0, 42000.0]
-PTF_FILE = TEST_DATA_DIR / 'verification' / 'legacy' / 'legacy_performance.PTF'
 
 # Set the path to include the test data directory. This is done at module
 # import time deliberately so the value is inherited by subprocesses spawned
@@ -150,36 +138,82 @@ def fuel():
         return Fuel.model_validate(tomllib.load(fp))
 
 
-@pytest.fixture(scope='session')
+# Helper function to cache EDB data, avoiding the per test read
+@functools.cache
+def _load_edb_lto(
+    edb_file: Path, engine_uid: str, thrust_fractions: tuple[float, ...]
+) -> LTOPerformanceInput:
+    entry = EDBEntry.get_engine(edb_file, engine_uid)
+    return LTOPerformanceInput.from_internal(
+        entry.make_lto_performance(thrust_fractions)
+    )
+
+
+# Helper function to cache PIANO data, avoiding the per test read
+@functools.cache
+def _load_piano_data(
+    cruise_file: Path,
+    climb_file: Path,
+    descent_file: Path,
+    climb_masses_kg: tuple[float, ...],
+) -> PianoData:
+    return PianoData.load(
+        str(cruise_file),
+        str(climb_file),
+        str(descent_file),
+        overrides=PianoOverrides(climb_masses_kg=list(climb_masses_kg)),
+    )
+
+
+# Setting the fixture scope to "session" or "module" does not work
+# for fixture reuse because of the default_config fixture which is scoped
+# to each test.
+# With the scope set to "session" or "module", lto() would run before the
+# default_config fixture is setup and the lto fixture would fail with:
+# "ValueError: AEIC configuration is not set".
+# Instead the ~expensive read is done with a function that caches results.
+# The fixture re-runs for each test and calls the read function which
+# after the first call is very cheap as _load*(args) is a cache hit.
+@pytest.fixture
 def lto() -> LTOPerformanceInput:
     """LTO data for the sample EDB engine, as performance model input."""
-    entry = EDBEntry.get_engine(EDB_FILE, EDB_UID)
-    return LTOPerformanceInput.from_internal(
-        entry.make_lto_performance(EDB_THRUST_FRACTIONS)
+
+    EDB_FILE = 'engines/sample_edb.xlsx'
+    EDB_UID = '01P11CM121'
+    EDB_THRUST_FRACTIONS = (0.07, 0.30, 0.85, 1.0)
+
+    # Deepcopy is cheap and ensures mutations to LTOPerformanceInput are not
+    # accidentally shared across tests.
+    return deepcopy(
+        _load_edb_lto(config.file_location(EDB_FILE), EDB_UID, EDB_THRUST_FRACTIONS)
     )
 
 
-@pytest.fixture(scope='session')
-def _piano_data_cached() -> PianoData:
-    """Parse the sample PIANO outputs once. Use `piano_data` instead."""
-    return PianoData.load(
-        str(PIANO_DIR / 'cruise.txt'),
-        str(PIANO_DIR / 'climb.txt'),
-        str(PIANO_DIR / 'descent.txt'),
-        overrides=PianoOverrides(climb_masses_kg=PIANO_CLIMB_MASSES_KG),
-    )
-
-
+# Same issue with fixture reuse as lto()
 @pytest.fixture
-def piano_data(_piano_data_cached) -> PianoData:
-    """Parsed sample PIANO exports, one copy per test.
+def piano_data() -> PianoData:
+    """Parsed sample PIANO exports with a copy per test."""
 
-    Each test is given its copy because PianoData is a mutable
-    dataclass."""
-    return copy.deepcopy(_piano_data_cached)
+    PIANO_CRUISE_FILE = 'performance/piano/cruise.txt'
+    PIANO_CLIMB_FILE = 'performance/piano/climb.txt'
+    PIANO_DESCENT_FILE = 'performance/piano/descent.txt'
+    PIANO_CLIMB_MASSES_KG = (54000.0, 50000.0, 46000.0, 42000.0)
+
+    # Deepcopy is cheap and ensures mutations to PianoData are not
+    # accidentally shared across tests.
+    return deepcopy(
+        _load_piano_data(
+            config.file_location(PIANO_CRUISE_FILE),
+            config.file_location(PIANO_CLIMB_FILE),
+            config.file_location(PIANO_DESCENT_FILE),
+            PIANO_CLIMB_MASSES_KG,
+        )
+    )
 
 
 @pytest.fixture
 def ptf_data() -> PTFData:
     """Parsed sample BADA PTF file."""
-    return PTFData.load(str(PTF_FILE))
+    # No caching because very cheap to read
+    PTF_FILE = 'verification/legacy/legacy_performance.PTF'
+    return PTFData.load(str(config.file_location(PTF_FILE)))
