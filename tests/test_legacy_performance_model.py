@@ -1,7 +1,4 @@
-"""Tests for `build_legacy_model` and the BADA PTF table assembly behind it.
-
-How a model is rendered as TOML is covered in `test_model_writer.py`.
-"""
+"""Tests for `build_legacy_model` and the BADA PTF table assembly behind it."""
 
 import pytest
 
@@ -19,15 +16,14 @@ from AEIC.performance.model_builder import (
 from AEIC.performance.models import LegacyPerformanceModel, PerformanceModel
 from AEIC.performance.types import SpeedData, Speeds
 
-# Column positions in the table `build_performance_table` returns.
+# Column index in the table `build_performance_table` returns.
 FL, MASS, TAS, ROCD, FUEL_FLOW = range(5)
 
 
 def make_ptf(low_mass=50000, nominal_mass=60000, high_mass=70000) -> PTFData:
     """A two-flight-level PTF with a distinct value in every column.
+    Uses dummy data."""
 
-    Values are chosen so a row can be traced back to the field it came from,
-    rather than for physical plausibility."""
     speed = SpeedData(mach=0.78)
     return PTFData(
         aircraft_type='TEST',
@@ -68,67 +64,102 @@ def make_ptf(low_mass=50000, nominal_mass=60000, high_mass=70000) -> PTFData:
 
 
 def rows_at(table: dict, mass: float) -> list[list[float]]:
+    """Table accessor by mass value helper."""
     return [row for row in table['data'] if row[MASS] == mass]
 
 
-def test_climb_rows_carry_the_rate_of_climb_for_their_own_mass():
+def test_climb_rows():
     """Climb rate is tabulated per mass, but fuel flow is only given at the
-    nominal mass, so every row takes the nominal value."""
+    nominal mass, so every row takes the nominal value. rocd varies by mass
+    however."""
     ptf = make_ptf()
     table = build_performance_table(ptf, 'climb')
 
+    expected_fl = 100
+    expected_tas = 300.0
+    expected_fuelflow = 100.5  # nominal value
+
     assert table['cols'] == ['fl', 'mass', 'tas', 'rocd', 'fuel_flow']
-    assert rows_at(table, ptf.low_mass)[0] == [100, ptf.low_mass, 300.0, 110.0, 100.5]
-    assert rows_at(table, ptf.nominal_mass)[0] == [
-        100,
-        ptf.nominal_mass,
-        300.0,
-        108.0,
-        100.5,
+    assert rows_at(table, ptf.low_mass)[0] == [
+        expected_fl,
+        ptf.low_mass,
+        expected_tas,
+        110.0,
+        expected_fuelflow,
     ]
-    assert rows_at(table, ptf.high_mass)[0] == [100, ptf.high_mass, 300.0, 106.0, 100.5]
+    assert rows_at(table, ptf.nominal_mass)[0] == [
+        expected_fl,
+        ptf.nominal_mass,
+        expected_tas,
+        108.0,
+        expected_fuelflow,
+    ]
+    assert rows_at(table, ptf.high_mass)[0] == [
+        expected_fl,
+        ptf.high_mass,
+        expected_tas,
+        106.0,
+        expected_fuelflow,
+    ]
 
 
-def test_cruise_rows_carry_the_fuel_flow_for_their_own_mass():
-    """Cruise holds altitude, so every row has a zero rate of climb."""
+def test_cruise_rows():
     ptf = make_ptf()
     table = build_performance_table(ptf, 'cruise')
 
-    assert rows_at(table, ptf.low_mass)[0] == [100, ptf.low_mass, 300.0, 0.0, 100.3]
+    expected_fl = 100
+    expected_tas = 300.0
+    expected_rocd = 0.0  # Cruise at constant altitude
+
+    assert rows_at(table, ptf.low_mass)[0] == [
+        expected_fl,
+        ptf.low_mass,
+        expected_tas,
+        expected_rocd,
+        100.3,
+    ]
     assert rows_at(table, ptf.nominal_mass)[0] == [
-        100,
+        expected_fl,
         ptf.nominal_mass,
-        300.0,
-        0.0,
+        expected_tas,
+        expected_rocd,
         100.4,
     ]
-    assert rows_at(table, ptf.high_mass)[0] == [100, ptf.high_mass, 300.0, 0.0, 100.5]
+    assert rows_at(table, ptf.high_mass)[0] == [
+        expected_fl,
+        ptf.high_mass,
+        expected_tas,
+        expected_rocd,
+        100.5,
+    ]
 
 
-def test_descent_rows_exist_only_at_the_nominal_mass():
-    """The PTF file tabulates descent at one mass only."""
+def test_descent_rows():
     ptf = make_ptf()
     table = build_performance_table(ptf, 'descent')
 
+    # PTF file only tabulates descent for the nominal mass case
     assert {row[MASS] for row in table['data']} == {ptf.nominal_mass}
     assert table['data'][0] == [100, ptf.nominal_mass, 300.0, -107.0, 100.2]
 
 
 @pytest.mark.parametrize('phase', ['climb', 'cruise'])
 def test_high_mass_rows_dropped_when_they_duplicate_the_nominal_mass(phase):
-    """A PTF file may state the same value for the high and nominal masses.
+    """A PTF file may have the same value for the high and nominal masses.
     Emitting both would put two rows at one (flight level, mass) pair, which
     the performance table interpolator rejects."""
+    # Check duplicated case
     ptf = make_ptf(nominal_mass=60000, high_mass=60000)
     masses = {row[MASS] for row in build_performance_table(ptf, phase)['data']}
     assert masses == {ptf.low_mass, ptf.nominal_mass}
 
+    # Check non-duplicated case
     distinct = build_performance_table(make_ptf(), phase)['data']
     assert {row[MASS] for row in distinct} == {50000, 60000, 70000}
 
 
 def test_rows_sort_by_mass_then_flight_level():
-    """The performance table interpolator needs a dense, regularly ordered
+    """The performance table interpolator needs a dense, ordered
     (flight level, mass) grid."""
     table = build_performance_table(make_ptf(), 'climb')
     keys = [(row[MASS], row[FL]) for row in table['data']]
@@ -152,28 +183,32 @@ def test_built_model_round_trips_through_the_loader(tmp_path, ptf_data, lto):
         maximum_payload=22422,
         apu_name='APU 131-9',
     )
+
+    # Check that PTF data -> model works
+    assert model.aircraft_name == ptf_data.aircraft_type
+    assert model.aircraft_class == 'narrow'
+    assert model.isa_offset == ptf_data.isa_offset
+    assert model.maximum_altitude_ft == ptf_data.maximum_altitude_ft
+    assert model.maximum_payload == 22422
+    assert model.number_of_engines == 2
+    assert model.apu is not None
+    assert model.apu.name == 'APU 131-9'
+    assert model.lto_performance == lto
+    assert model.speeds == ptf_data.speeds
+
     out_file = tmp_path / 'legacy.toml'
     write_performance_model(out_file, model)
     loaded = PerformanceModel.load(out_file)
 
+    # Check that model write -> read works
     assert isinstance(loaded, LegacyPerformanceModel)
-    assert loaded.aircraft_name == ptf_data.aircraft_type
-    assert loaded.aircraft_class == 'narrow'
-    assert loaded.isa_offset == ptf_data.isa_offset
-    assert loaded.maximum_altitude_ft == ptf_data.maximum_altitude_ft
-    assert loaded.maximum_payload_kg == 22422
-    assert loaded.number_of_engines == 2
+    assert loaded.aircraft_name == model.aircraft_name
+    assert loaded.aircraft_class == model.aircraft_class
+    assert loaded.isa_offset == model.isa_offset
+    assert loaded.maximum_altitude_ft == model.maximum_altitude_ft
+    assert loaded.maximum_payload_kg == model.maximum_payload_kg
+    assert loaded.number_of_engines == model.number_of_engines
     assert loaded.apu is not None
-    assert loaded.lto_performance == lto
-
-
-def test_speeds_and_altitude_come_from_the_ptf_file(ptf_data, lto):
-    model = build_legacy_model(
-        ptf_data,
-        lto,
-        aircraft_class='narrow',
-        number_of_engines=2,
-        maximum_payload=22422,
-    )
-    assert model.speeds == ptf_data.speeds
-    assert model.apu_name is None
+    assert loaded.apu.name == model.apu_name
+    assert loaded.lto_performance == model.lto_performance
+    assert loaded.speeds == model.speeds
