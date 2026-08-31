@@ -4,16 +4,6 @@ PIANO writes three files for an aircraft: a cruise table sweeping mass,
 altitude and Mach number, plus climb and descent files holding one detail
 block per initial mass. This module parses all three into SI tables ready to
 be written to a performance model TOML file.
-
-The files are richer than BADA PTF data, so the tables carry more columns than
-the five a performance table requires. Every column PIANO reports is kept
-except buffet onset and the NOx, HC and CO emission indices.
-
-Parsing never fabricates rows. A climb block that halts below its target
-altitude is kept exactly as PIANO wrote it, because the missing rows mean the
-aircraft cannot climb there. A data line that does not parse is a different
-matter. Dropping it would corrupt the fuel flow of the row after it, so a
-climb or descent file holding one is refused.
 """
 
 # TODO: Remove this when we migrate to Python 3.14+.
@@ -43,6 +33,69 @@ from AEIC.utils.standard_atmosphere import (
 
 logger = logging.getLogger(__name__)
 
+#############################################################################
+# PIANO climb file schema
+#############################################################################
+#
+# A climb file is structured as one block per initial mass.
+# Every block is in two parts: a header or halt note, and a "Climb details"
+# table.
+#
+# If the climb reaches the target altitude, PIANO adds a header above
+# the "Climb details table.".
+# If it does not reach the target altitude, the header block is replaced by
+# a halt note instead.
+# `_split_blocks` therefore keys on the "Climb details" marker, and treats
+# everything since the previous marker as the block's header lines.
+#
+# 1a. Block header, after a completed climb:
+#
+#     Climb from 0.feet to:   41000.feet
+#     ---------------------------------------------------------------
+#     Time                28.00     minutes
+#     Fuel burn           4000.     lb.
+#     Distance            200.0     n.miles
+#
+#     Initial mass        150000.   lb.
+#     Airspeed schedule   250./ 280.kcas/ mach 0.750 above 30000.feet
+#     Delta-ISA           +0.       deg.C.
+#     ---------------------------------------------------------------
+#
+# The reader takes four values from the header:
+#   - "Initial mass" gives the block's mass, unless the caller supplies one
+#     (`_climb_masses`).
+#   - "Airspeed schedule" gives the CAS below and above FL100, the Mach
+#     number and the crossover altitude (`_climb_schedule`). It is a property
+#     of the file, so the first block that states one sets it every block.
+#   - "Delta-ISA" gives the ISA offset (`_parse_isa_offset`). A non-zero
+#     offset is rejected, because TAS is derived for a standard atmosphere.
+#   - "Fuel burn" is the block total the last data row is checked against
+#     (`_cross_check_fuel_burn`).
+#
+# 1b. Halt note, written in place of the next block's header:
+#
+#     Climb to 41000.feet halted at 40000.feet,
+#     Rate of Climb < 50.feet/min.
+#     -----------------------------------------
+#
+# 2. Data table, one per block:
+#
+#     Climb details
+#
+#      Alt.     Time      Dist.      Burn      FN/eng    R.o.C.     Drag
+#     (feet)    (sec)   (n.miles)    (lb.)     (lbf.)    (f.p.m)    (lbf.)
+#
+#         0.       0.       0.0         0.     30000.    2000.     1000.
+#      1417.      60.       5.0        40.     30000.    2000.     1000.
+#
+# Rows run from the ground up, one per altitude step, at the mass the header
+# states. "Time", "Dist." and "Burn" are cumulative from the start of the
+# climb. "FN/eng", "R.o.C." and "Drag" are the value at that altitude.
+# `_is_data_row` relies on the fact that only data rows start with a number
+# to identify data rows.
+#############################################################################
+
+# Climb table columns
 CLIMB_COLS = [
     'fl',
     'mass',
@@ -55,8 +108,59 @@ CLIMB_COLS = [
     'fn_per_engine',
     'drag',
 ]
-"""Columns of the climb table."""
 
+#############################################################################
+# PIANO cruise file schema
+#############################################################################
+#
+# A cruise file is single table without blocks. PIANO sweeps Mach for
+# every (mass, altitude) pair.
+#
+# 1. Title, stating the aircraft and the engine:
+#
+#     Cruise table for some_airplane, some_engine
+#
+# 2. Column headings and unit:
+#
+#     Mass              lb.
+#     Altitude          feet
+#     Mach              -
+#     |                 discriminator, see below
+#     TAS               kts
+#     CAS               kts
+#     Drag              lbf.
+#     MCR.%             percent
+#     L/D               -
+#     FuelFlow          lb/hr
+#     SFC               lb/h/lbf
+#     SAR               nm/lb
+#     MCL/eng avail.    lbf.
+#     RoC@MCL fix.CAS   feet/min
+#     RoC@MCL fix.Mach  feet/min
+#     Buffet onset      Gs
+#     NOx               lb/hr
+#     HC                lb/hr
+#     CO                lb/hr
+#
+# `_cruise_values` reads the first `_CRUISE_ROW_COLS` tokens of a row, so
+# buffet onset and the three emission indices are dropped. PIANO writes "..."
+# in a column it has no value for.
+#
+# 3. Data rows, one per (mass, altitude, Mach) point:
+#
+#     93000.   15000.  0.350    |    100.0   200.0      3000.   ...
+#     93000.   15000.  0.450 maxSAR  100.0   200.0      3000.   ...
+#
+# The fourth column discriminates the two kinds of row. "|" marks a swept row.
+# "maxSAR", "99%SAR" and "maxLim" mark a reference Mach of the (mass,
+# altitude) pair the sweep just covered.
+#
+# A line that starts with a number but holds too few entries is dropped with a
+# warning. The rationale is that the cruise table is an interpolation grid, so
+# a lost row thins the grid but leaves its neighbours.
+#############################################################################
+
+# Cruise table columns
 CRUISE_COLS = [
     'fl',
     'mass',
@@ -74,8 +178,59 @@ CRUISE_COLS = [
     'rocd_mcl_fix_mach',
     'rocd_mcl_fix_cas',
 ]
-"""Columns of the cruise table."""
 
+#############################################################################
+# PIANO descent file schema
+#############################################################################
+#
+# A descent file is structured as one block per mass, like the climb file.
+# Unlike climb, PIANO writes a full header for every block, so a descent file
+# should not have a halt note / no headerless block.
+# `_split_blocks` keys on the "Descent details" marker.
+#
+# 1. Block header:
+#
+#     Descent from 41000.feet to:   0.feet
+#     ---------------------------------------------------------------
+#     Time                20.0      minutes
+#     Fuel burn           800.      lb.
+#     Distance            200.0     n.miles
+#
+#     Mass                100000.    lb.
+#     Airspeed schedule   mach 0.750 above 30000.feet/ 280./ 250.kcas
+#     Idle thrust below   30000.feet
+#     ---------------------------------------------------------------
+#
+# The reader takes four values from the header:
+#   - "Mass" gives the block's mass.
+#   - "Airspeed schedule" gives the Mach number, the crossover altitude and
+#     the CAS above and below FL100. The first block sets the schedule for
+#     every block as speed schedule is constant for the file.
+#   - "Idle thrust below" gives the altitude below which the descent flies at
+#     idle thrust.
+#   - "Fuel burn" is the block total the last data row is checked against
+#     (`_cross_check_fuel_burn`).
+#
+# A descent file states no Delta-ISA, so the ISA offset comes from the climb
+# file.
+#
+# 2. Data table, one per block:
+#
+#     Descent details
+#
+#      Alt.     Time      Dist.      Burn     R.o.D.     FN/eng
+#     (feet)    (sec)    (n.miles)   (lb.)    (f.p.m)    (lbf.)
+#
+#     41000.      00.      200.        30.     1400.     1500.
+#     39610.      01.      200.        30.     1400.     1500.
+#
+# Rows run from the top down, one per altitude step, at the mass the header
+# states. "Time", "Dist." and "Burn" are cumulative from the start of the
+# descent. "R.o.D." and "FN/eng" are the value at that altitude.
+# PIANO reports rate of descent as a positive number.
+#############################################################################
+
+# Descent table columns
 DESCENT_COLS = [
     'fl',
     'mass',
@@ -87,42 +242,40 @@ DESCENT_COLS = [
     'burn',
     'fn_per_engine',
 ]
-"""Columns of the descent table."""
 
+# Cruise reference Mach table columns
 CRUISE_REFERENCE_MACH_COLS = ['fl', 'mass', 'max_sar', 'sar_99', 'max_lim']
-"""Columns of the cruise reference Mach table."""
 
+# Descent idle thrust table columns
 DESCENT_IDLE_THRUST_COLS = ['mass', 'idle_thrust_altitude']
-"""Columns of the descent idle thrust table."""
 
+# PIANO cruise reference Mach specific points mapped to their column name
 _REFERENCE_MACH_LABELS = {
     'maxSAR': 'max_sar',
     '99%SAR': 'sar_99',
     'maxLim': 'max_lim',
 }
-"""PIANO cruise reference Mach labels, mapped to column names."""
 
+# Relative deviation above which the TAS cross-check warns
+# PIANO climb/descent does not produce TAS but we can estimate it
+# and compare with a tolerance to ground speed and distance
 _TAS_CROSS_CHECK_TOLERANCE = 0.05
-"""Relative deviation above which the TAS cross-check warns."""
 
+# Relative deviation above which the block fuel burn cross-check warns.
 _FUEL_BURN_CROSS_CHECK_TOLERANCE = 0.01
-"""Relative deviation above which the block fuel burn cross-check warns."""
 
+# If user supplied masses and PIANO header masses are both present
+# we check that they are consistent up to 1%
 _CLIMB_MASS_CROSS_CHECK_TOLERANCE = 0.01
-"""Relative deviation above which a supplied climb mass warns.
 
-Wide enough to absorb a mass restated in rounded pounds, narrow enough to
-catch a mistyped digit.
-"""
-
+# Alt., Time, Dist., Burn, FN/eng, R.o.C., Drag
 _CLIMB_ROW_COLS = 7
-"""Alt., Time, Dist., Burn, FN/eng, R.o.C., Drag."""
 
+# Alt., Time, Dist., Burn, R.o.D., FN/eng
 _DESCENT_ROW_COLS = 6
-"""Alt., Time, Dist., Burn, R.o.D., FN/eng."""
 
+# (Mass, Altitude, Mach) and the discriminator, plus eleven swept values.
 _CRUISE_ROW_COLS = 15
-"""Mass, Altitude, Mach and the discriminator, plus eleven swept values."""
 
 _AIRCRAFT_NAME_RE = re.compile(r'Cruise table for\s+(.+?)\s*$')
 _CLIMB_MASS_RE = re.compile(r'Initial mass\s+([\d.]+)')
