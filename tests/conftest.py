@@ -197,7 +197,7 @@ def piano_data() -> PianoData:
     PIANO_CRUISE_FILE = 'performance/piano/cruise.txt'
     PIANO_CLIMB_FILE = 'performance/piano/climb.txt'
     PIANO_DESCENT_FILE = 'performance/piano/descent.txt'
-    PIANO_CLIMB_MASSES_KG = (54000.0, 50000.0, 46000.0, 42000.0)
+    PIANO_CLIMB_MASSES_KG = (68039.0, 50000.0, 46000.0, 42000.0)
 
     # Deepcopy is cheap and ensures mutations to PianoData are not
     # accidentally shared across tests.

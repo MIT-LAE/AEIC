@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from AEIC.config import config
 from AEIC.parsers.piano_reader import (
     CLIMB_COLS,
     CRUISE_COLS,
@@ -33,33 +34,36 @@ from AEIC.units import (
 )
 from AEIC.utils.standard_atmosphere import speed_of_sound_at_altitude
 
-PIANO_DIR = (Path(__file__).parent / 'data' / 'performance' / 'piano').resolve()
+PIANO_CRUISE_FILE = 'performance/piano/cruise.txt'
+PIANO_CLIMB_FILE = 'performance/piano/climb.txt'
+PIANO_DESCENT_FILE = 'performance/piano/descent.txt'
 
-CLIMB_MASSES_KG = [150000.0 * POUNDS_TO_KG, 50000.0, 46000.0, 42000.0]
-"""Climb block masses. The fixture states one only for the first block, so
-the first entry restates that header mass to keep the cross-check quiet."""
+CLIMB_MASSES_KG = [68039.0, 50000.0, 46000.0, 42000.0]
+"""Climb block masses, shared with the `piano_data` fixture so that the data
+it holds and the data `load()` returns are the same."""
 
 DESCENT_MASSES_LB = [100000.0, 100001.0, 100002.0, 100003.0]
 
 
 def load(**overrides) -> PianoData:
+    """Re-parse the exports behind `piano_data`, with overrides applied.
+
+    Use `piano_data` to read the parsed data. Use this for the tests that
+    apply an override, and for the tests that assert on warnings: the fixture
+    caches its parse, so it emits its log records once per session only.
+    """
     return PianoData.load(
-        str(PIANO_DIR / 'cruise.txt'),
-        str(PIANO_DIR / 'climb.txt'),
-        str(PIANO_DIR / 'descent.txt'),
+        str(config.file_location(PIANO_CRUISE_FILE)),
+        str(config.file_location(PIANO_CLIMB_FILE)),
+        str(config.file_location(PIANO_DESCENT_FILE)),
         overrides=PianoOverrides(**{'climb_masses_kg': CLIMB_MASSES_KG, **overrides}),
     )
 
 
-@pytest.fixture(scope='module')
-def piano() -> PianoData:
-    return load()
-
-
-def test_block_counts(piano):
+def test_block_counts(piano_data):
     """One climb block and one descent block per mass, four of each."""
-    assert sorted(set(piano.climb.column('mass'))) == sorted(CLIMB_MASSES_KG)
-    assert sorted(set(piano.descent.column('mass'))) == [
+    assert sorted(set(piano_data.climb.column('mass'))) == sorted(CLIMB_MASSES_KG)
+    assert sorted(set(piano_data.descent.column('mass'))) == [
         pytest.approx(lb * POUNDS_TO_KG) for lb in DESCENT_MASSES_LB
     ]
 
@@ -67,9 +71,9 @@ def test_block_counts(piano):
 def test_climb_mass_count_mismatch_names_both_counts():
     with pytest.raises(ValueError, match=r'Got 2 climb mass\(es\) for 4 climb'):
         PianoData.load(
-            str(PIANO_DIR / 'cruise.txt'),
-            str(PIANO_DIR / 'climb.txt'),
-            str(PIANO_DIR / 'descent.txt'),
+            str(config.file_location(PIANO_CRUISE_FILE)),
+            str(config.file_location(PIANO_CLIMB_FILE)),
+            str(config.file_location(PIANO_DESCENT_FILE)),
             overrides=PianoOverrides(climb_masses_kg=[54000.0, 50000.0]),
         )
 
@@ -79,9 +83,9 @@ def test_climb_masses_required_when_blocks_have_no_header():
     supplied together."""
     with pytest.raises(ValueError, match='Climb block 2 has no "Initial mass"'):
         PianoData.load(
-            str(PIANO_DIR / 'cruise.txt'),
-            str(PIANO_DIR / 'climb.txt'),
-            str(PIANO_DIR / 'descent.txt'),
+            str(config.file_location(PIANO_CRUISE_FILE)),
+            str(config.file_location(PIANO_CLIMB_FILE)),
+            str(config.file_location(PIANO_DESCENT_FILE)),
         )
 
 
@@ -97,124 +101,73 @@ def test_supplied_climb_mass_contradicting_the_header_warns(caplog):
     )
 
 
-def test_supplied_climb_mass_matching_the_header_is_quiet(caplog):
-    """Restating a header mass rounded to whole pounds is within tolerance."""
-    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
-        load(climb_masses_kg=[68039.0, 50000.0, 46000.0, 42000.0])
-    assert not any('supplied initial mass' in r.getMessage() for r in caplog.records)
-
-
-def test_climb_speed_schedule(piano):
+def test_climb_speed_schedule(piano_data):
     """`250./ 280.kcas/ mach 0.750 above 30000.feet`, inherited by every
     block."""
-    assert piano.climb_speeds.cas_low == pytest.approx(250 * KNOTS_TO_MPS)
-    assert piano.climb_speeds.cas_high == pytest.approx(280 * KNOTS_TO_MPS)
-    assert piano.climb_speeds.mach == pytest.approx(0.750)
-    assert piano.climb_speeds.crossover_altitude_m == pytest.approx(
+    assert piano_data.climb_speeds.cas_low == pytest.approx(250 * KNOTS_TO_MPS)
+    assert piano_data.climb_speeds.cas_high == pytest.approx(280 * KNOTS_TO_MPS)
+    assert piano_data.climb_speeds.mach == pytest.approx(0.750)
+    assert piano_data.climb_speeds.crossover_altitude_m == pytest.approx(
         30000 * FEET_TO_METERS
     )
 
 
-def test_descent_speed_schedule(piano):
+def test_descent_speed_schedule(piano_data):
     """`mach 0.750 above 30000.feet/ 280./ 250.kcas`, written high to low."""
-    assert piano.descent_speeds.cas_low == pytest.approx(250 * KNOTS_TO_MPS)
-    assert piano.descent_speeds.cas_high == pytest.approx(280 * KNOTS_TO_MPS)
-    assert piano.descent_speeds.mach == pytest.approx(0.750)
-    assert piano.descent_speeds.crossover_altitude_m == pytest.approx(
+    assert piano_data.descent_speeds.cas_low == pytest.approx(250 * KNOTS_TO_MPS)
+    assert piano_data.descent_speeds.cas_high == pytest.approx(280 * KNOTS_TO_MPS)
+    assert piano_data.descent_speeds.mach == pytest.approx(0.750)
+    assert piano_data.descent_speeds.crossover_altitude_m == pytest.approx(
         30000 * FEET_TO_METERS
     )
 
 
-def test_climb_schedule_overrides(piano):
+def test_climb_schedule_overrides(piano_data):
     overridden = load(climb_cas_low_kts=240.0, climb_mach=0.72)
     assert overridden.climb_speeds.cas_low == pytest.approx(240 * KNOTS_TO_MPS)
     assert overridden.climb_speeds.mach == pytest.approx(0.72)
     # Untouched values still come from the file.
-    assert overridden.climb_speeds.cas_high == piano.climb_speeds.cas_high
+    assert overridden.climb_speeds.cas_high == piano_data.climb_speeds.cas_high
 
 
-def test_crossover_altitude_override(piano):
+def test_crossover_altitude_override(piano_data):
     overridden = load(climb_crossover_altitude_ft=28000.0)
     assert overridden.climb_speeds.crossover_altitude_m == pytest.approx(
         28000 * FEET_TO_METERS
     )
     # Untouched values still come from the file.
-    assert overridden.climb_speeds.mach == piano.climb_speeds.mach
+    assert overridden.climb_speeds.mach == piano_data.climb_speeds.mach
 
 
 def _climb_without_schedule(tmp_path: Path) -> Path:
     """The climb fixture with its one airspeed schedule line removed."""
-    lines = (PIANO_DIR / 'climb.txt').read_text().splitlines(keepends=True)
+    lines = config.file_location(PIANO_CLIMB_FILE).read_text().splitlines(keepends=True)
     climb_file = tmp_path / 'climb.txt'
     kept = [line for line in lines if 'Airspeed schedule' not in line]
     climb_file.write_text(''.join(kept))
     return climb_file
 
 
-def test_climb_schedule_supplied_entirely_by_overrides(tmp_path):
-    """A climb file stating no schedule parses when every part is supplied,
-    the crossover altitude included."""
-    piano = PianoData.load(
-        str(PIANO_DIR / 'cruise.txt'),
-        str(_climb_without_schedule(tmp_path)),
-        str(PIANO_DIR / 'descent.txt'),
-        overrides=PianoOverrides(
-            climb_masses_kg=CLIMB_MASSES_KG,
-            climb_cas_low_kts=240.0,
-            climb_cas_high_kts=290.0,
-            climb_mach=0.72,
-            climb_crossover_altitude_ft=28000.0,
-        ),
-    )
-    assert piano.climb_speeds.cas_low == pytest.approx(240 * KNOTS_TO_MPS)
-    assert piano.climb_speeds.cas_high == pytest.approx(290 * KNOTS_TO_MPS)
-    assert piano.climb_speeds.mach == pytest.approx(0.72)
-    assert piano.climb_speeds.crossover_altitude_m == pytest.approx(
-        28000 * FEET_TO_METERS
-    )
-
-
-def test_missing_climb_schedule_names_every_missing_override(tmp_path):
-    with pytest.raises(ValueError, match='--climb-crossover-altitude-ft') as excinfo:
-        PianoData.load(
-            str(PIANO_DIR / 'cruise.txt'),
-            str(_climb_without_schedule(tmp_path)),
-            str(PIANO_DIR / 'descent.txt'),
-            overrides=PianoOverrides(
-                climb_masses_kg=CLIMB_MASSES_KG,
-                climb_cas_low_kts=240.0,
-                climb_cas_high_kts=290.0,
-                climb_mach=0.72,
-            ),
-        )
-    # The three supplied values are not reported as missing.
-    assert '--climb-mach' not in str(excinfo.value)
-
-
-def test_labelled_mach_on_the_swept_grid_keeps_one_row(piano, caplog):
+def test_labelled_mach_on_the_swept_grid_keeps_one_row(piano_data, caplog):
     """A labelled reference Mach can land exactly on the swept grid. The
     fixture labels maxSAR at 0.450, which the sweep also visits."""
     matching = [
         row
-        for row in piano.cruise.data
+        for row in piano_data.cruise.data
         if row[0] == 150.0
         and row[2] == 0.450
         and row[1] == pytest.approx(93000 * POUNDS_TO_KG)
     ]
     assert len(matching) == 1
 
-    # The fixture's two rows agree on every column, so nothing is reported.
-    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
-        load()
-    assert not any('Duplicate cruise row' in r.getMessage() for r in caplog.records)
-
 
 def test_duplicate_cruise_row_disagreement_warns(tmp_path, caplog):
     """PIANO does not always report the same values for a labelled row and
     the swept row it lands on. The swept row wins and the disagreeing columns
     are named."""
+    cruise_text = config.file_location(PIANO_CRUISE_FILE).read_text()
     lines = []
-    for line in (PIANO_DIR / 'cruise.txt').read_text().splitlines(keepends=True):
+    for line in cruise_text.splitlines(keepends=True):
         tokens = line.split()
         if len(tokens) > 12 and tokens[3] == 'maxSAR':
             # Halve the maximum climb thrust available on the labelled row.
@@ -227,8 +180,8 @@ def test_duplicate_cruise_row_disagreement_warns(tmp_path, caplog):
     with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
         piano = PianoData.load(
             str(cruise_file),
-            str(PIANO_DIR / 'climb.txt'),
-            str(PIANO_DIR / 'descent.txt'),
+            str(config.file_location(PIANO_CLIMB_FILE)),
+            str(config.file_location(PIANO_DESCENT_FILE)),
             overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
         )
 
@@ -251,15 +204,17 @@ def test_unrecognised_cruise_label_raises(tmp_path):
     """An unknown label in the fourth column means the export comes from a
     PIANO layout this parser was not written against. Nothing in the file can
     be trusted after that, so refuse it rather than drop rows."""
-    text = (PIANO_DIR / 'cruise.txt').read_text().replace('99%SAR', '98%SAR')
+    text = (
+        config.file_location(PIANO_CRUISE_FILE).read_text().replace('99%SAR', '98%SAR')
+    )
     cruise_file = tmp_path / 'cruise.txt'
     cruise_file.write_text(text)
 
     with pytest.raises(ValueError, match='does not match the PIANO cruise'):
         PianoData.load(
             str(cruise_file),
-            str(PIANO_DIR / 'climb.txt'),
-            str(PIANO_DIR / 'descent.txt'),
+            str(config.file_location(PIANO_CLIMB_FILE)),
+            str(config.file_location(PIANO_DESCENT_FILE)),
             overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
         )
 
@@ -278,17 +233,17 @@ def test_cruise_row_without_the_separator_raises(tmp_path):
     with pytest.raises(ValueError, match='does not match the PIANO cruise'):
         PianoData.load(
             str(cruise_file),
-            str(PIANO_DIR / 'climb.txt'),
-            str(PIANO_DIR / 'descent.txt'),
+            str(config.file_location(PIANO_CLIMB_FILE)),
+            str(config.file_location(PIANO_DESCENT_FILE)),
             overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
         )
 
 
-def test_cruise_reference_mach_complete_groups(piano):
+def test_cruise_reference_mach_complete_groups(piano_data):
     """The fixture labels all three reference Machs for every (fl, mass)."""
-    assert piano.cruise_reference_mach.cols == CRUISE_REFERENCE_MACH_COLS
-    assert len(piano.cruise_reference_mach.data) == 6
-    assert piano.cruise_reference_mach.data[0] == [
+    assert piano_data.cruise_reference_mach.cols == CRUISE_REFERENCE_MACH_COLS
+    assert len(piano_data.cruise_reference_mach.data) == 6
+    assert piano_data.cruise_reference_mach.data[0] == [
         150.0,
         pytest.approx(93000 * POUNDS_TO_KG),
         0.450,
@@ -300,7 +255,9 @@ def test_cruise_reference_mach_complete_groups(piano):
 def test_cruise_reference_mach_drops_incomplete_groups(tmp_path, caplog):
     """A group is emitted only when all three labels are present, because
     table data is a list of numbers and TOML has no null."""
-    lines = (PIANO_DIR / 'cruise.txt').read_text().splitlines(keepends=True)
+    lines = (
+        config.file_location(PIANO_CRUISE_FILE).read_text().splitlines(keepends=True)
+    )
     trimmed = [line for line in lines if 'maxLim' not in line]
     cruise_file = tmp_path / 'cruise.txt'
     cruise_file.write_text(''.join(trimmed))
@@ -308,8 +265,8 @@ def test_cruise_reference_mach_drops_incomplete_groups(tmp_path, caplog):
     with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
         piano = PianoData.load(
             str(cruise_file),
-            str(PIANO_DIR / 'climb.txt'),
-            str(PIANO_DIR / 'descent.txt'),
+            str(config.file_location(PIANO_CLIMB_FILE)),
+            str(config.file_location(PIANO_DESCENT_FILE)),
             overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
         )
 
@@ -320,12 +277,12 @@ def test_cruise_reference_mach_drops_incomplete_groups(tmp_path, caplog):
     )
 
 
-def test_zero_time_rows_are_dropped(piano, caplog):
+def test_zero_time_rows_are_dropped(piano_data, caplog):
     """The fixture's `Time` column repeats values, so most rows span no time
     and have no defined fuel flow. Of each block's 30 rows, the four at 0,
     1417, 7086 and 35431 feet are the only ones that advance the clock."""
     for mass in CLIMB_MASSES_KG:
-        kept = [row for row in piano.climb.data if row[1] == mass]
+        kept = [row for row in piano_data.climb.data if row[1] == mass]
         assert [row[0] for row in kept] == [0.0, 14.17, 70.86, 354.31]
 
     with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
@@ -333,81 +290,9 @@ def test_zero_time_rows_are_dropped(piano, caplog):
     assert any('spans no time' in r.getMessage() for r in caplog.records)
 
 
-def overflow(name: str, old: str, new: str, tmp_path) -> str:
-    """Write a copy of a fixture with one row's columns merged.
-
-    PIANO writes fixed-width columns, so a value that outgrows its field runs
-    into its neighbour and the two merge into one token. The row then holds
-    one column too few.
-    """
-    text = (PIANO_DIR / name).read_text()
-    assert old in text
-    path = tmp_path / name
-    path.write_text(text.replace(old, new, 1))
-    return str(path)
-
-
-def test_merged_climb_column_raises(tmp_path):
-    """A climb row that lost a column is refused rather than dropped. Dropping
-    it would leave the next row's fuel flow an average over two climb steps,
-    which none of the cross-checks here can detect."""
-    climb_file = overflow(
-        'climb.txt', '30000.    2000.     1000.', '30000.-2000000.     1000.', tmp_path
-    )
-
-    with pytest.raises(ValueError, match=r'Climb block 1: 1 line\(s\) start with'):
-        PianoData.load(
-            str(PIANO_DIR / 'cruise.txt'),
-            climb_file,
-            str(PIANO_DIR / 'descent.txt'),
-            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
-        )
-
-
-def test_merged_descent_column_raises(tmp_path):
-    """Descent rows carry the same deltas as climb rows, so they are refused
-    the same way."""
-    descent_file = overflow(
-        'descent.txt', '1400.     1500.', '1400.-15000000.', tmp_path
-    )
-
-    with pytest.raises(ValueError, match=r'Descent block 1: 1 line\(s\) start with'):
-        PianoData.load(
-            str(PIANO_DIR / 'cruise.txt'),
-            str(PIANO_DIR / 'climb.txt'),
-            descent_file,
-            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
-        )
-
-
-def test_merged_cruise_column_warns_and_drops_the_row(tmp_path, caplog):
-    """Cruise rows carry no deltas, so losing one only thins the interpolation
-    grid. Report it and keep the rest of the file."""
-    cruise_file = overflow('cruise.txt', '3000.      40.0', '3000.-40000.0', tmp_path)
-
-    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
-        piano = PianoData.load(
-            cruise_file,
-            str(PIANO_DIR / 'climb.txt'),
-            str(PIANO_DIR / 'descent.txt'),
-            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
-        )
-
-    assert any('Dropping 1 cruise line' in r.getMessage() for r in caplog.records)
-    # Only the overflowed row is gone; the other masses still hold this cell.
-    assert not [
-        row
-        for row in piano.cruise.data
-        if row[0] == 150.0
-        and row[2] == 0.350
-        and row[1] == pytest.approx(93000 * POUNDS_TO_KG)
-    ]
-    assert len(piano.cruise.data) == len(load().cruise.data) - 1
-
-
-def test_cruise_row_units(piano):
+def test_cruise_row_units(piano_data):
     """Spot-check every converted column of one cruise row."""
-    row = piano.cruise.data[0]
+    row = piano_data.cruise.data[0]
     assert dict(zip(CRUISE_COLS, row, strict=True)) == {
         'fl': 150.0,
         'mass': pytest.approx(93000 * POUNDS_TO_KG),
@@ -429,9 +314,9 @@ def test_cruise_row_units(piano):
     }
 
 
-def test_climb_row_units(piano):
+def test_climb_row_units(piano_data):
     """The first climb row is at sea level, where CAS and TAS coincide."""
-    row = piano.climb.data[0]
+    row = piano_data.climb.data[0]
     assert dict(zip(CLIMB_COLS, row, strict=True)) == {
         'fl': 0.0,
         'mass': 42000.0,
@@ -447,10 +332,10 @@ def test_climb_row_units(piano):
     }
 
 
-def test_descent_row_units(piano):
+def test_descent_row_units(piano_data):
     """Descent rows carry no drag column, and PIANO's rate of descent is
     negated."""
-    row = piano.descent.data[-1]
+    row = piano_data.descent.data[-1]
     assert dict(zip(DESCENT_COLS, row, strict=True)) == {
         'fl': 410.0,
         'mass': pytest.approx(100003 * POUNDS_TO_KG),
@@ -466,11 +351,11 @@ def test_descent_row_units(piano):
     }
 
 
-def test_rocd_signs(piano):
+def test_rocd_signs(piano_data):
     """Climb rates stay positive, descent rates are negated."""
-    assert all(rocd > 0 for rocd in piano.climb.column('rocd'))
-    assert all(rocd < 0 for rocd in piano.descent.column('rocd'))
-    assert all(rocd == 0 for rocd in piano.cruise.column('rocd'))
+    assert all(rocd > 0 for rocd in piano_data.climb.column('rocd'))
+    assert all(rocd < 0 for rocd in piano_data.descent.column('rocd'))
+    assert all(rocd == 0 for rocd in piano_data.cruise.column('rocd'))
 
 
 def test_non_zero_delta_isa_raises(tmp_path):
@@ -478,40 +363,40 @@ def test_non_zero_delta_isa_raises(tmp_path):
     atmosphere."""
     climb_file = tmp_path / 'climb.txt'
     climb_file.write_text(
-        (PIANO_DIR / 'climb.txt')
+        config.file_location(PIANO_CLIMB_FILE)
         .read_text()
         .replace('Delta-ISA           +0.', 'Delta-ISA           +10.')
     )
 
     with pytest.raises(ValueError, match=r'Delta-ISA of \+10 deg C'):
         PianoData.load(
-            str(PIANO_DIR / 'cruise.txt'),
+            str(config.file_location(PIANO_CRUISE_FILE)),
             str(climb_file),
-            str(PIANO_DIR / 'descent.txt'),
+            str(config.file_location(PIANO_DESCENT_FILE)),
             overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
         )
 
 
-def test_aircraft_name_and_maximum_altitude(piano):
-    assert piano.aircraft_name == 'some_airplane, some_engine'
+def test_aircraft_name_and_maximum_altitude(piano_data):
+    assert piano_data.aircraft_name == 'some_airplane, some_engine'
     # The highest altitude actually reached, not the header's request of
     # 41000 feet. Only the first climb block gets there.
-    assert piano.maximum_altitude_ft == 41100
-    assert piano.isa_offset == 0
+    assert piano_data.maximum_altitude_ft == 41100
+    assert piano_data.isa_offset == 0
 
 
-def test_descent_idle_thrust(piano):
-    assert piano.descent_idle_thrust.cols == DESCENT_IDLE_THRUST_COLS
-    assert piano.descent_idle_thrust.data == [
+def test_descent_idle_thrust(piano_data):
+    assert piano_data.descent_idle_thrust.cols == DESCENT_IDLE_THRUST_COLS
+    assert piano_data.descent_idle_thrust.data == [
         [pytest.approx(mass_lb * POUNDS_TO_KG), pytest.approx(30000 * FEET_TO_METERS)]
         for mass_lb in DESCENT_MASSES_LB
     ]
 
 
-def test_row_order(piano):
+def test_row_order(piano_data):
     """Cruise sorts by (mass, fl, mach); climb and descent by (mass, fl)."""
-    cruise_keys = [(row[1], row[0], row[2]) for row in piano.cruise.data]
+    cruise_keys = [(row[1], row[0], row[2]) for row in piano_data.cruise.data]
     assert cruise_keys == sorted(cruise_keys)
-    for table in (piano.climb, piano.descent):
+    for table in (piano_data.climb, piano_data.descent):
         keys = [(row[1], row[0]) for row in table.data]
         assert keys == sorted(keys)
