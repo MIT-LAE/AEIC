@@ -1,4 +1,3 @@
-import functools
 import os
 import tomllib
 from copy import deepcopy
@@ -16,8 +15,24 @@ from AEIC.performance.models import PerformanceModel
 from AEIC.performance.models.base import LTOPerformanceInput
 from AEIC.types import Fuel
 
+# We're going to assume some data files are in fixed locations for testing.
+# There are some in the test data directory (tests/data) and some in the
+# default source data directory (src/AEIC/data).
+
 # Absolute path to test data directory.
 TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
+
+# Absolute path to source data directory.
+SRC_DATA_DIR = (Path(__file__).parent.parent / 'src/AEIC/data').resolve()
+
+
+def test_data_file(path):
+    return TEST_DATA_DIR / path
+
+
+def src_data_file(path):
+    return SRC_DATA_DIR / path
+
 
 # Set the path to include the test data directory. This is done at module
 # import time deliberately so the value is inherited by subprocesses spawned
@@ -110,9 +125,9 @@ def default_config(request):
     Config.reset()
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def sample_missions():
-    missions_file = config.file_location('missions/sample_missions_10.toml')
+    missions_file = src_data_file('missions/sample_missions_10.toml')
     with open(missions_file, 'rb') as f:
         mission_dict = tomllib.load(f)
     return Mission.from_toml(mission_dict)
@@ -139,7 +154,6 @@ def fuel():
 
 
 # Helper function to cache EDB data, avoiding the per test read
-@functools.cache
 def _load_edb_lto(
     edb_file: Path, engine_uid: str, thrust_fractions: tuple[float, ...]
 ) -> LTOPerformanceInput:
@@ -150,7 +164,6 @@ def _load_edb_lto(
 
 
 # Helper function to cache PIANO data, avoiding the per test read
-@functools.cache
 def _load_piano_data(
     cruise_file: Path,
     climb_file: Path,
@@ -174,46 +187,44 @@ def _load_piano_data(
 # Instead the ~expensive read is done with a function that caches results.
 # The fixture re-runs for each test and calls the read function which
 # after the first call is very cheap as _load*(args) is a cache hit.
-@pytest.fixture
+@pytest.fixture(scope='module')
 def lto() -> LTOPerformanceInput:
     """LTO data for the sample EDB engine, as performance model input."""
 
-    EDB_FILE = 'engines/sample_edb.xlsx'
+    EDB_FILE = src_data_file('engines/sample_edb.xlsx')
     EDB_UID = '01P11CM121'
     EDB_THRUST_FRACTIONS = (0.07, 0.30, 0.85, 1.0)
 
     # Deepcopy is cheap and ensures mutations to LTOPerformanceInput are not
     # accidentally shared across tests.
-    return deepcopy(
-        _load_edb_lto(config.file_location(EDB_FILE), EDB_UID, EDB_THRUST_FRACTIONS)
-    )
+    return deepcopy(_load_edb_lto(EDB_FILE, EDB_UID, EDB_THRUST_FRACTIONS))
 
 
 # Same issue with fixture reuse as lto()
-@pytest.fixture
+@pytest.fixture(scope='module')
 def piano_data() -> PianoData:
     """Parsed sample PIANO exports with a copy per test."""
 
-    PIANO_CRUISE_FILE = 'performance/piano/cruise.txt'
-    PIANO_CLIMB_FILE = 'performance/piano/climb.txt'
-    PIANO_DESCENT_FILE = 'performance/piano/descent.txt'
+    PIANO_CRUISE_FILE = test_data_file('performance/piano/cruise.txt')
+    PIANO_CLIMB_FILE = test_data_file('performance/piano/climb.txt')
+    PIANO_DESCENT_FILE = test_data_file('performance/piano/descent.txt')
     PIANO_CLIMB_MASSES_KG = (68039.0, 50000.0, 46000.0, 42000.0)
 
     # Deepcopy is cheap and ensures mutations to PianoData are not
     # accidentally shared across tests.
     return deepcopy(
         _load_piano_data(
-            config.file_location(PIANO_CRUISE_FILE),
-            config.file_location(PIANO_CLIMB_FILE),
-            config.file_location(PIANO_DESCENT_FILE),
+            PIANO_CRUISE_FILE,
+            PIANO_CLIMB_FILE,
+            PIANO_DESCENT_FILE,
             PIANO_CLIMB_MASSES_KG,
         )
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def ptf_data() -> PTFData:
     """Parsed sample BADA PTF file."""
     # No caching because very cheap to read
-    PTF_FILE = 'verification/legacy/legacy_performance.PTF'
-    return PTFData.load(str(config.file_location(PTF_FILE)))
+    PTF_FILE = test_data_file('verification/legacy/legacy_performance.PTF')
+    return PTFData.load(str(PTF_FILE))
