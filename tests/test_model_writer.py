@@ -37,6 +37,7 @@ def piano_model(piano_data, lto) -> PianoPerformanceModel:
         aircraft_class='narrow',
         number_of_engines=2,
         maximum_payload=18000,
+        operating_empty_mass=37100,
         apu_name='APU 131-9',
     )
 

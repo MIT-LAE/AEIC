@@ -174,6 +174,37 @@ def test_rows_sort_by_mass_then_flight_level():
     ]
 
 
+def test_an_operating_empty_mass_is_ignored_with_a_warning(tmp_path, ptf_data, lto):
+    """The field belongs to the PIANO model. A legacy file that states one
+    loads, but warns, and still derives its empty mass with the BADA-3 rule."""
+    model = build_legacy_model(
+        ptf_data,
+        lto,
+        aircraft_class='narrow',
+        number_of_engines=2,
+        maximum_payload=22422,
+        apu_name='APU 131-9',
+    )
+    out_file = tmp_path / 'legacy_with_operating_empty_mass.toml'
+    write_performance_model(out_file, model)
+
+    # The key has to go in the root table, so before the first section header.
+    lines = out_file.read_text().splitlines(keepends=True)
+    at = next(i for i, line in enumerate(lines) if line.startswith('model_type'))
+    lines.insert(at + 1, 'operating_empty_mass_kg = 37100.0\n')
+    out_file.write_text(''.join(lines))
+
+    with pytest.warns(UserWarning, match='ignore "operating_empty_mass_kg"'):
+        loaded = PerformanceModel.load(out_file)
+
+    lowest_mass = min(
+        min(loaded.climb_flight_performance.column('mass')),
+        min(loaded.cruise_flight_performance.column('mass')),
+        min(loaded.descent_flight_performance.column('mass')),
+    )
+    assert loaded.empty_mass == lowest_mass / 1.2
+
+
 def test_built_model_round_trips_through_the_loader(tmp_path, ptf_data, lto):
     model = build_legacy_model(
         ptf_data,

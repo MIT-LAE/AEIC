@@ -8,9 +8,9 @@ every phase carries thrust, drag and trajectory columns.
 # TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import PositiveFloat
+from pydantic import PositiveFloat, model_validator
 
 from AEIC.performance.types import (
     AircraftState,
@@ -43,24 +43,34 @@ class PianoPerformanceModel(BasePerformanceModel[SimpleFlightRules]):
     descent_idle_thrust: TableInput | None = None
     """Altitude below which each descent block flies at idle thrust."""
 
-    operating_empty_mass_kg: PositiveFloat | None = None
-    """Operating empty mass [kg]. PIANO exports do not contain it."""
+    operating_empty_mass_kg: PositiveFloat
+    """Operating empty mass [kg].
 
-    @property
-    def empty_mass(self) -> float:
-        """Operating empty mass.
+    PIANO exports do not contain one, and unlike BADA the sweep gives no basis
+    for deriving it from the lowest tabulated mass, so it must be supplied.
+    """
 
-        Raises:
-            NotImplementedError: If no operating empty mass was supplied.
-                PIANO exports do not contain one, and unlike BADA the sweep
-                gives no basis for deriving it from the lowest tabulated mass.
+    @model_validator(mode='before')
+    @classmethod
+    def require_operating_empty_mass(cls, data: Any) -> Any:
+        """Report a missing operating empty mass in the terms of the file.
+
+        Pydantic would report the field as required, which reads as an error
+        in the exporter rather than a value the user has to look up.
         """
-        if self.operating_empty_mass_kg is None:
-            raise NotImplementedError(
+        if isinstance(data, dict) and not any(
+            key.lower() == 'operating_empty_mass_kg' for key in data
+        ):
+            raise ValueError(
                 'PIANO exports do not contain an operating empty mass, so '
                 '"operating_empty_mass_kg" must be set in the performance '
                 'model file.'
             )
+        return data
+
+    @property
+    def empty_mass(self) -> float:
+        """Operating empty mass."""
         return self.operating_empty_mass_kg
 
     @property

@@ -404,9 +404,9 @@ def build_piano_model(
     aircraft_class: str,
     number_of_engines: int,
     maximum_payload: int,
+    operating_empty_mass: float,
     apu_name: str | None = None,
     cruise_mach: float | None = None,
-    operating_empty_mass: float | None = None,
     aircraft_name: str | None = None,
     maximum_altitude_ft: int | None = None,
 ) -> PianoPerformanceModel:
@@ -418,11 +418,11 @@ def build_piano_model(
         aircraft_class: One of wide, narrow, small, freight.
         number_of_engines: Number of engines on the aircraft.
         maximum_payload: Maximum payload [kg].
+        operating_empty_mass: Operating empty mass [kg]. PIANO exports do not
+            contain one, so it must be supplied.
         apu_name: APU name, or None if the aircraft has no APU data.
         cruise_mach: Cruise Mach number. PIANO sweeps many and this optional
             value is to fill the Speed.cruise_mach entry. #TODO maybe remove?
-        operating_empty_mass: Operating empty mass [kg]. PIANO exports do not
-            contain one.
         aircraft_name: Aircraft name, overriding the cruise file title.
         maximum_altitude_ft: Maximum altitude [feet], overriding the highest
             altitude any climb block reaches.

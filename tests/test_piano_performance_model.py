@@ -5,7 +5,10 @@ these tests assert that the built model round-trips through the performance
 model loader, but do not check that its numbers are physically plausible.
 """
 
+from pathlib import Path
+
 import pytest
+from pydantic import ValidationError
 
 from AEIC.parsers.piano_reader.climb_reader import CLIMB_COLS
 from AEIC.parsers.piano_reader.cruise_reader import (
@@ -19,12 +22,15 @@ from AEIC.parsers.piano_reader.descent_reader import (
 from AEIC.performance.model_builder import build_piano_model, write_performance_model
 from AEIC.performance.models import PerformanceModel, PianoPerformanceModel
 
+OPERATING_EMPTY_MASS = 37100
+
 
 @pytest.fixture
-def build(tmp_path, piano_data, lto):
-    """Build a PIANO model and round-trip it through the model loader."""
+def write_model(tmp_path, piano_data, lto):
+    """Write a PIANO model file and return the file it was written to."""
 
-    def _build(name: str = 'piano.toml', **overrides) -> PianoPerformanceModel:
+    def _write(name: str = 'piano.toml', **overrides) -> Path:
+        overrides.setdefault('operating_empty_mass', OPERATING_EMPTY_MASS)
         model = build_piano_model(
             piano_data,
             lto,
@@ -36,7 +42,17 @@ def build(tmp_path, piano_data, lto):
         )
         out_file = tmp_path / name
         write_performance_model(out_file, model)
-        return PerformanceModel.load(out_file)
+        return out_file
+
+    return _write
+
+
+@pytest.fixture
+def build(write_model):
+    """Build a PIANO model and round-trip it through the model loader."""
+
+    def _build(name: str = 'piano.toml', **overrides) -> PianoPerformanceModel:
+        return PerformanceModel.load(write_model(name, **overrides))
 
     return _build
 
@@ -61,17 +77,28 @@ def test_every_emitted_column_survives_the_round_trip(build):
     assert model.descent_idle_thrust.cols == DESCENT_IDLE_THRUST_COLS
 
 
-def test_empty_mass_requires_an_operating_empty_mass(build):
-    """PIANO exports do not contain an operating empty mass, so the field is
-    written only when it is manually supplied. An omitted field must load back
-    as None rather than failing validation."""
+def test_operating_empty_mass_survives_the_round_trip(build):
+    """PIANO exports do not contain an operating empty mass, so the builder
+    takes one and every model file states it."""
     model = build()
-    assert model.operating_empty_mass_kg is None
-    with pytest.raises(NotImplementedError, match='operating_empty_mass_kg'):
-        model.empty_mass
+    assert model.operating_empty_mass_kg == OPERATING_EMPTY_MASS
+    assert model.empty_mass == OPERATING_EMPTY_MASS
 
-    with_oew = build('piano_oew.toml', operating_empty_mass=37100)
-    assert with_oew.empty_mass == 37100.0
+
+def test_loading_fails_without_an_operating_empty_mass(write_model):
+    """A file that states no operating empty mass is refused, rather than
+    loading a model whose empty mass is undefined."""
+    out_file = write_model()
+    out_file.write_text(
+        ''.join(
+            line
+            for line in out_file.read_text().splitlines(keepends=True)
+            if not line.startswith('operating_empty_mass_kg')
+        )
+    )
+
+    with pytest.raises(ValidationError, match='PIANO exports do not contain'):
+        PerformanceModel.load(out_file)
 
 
 def test_cruise_speeds_written_only_with_cruise_mach(build):

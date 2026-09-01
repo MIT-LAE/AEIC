@@ -279,6 +279,7 @@ def parse_climb_masses(value: str | None) -> list[float] | None:
 @click.option(
     '--operating-empty-mass',
     type=float,
+    required=True,
     help='Operating empty mass in kg. PIANO exports do not contain one.',
 )
 @click.option(

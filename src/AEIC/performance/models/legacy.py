@@ -13,9 +13,10 @@ interpolation to work correctly."""
 # TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import ClassVar, Literal, Self
+from typing import Any, ClassVar, Literal, Self
 
 import numpy as np
 import pandas as pd
@@ -286,6 +287,25 @@ class LegacyPerformanceModel(BasePerformanceModel[SimpleFlightRules]):
     _climb_performance_table: PerformanceTable = PrivateAttr()
     _cruise_performance_table: PerformanceTable = PrivateAttr()
     _descent_performance_table: PerformanceTable = PrivateAttr()
+
+    @model_validator(mode='before')
+    @classmethod
+    def warn_operating_empty_mass_is_ignored(cls, data: Any) -> Any:
+        """Warn about an operating empty mass contained in a legacy file.
+
+        The field is used by other performance models. The legacy model
+        instead uses the BADA3 rule and ignores the field.
+        """
+        if isinstance(data, dict) and any(
+            key.lower() == 'operating_empty_mass_kg' for key in data
+        ):
+            warnings.warn(
+                'Legacy performance models ignore "operating_empty_mass_kg". '
+                'The empty mass is derived from the performance tables using '
+                'the BADA 3 rule.',
+                stacklevel=2,
+            )
+        return data
 
     @model_validator(mode='after')
     def validate_pm(self, info):
