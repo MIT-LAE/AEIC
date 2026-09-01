@@ -153,73 +153,55 @@ def fuel():
         return Fuel.model_validate(tomllib.load(fp))
 
 
-# Helper function to cache EDB data, avoiding the per test read
-def _load_edb_lto(
-    edb_file: Path, engine_uid: str, thrust_fractions: tuple[float, ...]
-) -> LTOPerformanceInput:
-    entry = EDBEntry.get_engine(edb_file, engine_uid)
-    return LTOPerformanceInput.from_internal(
-        entry.make_lto_performance(thrust_fractions)
-    )
+@pytest.fixture(scope='session')
+def _lto() -> LTOPerformanceInput:
+    """LTO data for the sample EDB engine.
 
-
-# Helper function to cache PIANO data, avoiding the per test read
-def _load_piano_data(
-    cruise_file: Path,
-    climb_file: Path,
-    descent_file: Path,
-    climb_masses_kg: tuple[float, ...],
-) -> PianoData:
-    return PianoData.load(
-        str(cruise_file),
-        str(climb_file),
-        str(descent_file),
-        overrides=PianoOverrides(climb_masses_kg=list(climb_masses_kg)),
-    )
-
-
-# Setting the fixture scope to "session" or "module" does not work
-# for fixture reuse because of the default_config fixture which is scoped
-# to each test.
-# With the scope set to "session" or "module", lto() would run before the
-# default_config fixture is setup and the lto fixture would fail with:
-# "ValueError: AEIC configuration is not set".
-# Instead the ~expensive read is done with a function that caches results.
-# The fixture re-runs for each test and calls the read function which
-# after the first call is very cheap as _load*(args) is a cache hit.
-@pytest.fixture(scope='module')
-def lto() -> LTOPerformanceInput:
-    """LTO data for the sample EDB engine, as performance model input."""
-
+    Use `lto` in tests: this fixture is shared, so tests that
+    mutate it will affect others tests as well.
+    """
     EDB_FILE = src_data_file('engines/sample_edb.xlsx')
     EDB_UID = '01P11CM121'
     EDB_THRUST_FRACTIONS = (0.07, 0.30, 0.85, 1.0)
 
-    # Deepcopy is cheap and ensures mutations to LTOPerformanceInput are not
-    # accidentally shared across tests.
-    return deepcopy(_load_edb_lto(EDB_FILE, EDB_UID, EDB_THRUST_FRACTIONS))
+    entry = EDBEntry.get_engine(EDB_FILE, EDB_UID)
+    return LTOPerformanceInput.from_internal(
+        entry.make_lto_performance(EDB_THRUST_FRACTIONS)
+    )
 
 
-# Same issue with fixture reuse as lto()
-@pytest.fixture(scope='module')
-def piano_data() -> PianoData:
-    """Parsed sample PIANO exports with a copy per test."""
+@pytest.fixture
+def lto(_lto) -> LTOPerformanceInput:
+    """LTO data for the sample EDB engine, as performance model input."""
+    # Deepcopy is cheap and makes sure each tests gets an indepedent copy
+    return deepcopy(_lto)
 
+
+@pytest.fixture(scope='session')
+def _piano_data() -> PianoData:
+    """Parsed sample PIANO exports.
+
+    Use `piano_data` in tests: this fixture is shared, so tests that
+    mutate it will affect others tests as well.
+    """
     PIANO_CRUISE_FILE = test_data_file('performance/piano/cruise.txt')
     PIANO_CLIMB_FILE = test_data_file('performance/piano/climb.txt')
     PIANO_DESCENT_FILE = test_data_file('performance/piano/descent.txt')
-    PIANO_CLIMB_MASSES_KG = (68039.0, 50000.0, 46000.0, 42000.0)
+    PIANO_CLIMB_MASSES_KG = [68039.0, 50000.0, 46000.0, 42000.0]
 
-    # Deepcopy is cheap and ensures mutations to PianoData are not
-    # accidentally shared across tests.
-    return deepcopy(
-        _load_piano_data(
-            PIANO_CRUISE_FILE,
-            PIANO_CLIMB_FILE,
-            PIANO_DESCENT_FILE,
-            PIANO_CLIMB_MASSES_KG,
-        )
+    return PianoData.load(
+        str(PIANO_CRUISE_FILE),
+        str(PIANO_CLIMB_FILE),
+        str(PIANO_DESCENT_FILE),
+        overrides=PianoOverrides(climb_masses_kg=PIANO_CLIMB_MASSES_KG),
     )
+
+
+@pytest.fixture
+def piano_data(_piano_data) -> PianoData:
+    """Parsed sample PIANO exports, with a copy per test."""
+    # Deepcopy is cheap and makes sure each tests gets an indepedent copy
+    return deepcopy(_piano_data)
 
 
 @pytest.fixture(scope='module')
