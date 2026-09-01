@@ -101,20 +101,12 @@ def test_loading_fails_without_an_operating_empty_mass(write_model):
         PerformanceModel.load(out_file)
 
 
-def test_cruise_speeds_written_only_with_cruise_mach(build):
-    """PIANO sweeps many cruise Mach numbers, so the model states one only
-    when the caller picks one."""
-    without = build()
-    assert without.speeds.cruise is None
-    assert without.speeds.climb.mach == pytest.approx(0.750)
-    assert without.speeds.descent.mach == pytest.approx(0.750)
-
-    with_mach = build('piano_mach.toml', cruise_mach=0.78)
-    assert with_mach.speeds.cruise is not None
-    assert with_mach.speeds.cruise.mach == pytest.approx(0.78)
-    # PIANO's cruise table states no CAS schedule.
-    assert with_mach.speeds.cruise.cas_low is None
-    assert with_mach.speeds.cruise.cas_high is None
+def test_no_cruise_speeds_are_written(build):
+    """PIANO sweeps many cruise Mach numbers, so the model states none."""
+    model = build()
+    assert model.speeds.cruise is None
+    assert model.speeds.climb.mach == pytest.approx(0.750)
+    assert model.speeds.descent.mach == pytest.approx(0.750)
 
 
 def test_name_and_altitude_overrides(build):

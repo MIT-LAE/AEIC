@@ -28,7 +28,7 @@ from AEIC.performance.models import (
     PianoPerformanceModel,
 )
 from AEIC.performance.models.base import LTOPerformanceInput
-from AEIC.performance.types import SpeedData, Speeds, TableInput
+from AEIC.performance.types import Speeds, TableInput
 
 if TYPE_CHECKING:
     from AEIC.parsers.piano_reader import PianoData
@@ -406,7 +406,6 @@ def build_piano_model(
     maximum_payload: int,
     operating_empty_mass: float,
     apu_name: str | None = None,
-    cruise_mach: float | None = None,
     aircraft_name: str | None = None,
     maximum_altitude_ft: int | None = None,
 ) -> PianoPerformanceModel:
@@ -421,8 +420,6 @@ def build_piano_model(
         operating_empty_mass: Operating empty mass [kg]. PIANO exports do not
             contain one, so it must be supplied.
         apu_name: APU name, or None if the aircraft has no APU data.
-        cruise_mach: Cruise Mach number. PIANO sweeps many and this optional
-            value is to fill the Speed.cruise_mach entry. #TODO maybe remove?
         aircraft_name: Aircraft name, overriding the cruise file title.
         maximum_altitude_ft: Maximum altitude [feet], overriding the highest
             altitude any climb block reaches.
@@ -434,14 +431,6 @@ def build_piano_model(
         ValidationError: If the resulting model is not valid, for example
             because the APU name is not in the APU database.
     """
-    cruise_speeds = None
-    if cruise_mach is not None:
-        # TODO: cruise cas_low is expected to equal climb cas_low, and cruise
-        # cas_high is the cruise maximum Mach converted to CAS. Both are left
-        # unset because PIANO's cruise table states no CAS schedule, and the
-        # sweep already carries per-row `cas` at every (mass, fl, mach).
-        cruise_speeds = SpeedData(mach=cruise_mach)
-
     return PianoPerformanceModel(
         model_type='piano',
         aircraft_name=aircraft_name or piano_data.aircraft_name,
@@ -454,7 +443,9 @@ def build_piano_model(
         apu_name=apu_name,
         speeds=Speeds(
             climb=piano_data.climb_speeds,
-            cruise=cruise_speeds,
+            # PIANO sweeps many cruise Mach numbers, so setting SpeedData for cruise
+            # is meaningless. PianoPerformanceModel will pick cruise speed.
+            cruise=None,
             descent=piano_data.descent_speeds,
         ),
         lto_performance=lto,

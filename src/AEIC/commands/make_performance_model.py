@@ -272,11 +272,6 @@ def parse_climb_masses(value: str | None) -> list[float] | None:
     'overriding the file.',
 )
 @click.option(
-    '--cruise-mach',
-    type=float,
-    help='Cruise Mach number. Omit to write no cruise speed data.',
-)
-@click.option(
     '--operating-empty-mass',
     type=float,
     required=True,
@@ -312,7 +307,6 @@ def piano(
     climb_cas_high_kts,
     climb_mach,
     climb_crossover_altitude_ft,
-    cruise_mach,
     operating_empty_mass,
     aircraft_name,
     maximum_altitude_ft,
@@ -343,7 +337,6 @@ def piano(
             number_of_engines=number_of_engines,
             maximum_payload=maximum_payload,
             apu_name=apu_name,
-            cruise_mach=cruise_mach,
             operating_empty_mass=operating_empty_mass,
             aircraft_name=aircraft_name,
             maximum_altitude_ft=maximum_altitude_ft,
