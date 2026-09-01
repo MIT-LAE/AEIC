@@ -14,14 +14,15 @@ from pathlib import Path
 import pytest
 
 from AEIC.config import config
-from AEIC.parsers.piano_reader import (
-    CLIMB_COLS,
+from AEIC.parsers.piano_reader import PianoData, PianoOverrides
+from AEIC.parsers.piano_reader.climb_reader import CLIMB_COLS
+from AEIC.parsers.piano_reader.cruise_reader import (
     CRUISE_COLS,
     CRUISE_REFERENCE_MACH_COLS,
+)
+from AEIC.parsers.piano_reader.descent_reader import (
     DESCENT_COLS,
     DESCENT_IDLE_THRUST_COLS,
-    PianoData,
-    PianoOverrides,
 )
 from AEIC.units import (
     FEET_TO_METERS,

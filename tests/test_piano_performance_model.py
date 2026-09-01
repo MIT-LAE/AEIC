@@ -7,10 +7,12 @@ model loader, but do not check that its numbers are physically plausible.
 
 import pytest
 
-from AEIC.parsers.piano_reader import (
-    CLIMB_COLS,
+from AEIC.parsers.piano_reader.climb_reader import CLIMB_COLS
+from AEIC.parsers.piano_reader.cruise_reader import (
     CRUISE_COLS,
     CRUISE_REFERENCE_MACH_COLS,
+)
+from AEIC.parsers.piano_reader.descent_reader import (
     DESCENT_COLS,
     DESCENT_IDLE_THRUST_COLS,
 )
