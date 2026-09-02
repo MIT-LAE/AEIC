@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import re
 
 from AEIC.parsers.piano_reader.common import _find, _is_data_row, _read_lines
@@ -279,24 +280,28 @@ def _reference_mach_table(
 ) -> TableInput:
     """Build the reference Mach table from the labelled cruise rows.
 
-    Only groups holding every label are emitted, because table data is a list
-    of numbers and TOML has no null.
+    Every (flight level, mass) group is emitted. A label the file does not
+    hold for a group is written as NaN, so a group keeps the reference Machs
+    PIANO did report.
     """
     required = CRUISE_REFERENCE_MACH_COLS[2:]
     data = []
     incomplete = []
     for (fl, mass), machs in labelled.items():
-        if all(column in machs for column in required):
-            data.append([fl, mass] + [machs[column] for column in required])
-        else:
-            incomplete.append((fl, mass))
+        data.append([fl, mass] + [machs.get(column, math.nan) for column in required])
+        missing = [column for column in required if column not in machs]
+        if missing:
+            incomplete.append((fl, mass, missing))
 
     if incomplete:
         logger.warning(
-            'Dropping %d incomplete cruise reference Mach group(s), at '
-            '(fl, mass) of %s',
+            'Setting a NaN Mach in %d incomplete cruise reference Mach '
+            'group(s), at (fl, mass) of %s',
             len(incomplete),
-            ', '.join(f'({fl:.2f}, {mass:.1f})' for fl, mass in sorted(incomplete)),
+            ', '.join(
+                f'({fl:.2f}, {mass:.1f}): {", ".join(missing)}'
+                for fl, mass, missing in sorted(incomplete)
+            ),
         )
 
     return TableInput(

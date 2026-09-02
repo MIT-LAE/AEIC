@@ -9,6 +9,7 @@ units here, never physical plausibility.
 """
 
 import logging
+import math
 from pathlib import Path
 
 import pytest
@@ -253,9 +254,9 @@ def test_cruise_reference_mach_complete_groups(piano_data):
     ]
 
 
-def test_cruise_reference_mach_drops_incomplete_groups(tmp_path, caplog):
-    """A group is emitted only when all three labels are present, because
-    table data is a list of numbers and TOML has no null."""
+def test_cruise_reference_mach_fills_missing_labels_with_nan(tmp_path, caplog):
+    """A group the file does not label for every reference Mach is kept, with
+    a NaN Mach in the columns PIANO did not report."""
     lines = (
         config.file_location(PIANO_CRUISE_FILE).read_text().splitlines(keepends=True)
     )
@@ -271,7 +272,11 @@ def test_cruise_reference_mach_drops_incomplete_groups(tmp_path, caplog):
             overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
         )
 
-    assert piano.cruise_reference_mach.data == []
+    reference_mach = piano.cruise_reference_mach
+    assert len(reference_mach.data) == 6
+    assert all(math.isnan(mach) for mach in reference_mach.column('max_lim'))
+    assert not any(math.isnan(mach) for mach in reference_mach.column('max_sar'))
+    assert not any(math.isnan(mach) for mach in reference_mach.column('sar_99'))
     assert any(
         'incomplete cruise reference Mach group' in r.getMessage()
         for r in caplog.records

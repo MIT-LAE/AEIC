@@ -106,10 +106,9 @@ rating setting.
 | `sar_99` | - | Mach at 99% of maximum specific air range. |
 | `max_lim` | - | Maximum limiting Mach. |
 
-Only (flight level, mass) groups holding all three reference Mach numbers are
-written, because table data is a list of numbers and TOML has no null.
-
-% TODO FIX THIS
+Every (flight level, mass) group is written. If the PIANO file does not have
+one of the three reference Mach numbers for a group, that column is written as
+`nan`.
 
 Due to rounding in the PIANO output, a `(fl, mass, Mach)` triplet might be
 the same for a row coming from the PIANO Mach sweep, and a row coming from
