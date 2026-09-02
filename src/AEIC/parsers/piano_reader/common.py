@@ -36,6 +36,10 @@ _SCHEDULE_MACH_RE = re.compile(r'mach\s+([\d.]+)')
 _SCHEDULE_CROSSOVER_RE = re.compile(r'above\s+([\d.]+)feet')
 _SCHEDULE_CAS_RE = re.compile(r'([\d.]+)\s*/\s*([\d.]+)\s*kcas')
 
+# How the first token of a data row starts: an optional sign, then a digit,
+# possibly behind a leading decimal point.
+_ROW_START_RE = re.compile(r'^[-+]?\.?\d')
+
 
 # ---------------------------------------------------------------------------
 # Shared helpers, used by all three files
@@ -58,15 +62,17 @@ def _find(pattern: re.Pattern[str], lines: list[str]) -> re.Match[str] | None:
 
 def _is_data_row(tokens: list[str]) -> bool:
     """Whether PIANO wrote these tokens as a table row.
-    PIANO opens every data row with a number.
+
+    PIANO opens every data row with a number, so test only how the first
+    token starts. Parsing that token as a float instead would reject the row
+    whose first value outgrew its fixed-width field and merged with its
+    neighbour, because the merged token holds two decimal points. Such a row
+    must reach the malformed lines that `_reject_malformed` refuses, rather
+    than be dropped here as a line that was never a data row.
     """
     if not tokens:
         return False
-    try:
-        float(tokens[0])
-    except ValueError:
-        return False
-    return True
+    return _ROW_START_RE.match(tokens[0]) is not None
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +227,7 @@ def _reject_malformed(label: str, block: _Block, ncols: int) -> None:
     if not block.malformed:
         return
     raise ValueError(
-        f'{label}: {len(block.malformed)} line(s) start with a number but do '
+        f'{label}: {len(block.malformed)} line(s) open a data row but do '
         f'not hold {ncols} numbers, and dropping a row would silently average '
         'the fuel flow of the row after it. First such line: '
         f'"{block.malformed[0].strip()}"'

@@ -200,12 +200,16 @@ Double check if this is the correct thing to do
 
 ## Dropped rows and parse failures
 
+A line is a data row when its first token starts with a digit, behind an
+optional sign. The reader tests only the start of that token, to decide if
+the line is a data row in case of field overflows that merge columns.
+
 ### Data rows dropped with a warning
 
 | Case | File | Behaviour |
 |------|------|-----------|
-| Line starts with a number but holds fewer than fifteen columns | cruise | Dropped. One aggregate warning gives the count and the first offending line. |
-| Line starts with a number but at least one of the first fifteen numeric column is not a number | cruise | Dropped. One aggregate warning gives the count and the first offending line. |
+| Line is a data row but holds fewer than fifteen columns | cruise | Dropped. One aggregate warning gives the count and the first offending line. |
+| Line is a data row but at least one of the first fifteen numeric columns is not a number | cruise | Dropped. One aggregate warning gives the count and the first offending line. |
 | Row spans no time, so {math}`\Delta t = 0` | climb, descent | Dropped, with one warning per row. Fuel flow is undefined over a zero-length step. |
 | Block holds no data rows at all | climb, descent | Skipped, with one warning. |
 | Block states no `Idle thrust below` altitude | descent | No idle thrust row is emitted for that mass. |
@@ -223,7 +227,7 @@ The reader raises `ValueError` in the following cases.
 
 | Case | File |
 |------|------|
-| A data line starts with a number but does not contain exactly seven (climb) or six (descent) numbers | climb, descent |
+| Line is a data row but does not contain exactly seven (climb) or six (descent) numbers | climb, descent |
 | The file holds no block marker | climb, descent |
 | The file has no `Cruise table for` title | cruise |
 | The fourth column is neither `\|` nor a known reference Mach label | cruise |

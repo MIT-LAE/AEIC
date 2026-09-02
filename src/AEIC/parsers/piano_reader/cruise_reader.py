@@ -158,9 +158,9 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
 
     if malformed:
         logger.warning(
-            'Dropping %d cruise line(s) that start with a number but do not '
-            'hold %d columns, which thins the interpolation grid. The first '
-            'is: "%s"',
+            'Dropping %d cruise line(s) that open a data row but do not hold '
+            '%d numeric columns, which thins the interpolation grid. The '
+            'first is: "%s"',
             len(malformed),
             _CRUISE_ROW_COLS,
             malformed[0].strip(),

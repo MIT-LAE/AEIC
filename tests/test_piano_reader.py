@@ -425,3 +425,35 @@ def test_row_order(piano_data):
     for table in (piano_data.climb, piano_data.descent):
         keys = [(row[1], row[0]) for row in table.data]
         assert keys == sorted(keys)
+
+
+def _merge_first_two_columns(line: str) -> str:
+    """Rewrite a data line as PIANO writes it when column 1 overflows.
+
+    PIANO writes fixed-width columns, so a value that outgrows its field runs
+    into its neighbour and the two arrive as one token.
+    """
+    tokens = line.split()
+    return '  ' + '  '.join([tokens[0] + tokens[1]] + tokens[2:]) + '\n'
+
+
+def test_climb_row_with_merged_first_column_raises(tmp_path):
+    """A merge of `Alt.` and `Time` leaves a token that is not a number, so
+    the row can only be seen as malformed by how it starts. Dropping it would
+    give the next row the fuel burn of two altitude steps over one step of
+    time, which neither cross-check can see."""
+    lines = config.file_location(PIANO_CLIMB_FILE).read_text().splitlines(True)
+    merged = [
+        _merge_first_two_columns(line) if line.split()[:2] == ['1417.', '60.'] else line
+        for line in lines
+    ]
+    climb_file = tmp_path / 'climb.txt'
+    climb_file.write_text(''.join(merged))
+
+    with pytest.raises(ValueError, match=r'1 line\(s\) open a data row'):
+        PianoData.load(
+            str(config.file_location(PIANO_CRUISE_FILE)),
+            str(climb_file),
+            str(config.file_location(PIANO_DESCENT_FILE)),
+            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        )
