@@ -1,10 +1,10 @@
 # Legacy performance model
 
-Currently, the only type of performance model that we have implemented is a
-table-based model intended to replicate the behavior of the performance model
-in the AEIC v2 Matlab code. This is represented by the
-{py:class}`LegacyPerformanceModel
-<AEIC.performance.models.LegacyPerformanceModel>` class.
+The legacy performance model is a table-based model intended to replicate the
+behavior of the performance model in the AEIC v2 Matlab code. It is
+represented by the {py:class}`LegacyPerformanceModel
+<AEIC.performance.models.LegacyPerformanceModel>` class, and is currently the
+only performance model that can be used for simulations.
 
 ## Input file format
 
@@ -20,12 +20,20 @@ lives in the `flight_performance` section, which has the following fields:
 
 The contents of this section of the input file is represented internally by a
 value of the {py:class}`PerformanceTableInput
-<AEIC.performance.models.legacy.PerformanceTableInput>` class.
+<AEIC.performance.models.base.PerformanceTableInput>` class. This class is
+shared with the other table-based model types, see the [performance model
+API](performance_model_api.md).
 
 ```{admonition} Question
 Should we make this format better? For a TOML file, this setup might be the
 best that we can do.
 ```
+
+## Operating empty mass
+
+The legacy model derives the aircraft empty mass from the performance tables
+using the BADA 3 rule `OEM = min_mass / 1.2`. It ignores an
+`operating_empty_mass_kg` field, and warns if a file sets one.
 
 ## Performance table
 
@@ -47,7 +55,7 @@ the performance table data:
    descent ({math}`\mathrm{ROCD} < 0`).
  * Within each table segment, the performance table data is dense in flight
    level and aircraft mass, in the sense that there is exactly one table for
-   for each (flight level, aircraft mass) combination. The data thus defines a
+   each (flight level, aircraft mass) combination. The data thus defines a
    complete table for bilinear interpolation in flight level and mass.
 
 This structure ensures that, for each relevant flight phase (climb, cruise or
@@ -62,7 +70,7 @@ that calculates performance data for a given aircraft state simply selects the
 relevant segment of the performance table data and does bilinear interpolation
 in flight level and aircraft mass. The interpolation is performed by an
 {py:class}`Interpolator <AEIC.performance.models.legacy.Interpolator>` helper
-class, instances of which are created lazily for each flight phas as needed
+class, instances of which are created lazily for each flight phase as needed
 (once only for any performance model instance).
 
 ## API reference
@@ -87,9 +95,4 @@ class, instances of which are created lazily for each flight phas as needed
 .. autoclass:: AEIC.performance.models.legacy.Interpolator
    :members:
    :special-members: __call__
-```
-
-```{eval-rst}
-.. autoclass:: AEIC.performance.models.legacy.PerformanceTableInput
-   :members:
 ```

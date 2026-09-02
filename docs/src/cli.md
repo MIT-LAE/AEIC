@@ -6,7 +6,7 @@ subcommands covering the end-to-end inventory workflow:
 | Subcommand | Purpose |
 |------------|---------|
 | `aeic convert-oag-data` | Convert an OAG CSV file to a mission database. See [OAG flight data](oag.md). |
-| `aeic make-performance-model` | Build a performance model TOML file. See [Performance model files](performance_models/performance_model_files.md). |
+| `aeic make-performance-model` | Build a performance model TOML file, with one subcommand per model type (`legacy`, `piano`, and the `tasopt` stub). See [Performance model files](performance_models/performance_model_files.md). |
 | `aeic run` | Simulate trajectories for the missions in a database. See [below](#aeic-run). |
 | `aeic merge-stores` | Merge per-slice trajectory stores produced by parallel simulation runs. See [below](#aeic-merge-stores). |
 | `aeic make-file-bundle` | Build a reproducibility bundle containing every file referenced by a trajectory store. See [below](#aeic-make-file-bundle). |

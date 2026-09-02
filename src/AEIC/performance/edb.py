@@ -7,8 +7,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from AEIC.config import config
-
 from .types import LTOPerformance, ThrustMode, ThrustModeValues
 
 
@@ -74,7 +72,7 @@ class EDBEntry:
             xls = pd.ExcelFile(excel_file)
         except Exception as exc:
             raise ValueError(
-                f"Unable to open EDB workbook at {config.edb_input_file}: {exc}"
+                f"Unable to open EDB workbook at {excel_file}: {exc}"
             ) from exc
 
         gaseous_sheet = 'Gaseous Emissions and Smoke'

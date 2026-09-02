@@ -36,7 +36,7 @@ performance models, updated trajectory dynamics, parallelization, and more.
    src/missions.md
    src/mission_database.md
    src/oag.md
-   src/parsers.md
+   src/parsers/parsers.md
    src/storage.md
    src/utilities.md
    src/weather.md

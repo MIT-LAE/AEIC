@@ -14,6 +14,7 @@ from AEIC.performance.types import (
     LTOPerformance,
     SimpleFlightRules,
     Speeds,
+    TableInput,
     ThrustMode,
     ThrustModeValues,
 )
@@ -103,6 +104,31 @@ class LTOPerformanceInput(CIBaseModel):
         )
 
 
+class PerformanceTableInput(TableInput):
+    """Tabular data that must be usable as a performance table."""
+
+    REQUIRED_COLS: ClassVar[tuple[str, ...]] = (
+        'fuel_flow',
+        'fl',
+        'tas',
+        'rocd',
+        'mass',
+    )
+    """Columns every performance table must provide."""
+
+    @model_validator(mode='after')
+    def validate_required_columns(self) -> Self:
+        """Check that every required performance table column is present."""
+
+        for required in self.REQUIRED_COLS:
+            if required not in self.cols:
+                raise ValueError(
+                    f'Missing required "{required}" column in performance table'
+                )
+
+        return self
+
+
 class BasePerformanceModel[RulesT](CIBaseModel, ABC):
     """Base class for aircraft performance models.
 
@@ -129,6 +155,9 @@ class BasePerformanceModel[RulesT](CIBaseModel, ABC):
 
     aircraft_class: AircraftClass
     """Aircraft class (e.g., wide or narrow body)."""
+
+    isa_offset: int
+    """ISA temperature offset [deg C]."""
 
     maximum_altitude_ft: PositiveInt
     """Aircraft maximum altitude in feet."""

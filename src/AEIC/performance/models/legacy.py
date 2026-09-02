@@ -13,9 +13,10 @@ interpolation to work correctly."""
 # TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import ClassVar, Literal, Self
+from typing import Any, ClassVar, Literal, Self
 
 import numpy as np
 import pandas as pd
@@ -24,44 +25,8 @@ from scipy.interpolate import interpn
 
 from AEIC.performance.types import AircraftState, Performance, SimpleFlightRules
 from AEIC.units import METERS_TO_FL
-from AEIC.utils.models import CIBaseModel
 
-from .base import BasePerformanceModel
-
-
-class PerformanceTableInput(CIBaseModel):
-    """Performance table data from TOML file."""
-
-    cols: list[str]
-    """Performance table column labels."""
-
-    data: list[list[float]]
-    """Performance table data."""
-
-    @model_validator(mode='after')
-    def validate_names_and_sizes(self) -> Self:
-        """Normalize and check input column names and array sizes."""
-
-        self.cols = [c.lower() for c in self.cols]
-
-        # Validate column names.
-        if len(self.cols) != len(set(self.cols)):
-            raise ValueError('Duplicate column names in performance table')
-        for required in ['fuel_flow', 'fl', 'tas', 'rocd', 'mass']:
-            if required not in self.cols:
-                raise ValueError(
-                    f'Missing required "{required}" column in performance table'
-                )
-
-        # Validate data table dimensions.
-        ncols = len(self.cols)
-        ndata = len(self.data[0])
-        if ndata < ncols:
-            raise ValueError('Not enough data columns in performance table')
-        if any(len(row) != ndata for row in self.data):
-            raise ValueError('Inconsistent number of data columns in performance table')
-
-        return self
+from .base import BasePerformanceModel, PerformanceTableInput
 
 
 class ROCDFilter(Enum):
@@ -322,6 +287,25 @@ class LegacyPerformanceModel(BasePerformanceModel[SimpleFlightRules]):
     _climb_performance_table: PerformanceTable = PrivateAttr()
     _cruise_performance_table: PerformanceTable = PrivateAttr()
     _descent_performance_table: PerformanceTable = PrivateAttr()
+
+    @model_validator(mode='before')
+    @classmethod
+    def warn_operating_empty_mass_is_ignored(cls, data: Any) -> Any:
+        """Warn about an operating empty mass contained in a legacy file.
+
+        The field is used by other performance models. The legacy model
+        instead uses the BADA3 rule and ignores the field.
+        """
+        if isinstance(data, dict) and any(
+            key.lower() == 'operating_empty_mass_kg' for key in data
+        ):
+            warnings.warn(
+                'Legacy performance models ignore "operating_empty_mass_kg". '
+                'The empty mass is derived from the performance tables using '
+                'the BADA 3 rule.',
+                stacklevel=2,
+            )
+        return data
 
     @model_validator(mode='after')
     def validate_pm(self, info):

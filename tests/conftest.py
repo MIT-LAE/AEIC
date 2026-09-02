@@ -1,17 +1,38 @@
 import os
 import tomllib
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
 
 from AEIC.config import Config, config
 from AEIC.missions import Mission
+from AEIC.parsers.piano_reader import PianoData, PianoOverrides
+from AEIC.parsers.ptf_reader import PTFData
+from AEIC.performance.edb import EDBEntry
 from AEIC.performance.model_selector import SimplePerformanceModelSelector
 from AEIC.performance.models import PerformanceModel
+from AEIC.performance.models.base import LTOPerformanceInput
 from AEIC.types import Fuel
+
+# We're going to assume some data files are in fixed locations for testing.
+# There are some in the test data directory (tests/data) and some in the
+# default source data directory (src/AEIC/data).
 
 # Absolute path to test data directory.
 TEST_DATA_DIR = (Path(__file__).parent / 'data').resolve()
+
+# Absolute path to source data directory.
+SRC_DATA_DIR = (Path(__file__).parent.parent / 'src/AEIC/data').resolve()
+
+
+def test_data_file(path):
+    return TEST_DATA_DIR / path
+
+
+def src_data_file(path):
+    return SRC_DATA_DIR / path
+
 
 # Set the path to include the test data directory. This is done at module
 # import time deliberately so the value is inherited by subprocesses spawned
@@ -104,9 +125,9 @@ def default_config(request):
     Config.reset()
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def sample_missions():
-    missions_file = config.file_location('missions/sample_missions_10.toml')
+    missions_file = src_data_file('missions/sample_missions_10.toml')
     with open(missions_file, 'rb') as f:
         mission_dict = tomllib.load(f)
     return Mission.from_toml(mission_dict)
@@ -130,3 +151,62 @@ def performance_model_selector():
 def fuel():
     with open(config.emissions.fuel_file, 'rb') as fp:
         return Fuel.model_validate(tomllib.load(fp))
+
+
+@pytest.fixture(scope='session')
+def _lto() -> LTOPerformanceInput:
+    """LTO data for the sample EDB engine.
+
+    Use `lto` in tests: this fixture is shared, so tests that
+    mutate it will affect others tests as well.
+    """
+    EDB_FILE = src_data_file('engines/sample_edb.xlsx')
+    EDB_UID = '01P11CM121'
+    EDB_THRUST_FRACTIONS = (0.07, 0.30, 0.85, 1.0)
+
+    entry = EDBEntry.get_engine(EDB_FILE, EDB_UID)
+    return LTOPerformanceInput.from_internal(
+        entry.make_lto_performance(EDB_THRUST_FRACTIONS)
+    )
+
+
+@pytest.fixture
+def lto(_lto) -> LTOPerformanceInput:
+    """LTO data for the sample EDB engine, as performance model input."""
+    # Deepcopy is cheap and makes sure each tests gets an indepedent copy
+    return deepcopy(_lto)
+
+
+@pytest.fixture(scope='session')
+def _piano_data() -> PianoData:
+    """Parsed sample PIANO exports.
+
+    Use `piano_data` in tests: this fixture is shared, so tests that
+    mutate it will affect others tests as well.
+    """
+    PIANO_CRUISE_FILE = test_data_file('performance/piano/cruise.txt')
+    PIANO_CLIMB_FILE = test_data_file('performance/piano/climb.txt')
+    PIANO_DESCENT_FILE = test_data_file('performance/piano/descent.txt')
+    PIANO_CLIMB_MASSES_KG = [68039.0, 50000.0, 46000.0, 42000.0]
+
+    return PianoData.load(
+        str(PIANO_CRUISE_FILE),
+        str(PIANO_CLIMB_FILE),
+        str(PIANO_DESCENT_FILE),
+        overrides=PianoOverrides(climb_masses_kg=PIANO_CLIMB_MASSES_KG),
+    )
+
+
+@pytest.fixture
+def piano_data(_piano_data) -> PianoData:
+    """Parsed sample PIANO exports, with a copy per test."""
+    # Deepcopy is cheap and makes sure each tests gets an indepedent copy
+    return deepcopy(_piano_data)
+
+
+@pytest.fixture(scope='module')
+def ptf_data() -> PTFData:
+    """Parsed sample BADA PTF file."""
+    # No caching because very cheap to read
+    PTF_FILE = test_data_file('verification/legacy/legacy_performance.PTF')
+    return PTFData.load(str(PTF_FILE))
