@@ -4,14 +4,16 @@ Performance model classes are all Pydantic models derived from
 {py:class}`BasePerformanceModel
 <AEIC.performance.models.BasePerformanceModel>`. This is an abstract base
 class that includes data common to all performance model types (aircraft name
-and class, maximum altitude and payload, number of engines, optional APU
-information and optional LTO and speed information) and that defines the
-performance model API. The legacy table-based performance model is represented
-by the {py:class}`LegacyPerformanceModel
+and class, ISA temperature offset, maximum altitude and payload, number of
+engines, optional APU information and optional LTO and speed information) and
+that defines the performance model API. The legacy table-based performance
+model is represented by the {py:class}`LegacyPerformanceModel
 <AEIC.performance.models.LegacyPerformanceModel>` class. This includes a
 performance table represented by the {py:class}`PerformanceTable
 <AEIC.performance.models.legacy.PerformanceTable>` class which performs
-subsetting and interpolation within the input data.
+subsetting and interpolation within the input data. The PIANO table-based
+performance model is represented by the {py:class}`PianoPerformanceModel
+<AEIC.performance.models.PianoPerformanceModel>` class.
 
 ## Loading performance models
 
@@ -23,8 +25,9 @@ this: there is a {py:meth}`load
 <AEIC.performance.models.PerformanceModel.load>` class method with a
 polymorphic return type, that takes a path to a TOML file containing a
 performance model definition and returns an instance of the correct
-performance model class based on the `model_type` field. For the current
-legacy-based performance models, use `model_type = "legacy"`.
+performance model class based on the `model_type` field. Use
+`model_type = "legacy"` for a legacy table-based performance model and
+`model_type = "piano"` for a model built from PIANO data.
 
 ## Mission-based performance model selection
 
@@ -63,6 +66,15 @@ airspeed and/or rate of climb/descent. Some performance models may make use of
 the optional values, some may not. The legacy table-based performance model
 does not: all return values from the legacy model depend only on aircraft
 altitude, aircraft mass and a simple climb/cruise/descent flight rule.
+
+```{note}
+The {py:class}`PianoPerformanceModel
+<AEIC.performance.models.PianoPerformanceModel>` class does not yet implement
+{py:meth}`evaluate_impl
+<AEIC.performance.models.BasePerformanceModel.evaluate_impl>`. Calling
+{py:meth}`evaluate <AEIC.performance.models.BasePerformanceModel.evaluate>` on
+a PIANO model raises `NotImplementedError`.
+```
 
 The performance data returned from the {py:meth}`evaluate
 <AEIC.performance.models.BasePerformanceModel.evaluate>` method contains
@@ -121,7 +133,7 @@ After a performance model instance is created (of any type derived from
  also contains:
 
 - Basic information about the performance model: aircraft name and class,
-  number of engines, maximum altitude and payload.
+  ISA temperature offset, number of engines, maximum altitude and payload.
 - {py:attr}`lto_performance
   <AEIC.performance.models.BasePerformanceModel.lto_performance>`: modal
   thrust settings, fuel flows, and emission indices taken from the performance
@@ -130,7 +142,11 @@ After a performance model instance is created (of any type derived from
   auxiliary-power-unit properties resolved from `engines/APU_data.toml` using
   the `apu_name` specified in the performance file.
 - {py:attr}`speeds <AEIC.performance.models.BasePerformanceModel.speeds>`:
-  cruise speed data.
+  the airspeed schedule of each flight phase. Each phase is a
+  {py:class}`SpeedData <AEIC.performance.types.SpeedData>` value holding a low
+  and a high calibrated airspeed, a Mach number and the crossover altitude
+  above which the schedule flies that Mach number. The `cruise` phase is
+  optional as a model does not necessarily impose a cruise Mach number.
 
 ## API reference
 
@@ -197,4 +213,16 @@ After a performance model instance is created (of any type derived from
 .. autoclass:: AEIC.performance.types.SpeedData
    :members:
    :exclude-members: model_config
+```
+
+```{eval-rst}
+.. autoclass:: AEIC.performance.types.TableInput
+   :members:
+   :exclude-members: model_config, validate_names_and_sizes
+```
+
+```{eval-rst}
+.. autoclass:: AEIC.performance.models.base.PerformanceTableInput
+   :members:
+   :exclude-members: model_config, validate_required_columns
 ```

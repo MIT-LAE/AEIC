@@ -9,11 +9,14 @@ values:
    replicate the behavior of the AEIC v2 Matlab code. These files are
    essentially just a conversion of BADA PTF files into TOML format, including
    some extra information from the engine database.
+ * `model_type = "piano"`: table-based performance model built from PIANO
+   aircraft performance exports.
  * `model_type = "bada"`: BADA3-based performance model.
  * `model_type = "tasopt"`: performance model based on TASOPT simulations.
 
 ```{note}
-So far, only the legacy performance model is implemented.
+Legacy and PIANO model files can both be generated and loaded. So far, only
+the legacy performance model can be evaluated.
 ```
 
 ## Creating performance model files
@@ -21,14 +24,43 @@ So far, only the legacy performance model is implemented.
 There is a {command}`make-performance-model` command to help with the creation
 of performance model TOML files.
 
-```{warning}
-Currently, this can obviously only generate "legacy" performance model files!
-A `tasopt` subcommand is also registered (`aeic make-performance-model
-tasopt ...`) but is a stub that currently raises `NotImplementedError`.
+The command takes the output path, then a subcommand naming the model type to
+build:
 
-Also, the script is unfinished and needs some work by Adi and/or Wyatt to pin
-down some of the choices for generating the performance table and LTO data.
+ * `legacy` builds a legacy model from a BADA PTF file;
+ * `piano` builds a PIANO model from a set of three PIANO exports;
+ * `tasopt` is registered but is a stub that raises `NotImplementedError`.
+
+```{warning}
+The script is unfinished and needs some work by Adi and/or Wyatt to pin down
+some of the choices for generating the performance table and LTO data.
 ```
+
+### Shared options
+
+Calling {command}`make-performance-model` requires passing `--output-file` as the
+first argument before specifying the subcommand.
+
+Every subcommand takes these same options for LTO data and for aircraft
+properties.
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `--lto-source` | `edb` or `custom` | Yes | | Source of LTO performance data. |
+| `--engine-file` | Path | With `edb` | | Engine database workbook. |
+| `--engine-uid` | String | With `edb` | | UID of the engine to extract data for. |
+| `--thrust-fractions` | 4 floats | No | `0.07 0.30 0.85 1.0` | Thrust fractions for idle, approach, climb and takeoff. |
+| `--lto-file` | Path | With `custom` | | LTO TOML file. |
+| `--aircraft-class` | `wide`, `narrow`, `small` or `freight` | Yes | | Aircraft class. |
+| `--number-of-engines` | Integer, 1 to 8 | Yes | | Number of engines on the aircraft. |
+| `--maximum-payload` | Integer | Yes | | Maximum payload [kg]. |
+| `--apu-name` | String | No | | APU name. Must be in the APU database. |
+
+### `legacy` subcommand
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `--ptf-file` | Path | Yes | Input BADA PTF file. |
 
 A complete invocation of {command}`make-performance-model` to generate a
 legacy performance model file looks like this:
@@ -48,9 +80,78 @@ aeic make-performance-model \
 ```
 
 Performance data is taken from a BADA PTF file, and LTO data is taken from the
-engine database.
+engine database. The aircraft name, ISA offset, maximum altitude and speed
+schedules all come from the PTF file.
 
-(More documentation to come when this is finished.)
+### `piano` subcommand
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `--cruise-file` | Path | Yes | Input PIANO cruise table export. |
+| `--climb-file` | Path | Yes | Input PIANO climb details export. |
+| `--descent-file` | Path | Yes | Input PIANO descent details export. |
+| `--operating-empty-mass` | Float | Yes | Operating empty mass [kg]. |
+| `--climb-masses` | Comma-separated floats | No | Initial mass [kg] of each climb block, in file order. |
+| `--climb-cas-low-kts` | Float | No | Climb calibrated airspeed below FL100 [knots]. |
+| `--climb-cas-high-kts` | Float | No | Climb calibrated airspeed above FL100 [knots]. |
+| `--climb-mach` | Float | No | Climb Mach number above the crossover altitude. |
+| `--climb-crossover-altitude-ft` | Float | No | Altitude above which the climb flies its Mach number [feet]. |
+| `--aircraft-name` | String | No | Aircraft name, overriding the cruise file title. |
+| `--maximum-altitude-ft` | Integer | No | Maximum altitude [feet], overriding the highest altitude climbed. |
+
+The optional options fill gaps that the some PIANO files may have due to missing headers:
+
+ * `--climb-masses` is needed when there is no climb header in the PIANO
+   climb file. This is because the climb halted before reaching its target
+   altitude. The option is all-or-nothing: give one mass per block, in file order,
+   including the blocks whose header already states a mass. A supplied mass
+   that contradicts a one in the file warns and overrides it.
+ * The four schedule options override the climb airspeed schedule the file
+   contains. If the none of the climbs in the provided file have a header,
+   all four options are required.
+
+A complete invocation looks like this:
+
+```shell
+aeic make-performance-model \
+  --output-file B738-piano.toml \
+  piano \
+  --cruise-file piano/B738-cruise.txt \
+  --climb-file piano/B738-climb.txt \
+  --descent-file piano/B738-descent.txt \
+  --operating-empty-mass 41413 \
+  --apu-name 'APU 131-9' \
+  --number-of-engines 2 \
+  --aircraft-class narrow \
+  --maximum-payload 22422 \
+  --lto-source edb \
+  --engine-file engines/sample_edb.xlsx \
+  --engine-uid 01P11CM121
+```
+
+Add `--climb-masses 50000,60000,70000` if any climb in the file halted before
+reaching its target altitude.
+
+### Performance model file format
+
+TOML performance files are created from the model instances using
+{py:func}`write_performance_model
+<AEIC.performance.model_builder.write_performance_model>`.
+Each model type defines its TOML layout via an
+ordered sequence of `(field name, output key)` pairs (e.g. `LEGACY_WRITE_SPEC`
+and `PIANO_WRITE_SPEC`) that defines the field order and the key each field is
+written under. Writing a model type that has no write spec raises a
+`ValueError`.
+
+Then:
+
+ * tabular data becomes a trailing `[section]` block, and an empty table
+   is written as `data = []`;
+ * speed and LTO data become nested sub-tables, one per flight phase and one
+   per thrust mode;
+ * everything else is written inline;
+ * a field set to `None` is not written at all.
+
 
 ## Example file
 
