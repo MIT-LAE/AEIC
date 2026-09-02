@@ -104,6 +104,9 @@ Rows run from the ground up, one per altitude step, at the mass the header
 states. `Time`, `Dist.` and `Burn` are cumulative from the start of the climb.
 `FN/eng`, `R.o.C.` and `Drag` are the value at that altitude.
 
+Some exports add an eighth `NOx` column to the table. The reader ignores this
+column.
+
 Every `Climb details` table is preceded by either a full header or a halt
 note. If the climb does not reach its target altitude, PIANO writes the halt
 note in place of that block's own header, and the block has no metadata at

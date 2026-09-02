@@ -57,6 +57,11 @@ _CLIMB_MASS_CROSS_CHECK_TOLERANCE = 0.001
 # Alt., Time, Dist., Burn, FN/eng, R.o.C., Drag
 _CLIMB_ROW_COLS = 7
 
+# The line of column labels that opens a climb table, and the label of the
+# NOx column some exports add to it.
+_CLIMB_LABELS_RE = re.compile(r'^\s*Alt\.')
+_NOX_LABEL_RE = re.compile(r'^NOx', re.IGNORECASE)
+
 _CLIMB_MASS_RE = re.compile(r'Initial mass\s+([\d.]+)')
 _DELTA_ISA_RE = re.compile(r'Delta-ISA\s+([+-]?[\d.]+)')
 _HALTED_RE = re.compile(r'halted at\s+([\d.]+)feet')
@@ -76,7 +81,9 @@ def _parse_climb(
     reached by any block, and the climb table.
     """
     lines = _read_lines(path)
-    blocks = _split_blocks(lines, 'Climb details', _CLIMB_ROW_COLS)
+    nox_col = _nox_column(lines)
+    row_cols = _CLIMB_ROW_COLS if nox_col is None else _CLIMB_ROW_COLS + 1
+    blocks = _split_blocks(lines, 'Climb details', row_cols, drop_col=nox_col)
 
     isa_offset = _parse_isa_offset(lines)
     masses = _climb_masses(blocks, overrides)
@@ -93,7 +100,7 @@ def _parse_climb(
     maximum_altitude_ft = 0.0
     for n, (block, mass) in enumerate(zip(blocks, masses, strict=True)):
         label = f'Climb block {n + 1}'
-        _reject_malformed(label, block, _CLIMB_ROW_COLS)
+        _reject_malformed(label, block, row_cols)
 
         rows = block.rows
         if not rows:
@@ -146,6 +153,26 @@ def _parse_climb(
         int(maximum_altitude_ft),
         table,
     )
+
+
+def _nox_column(lines: list[str]) -> int | None:
+    """Index of the NOx column of the climb table, or None if it has none.
+
+    Some PIANO exports add a NOx column to the climb table meaning the row
+    length can vary between 7 and 8 elements. We need to detect this for
+    later parsing to work
+    """
+    for line in lines:
+        if _CLIMB_LABELS_RE.match(line) is None:
+            continue
+        labels = line.split()
+        if len(labels) != _CLIMB_ROW_COLS + 1:
+            return None
+        for i, label in enumerate(labels):
+            if _NOX_LABEL_RE.match(label) is not None:
+                return i
+        return None
+    return None
 
 
 def _parse_isa_offset(lines: list[str]) -> int:

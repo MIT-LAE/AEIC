@@ -176,13 +176,19 @@ def _numeric_row(tokens: list[str], ncols: int) -> list[float] | None:
         return None
 
 
-def _split_blocks(lines: list[str], marker: str, ncols: int) -> list[_Block]:
+def _split_blocks(
+    lines: list[str], marker: str, ncols: int, drop_col: int | None = None
+) -> list[_Block]:
     """Split a PIANO detail file into the blocks introduced by `marker`.
 
     A block's header lines are those between the previous block's marker and
     this one, which is where PIANO writes block metadata when it writes any.
     Blocks that follow a halted climb have no metadata there, so their header
     lines hold none.
+
+    `ncols` is the number of columns the file writes. If `drop_col` is set,
+    the column at that index is dropped from every row that parses, so a
+    caller reads rows one column narrower than the file writes.
 
     Raises:
         ValueError: If the file contains no block.
@@ -204,8 +210,10 @@ def _split_blocks(lines: list[str], marker: str, ncols: int) -> list[_Block]:
             row = _numeric_row(tokens, ncols)
             if row is None:
                 malformed.append(line)
-            else:
-                rows.append(row)
+                continue
+            if drop_col is not None:
+                row = row[:drop_col] + row[drop_col + 1 :]
+            rows.append(row)
         blocks.append(_Block(lines[header_start:start], rows, malformed))
     return blocks
 

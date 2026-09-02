@@ -457,3 +457,60 @@ def test_climb_row_with_merged_first_column_raises(tmp_path):
             str(config.file_location(PIANO_DESCENT_FILE)),
             overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
         )
+
+
+def _with_extra_column(text: str, label: str) -> str:
+    """The climb file with one more column, labelled `label`, on its table.
+
+    Appends the column to the line of column labels, to the line of units and
+    to every data row, as PIANO writes an export that also reports NOx.
+    """
+    lines = []
+    for line in text.splitlines(True):
+        stripped = line.strip()
+        if stripped.startswith('Alt.'):
+            lines.append(f'{line.rstrip()}     {label}\n')
+        elif stripped.startswith('(feet)'):
+            lines.append(f'{line.rstrip()}     (gm.)\n')
+        elif stripped[:1].isdigit():
+            lines.append(f'{line.rstrip()}      12.\n')
+        else:
+            lines.append(line)
+    return ''.join(lines)
+
+
+def _load_climb(climb_file: Path) -> PianoData:
+    """Parse the exports behind `piano_data`, with the climb file replaced."""
+    return PianoData.load(
+        str(config.file_location(PIANO_CRUISE_FILE)),
+        str(climb_file),
+        str(config.file_location(PIANO_DESCENT_FILE)),
+        overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+    )
+
+
+def test_climb_nox_column_is_dropped(tmp_path, piano_data):
+    """Some PIANO climb exports carry an eighth NOx column. The reader has no
+    use for it, so it drops the column and reads the rest as before."""
+    climb_file = tmp_path / 'climb.txt'
+    climb_file.write_text(
+        _with_extra_column(config.file_location(PIANO_CLIMB_FILE).read_text(), 'NOx')
+    )
+
+    parsed = _load_climb(climb_file)
+
+    assert parsed.climb.cols == CLIMB_COLS
+    assert parsed.climb.data == piano_data.climb.data
+    assert parsed.maximum_altitude_ft == piano_data.maximum_altitude_ft
+
+
+def test_climb_extra_column_that_is_not_nox_raises(tmp_path):
+    """NOx is the only extra column the reader knows how to drop. Any other
+    one leaves rows it cannot map onto the expected columns."""
+    climb_file = tmp_path / 'climb.txt'
+    climb_file.write_text(
+        _with_extra_column(config.file_location(PIANO_CLIMB_FILE).read_text(), 'HC')
+    )
+
+    with pytest.raises(ValueError, match='do not hold 7 numbers'):
+        _load_climb(climb_file)
