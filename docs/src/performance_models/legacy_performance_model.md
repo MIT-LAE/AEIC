@@ -55,7 +55,7 @@ the performance table data:
    descent ({math}`\mathrm{ROCD} < 0`).
  * Within each table segment, the performance table data is dense in flight
    level and aircraft mass, in the sense that there is exactly one table for
-   for each (flight level, aircraft mass) combination. The data thus defines a
+   each (flight level, aircraft mass) combination. The data thus defines a
    complete table for bilinear interpolation in flight level and mass.
 
 This structure ensures that, for each relevant flight phase (climb, cruise or
@@ -70,7 +70,7 @@ that calculates performance data for a given aircraft state simply selects the
 relevant segment of the performance table data and does bilinear interpolation
 in flight level and aircraft mass. The interpolation is performed by an
 {py:class}`Interpolator <AEIC.performance.models.legacy.Interpolator>` helper
-class, instances of which are created lazily for each flight phas as needed
+class, instances of which are created lazily for each flight phase as needed
 (once only for any performance model instance).
 
 ## API reference

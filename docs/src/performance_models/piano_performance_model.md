@@ -31,7 +31,7 @@ documented in [PIANO reader](../parsers/piano_reader.md).
 
 `operating_empty_mass_kg` is a required field for a PIANO performance model.
 PIANO exports contain no operating empty mass, and we cannot apply the BADA 3
-rule to estimate it. This field is must be supplied when creating the
+rule to estimate it. This field must be passed when creating the
 performance model file.
 
 ## Performance tables
@@ -82,6 +82,11 @@ The two `rocd_mcl_*` columns keep the sign PIANO reports, such that they can be
 negative where the aircraft cannot keep steady level flight even at the max climb
 rating setting.
 
+Due to rounding in the PIANO output, a `(fl, mass, Mach)` triplet might be
+the same for a row coming from the PIANO Mach sweep, and a row coming from
+one of the operating points but with slightly differing performance values.
+In this case, the operating point value is kept over the Mach sweep.
+
 ### Descent table
 
 | Column | Unit | Meaning |
@@ -109,12 +114,6 @@ rating setting.
 Every (flight level, mass) group is written. If the PIANO file does not have
 one of the three reference Mach numbers for a group, that column is written as
 `nan`.
-
-Due to rounding in the PIANO output, a `(fl, mass, Mach)` triplet might be
-the same for a row coming from the PIANO Mach sweep, and a row coming from
-one of the operating points but with slightly differing performance values.
-In this case, the operating point value is kept over the Mach sweep.
-
 
 ### Descent idle thrust table
 

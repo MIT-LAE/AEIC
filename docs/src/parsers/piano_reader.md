@@ -67,7 +67,7 @@ The fourth column is a discriminator that separates the two kinds of row:
 
 A climb file has one block per initial mass. Each block is a header followed
 by a `Climb details` table. The reader splits the file on the `Climb details`
-marker and treats everything since the previous marker as the block's header
+marker and treats everything after the previous marker as the block's header
 lines.
 
 ```
@@ -106,7 +106,8 @@ states. `Time`, `Dist.` and `Burn` are cumulative from the start of the climb.
 
 Every `Climb details` table is preceded by either a full header or a halt
 note. If the climb does not reach its target altitude, PIANO writes the halt
-note in place of that block's own header, and the block has no metadata all:
+note in place of that block's own header, and the block has no metadata at
+all:
 
 ```
     Climb to 41000.feet halted at 40000.feet,
@@ -157,7 +158,7 @@ file.
 The PIANO climb and descent tables have no true airspeed column. True airspeed
 is derived from the airspeed schedule in the block header.
 
-PIANO writes the schedule a such:
+PIANO writes the schedule as follows:
 
  * climb: `250./ 280.kcas/ mach 0.750 above 30000.feet`, low CAS first;
  * descent: `mach 0.750 above 30000.feet/ 280./ 250.kcas`, high CAS first.
@@ -165,7 +166,7 @@ PIANO writes the schedule a such:
 The speed schedule is the same for all blocks in a file. The
 first block that has a schedule provides it for every other block.
 For climb this is necessary, because a halted block has no header. For descent,
-every block states a schedule.
+every block has a schedule and all must be identical.
 
 True airspeed at a given altitude then follows three regimes:
 
@@ -193,7 +194,7 @@ The first row of a block is the exception. It takes
 a **forward** difference instead and is assigned the same step as the second
 row.
 
-```{note}
+```{admonition} Question
 Double check if this is the correct thing to do
 ```
 
@@ -204,16 +205,17 @@ Double check if this is the correct thing to do
 | Case | File | Behaviour |
 |------|------|-----------|
 | Line starts with a number but holds fewer than fifteen columns | cruise | Dropped. One aggregate warning gives the count and the first offending line. |
+| Line starts with a number but at least one of the first fifteen numeric column is not a number | cruise | Dropped. One aggregate warning gives the count and the first offending line. |
 | Row spans no time, so {math}`\Delta t = 0` | climb, descent | Dropped, with one warning per row. Fuel flow is undefined over a zero-length step. |
 | Block holds no data rows at all | climb, descent | Skipped, with one warning. |
-| Reference Mach group missing any of `maxSAR`, `99%SAR` or `maxLim` | cruise | The whole (flight level, mass) group is dropped. |
 | Block states no `Idle thrust below` altitude | descent | No idle thrust row is emitted for that mass. |
 | Duplicate row at the same (flight level, mass, Mach) | cruise | The labelled row is kept over the swept one. The warning lists the columns that disagree. |
 
-A labelled reference Mach can land exactly on the swept grid, and PIANO does
-not always report the same values for the two rows. The labelled row is kept,
-because it is the operating point PIANO solved for; the swept row only shares
-its key because the export rounds the Mach number.
+Due to rounding in the PIANO output, a `(fl, mass, Mach)` triplet might be
+the same for a row coming from the PIANO Mach sweep, and a row coming from
+one of the operating points but with slightly differing performance values.
+In this case, the operating point value is kept and the Mach sweep value is
+dropped.
 
 ### Errors
 
@@ -221,7 +223,7 @@ The reader raises `ValueError` in the following cases.
 
 | Case | File |
 |------|------|
-| A data line holds the right leading number but not exactly seven (climb) or six (descent) numbers | climb, descent |
+| A data line starts with a number but does not contain exactly seven (climb) or six (descent) numbers | climb, descent |
 | The file holds no block marker | climb, descent |
 | The file has no `Cruise table for` title | cruise |
 | The fourth column is neither `\|` nor a known reference Mach label | cruise |
@@ -236,6 +238,10 @@ The reader raises `ValueError` in the following cases.
 ## Cross-checks
 
 The reader emits warnings on sanity checks of the parsed values.
+
+```{admonition} Question
+Are these useful, and should the tolerances be lower?
+```
 
 **True airspeed.** The derived true airspeed is compared against the block's
 own distance and time columns, as

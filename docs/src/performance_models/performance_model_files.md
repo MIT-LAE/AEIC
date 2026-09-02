@@ -99,15 +99,15 @@ schedules all come from the PTF file.
 | `--aircraft-name` | String | No | Aircraft name, overriding the cruise file title. |
 | `--maximum-altitude-ft` | Integer | No | Maximum altitude [feet], overriding the highest altitude climbed. |
 
-The optional options fill gaps that the some PIANO files may have due to missing headers:
+The optional options fill gaps that some PIANO files may have due to missing headers:
 
  * `--climb-masses` is needed when there is no climb header in the PIANO
    climb file. This is because the climb halted before reaching its target
    altitude. The option is all-or-nothing: give one mass per block, in file order,
    including the blocks whose header already states a mass. A supplied mass
-   that contradicts a one in the file warns and overrides it.
+   that contradicts one in the file warns and overrides it.
  * The four schedule options override the climb airspeed schedule the file
-   contains. If the none of the climbs in the provided file have a header,
+   contains. If none of the climbs in the provided file have a header,
    all four options are required.
 
 A complete invocation looks like this:
