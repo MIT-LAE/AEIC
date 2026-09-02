@@ -34,68 +34,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-#############################################################################
-# PIANO climb file schema
-#############################################################################
-#
-# A climb file is structured as one block per initial mass.
-# Every block is in two parts: a header or halt note, and a "Climb details"
-# table.
-#
-# If the climb reaches the target altitude, PIANO adds a header above
-# the "Climb details table.".
-# If it does not reach the target altitude, the header block is replaced by
-# a halt note instead.
-# `_split_blocks` therefore keys on the "Climb details" marker, and treats
-# everything since the previous marker as the block's header lines.
-#
-# 1a. Block header, after a completed climb:
-#
-#     Climb from 0.feet to:   41000.feet
-#     ---------------------------------------------------------------
-#     Time                28.00     minutes
-#     Fuel burn           4000.     lb.
-#     Distance            200.0     n.miles
-#
-#     Initial mass        150000.   lb.
-#     Airspeed schedule   250./ 280.kcas/ mach 0.750 above 30000.feet
-#     Delta-ISA           +0.       deg.C.
-#     ---------------------------------------------------------------
-#
-# The reader takes four values from the header:
-#   - "Initial mass" gives the block's mass, unless the caller supplies one
-#     (`_climb_masses`).
-#   - "Airspeed schedule" gives the CAS below and above FL100, the Mach
-#     number and the crossover altitude (`_climb_schedule`). It is a property
-#     of the file, so the first block that states one sets it every block.
-#   - "Delta-ISA" gives the ISA offset (`_parse_isa_offset`). A non-zero
-#     offset is rejected, because TAS is derived for a standard atmosphere.
-#   - "Fuel burn" is the block total the last data row is checked against
-#     (`_cross_check_fuel_burn`).
-#
-# 1b. Halt note, written in place of the block's own header:
-#
-#     Climb to 41000.feet halted at 40000.feet,
-#     Rate of Climb < 50.feet/min.
-#     -----------------------------------------
-#
-# 2. Data table, one per block:
-#
-#     Climb details
-#
-#      Alt.     Time      Dist.      Burn      FN/eng    R.o.C.     Drag
-#     (feet)    (sec)   (n.miles)    (lb.)     (lbf.)    (f.p.m)    (lbf.)
-#
-#         0.       0.       0.0         0.     30000.    2000.     1000.
-#      1417.      60.       5.0        40.     30000.    2000.     1000.
-#
-# Rows run from the ground up, one per altitude step, at the mass the header
-# states. "Time", "Dist." and "Burn" are cumulative from the start of the
-# climb. "FN/eng", "R.o.C." and "Drag" are the value at that altitude.
-# `_is_data_row` relies on the fact that only data rows start with a number
-# to identify data rows.
-#############################################################################
 
+# See PIANO parser doc for expected schema
 # Climb table columns
 CLIMB_COLS = [
     'fl',

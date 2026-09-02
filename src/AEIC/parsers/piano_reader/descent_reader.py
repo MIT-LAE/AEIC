@@ -29,57 +29,7 @@ from AEIC.units import (
 
 logger = logging.getLogger(__name__)
 
-#############################################################################
-# PIANO descent file schema
-#############################################################################
-#
-# A descent file is structured as one block per mass, like the climb file.
-# Unlike climb, PIANO writes a full header for every block, so a descent file
-# should not have a halt note / no headerless block.
-# `_split_blocks` keys on the "Descent details" marker.
-#
-# 1. Block header:
-#
-#     Descent from 41000.feet to:   0.feet
-#     ---------------------------------------------------------------
-#     Time                20.0      minutes
-#     Fuel burn           800.      lb.
-#     Distance            200.0     n.miles
-#
-#     Mass                100000.    lb.
-#     Airspeed schedule   mach 0.750 above 30000.feet/ 280./ 250.kcas
-#     Idle thrust below   30000.feet
-#     ---------------------------------------------------------------
-#
-# The reader takes four values from the header:
-#   - "Mass" gives the block's mass.
-#   - "Airspeed schedule" gives the Mach number, the crossover altitude and
-#     the CAS above and below FL100. The schedule is constant for the file, so
-#     every block must state the same one.
-#   - "Idle thrust below" gives the altitude below which the descent flies at
-#     idle thrust.
-#   - "Fuel burn" is the block total the last data row is checked against
-#     (`_cross_check_fuel_burn`).
-#
-# A descent file states no Delta-ISA, so the ISA offset comes from the climb
-# file.
-#
-# 2. Data table, one per block:
-#
-#     Descent details
-#
-#      Alt.     Time      Dist.      Burn     R.o.D.     FN/eng
-#     (feet)    (sec)    (n.miles)   (lb.)    (f.p.m)    (lbf.)
-#
-#     41000.      00.      200.        30.     1400.     1500.
-#     39610.      01.      200.        30.     1400.     1500.
-#
-# Rows run from the top down, one per altitude step, at the mass the header
-# states. "Time", "Dist." and "Burn" are cumulative from the start of the
-# descent. "R.o.D." and "FN/eng" are the value at that altitude.
-# PIANO reports rate of descent as a positive number.
-#############################################################################
-
+# See PIANO parser doc for expected schema
 # Descent table columns
 DESCENT_COLS = [
     'fl',

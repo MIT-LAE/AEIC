@@ -20,57 +20,7 @@ from AEIC.units import (
 
 logger = logging.getLogger(__name__)
 
-#############################################################################
-# PIANO cruise file schema
-#############################################################################
-#
-# A cruise file is single table without blocks. PIANO sweeps Mach for
-# every (mass, altitude) pair.
-#
-# 1. Title, stating the aircraft and the engine:
-#
-#     Cruise table for some_airplane, some_engine
-#
-# 2. Column headings and unit:
-#
-#     Mass              lb.
-#     Altitude          feet
-#     Mach              -
-#     |                 discriminator, see below
-#     TAS               kts
-#     CAS               kts
-#     Drag              lbf.
-#     MCR.%             percent
-#     L/D               -
-#     FuelFlow          lb/hr
-#     SFC               lb/h/lbf
-#     SAR               nm/lb
-#     MCL/eng avail.    lbf.
-#     RoC@MCL fix.CAS   feet/min
-#     RoC@MCL fix.Mach  feet/min
-#     Buffet onset      Gs
-#     NOx               lb/hr
-#     HC                lb/hr
-#     CO                lb/hr
-#
-# `_cruise_values` reads the first `_CRUISE_ROW_COLS` tokens of a row, so
-# buffet onset and the three emission indices are dropped. PIANO writes "..."
-# in a column it has no value for.
-#
-# 3. Data rows, one per (mass, altitude, Mach) point:
-#
-#     93000.   15000.  0.350    |    100.0   200.0      3000.   ...
-#     93000.   15000.  0.450 maxSAR  100.0   200.0      3000.   ...
-#
-# The fourth column discriminates the two kinds of row. "|" marks a swept row.
-# "maxSAR", "99%SAR" and "maxLim" mark a reference Mach of the (mass,
-# altitude) pair the sweep just covered.
-#
-# A line that starts with a number but holds too few entries is dropped with a
-# warning. The rationale is that the cruise table is an interpolation grid, so
-# a lost row thins the grid but leaves its neighbours.
-#############################################################################
-
+# See PIANO parser doc for expected schema
 # Cruise table columns
 CRUISE_COLS = [
     'fl',
