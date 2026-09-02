@@ -54,8 +54,8 @@ logger = logging.getLogger(__name__)
 # The reader takes four values from the header:
 #   - "Mass" gives the block's mass.
 #   - "Airspeed schedule" gives the Mach number, the crossover altitude and
-#     the CAS above and below FL100. The first block sets the schedule for
-#     every block as speed schedule is constant for the file.
+#     the CAS above and below FL100. The schedule is constant for the file, so
+#     every block must state the same one.
 #   - "Idle thrust below" gives the altitude below which the descent flies at
 #     idle thrust.
 #   - "Fuel burn" is the block total the last data row is checked against
@@ -117,6 +117,8 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
     Raises:
         ValueError: If a block has no mass or no airspeed schedule header.
             Unlike climb, PIANO writes a full header for every descent block.
+        ValueError: If two blocks state different airspeed schedules. The
+            schedule must be the same across the file.
     """
     lines = _read_lines(path)
     blocks = _split_blocks(lines, 'Descent details', _DESCENT_ROW_COLS)
@@ -140,10 +142,10 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
         if schedule is None:
             schedule = block_schedule
         elif block_schedule != schedule:
-            logger.warning(
-                '%s states an airspeed schedule that differs from the first '
-                'block; using the first block for every block',
-                label,
+            raise ValueError(
+                f'{label} states the airspeed schedule {block_schedule}, which '
+                f'differs from the first block\'s {schedule}; the airspeed '
+                f'schedule must be the same across the file'
             )
 
         idle_match = _find(_IDLE_THRUST_RE, block.header_lines)

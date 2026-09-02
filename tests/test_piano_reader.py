@@ -378,6 +378,25 @@ def test_non_zero_delta_isa_raises(tmp_path):
         )
 
 
+def test_descent_schedule_mismatch_raises(tmp_path):
+    """The descent airspeed schedule must be the same across the file."""
+    lines = config.file_location(PIANO_DESCENT_FILE).read_text().splitlines(True)
+    marker = 'Airspeed schedule'
+    second = [n for n, line in enumerate(lines) if marker in line][1]
+    lines[second] = lines[second].replace('mach 0.750', 'mach 0.800')
+
+    descent_file = tmp_path / 'descent.txt'
+    descent_file.write_text(''.join(lines))
+
+    with pytest.raises(ValueError, match='must be the same across the file'):
+        PianoData.load(
+            str(config.file_location(PIANO_CRUISE_FILE)),
+            str(config.file_location(PIANO_CLIMB_FILE)),
+            str(descent_file),
+            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        )
+
+
 def test_aircraft_name_and_maximum_altitude(piano_data):
     assert piano_data.aircraft_name == 'some_airplane, some_engine'
     # The highest altitude actually reached, not the header's request of

@@ -162,11 +162,10 @@ PIANO writes the schedule a such:
  * climb: `250./ 280.kcas/ mach 0.750 above 30000.feet`, low CAS first;
  * descent: `mach 0.750 above 30000.feet/ 280./ 250.kcas`, high CAS first.
 
-The speed schedule is the same for all blocks in a file. Then
+The speed schedule is the same for all blocks in a file. The
 first block that has a schedule provides it for every other block.
-For climb this is necessary, because a halted block has no header. For descent, a
-later block that states a different schedule only warns, and the first block's
-schedule is used throughout.
+For climb this is necessary, because a halted block has no header. For descent,
+every block states a schedule.
 
 True airspeed at a given altitude then follows three regimes:
 
@@ -232,6 +231,7 @@ The reader raises `ValueError` in the following cases.
 | No block states an airspeed schedule and the overrides are incomplete | climb |
 | A block has no `Mass` header | descent |
 | A block has no `Airspeed schedule` header | descent |
+| Two blocks state different airspeed schedules | descent |
 
 ## Cross-checks
 
@@ -249,6 +249,3 @@ if the header is not present.
 
 **Climb mass.** When the caller supplies climb masses and a block header also
 has a value, the two are compared with a tolerance of 1%.
-
-**Descent schedule.** A descent block whose airspeed schedule differs from the
-first block's warns, and the first block's schedule is used throughout.
