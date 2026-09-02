@@ -67,7 +67,7 @@ the optional values, some may not. The legacy table-based performance model
 does not: all return values from the legacy model depend only on aircraft
 altitude, aircraft mass and a simple climb/cruise/descent flight rule.
 
-```{note}
+```{warning}
 The {py:class}`PianoPerformanceModel
 <AEIC.performance.models.PianoPerformanceModel>` class does not yet implement
 {py:meth}`evaluate_impl
