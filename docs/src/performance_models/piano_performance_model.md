@@ -13,7 +13,7 @@ evaluation is not: {py:meth}`evaluate_impl
 ```
 
 The source data is read by {py:mod}`AEIC.parsers.piano_reader`, which is
-documented in [Available parsers](../parsers.md).
+documented in [PIANO reader](../parsers/piano_reader.md).
 
 ## Differences from the legacy model
 

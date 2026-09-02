@@ -73,7 +73,7 @@ logger = logging.getLogger(__name__)
 #   - "Fuel burn" is the block total the last data row is checked against
 #     (`_cross_check_fuel_burn`).
 #
-# 1b. Halt note, written in place of the next block's header:
+# 1b. Halt note, written in place of the block's own header:
 #
 #     Climb to 41000.feet halted at 40000.feet,
 #     Rate of Climb < 50.feet/min.
@@ -229,7 +229,7 @@ def _parse_isa_offset(lines: list[str]) -> int:
 
 def _header_climb_mass(block: _Block) -> float | None:
     """Initial mass a climb block's header states [kg], or None if it states
-    none. PIANO omits the header of a block that follows a halted climb."""
+    none. PIANO omits the header of a block whose climb halted."""
     match = _find(_CLIMB_MASS_RE, block.header_lines)
     return None if match is None else float(match.group(1)) * POUNDS_TO_KG
 
