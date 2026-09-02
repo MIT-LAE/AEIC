@@ -19,9 +19,6 @@ The readers are grouped by the source of the data:
    text exports of PIANO. It is the source of performance-table data for
    [PIANO performance models](../performance_models/piano_performance_model.md).
 
-% TODO: add a row here for each new parser, and say which model type consumes
-% it.
-
 ```{toctree}
 :maxdepth: 1
 

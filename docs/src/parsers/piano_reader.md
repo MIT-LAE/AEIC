@@ -254,8 +254,8 @@ The check uses the median relative deviation over
 the block, with a tolerance of 5%.
 
 **Fuel burn.** The final cumulative burn of a block is compared against the
-`Fuel burn` total in its header, with a tolerance of 1%. The check is skipped
+`Fuel burn` total in its header, with a tolerance of 0.1%. The check is skipped
 if the header is not present.
 
 **Climb mass.** When the caller supplies climb masses and a block header also
-has a value, the two are compared with a tolerance of 1%.
+has a value, the two are compared with a tolerance of 0.1%.

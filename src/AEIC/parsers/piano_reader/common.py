@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 # and compare with a tolerance to ground speed and distance
 _TAS_CROSS_CHECK_TOLERANCE = 0.05
 
-# Relative deviation above which the block fuel burn cross-check warns.
-_FUEL_BURN_CROSS_CHECK_TOLERANCE = 0.01
+# Relative deviation (0.1%) above which the block fuel burn cross-check warns.
+_FUEL_BURN_CROSS_CHECK_TOLERANCE = 0.001
 
 _FUEL_BURN_RE = re.compile(r'Fuel burn\s+([\d.]+)')
 _SCHEDULE_LINE_RE = re.compile(r'Airspeed schedule\s+(.+?)\s*$')

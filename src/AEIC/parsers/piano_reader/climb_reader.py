@@ -51,8 +51,8 @@ CLIMB_COLS = [
 ]
 
 # If user supplied masses and PIANO header masses are both present
-# we check that they are consistent up to 1%
-_CLIMB_MASS_CROSS_CHECK_TOLERANCE = 0.01
+# we check that they are consistent up to 0.1%
+_CLIMB_MASS_CROSS_CHECK_TOLERANCE = 0.001
 
 # Alt., Time, Dist., Burn, FN/eng, R.o.C., Drag
 _CLIMB_ROW_COLS = 7
