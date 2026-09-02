@@ -247,11 +247,12 @@ def _insert_cruise_row(
     row: list[float],
     is_swept: bool,
 ) -> None:
-    """Add a cruise row, resolving a collision in favour of the swept row.
+    """Add a cruise row, resolving a collision in favour of the labelled row.
 
     A labelled reference Mach can land exactly on the swept grid, and PIANO
-    does not always report the same values for the two. Keeping the swept row
-    keeps the sweep self-consistent.
+    does not always report the same values for the two. The labelled row is the
+    operating point PIANO solved for, while the swept row only shares its key
+    because the export rounds Mach, so the labelled row wins.
     """
     existing = rows.get(key)
     if existing is None:
@@ -265,11 +266,11 @@ def _insert_cruise_row(
     if differing:
         logger.warning(
             'Duplicate cruise row at (fl=%.2f, mass=%.1f kg, mach=%.3f); '
-            'keeping the swept row. Columns that disagree: %s',
+            'keeping the labelled row. Columns that disagree: %s',
             *key,
             ', '.join(differing),
         )
-    if is_swept and not existing_is_swept:
+    if existing_is_swept and not is_swept:
         rows[key] = (row, is_swept)
 
 

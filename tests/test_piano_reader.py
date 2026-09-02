@@ -164,8 +164,8 @@ def test_labelled_mach_on_the_swept_grid_keeps_one_row(piano_data, caplog):
 
 def test_duplicate_cruise_row_disagreement_warns(tmp_path, caplog):
     """PIANO does not always report the same values for a labelled row and
-    the swept row it lands on. The swept row wins and the disagreeing columns
-    are named."""
+    the swept row it lands on. The labelled row wins and the disagreeing
+    columns are named."""
     cruise_text = config.file_location(PIANO_CRUISE_FILE).read_text()
     lines = []
     for line in cruise_text.splitlines(keepends=True):
@@ -188,10 +188,10 @@ def test_duplicate_cruise_row_disagreement_warns(tmp_path, caplog):
 
     matching = [row for row in piano.cruise.data if row[0] == 150.0 and row[2] == 0.450]
     assert len(matching) == 3
-    # The swept row wins, so the labelled row's lower thrust is gone.
+    # The labelled row wins, so its lower thrust replaces the swept row's.
     assert all(
         row[CRUISE_COLS.index('mcl_avail_per_engine')]
-        == pytest.approx(19000 * POUNDS_FORCE_TO_NEWTONS)
+        == pytest.approx(9000 * POUNDS_FORCE_TO_NEWTONS)
         for row in matching
     )
     assert any(
