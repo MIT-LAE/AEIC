@@ -10,7 +10,6 @@ from AEIC.config.emissions import (
     EInvPMMethod,
 )
 from AEIC.emissions.types import EmissionsSubset
-from AEIC.performance.edb import EDBEntry
 from AEIC.performance.models.base import BasePerformanceModel
 from AEIC.performance.types import ThrustMode, ThrustModeValues
 from AEIC.types import Species, SpeciesValues
@@ -47,7 +46,7 @@ def get_LTO_emissions(
         lto_indices[Species.CO] = lto_data.EI_CO
 
     if Species.nvPM in config.emissions.enabled_species:
-        lto_indices.update(_lto_nvpm(performance_model.edb))
+        lto_indices.update(_lto_nvpm(lto_data))
 
     lto_fuel_burn = _LTO_TIMS * lto_data.fuel_flow
     if config.emissions.climb_descent_mode != ClimbDescentMode.LTO:
@@ -98,23 +97,23 @@ def _lto_nox(lto_data: LTOPerformance) -> SpeciesValues[ThrustModeValues]:
     return indices
 
 
-def _lto_nvpm(edb: EDBEntry) -> SpeciesValues[ThrustModeValues]:
+def _lto_nvpm(lto: LTOPerformance) -> SpeciesValues[ThrustModeValues]:
     """Calculate LTO nvPM emission indices."""
     indices = SpeciesValues[ThrustModeValues]()
     nvpm_num: ThrustModeValues | None = None
 
     match config.emissions.nvpm_method:
         case EInvPMMethod.MEEM:
-            # Use nvPM EI/EInum from EDB if they exist, otherwise use SCOPE11
-            use_edb_nvpm = all(
-                edb.nvPM_mass_matrix[mode] > 0.0 and edb.nvPM_num_matrix[mode] > 0.0
+            # Use nvPM EI/EInum from LTO data if they exist, otherwise use SCOPE11
+            use_measured_nvpm = all(
+                lto.nvPM_mass_matrix[mode] > 0.0 and lto.nvPM_num_matrix[mode] > 0.0
                 for mode in ThrustMode
             )
-            if use_edb_nvpm:
-                nvpm_mass = edb.nvPM_mass_matrix.copy() * 1e-3  # mg/kg to g/kg
-                nvpm_num = edb.nvPM_num_matrix.copy()
+            if use_measured_nvpm:
+                nvpm_mass = lto.nvPM_mass_matrix.copy() * 1e-3  # mg/kg to g/kg
+                nvpm_num = lto.nvPM_num_matrix.copy()
             else:
-                profile = scope11_profile(edb)
+                profile = scope11_profile(lto)
                 nvpm_mass = profile.mass.copy()
                 if profile.number is not None:
                     nvpm_num = profile.number.copy()

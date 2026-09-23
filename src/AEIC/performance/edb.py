@@ -53,7 +53,12 @@ class EDBEntry:
                 fuel_flow = fixed_fuel_flow
 
         return LTOPerformance(
-            source='EDB',
+            engine_type=self.engine_type,
+            BP_Ratio=self.BP_Ratio,
+            PR=self.PR,
+            SN_matrix=self.SN_matrix,
+            nvPM_mass_matrix=self.nvPM_mass_matrix,
+            nvPM_num_matrix=self.nvPM_num_matrix,
             ICAO_UID=self.uid,
             rated_thrust=self.rated_thrust * 1000.0,
             thrust_pct=ThrustModeValues(

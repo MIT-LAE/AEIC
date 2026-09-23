@@ -31,7 +31,17 @@ _COL_COMMENTS = {
 }
 
 _LTO_MODE_ORDER = ('idle', 'approach', 'climb', 'takeoff')
-_LTO_MODE_KEY_ORDER = ('thrust_frac', 'fuel_kgs', 'EI_NOx', 'EI_HC', 'EI_CO')
+_LTO_MODE_KEY_ORDER = (
+    'thrust_frac',
+    'fuel_kgs',
+    'EI_NOx',
+    'EI_HC',
+    'EI_CO',
+    'PR',
+    'SN',
+    'EI_nvPM',
+    'EI_nvPM_N',
+)
 _SPEED_PHASE_ORDER = ('climb', 'cruise', 'descent')
 _SPEED_KEY_ORDER = ('cas_low', 'cas_high', 'mach')
 
@@ -145,11 +155,10 @@ def write_legacy_performance_toml(
     _add_sub_banner(doc, 'LTO data')
 
     lto_tbl = table()
-    lto_tbl['source'] = lto_dump['source']
     lto_tbl['ICAO_UID'] = lto_dump['ICAO_UID']
-    if lto_dump['source'] == 'EDB':
-        lto_tbl['ICAO_UID'].comment('Add UID for EDB data')
     lto_tbl['rated_thrust'] = lto_dump['rated_thrust']
+    lto_tbl['engine_type'] = lto_dump['engine_type']
+    lto_tbl['BP_Ratio'] = lto_dump['BP_Ratio']
 
     mode_data = lto_dump.get('mode_data', {})
     mode_super = table(True)

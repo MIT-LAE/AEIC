@@ -5,8 +5,7 @@ import numpy as np
 
 from AEIC.constants import T0, kappa, p0
 from AEIC.emissions.types import AtmosphericState
-from AEIC.performance.edb import EDBEntry
-from AEIC.performance.types import ThrustMode, ThrustModeValues
+from AEIC.performance.types import LTOPerformance, ThrustMode, ThrustModeValues
 from AEIC.units import METERS_TO_FEET
 
 
@@ -23,7 +22,7 @@ class nvPMProfileTrajectory:
 
 
 def nvPM_MEEM(
-    edb_data: EDBEntry,
+    lto_data: LTOPerformance,
     altitudes: np.ndarray,
     rocd: np.ndarray,
     atmospheric_state: AtmosphericState,
@@ -35,8 +34,8 @@ def nvPM_MEEM(
 
     Parameters
     ----------
-    edb_data : EDBEntry
-        Engine database data for the selected engine.
+    lto_data : LTOPerformance
+        LTO engine data from the performance model.
     altitudes : ndarray
         Array of flight altitudes [m] over the mission trajectory.
     rocd : ndarray
@@ -68,28 +67,28 @@ def nvPM_MEEM(
     #
     # MEEM requires EImass [mg/kg] and EInum [#/kg] at the four ICAO LTO
     # thrust settings (7/30/85/100 %).  Two sources are available:
-    #   (a) Direct EDB nvPM measurements: used when all four mode
+    #   (a) Direct nvPM measurements: used when all four mode
     #       values are positive and therefore valid.
     #   (b) SCOPE11 fallback: when the engine only has smoke-number (SN) data,
     #       calculate_nvPM_scope11_LTO() converts SN → EImass/EInum via the
     #       SCOPE11 correlations (Eqs. 1–5 in the paper, Fig. 2).
     # -------------------------------------------------------------------------
-    use_edb_nvpm = all(
-        edb_data.nvPM_mass_matrix[mode] > 0.0 and edb_data.nvPM_num_matrix[mode] > 0.0
+    use_measured_nvpm = all(
+        lto_data.nvPM_mass_matrix[mode] > 0.0 and lto_data.nvPM_num_matrix[mode] > 0.0
         for mode in ThrustMode
     )
 
-    if use_edb_nvpm:
-        # Path (a): use EDB nvPM data directly.
-        EI_mass_mode = edb_data.nvPM_mass_matrix.as_array()  # mg/kg
-        EI_num_mode = edb_data.nvPM_num_matrix.as_array()  # #/kg
+    if use_measured_nvpm:
+        # Path (a): use supplied nvPM data directly.
+        EI_mass_mode = lto_data.nvPM_mass_matrix.as_array()  # mg/kg
+        EI_num_mode = lto_data.nvPM_num_matrix.as_array()  # #/kg
     else:
         # Path (b): SCOPE11 fallback — derives EI from smoke numbers.
         # Returns mass in g/kg; convert to mg/kg (* 1000) to keep units
         profile = calculate_nvPM_scope11_LTO(
-            edb_data.SN_matrix,
-            edb_data.engine_type,
-            edb_data.BP_Ratio,
+            lto_data.SN_matrix,
+            lto_data.engine_type,
+            lto_data.BP_Ratio,
         )
         EI_mass_mode = 1000.0 * profile.mass.as_array()  # g/kg → mg/kg
         EI_num_mode = (
@@ -104,7 +103,7 @@ def nvPM_MEEM(
     # Estimate combustor inlet pressure P3 and temperature T3 at each
     # trajectory point.  The paper's approach (Eqs. 6–9, Fig. 4, Table 3)
     # -------------------------------------------------------------------------
-    opr_pi00 = edb_data.PR[ThrustMode.TAKEOFF]
+    opr_pi00 = lto_data.PR[ThrustMode.TAKEOFF]
 
     # Compressor efficiency (Table 3): 0.88 for climb/cruise, 0.70 for descent.
     eta_comp = np.where(rocd < 0, 0.70, 0.88)

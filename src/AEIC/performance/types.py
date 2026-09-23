@@ -243,10 +243,6 @@ class SimpleFlightRules(CIStrEnum):
 class LTOPerformance:
     """LTO performance data as used internally."""
 
-    source: str
-    """Source of LTO data (e.g., 'EDB' or 'BADA LTO file'). For documentation
-    only."""
-
     ICAO_UID: str
     """ICAO engine ID from engine database (EDB). For documentation only."""
 
@@ -267,6 +263,24 @@ class LTOPerformance:
 
     EI_CO: ThrustModeValues
     """Emission index for CO in thrust mode [g/kg fuel]."""
+
+    engine_type: str
+    """Engine type identifier (TF/MTF)."""
+
+    BP_Ratio: float
+    """Engine bypass ratio."""
+
+    PR: ThrustModeValues
+    """Overall pressure ratio in thrust mode."""
+
+    SN_matrix: ThrustModeValues
+    """Smoke number in thrust mode."""
+
+    nvPM_mass_matrix: ThrustModeValues
+    """Emission index for nvPM mass in thrust mode [mg/kg fuel]."""
+
+    nvPM_num_matrix: ThrustModeValues
+    """Emission index for nvPM number in thrust mode [particles/kg fuel]."""
 
 
 class SpeedData(CIBaseModel):

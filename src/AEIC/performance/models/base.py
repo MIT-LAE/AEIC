@@ -7,9 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, Self
 
 from pydantic import ConfigDict, PositiveInt, model_validator
 
-from AEIC.config import config
 from AEIC.performance.apu import APU, find_apu
-from AEIC.performance.edb import EDBEntry
 from AEIC.performance.types import (
     LTOPerformance,
     SimpleFlightRules,
@@ -43,13 +41,21 @@ class LTOModeDataInput(CIBaseModel):
     EI_CO: float
     """CO emission index in g/kg fuel."""
 
+    PR: float
+    """Overall pressure ratio."""
+
+    SN: float
+    """Smoke number."""
+
+    EI_nvPM: float
+    """nvPM mass emission index in mg/kg fuel."""
+
+    EI_nvPM_N: float
+    """nvPM number emission index in particles/kg fuel."""
+
 
 class LTOPerformanceInput(CIBaseModel):
     """LTO performance data as represented in configuration file."""
-
-    source: str
-    """Source of LTO data (e.g., 'EDB' or 'BADA LTO file'). For documentation
-    only."""
 
     ICAO_UID: str
     """ICAO engine ID from engine database (EDB). For documentation only."""
@@ -59,6 +65,12 @@ class LTOPerformanceInput(CIBaseModel):
 
     mode_data: dict[ThrustMode, LTOModeDataInput]
     """LTO data for each thrust mode."""
+
+    engine_type: str
+    """Engine type identifier (TF/MTF)."""
+
+    BP_Ratio: float
+    """Engine bypass ratio."""
 
     def convert(self) -> LTOPerformance:
         """Create internal representation of LTO performance data from input
@@ -70,7 +82,12 @@ class LTOPerformanceInput(CIBaseModel):
             )
 
         return LTOPerformance(
-            source=self.source,
+            engine_type=self.engine_type,
+            BP_Ratio=self.BP_Ratio,
+            PR=extract('PR'),
+            SN_matrix=extract('SN'),
+            nvPM_mass_matrix=extract('EI_nvPM'),
+            nvPM_num_matrix=extract('EI_nvPM_N'),
             ICAO_UID=self.ICAO_UID,
             rated_thrust=self.rated_thrust,
             fuel_flow=extract('fuel_kgs'),
@@ -91,12 +108,17 @@ class LTOPerformanceInput(CIBaseModel):
                 EI_NOx=lto.EI_NOx[m],
                 EI_HC=lto.EI_HC[m],
                 EI_CO=lto.EI_CO[m],
+                PR=lto.PR[m],
+                SN=lto.SN_matrix[m],
+                EI_nvPM=lto.nvPM_mass_matrix[m],
+                EI_nvPM_N=lto.nvPM_num_matrix[m],
             )
             for m in ThrustMode
         }
 
         return cls(
-            source=lto.source,
+            engine_type=lto.engine_type,
+            BP_Ratio=lto.BP_Ratio,
             ICAO_UID=lto.ICAO_UID,
             rated_thrust=lto.rated_thrust,
             mode_data=mode_data,
@@ -170,14 +192,6 @@ class BasePerformanceModel[RulesT](CIBaseModel, ABC):
         if self.apu_name is not None:
             self._apu = find_apu(self.apu_name)
         return self
-
-    @cached_property
-    def edb(self) -> EDBEntry:
-        if self.lto_performance is None:
-            raise ValueError(
-                'LTO performance data not available, so no engine ID for EDB lookup.'
-            )
-        return EDBEntry.get_engine(config.engine_file, self.lto_performance.ICAO_UID)
 
     @property
     def apu(self) -> APU | None:
