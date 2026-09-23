@@ -637,7 +637,12 @@ class TestNvPMMEEM:
 
         atmos_state = AtmosphericState(altitudes, TAS)
 
-        nvPM_profile = nvPM_MEEM(edb_data, altitudes, rocd, atmos_state)
+        nvPM_profile = nvPM_MEEM(
+            edb_data.make_lto_performance([0.07, 0.30, 0.85, 1.0]),
+            altitudes,
+            rocd,
+            atmos_state,
+        )
         EI_mass = nvPM_profile.mass
         EI_num = nvPM_profile.number
 

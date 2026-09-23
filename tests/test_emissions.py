@@ -43,7 +43,7 @@ sample_mission = Mission(
 
 class DummyPerformanceModel:
     def __init__(self):
-        self.edb = EDBEntry(
+        edb = EDBEntry(
             engine='Test Engine',
             uid='TEST123',
             engine_type='TF',
@@ -63,7 +63,12 @@ class DummyPerformanceModel:
             EInum_max_thrust=0.575,
         )
         self.lto = LTOPerformance(
-            source='test',
+            engine_type=edb.engine_type,
+            BP_Ratio=edb.BP_Ratio,
+            PR=edb.PR,
+            SN_matrix=edb.SN_matrix,
+            nvPM_mass_matrix=edb.nvPM_mass_matrix,
+            nvPM_num_matrix=edb.nvPM_num_matrix,
             ICAO_UID='TEST123',
             rated_thrust=100.0 * 1000.0,
             thrust_pct=ThrustModeValues(7, 30, 85, 100),
@@ -368,8 +373,8 @@ def test_lifecycle_co2_replaces_operational_co2_for_all_fuel(
 
 
 def test_scope11_profile_caching(perf_model):
-    profile_first = scope11_profile(perf_model.edb)
-    profile_second = scope11_profile(perf_model.edb)
+    profile_first = scope11_profile(perf_model.lto)
+    profile_second = scope11_profile(perf_model.lto)
     # Identity of the cached `mass` object pins the `functools.cache` hit.
     assert profile_first.mass is profile_second.mass
     # But identity alone would pass even if the cache stored an empty

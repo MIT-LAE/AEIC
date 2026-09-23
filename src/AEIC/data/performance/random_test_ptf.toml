@@ -7,9 +7,10 @@ maximum_payload_kg = 22422
 number_of_engines = 2
 
 [LTO_performance]
-source = "EDB"
 ICAO_UID = "XYZABC0123"
 rated_thrust = 121400.0
+engine_type = "TF"
+BP_Ratio = 5.1
 
 [LTO_performance.mode_data.idle]
 thrust_frac = 0.07
@@ -17,6 +18,10 @@ fuel_kgs = 0.11
 EI_NOx = 4.36
 EI_HC = 1.54
 EI_CO = 29.39
+PR = 29.0 # Overall pressure ratio
+SN = 2.1
+EI_nvPM = 0.74 # mg/kg fuel
+EI_nvPM_N = 2.66e13 # particles/kg fuel
 
 [LTO_performance.mode_data.approach]
 thrust_frac = 0.3
@@ -24,6 +29,10 @@ fuel_kgs = 0.343
 EI_NOx = 9.09
 EI_HC = 0.05
 EI_CO = 2.82
+PR = 29.0 # Overall pressure ratio
+SN = 2.1
+EI_nvPM = 1.72 # mg/kg fuel
+EI_nvPM_N = 7.1e13 # particles/kg fuel
 
 [LTO_performance.mode_data.climb]
 thrust_frac = 0.85
@@ -31,6 +40,10 @@ fuel_kgs = 1.031
 EI_NOx = 17.89
 EI_HC = 0.02
 EI_CO = 0.17
+PR = 29.0 # Overall pressure ratio
+SN = 11.2
+EI_nvPM = 44.0 # mg/kg fuel
+EI_nvPM_N = 4.33e14 # particles/kg fuel
 
 [LTO_performance.mode_data.takeoff]
 thrust_frac = 1.0
@@ -38,6 +51,10 @@ fuel_kgs = 1.293
 EI_NOx = 23.94
 EI_HC = 0.03
 EI_CO = 0.31
+PR = 29.0 # Overall pressure ratio
+SN = 13.4
+EI_nvPM = 70.8 # mg/kg fuel
+EI_nvPM_N = 4.02e14 # particles/kg fuel
 
 [speeds.climb]
 cas_low = 128.611

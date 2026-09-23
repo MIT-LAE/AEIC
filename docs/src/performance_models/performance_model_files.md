@@ -120,9 +120,10 @@ mach = 0.80
 #
 
 [LTO_performance]
-source = "EDB"
-ICAO_UID = "01P11CM121" # Add UID for EDB data
+ICAO_UID = "01P11CM121"
 rated_thrust = 102.695
+engine_type = "TF"
+BP_Ratio = 5.1
 
 [LTO_performance.mode_data.approach]
 thrust_frac = 0.3
@@ -130,6 +131,10 @@ fuel_kgs    = 0.278
 EI_NOx      = 0.0
 EI_HC       = 0.0
 EI_CO       = 0.0
+PR = 29.0 # Overall pressure ratio
+SN = 2.1
+EI_nvPM = 1.72 # mg/kg fuel
+EI_nvPM_N = 7.1e13 # particles/kg fuel
 
 [LTO_performance.mode_data.climb]
 thrust_frac = 0.85
@@ -137,6 +142,10 @@ fuel_kgs    = 0.754
 EI_NOx      = 0.0
 EI_HC       = 0.0
 EI_CO       = 0.0
+PR = 29.0 # Overall pressure ratio
+SN = 11.2
+EI_nvPM = 44.0 # mg/kg fuel
+EI_nvPM_N = 4.33e14 # particles/kg fuel
 
 [LTO_performance.mode_data.takeoff]
 thrust_frac = 1.0
@@ -144,6 +153,10 @@ fuel_kgs    = 0.903
 EI_NOx      = 0.0
 EI_HC       = 0.0
 EI_CO       = 0.0
+PR = 29.0 # Overall pressure ratio
+SN = 13.4
+EI_nvPM = 70.8 # mg/kg fuel
+EI_nvPM_N = 4.02e14 # particles/kg fuel
 
 [LTO_performance.mode_data.idle]
 thrust_frac = 0.07
@@ -151,6 +164,10 @@ fuel_kgs    = 0.102
 EI_NOx      = 0.0
 EI_HC       = 0.0
 EI_CO       = 0.0
+PR = 29.0 # Overall pressure ratio
+SN = 2.1
+EI_nvPM = 0.74 # mg/kg fuel
+EI_nvPM_N = 2.66e13 # particles/kg fuel
 
 # ==============================================================================
 #
