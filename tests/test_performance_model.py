@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from AEIC.config import config
 from AEIC.performance.model_selector import SimplePerformanceModelSelector
@@ -113,6 +114,29 @@ def test_simple_selector_init_missing_default(tmp_path, caplog):
     with caplog.at_level(logging.WARNING, logger='AEIC.performance.model_selector'):
         SimplePerformanceModelSelector(tmp_path)
     assert any('"default" entry' in r.message for r in caplog.records)
+
+
+def test_simple_selector_init_logs_validation_context_for_invalid_model(
+    tmp_path, caplog
+):
+    invalid_model = (
+        _real_default_pm()
+        .read_text()
+        .replace('maximum_altitude_ft = 41000', 'maximum_altitude_ft = "not-an-int"')
+    )
+    (tmp_path / '738.toml').write_text(invalid_model)
+    (tmp_path / 'config.toml').write_text('default = 738\n')
+
+    with caplog.at_level(logging.ERROR, logger='AEIC.performance.model_selector'):
+        with pytest.raises(ValidationError):
+            SimplePerformanceModelSelector(tmp_path)
+
+    assert any(
+        'failed to validate performance model' in r.message
+        and 'aircraft type 738' in r.message
+        and str(tmp_path / '738.toml') in r.message
+        for r in caplog.records
+    )
 
 
 def test_simple_selector_caches_repeated_lookups(

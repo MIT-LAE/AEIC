@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from cachetools import LRUCache
+from pydantic import ValidationError
 
 from AEIC.missions import Mission
 from AEIC.performance.models import BasePerformanceModel, PerformanceModel
@@ -101,6 +102,13 @@ class SimplePerformanceModelSelector:
             return self._cache[ac_type]
         except FileNotFoundError:
             return None
+        except ValidationError:
+            logger.exception(
+                'failed to validate performance model for aircraft type %s at %s',
+                ac_type,
+                pm_path,
+            )
+            raise
 
     def __call__(self, mission: Mission) -> BasePerformanceModel | None:
         """Main API for looking up a performance model for a mission. This is
