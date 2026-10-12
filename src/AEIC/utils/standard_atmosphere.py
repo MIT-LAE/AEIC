@@ -201,6 +201,36 @@ def cas_to_tas(cas: FloatOrNDArray, altitude: FloatOrNDArray) -> NDArray:
     return mach * speed_of_sound_at_altitude(altitude)
 
 
+def crossover_altitude(cas: FloatOrNDArray, mach: FloatOrNDArray) -> NDArray:
+    """Return the altitude at which a calibrated airspeed equals a Mach number
+    in the standard atmosphere.
+    Units are SI (m/s, -, m)
+
+    The Mach number of a given CAS depends only on the static pressure, so the
+    crossover is the pressure altitude at which the CAS impact pressure gives
+    the Mach number. Valid only for subsonic CAS and Mach.
+
+    Parameters
+    ----------
+    cas : Union[float,NDArray]
+        Calibrated airspeed in m/s.
+    mach : Union[float,NDArray]
+        Mach number.
+
+    Returns
+    -------
+    NDArray
+        Crossover altitude in meters. Negative if the CAS exceeds the Mach
+        number at sea level.
+    """
+    cas = np.asarray(cas)
+    mach = np.asarray(mach)
+    exponent = kappa / (kappa - 1)
+    impact_pressure = p0 * ((1 + 0.5 * (kappa - 1) * (cas / a0) ** 2) ** exponent - 1)
+    pressure = impact_pressure / ((1 + 0.5 * (kappa - 1) * mach**2) ** exponent - 1)
+    return altitude_from_pressure_isa_bada4(pressure)
+
+
 def calculate_air_density(
     pressure: float | NDArray, temperature: float | NDArray
 ) -> NDArray:
