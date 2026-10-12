@@ -30,6 +30,10 @@ _TAS_CROSS_CHECK_TOLERANCE = 0.05
 # Relative deviation (0.1%) above which the block fuel burn cross-check warns.
 _FUEL_BURN_CROSS_CHECK_TOLERANCE = 0.001
 
+# PIANO assumes per ATC rules that aircraft flying below FL 100 are at
+# their low CAS (which is always? 250 kts)
+_ATC_FL_CAS_LOW = 100
+
 _FUEL_BURN_RE = re.compile(r'Fuel burn\s+([\d.]+)')
 _SCHEDULE_LINE_RE = re.compile(r'Airspeed schedule\s+(.+?)\s*$')
 _SCHEDULE_MACH_RE = re.compile(r'mach\s+([\d.]+)')
@@ -137,12 +141,9 @@ def _tas_from_schedule(altitude_m: float, schedule: _Schedule) -> float:
     if altitude_m > crossover_m:
         return schedule.mach * float(speed_of_sound_at_altitude(altitude_m))
 
-    # PIANO assumes per ATC rules that aircraft flying below FL 100 are at
-    # their low CAS (which is always? 250 kts)
-    ATC_FL_CAS_LOW = 100
     cas_kts = (
         schedule.cas_low_kts
-        if altitude_m < ATC_FL_CAS_LOW * FL_TO_METERS
+        if altitude_m < _ATC_FL_CAS_LOW * FL_TO_METERS
         else schedule.cas_high_kts
     )
     return float(cas_to_tas(cas_kts * KNOTS_TO_MPS, altitude_m))

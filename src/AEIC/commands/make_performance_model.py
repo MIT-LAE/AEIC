@@ -263,13 +263,9 @@ def parse_climb_masses(value: str | None) -> list[float] | None:
 @click.option(
     '--climb-mach',
     type=float,
-    help='Climb Mach number above the crossover altitude, overriding the file.',
-)
-@click.option(
-    '--climb-crossover-altitude-ft',
-    type=float,
-    help='Altitude in feet above which the climb flies its Mach number, '
-    'overriding the file.',
+    help='Climb Mach number above the crossover altitude, overriding the file. '
+    'Supply the three climb schedule options together. The crossover altitude '
+    'is derived from --climb-cas-high-kts and --climb-mach.',
 )
 @click.option(
     '--operating-empty-mass',
@@ -306,7 +302,6 @@ def piano(
     climb_cas_low_kts,
     climb_cas_high_kts,
     climb_mach,
-    climb_crossover_altitude_ft,
     operating_empty_mass,
     aircraft_name,
     maximum_altitude_ft,
@@ -326,7 +321,6 @@ def piano(
                 climb_cas_low_kts=climb_cas_low_kts,
                 climb_cas_high_kts=climb_cas_high_kts,
                 climb_mach=climb_mach,
-                climb_crossover_altitude_ft=climb_crossover_altitude_ft,
             ),
         )
 

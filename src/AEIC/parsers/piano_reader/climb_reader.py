@@ -8,6 +8,7 @@ import re
 from typing import TYPE_CHECKING
 
 from AEIC.parsers.piano_reader.common import (
+    _ATC_FL_CAS_LOW,
     _Block,
     _cross_check_fuel_burn,
     _cross_check_tas,
@@ -23,6 +24,7 @@ from AEIC.parsers.piano_reader.common import (
 from AEIC.performance.types import SpeedData, TableInput
 from AEIC.units import (
     FEET_TO_METERS,
+    FL_TO_METERS,
     FPM_TO_MPS,
     KNOTS_TO_MPS,
     NAUTICAL_MILES_TO_METERS,
@@ -55,6 +57,10 @@ CLIMB_COLS = [
 # If user supplied masses and PIANO header masses are both present
 # we check that they are consistent up to 0.1%
 _CLIMB_MASS_CROSS_CHECK_TOLERANCE = 0.001
+
+# If user supplied schedule and PIANO header schedule are both present
+# we check that they are consistent up to 0.1%
+_CLIMB_SCHEDULE_CROSS_CHECK_TOLERANCE = 0.001
 
 # The crossover a climb header states must match the standard atmosphere
 # crossover of its CAS and Mach up to 0.1%
@@ -259,37 +265,73 @@ def _climb_schedule(blocks: list[_Block], overrides: PianoOverrides) -> _Schedul
     """Resolve the climb airspeed schedule.
 
     The schedule is a property of the file, so the first block that has one supplies it
-    for every block.
+    for every block. A supplied schedule wins over the header, and its
+    crossover is always derived from its CAS and Mach. Warns when a supplied
+    value contradicts a value the file states.
 
     Raises:
         ValueError: If no block states a schedule and the overrides do not
-            supply a complete one.
+            supply one.
     """
-    for block in blocks:
-        schedule = _parse_schedule(block.header_lines, descending=False)
-        if schedule is not None:
-            _cross_check_crossover(schedule)
-            return _apply_climb_overrides(schedule, overrides)
+    supplied = _supplied_climb_schedule(overrides)
 
+    header = None
+    for block in blocks:
+        header = _parse_schedule(block.header_lines, descending=False)
+        if header is not None:
+            break
+
+    if header is not None:
+        _cross_check_crossover(header)
+        if supplied is None:
+            return header
+        _cross_check_supplied_schedule(supplied, header)
+        return supplied
+
+    if supplied is None:
+        raise ValueError(
+            'No climb block states an airspeed schedule, so it must be '
+            'supplied explicitly with --climb-cas-low-kts, '
+            '--climb-cas-high-kts and --climb-mach'
+        )
+    return supplied
+
+
+def _supplied_climb_schedule(overrides: PianoOverrides) -> _Schedule | None:
+    """Build the climb airspeed schedule the overrides supply, or None if
+    they supply none.
+
+    The override is all-or-nothing: a user passing any schedule value must
+    pass all three. The crossover is the altitude at which the high CAS
+    equals the Mach number in the standard atmosphere.
+
+    Raises:
+        ValueError: If the overrides supply only part of the schedule, or if
+            the derived crossover is below FL100.
+    """
     cas_low_kts = overrides.climb_cas_low_kts
     cas_high_kts = overrides.climb_cas_high_kts
     mach = overrides.climb_mach
-    crossover_ft = overrides.climb_crossover_altitude_ft
 
-    missing = [
-        name
-        for name, value in (
-            ('--climb-cas-low-kts', cas_low_kts),
-            ('--climb-cas-high-kts', cas_high_kts),
-            ('--climb-mach', mach),
-            ('--climb-crossover-altitude-ft', crossover_ft),
-        )
-        if value is None
-    ]
+    values = (
+        ('--climb-cas-low-kts', cas_low_kts),
+        ('--climb-cas-high-kts', cas_high_kts),
+        ('--climb-mach', mach),
+    )
+    missing = [name for name, value in values if value is None]
+    if len(missing) == len(values):
+        return None
     if missing:
         raise ValueError(
-            'No climb block states an airspeed schedule, so it must be '
-            f'supplied explicitly. Missing: {", ".join(missing)}'
+            'The climb airspeed schedule must be supplied in full or not at '
+            f'all. Missing: {", ".join(missing)}'
+        )
+
+    crossover_ft = _derived_crossover_ft(cas_high_kts, mach)
+    if crossover_ft * FEET_TO_METERS < _ATC_FL_CAS_LOW * FL_TO_METERS:
+        raise ValueError(
+            f'{cas_high_kts:g} kcas and Mach {mach:g} cross over at '
+            f'{crossover_ft:.0f} feet, below FL{_ATC_FL_CAS_LOW}'
         )
 
     return _Schedule(
@@ -298,6 +340,26 @@ def _climb_schedule(blocks: list[_Block], overrides: PianoOverrides) -> _Schedul
         mach=mach,
         crossover_ft=crossover_ft,
     )
+
+
+def _cross_check_supplied_schedule(supplied: _Schedule, header: _Schedule) -> None:
+    """Warn for each supplied schedule value that contradicts the header."""
+    for name, supplied_value, header_value in (
+        ('low CAS [kcas]', supplied.cas_low_kts, header.cas_low_kts),
+        ('high CAS [kcas]', supplied.cas_high_kts, header.cas_high_kts),
+        ('Mach', supplied.mach, header.mach),
+    ):
+        if (
+            abs(supplied_value - header_value)
+            > _CLIMB_SCHEDULE_CROSS_CHECK_TOLERANCE * header_value
+        ):
+            logger.warning(
+                'The supplied climb %s of %g does not match the %g the '
+                'airspeed schedule states; using the supplied value',
+                name,
+                supplied_value,
+                header_value,
+            )
 
 
 def _derived_crossover_ft(cas_high_kts: float, mach: float) -> float:
@@ -323,27 +385,3 @@ def _cross_check_crossover(schedule: _Schedule) -> None:
             schedule.mach,
             derived_ft,
         )
-
-
-def _apply_climb_overrides(schedule: _Schedule, overrides: PianoOverrides) -> _Schedule:
-    """Overlay any user-supplied climb schedule values on a parsed schedule."""
-    return _Schedule(
-        cas_low_kts=(
-            overrides.climb_cas_low_kts
-            if overrides.climb_cas_low_kts is not None
-            else schedule.cas_low_kts
-        ),
-        cas_high_kts=(
-            overrides.climb_cas_high_kts
-            if overrides.climb_cas_high_kts is not None
-            else schedule.cas_high_kts
-        ),
-        mach=(
-            overrides.climb_mach if overrides.climb_mach is not None else schedule.mach
-        ),
-        crossover_ft=(
-            overrides.climb_crossover_altitude_ft
-            if overrides.climb_crossover_altitude_ft is not None
-            else schedule.crossover_ft
-        ),
-    )

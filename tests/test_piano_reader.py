@@ -124,21 +124,48 @@ def test_descent_speed_schedule(piano_data):
     )
 
 
-def test_climb_schedule_overrides(piano_data):
-    overridden = load(climb_cas_low_kts=240.0, climb_mach=0.72)
-    assert overridden.climb_speeds.cas_low == pytest.approx(240 * KNOTS_TO_MPS)
-    assert overridden.climb_speeds.mach == pytest.approx(0.72)
-    # Untouched values still come from the file.
-    assert overridden.climb_speeds.cas_high == piano_data.climb_speeds.cas_high
-
-
-def test_crossover_altitude_override(piano_data):
-    overridden = load(climb_crossover_altitude_ft=28000.0)
-    assert overridden.climb_speeds.crossover_altitude_m == pytest.approx(
-        28000 * FEET_TO_METERS
+def test_climb_schedule_override_derives_crossover():
+    """275 kcas and Mach 0.740 cross over at 30680 feet, as a real PIANO
+    export states."""
+    overridden = load(
+        climb_cas_low_kts=240.0, climb_cas_high_kts=275.0, climb_mach=0.74
     )
-    # Untouched values still come from the file.
-    assert overridden.climb_speeds.mach == piano_data.climb_speeds.mach
+    assert overridden.climb_speeds.cas_low == pytest.approx(240 * KNOTS_TO_MPS)
+    assert overridden.climb_speeds.cas_high == pytest.approx(275 * KNOTS_TO_MPS)
+    assert overridden.climb_speeds.mach == pytest.approx(0.74)
+    assert overridden.climb_speeds.crossover_altitude_m == pytest.approx(
+        30680 * FEET_TO_METERS, abs=2 * FEET_TO_METERS
+    )
+
+
+def test_supplied_climb_schedule_contradicting_the_header_warns(caplog):
+    """Each supplied value that differs from the header warns. The high CAS
+    matches the header, so it does not."""
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        load(climb_cas_low_kts=240.0, climb_cas_high_kts=280.0, climb_mach=0.72)
+    messages = [r.getMessage() for r in caplog.records]
+    assert any(
+        'supplied climb low CAS [kcas] of 240 does not match the 250' in m
+        for m in messages
+    )
+    assert any(
+        'supplied climb Mach of 0.72 does not match the 0.75' in m for m in messages
+    )
+    assert not any('high CAS' in m for m in messages)
+
+
+def test_partial_climb_schedule_override_raises():
+    with pytest.raises(
+        ValueError, match='Missing: --climb-cas-low-kts, --climb-cas-high-kts'
+    ):
+        load(climb_mach=0.72)
+
+
+def test_climb_crossover_below_fl100_raises():
+    """330 kcas reaches Mach 0.550 below FL100, so the schedule would never fly
+    its high CAS."""
+    with pytest.raises(ValueError, match='below FL100'):
+        load(climb_cas_low_kts=250.0, climb_cas_high_kts=330.0, climb_mach=0.55)
 
 
 def _climb_without_schedule(tmp_path: Path) -> Path:
@@ -148,6 +175,23 @@ def _climb_without_schedule(tmp_path: Path) -> Path:
     kept = [line for line in lines if 'Airspeed schedule' not in line]
     climb_file.write_text(''.join(kept))
     return climb_file
+
+
+def test_climb_schedule_required_without_header(tmp_path):
+    with pytest.raises(ValueError, match='No climb block states an airspeed'):
+        _load_climb(_climb_without_schedule(tmp_path))
+
+
+def test_climb_schedule_supplied_without_header(tmp_path):
+    piano = _load_climb(
+        _climb_without_schedule(tmp_path),
+        climb_cas_low_kts=250.0,
+        climb_cas_high_kts=280.0,
+        climb_mach=0.75,
+    )
+    assert piano.climb_speeds.crossover_altitude_m == pytest.approx(
+        30523 * FEET_TO_METERS, abs=2 * FEET_TO_METERS
+    )
 
 
 def test_inconsistent_climb_crossover_warns(tmp_path, caplog):
@@ -509,13 +553,14 @@ def _with_extra_column(text: str, label: str) -> str:
     return ''.join(lines)
 
 
-def _load_climb(climb_file: Path) -> PianoData:
-    """Parse the exports behind `piano_data`, with the climb file replaced."""
+def _load_climb(climb_file: Path, **overrides) -> PianoData:
+    """Parse the exports behind `piano_data`, with the climb file replaced and
+    overrides applied."""
     return PianoData.load(
         str(config.file_location(PIANO_CRUISE_FILE)),
         str(climb_file),
         str(config.file_location(PIANO_DESCENT_FILE)),
-        overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        overrides=PianoOverrides(**{'climb_masses_kg': CLIMB_MASSES_KG, **overrides}),
     )
 
 

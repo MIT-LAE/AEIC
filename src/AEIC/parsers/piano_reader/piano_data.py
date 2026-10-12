@@ -25,16 +25,19 @@ class PianoOverrides:
     """
 
     climb_cas_low_kts: float | None = None
-    """Climb calibrated airspeed below FL100 [knots]."""
+    """Climb calibrated airspeed below FL100 [knots].
+
+    The climb airspeed schedule is all-or-nothing: supply
+    `climb_cas_low_kts`, `climb_cas_high_kts` and `climb_mach` together, or
+    none of them. The crossover altitude is derived from the high CAS and the
+    Mach number. A supplied value that contradicts a stated one warns.
+    """
 
     climb_cas_high_kts: float | None = None
     """Climb calibrated airspeed between FL100 and the crossover [knots]."""
 
     climb_mach: float | None = None
     """Climb Mach number above the crossover altitude."""
-
-    climb_crossover_altitude_ft: float | None = None
-    """Altitude above which the climb flies its Mach number [feet]."""
 
 
 @dataclass
