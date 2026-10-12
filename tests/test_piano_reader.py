@@ -104,13 +104,13 @@ def test_supplied_climb_mass_contradicting_the_header_warns(caplog):
 
 
 def test_climb_speed_schedule(piano_data):
-    """`250./ 280.kcas/ mach 0.750 above 30000.feet`, inherited by every
+    """`250./ 280.kcas/ mach 0.750 above 30523.feet`, inherited by every
     block."""
     assert piano_data.climb_speeds.cas_low == pytest.approx(250 * KNOTS_TO_MPS)
     assert piano_data.climb_speeds.cas_high == pytest.approx(280 * KNOTS_TO_MPS)
     assert piano_data.climb_speeds.mach == pytest.approx(0.750)
     assert piano_data.climb_speeds.crossover_altitude_m == pytest.approx(
-        30000 * FEET_TO_METERS
+        30523 * FEET_TO_METERS
     )
 
 
