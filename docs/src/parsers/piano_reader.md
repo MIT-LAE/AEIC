@@ -78,7 +78,7 @@ lines.
     Distance            200.0     n.miles
 
     Initial mass        150000.   lb.
-    Airspeed schedule   250./ 280.kcas/ mach 0.750 above 30000.feet
+    Airspeed schedule   250./ 280.kcas/ mach 0.750 above 30523.feet
     Delta-ISA           +0.       deg.C.
     ---------------------------------------------------------------
 
@@ -163,13 +163,19 @@ is derived from the airspeed schedule in the block header.
 
 PIANO writes the schedule as follows:
 
- * climb: `250./ 280.kcas/ mach 0.750 above 30000.feet`, low CAS first;
+ * climb: `250./ 280.kcas/ mach 0.750 above 30523.feet`, low CAS first;
  * descent: `mach 0.750 above 30000.feet/ 280./ 250.kcas`, high CAS first.
 
 The speed schedule is the same for all blocks in a file. The
 first block that has a schedule provides it for every other block.
 For climb this is necessary, because a halted block has no header. For descent,
 every block has a schedule and all must be identical.
+
+The caller can supply the climb schedule instead, as a low CAS, a high CAS and
+a Mach number. The supplied schedule replaces the header schedule. Its
+crossover altitude is derived: it is the altitude at which the high CAS equals
+the Mach number in the standard atmosphere, as computed by
+{py:func}`crossover_altitude <AEIC.utils.standard_atmosphere.crossover_altitude>`.
 
 True airspeed at a given altitude then follows three regimes:
 
@@ -237,7 +243,9 @@ The reader raises `ValueError` in the following cases.
 | `Delta-ISA` is non-zero | climb |
 | A block has no `Initial mass` header and no mass was supplied | climb |
 | The supplied mass count does not match the block count | climb |
-| No block states an airspeed schedule and the overrides are incomplete | climb |
+| No block states an airspeed schedule and no schedule was supplied | climb |
+| The overrides supply only part of the climb airspeed schedule | climb |
+| The crossover altitude derived from the supplied schedule is below FL100 | climb |
 | A block has no `Mass` header | descent |
 | A block has no `Airspeed schedule` header | descent |
 | Two blocks state different airspeed schedules | descent |
@@ -262,3 +270,13 @@ if the header is not present.
 
 **Climb mass.** When the caller supplies climb masses and a block header also
 has a value, the two are compared with a tolerance of 0.1%.
+
+**Climb crossover altitude.** The crossover altitude in the climb
+`Airspeed schedule` header is compared against the altitude at which its high
+CAS equals its Mach number in the standard atmosphere, with a tolerance of
+0.1%. PIANO derives the crossover in this way, so real exports agree to about
+one foot.
+
+**Climb airspeed schedule.** When the caller supplies a climb airspeed
+schedule and a block header also has one, the low CAS, the high CAS and the
+Mach number are compared with a tolerance of 0.1%.

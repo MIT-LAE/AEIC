@@ -95,7 +95,6 @@ schedules all come from the PTF file.
 | `--climb-cas-low-kts` | Float | No | Climb calibrated airspeed below FL100 [knots]. |
 | `--climb-cas-high-kts` | Float | No | Climb calibrated airspeed above FL100 [knots]. |
 | `--climb-mach` | Float | No | Climb Mach number above the crossover altitude. |
-| `--climb-crossover-altitude-ft` | Float | No | Altitude above which the climb flies its Mach number [feet]. |
 | `--aircraft-name` | String | No | Aircraft name, overriding the cruise file title. |
 | `--maximum-altitude-ft` | Integer | No | Maximum altitude [feet], overriding the highest altitude climbed. |
 
@@ -106,9 +105,13 @@ The optional options fill gaps that some PIANO files may have due to missing hea
    altitude. The option is all-or-nothing: give one mass per block, in file order,
    including the blocks whose header already states a mass. A supplied mass
    that contradicts one in the file warns and overrides it.
- * The four schedule options override the climb airspeed schedule the file
-   contains. If none of the climbs in the provided file have a header,
-   all four options are required.
+ * The three schedule options override the climb airspeed schedule the file
+   contains. They are all-or-nothing: give all three or none. If none of the
+   climbs in the provided file have a header, all three options are required.
+   The crossover altitude is derived: it is the altitude at which
+   `--climb-cas-high-kts` equals `--climb-mach` in the standard atmosphere.
+   It must be above FL100. A supplied value that contradicts one in the file
+   warns and overrides it.
 
 A complete invocation looks like this:
 
