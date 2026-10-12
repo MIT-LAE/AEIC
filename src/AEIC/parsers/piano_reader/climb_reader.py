@@ -24,10 +24,12 @@ from AEIC.performance.types import SpeedData, TableInput
 from AEIC.units import (
     FEET_TO_METERS,
     FPM_TO_MPS,
+    KNOTS_TO_MPS,
     NAUTICAL_MILES_TO_METERS,
     POUNDS_FORCE_TO_NEWTONS,
     POUNDS_TO_KG,
 )
+from AEIC.utils.standard_atmosphere import crossover_altitude
 
 if TYPE_CHECKING:
     from AEIC.parsers.piano_reader.piano_data import PianoOverrides
@@ -53,6 +55,10 @@ CLIMB_COLS = [
 # If user supplied masses and PIANO header masses are both present
 # we check that they are consistent up to 0.1%
 _CLIMB_MASS_CROSS_CHECK_TOLERANCE = 0.001
+
+# The crossover a climb header states must match the standard atmosphere
+# crossover of its CAS and Mach up to 0.1%
+_CLIMB_CROSSOVER_CROSS_CHECK_TOLERANCE = 0.001
 
 # Alt., Time, Dist., Burn, FN/eng, R.o.C., Drag
 _CLIMB_ROW_COLS = 7
@@ -262,6 +268,7 @@ def _climb_schedule(blocks: list[_Block], overrides: PianoOverrides) -> _Schedul
     for block in blocks:
         schedule = _parse_schedule(block.header_lines, descending=False)
         if schedule is not None:
+            _cross_check_crossover(schedule)
             return _apply_climb_overrides(schedule, overrides)
 
     cas_low_kts = overrides.climb_cas_low_kts
@@ -291,6 +298,31 @@ def _climb_schedule(blocks: list[_Block], overrides: PianoOverrides) -> _Schedul
         mach=mach,
         crossover_ft=crossover_ft,
     )
+
+
+def _derived_crossover_ft(cas_high_kts: float, mach: float) -> float:
+    """Standard atmosphere altitude at which `cas_high_kts` equals `mach`
+    [feet]."""
+    return float(crossover_altitude(cas_high_kts * KNOTS_TO_MPS, mach)) / FEET_TO_METERS
+
+
+def _cross_check_crossover(schedule: _Schedule) -> None:
+    """Compare the crossover a header states against the one its CAS and
+    Mach give in the standard atmosphere."""
+    derived_ft = _derived_crossover_ft(schedule.cas_high_kts, schedule.mach)
+    if (
+        abs(schedule.crossover_ft - derived_ft)
+        > _CLIMB_CROSSOVER_CROSS_CHECK_TOLERANCE * derived_ft
+    ):
+        logger.warning(
+            'The climb airspeed schedule states a crossover of %.0f feet, but '
+            '%.0f kcas and Mach %.3f cross over at %.0f feet in the standard '
+            'atmosphere',
+            schedule.crossover_ft,
+            schedule.cas_high_kts,
+            schedule.mach,
+            derived_ft,
+        )
 
 
 def _apply_climb_overrides(schedule: _Schedule, overrides: PianoOverrides) -> _Schedule:

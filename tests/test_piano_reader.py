@@ -150,6 +150,36 @@ def _climb_without_schedule(tmp_path: Path) -> Path:
     return climb_file
 
 
+def test_inconsistent_climb_crossover_warns(tmp_path, caplog):
+    """280 kcas and Mach 0.750 cross over at 30523 feet, not 30000."""
+    text = (
+        config.file_location(PIANO_CLIMB_FILE)
+        .read_text()
+        .replace('above 30523.feet', 'above 30000.feet')
+    )
+    climb_file = tmp_path / 'climb.txt'
+    climb_file.write_text(text)
+
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        PianoData.load(
+            str(config.file_location(PIANO_CRUISE_FILE)),
+            str(climb_file),
+            str(config.file_location(PIANO_DESCENT_FILE)),
+            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        )
+    assert any(
+        'states a crossover of 30000 feet' in r.getMessage()
+        and 'cross over at 30523 feet' in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_consistent_climb_crossover_does_not_warn(caplog):
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        load()
+    assert not any('crossover' in r.getMessage() for r in caplog.records)
+
+
 def test_labelled_mach_on_the_swept_grid_keeps_one_row(piano_data, caplog):
     """A labelled reference Mach can land exactly on the swept grid. The
     fixture labels maxSAR at 0.450, which the sweep also visits."""
