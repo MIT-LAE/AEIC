@@ -104,8 +104,7 @@ def test_supplied_climb_mass_contradicting_the_header_warns(caplog):
 
 
 def test_climb_speed_schedule(piano_data):
-    """`250./ 280.kcas/ mach 0.750 above 30523.feet`, inherited by every
-    block."""
+    """250./ 280.kcas/ mach 0.750 above 30523.feet."""
     assert piano_data.climb_speeds.cas_low == pytest.approx(250 * KNOTS_TO_MPS)
     assert piano_data.climb_speeds.cas_high == pytest.approx(280 * KNOTS_TO_MPS)
     assert piano_data.climb_speeds.mach == pytest.approx(0.750)
@@ -125,8 +124,7 @@ def test_descent_speed_schedule(piano_data):
 
 
 def test_climb_schedule_override_derives_crossover():
-    """275 kcas and Mach 0.740 cross over at 30680 feet, as a real PIANO
-    export states."""
+    """275 kcas and Mach 0.740 cross over at 30680 feet."""
     overridden = load(
         climb_cas_low_kts=240.0, climb_cas_high_kts=275.0, climb_mach=0.74
     )

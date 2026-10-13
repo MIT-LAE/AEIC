@@ -265,8 +265,8 @@ def _climb_schedule(blocks: list[_Block], overrides: PianoOverrides) -> _Schedul
     """Resolve the climb airspeed schedule.
 
     The schedule is a property of the file, so the first block that has one supplies it
-    for every block. A supplied schedule wins over the header, and its
-    crossover is always derived from its CAS and Mach. Warns when a supplied
+    for every block. A supplied schedule overrides the header, and its
+    crossover is derived from the supplied CAS and Mach. Warns when a supplied
     value contradicts a value the file states.
 
     Raises:
@@ -276,18 +276,25 @@ def _climb_schedule(blocks: list[_Block], overrides: PianoOverrides) -> _Schedul
     supplied = _supplied_climb_schedule(overrides)
 
     header = None
+    # Look for a header in any climb block
     for block in blocks:
         header = _parse_schedule(block.header_lines, descending=False)
+        # Found a header
         if header is not None:
             break
 
     if header is not None:
+        # Ensure crossover alt in header is consistent
+        # with header climb CAS and climb Mach
         _cross_check_crossover(header)
         if supplied is None:
             return header
+        # User also supplied the schedule, check they are
+        # consistent
         _cross_check_supplied_schedule(supplied, header)
         return supplied
 
+    # No header found so user must provide it
     if supplied is None:
         raise ValueError(
             'No climb block states an airspeed schedule, so it must be '
@@ -301,9 +308,7 @@ def _supplied_climb_schedule(overrides: PianoOverrides) -> _Schedule | None:
     """Build the climb airspeed schedule the overrides supply, or None if
     they supply none.
 
-    The override is all-or-nothing: a user passing any schedule value must
-    pass all three. The crossover is the altitude at which the high CAS
-    equals the Mach number in the standard atmosphere.
+    All three schedule values need to be passed for the override.
 
     Raises:
         ValueError: If the overrides supply only part of the schedule, or if
@@ -319,8 +324,11 @@ def _supplied_climb_schedule(overrides: PianoOverrides) -> _Schedule | None:
         ('--climb-mach', mach),
     )
     missing = [name for name, value in values if value is None]
+    # All missing means we rely on the header if it exists
     if len(missing) == len(values):
         return None
+
+    # If at least one is missing (but not all three) error out
     if missing:
         raise ValueError(
             'The climb airspeed schedule must be supplied in full or not at '
@@ -328,6 +336,9 @@ def _supplied_climb_schedule(overrides: PianoOverrides) -> _Schedule | None:
         )
 
     crossover_ft = _derived_crossover_ft(cas_high_kts, mach)
+
+    # Future TAS calculations assume that crossover altitude > FL100
+    # so we enforce this here
     if crossover_ft * FEET_TO_METERS < _ATC_FL_CAS_LOW * FL_TO_METERS:
         raise ValueError(
             f'{cas_high_kts:g} kcas and Mach {mach:g} cross over at '

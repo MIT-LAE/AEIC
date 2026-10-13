@@ -29,8 +29,7 @@ class PianoOverrides:
 
     The climb airspeed schedule is all-or-nothing: supply
     `climb_cas_low_kts`, `climb_cas_high_kts` and `climb_mach` together, or
-    none of them. The crossover altitude is derived from the high CAS and the
-    Mach number. A supplied value that contradicts a stated one warns.
+    none of them. A supplied value that contradicts a stated one warns.
     """
 
     climb_cas_high_kts: float | None = None

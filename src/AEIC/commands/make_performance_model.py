@@ -253,19 +253,20 @@ def parse_climb_masses(value: str | None) -> list[float] | None:
 @click.option(
     '--climb-cas-low-kts',
     type=float,
-    help='Climb calibrated airspeed below FL100 in knots, overriding the file.',
+    help='Climb calibrated airspeed below FL100 in knots, overriding the file. '
+    'Supply the three climb schedule options together.',
 )
 @click.option(
     '--climb-cas-high-kts',
     type=float,
-    help='Climb calibrated airspeed above FL100 in knots, overriding the file.',
+    help='Climb calibrated airspeed above FL100 in knots, overriding the file. '
+    'Supply the three climb schedule options together.',
 )
 @click.option(
     '--climb-mach',
     type=float,
     help='Climb Mach number above the crossover altitude, overriding the file. '
-    'Supply the three climb schedule options together. The crossover altitude '
-    'is derived from --climb-cas-high-kts and --climb-mach.',
+    'Supply the three climb schedule options together.',
 )
 @click.option(
     '--operating-empty-mass',

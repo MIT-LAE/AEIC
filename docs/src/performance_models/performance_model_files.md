@@ -106,12 +106,8 @@ The optional options fill gaps that some PIANO files may have due to missing hea
    including the blocks whose header already states a mass. A supplied mass
    that contradicts one in the file warns and overrides it.
  * The three schedule options override the climb airspeed schedule the file
-   contains. They are all-or-nothing: give all three or none. If none of the
+   contains. Either all three are supplied or none. If none of the
    climbs in the provided file have a header, all three options are required.
-   The crossover altitude is derived: it is the altitude at which
-   `--climb-cas-high-kts` equals `--climb-mach` in the standard atmosphere.
-   It must be above FL100. A supplied value that contradicts one in the file
-   warns and overrides it.
 
 A complete invocation looks like this:
 

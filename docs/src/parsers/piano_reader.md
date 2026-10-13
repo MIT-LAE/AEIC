@@ -171,8 +171,8 @@ first block that has a schedule provides it for every other block.
 For climb this is necessary, because a halted block has no header. For descent,
 every block has a schedule and all must be identical.
 
-The caller can supply the climb schedule instead, as a low CAS, a high CAS and
-a Mach number. The supplied schedule replaces the header schedule. Its
+The climb schedule can also be passed as a low CAS, a high CAS and
+a Mach number. The supplied schedule replaces the header schedule. The
 crossover altitude is derived: it is the altitude at which the high CAS equals
 the Mach number in the standard atmosphere, as computed by
 {py:func}`crossover_altitude <AEIC.utils.standard_atmosphere.crossover_altitude>`.
@@ -274,8 +274,7 @@ has a value, the two are compared with a tolerance of 0.1%.
 **Climb crossover altitude.** The crossover altitude in the climb
 `Airspeed schedule` header is compared against the altitude at which its high
 CAS equals its Mach number in the standard atmosphere, with a tolerance of
-0.1%. PIANO derives the crossover in this way, so real exports agree to about
-one foot.
+0.1%.
 
 **Climb airspeed schedule.** When the caller supplies a climb airspeed
 schedule and a block header also has one, the low CAS, the high CAS and the

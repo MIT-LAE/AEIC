@@ -36,9 +36,11 @@ def test_cas_to_tas_rejects_altitude_out_of_range():
 @pytest.mark.parametrize(
     ('cas_kts', 'mach', 'expected_ft'),
     [
-        # Airspeed schedules of real PIANO climb and descent exports.
+        # Airspeed schedules of PIANO climb outputs.
         (275.0, 0.74, 30680.0),
         (275.0, 0.78, 33271.0),
+        (300.0, 0.83, 32447.0),
+        (320.0, 0.85, 30706.0),
     ],
 )
 def test_crossover_altitude_matches_piano(cas_kts, mach, expected_ft):
@@ -50,9 +52,8 @@ def test_crossover_altitude_matches_piano(cas_kts, mach, expected_ft):
 @pytest.mark.parametrize(
     ('cas', 'mach'),
     [
-        (140.0, 0.75),
-        # Above the tropopause.
-        (125.0, 0.80),
+        (250.0, 0.75),
+        (265.0, 0.80),
     ],
 )
 def test_crossover_altitude_equates_cas_and_mach(cas, mach):
