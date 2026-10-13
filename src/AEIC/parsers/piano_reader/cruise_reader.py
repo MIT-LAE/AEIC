@@ -197,13 +197,14 @@ def _insert_cruise_row(
     key: tuple[float, float, float],
     row: list[float],
     is_swept: bool,
+    verbose: bool = False,
 ) -> None:
     """Add a cruise row, resolving a collision in favour of the labelled row.
 
     A labelled reference Mach can land exactly on the swept grid, and PIANO
     does not always report the same values for the two. The labelled row is the
     operating point PIANO solved for, while the swept row only shares its key
-    because the export rounds Mach, so the labelled row wins.
+    because the export rounds Mach, so the labelled row is kept over the sweep.
     """
     existing = rows.get(key)
     if existing is None:
@@ -211,16 +212,22 @@ def _insert_cruise_row(
         return
 
     existing_row, existing_is_swept = existing
-    differing = [
-        CRUISE_COLS[i] for i in range(len(CRUISE_COLS)) if existing_row[i] != row[i]
-    ]
-    if differing:
-        logger.warning(
-            'Duplicate cruise row at (fl=%.2f, mass=%.1f kg, mach=%.3f); '
-            'keeping the labelled row. Columns that disagree: %s',
-            *key,
-            ', '.join(differing),
-        )
+
+    # Log the rows where the labeled point and swept point differ
+    # Off by default because it produces a lot of noise
+    if verbose:
+        differing = [
+            CRUISE_COLS[i] for i in range(len(CRUISE_COLS)) if existing_row[i] != row[i]
+        ]
+        if differing:
+            logger.warning(
+                'Duplicate cruise row at (fl=%.2f, mass=%.1f kg, mach=%.3f); '
+                'keeping the labelled row. Columns that disagree: %s',
+                *key,
+                ', '.join(differing),
+            )
+
+    # Replace the swept point by the labeled point
     if existing_is_swept and not is_swept:
         rows[key] = (row, is_swept)
 

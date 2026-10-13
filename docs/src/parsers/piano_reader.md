@@ -222,13 +222,19 @@ the line is a data row in case of field overflows that merge columns.
 | Row spans no time, so {math}`\Delta t = 0` | climb, descent | Dropped, with one warning per row. Fuel flow is undefined over a zero-length step. |
 | Block holds no data rows at all | climb, descent | Skipped, with one warning. |
 | Block states no `Idle thrust below` altitude | descent | No idle thrust row is emitted for that mass. |
-| Duplicate row at the same (flight level, mass, Mach) | cruise | The labelled row is kept over the swept one. The warning lists the columns that disagree. |
+| Duplicate row at the same (flight level, mass, Mach) | cruise | (Off by default) The labelled row overrides the swept row and the warning lists the columns that disagree. |
+| Missing mach number for a reference performance point | cruise |  Put a NaN for the missing Mach number in the `cruise_reference_mach` table |
 
 Due to rounding in the PIANO output, a `(fl, mass, Mach)` triplet might be
 the same for a row coming from the PIANO Mach sweep, and a row coming from
 one of the operating points but with slightly differing performance values.
 In this case, the operating point value is kept and the Mach sweep value is
 dropped.
+
+Rows that warn due to not containing the fifteen numeric columns are generally normal behaviour that occurs when PIANO indicates that the aircraft is not in a valid state. (e.g.
+`Dropping X cruise line(s) that open a data row but do not hold 15 numeric columns, ...`).
+Similarly, warning about a reference (labelled) performance point not having a corresponding Mach is also usually normal behaviour when PIANO indicates that the aircraft is not in a valid state.
+(e.g. `Setting a NaN Mach in X incomplete cruise reference Mach group(s), at (fl, mass) of ...`).
 
 ### Errors
 
