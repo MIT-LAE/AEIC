@@ -1,6 +1,6 @@
 from .adjustable_legacy import AdjustableLegacyBuilder
 from .ads_b import ADSBBuilder, ADSBOptions
-from .base import Builder, Context, Options
+from .base import Builder, Context, MassIterMethod, Options
 from .dymos import DymosBuilder, DymosOptions
 from .legacy import LegacyBuilder, LegacyOptions
 from .tasopt import TASOPTBuilder, TASOPTOptions
@@ -9,6 +9,7 @@ __all__ = [
     'Builder',
     'Context',
     'Options',
+    'MassIterMethod',
     'TASOPTBuilder',
     'TASOPTOptions',
     'ADSBBuilder',
