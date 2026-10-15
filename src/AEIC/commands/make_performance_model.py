@@ -272,7 +272,13 @@ def parse_climb_masses(value: str | None) -> list[float] | None:
     '--operating-empty-mass',
     type=float,
     required=True,
-    help='Operating empty mass in kg. PIANO exports do not contain one.',
+    help='Operating empty mass in kg.',
+)
+@click.option(
+    '--hold-fuel-flow-lbperh',
+    type=float,
+    required=True,
+    help='Total aircraft fuel flow in a hold at a reference condition, in lb/h. ',
 )
 @click.option(
     '--aircraft-name',
@@ -304,6 +310,7 @@ def piano(
     climb_cas_high_kts,
     climb_mach,
     operating_empty_mass,
+    hold_fuel_flow_lbperh,
     aircraft_name,
     maximum_altitude_ft,
 ):
@@ -333,6 +340,7 @@ def piano(
             maximum_payload=maximum_payload,
             apu_name=apu_name,
             operating_empty_mass=operating_empty_mass,
+            hold_fuel_flow_lbperh=hold_fuel_flow_lbperh,
             aircraft_name=aircraft_name,
             maximum_altitude_ft=maximum_altitude_ft,
         )

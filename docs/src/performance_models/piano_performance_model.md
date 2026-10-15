@@ -26,6 +26,7 @@ documented in [PIANO reader](../parsers/piano_reader.md).
    a `climb` and a `descent` entry but no `cruise` entry.
  * Two extra tables come along with the phase tables:
    `cruise_reference_mach` and `descent_idle_thrust`.
+ * A `hold_flight_performance` table gives the hold fuel flow at a reference point.
 
 ## Operating empty mass
 
@@ -33,6 +34,19 @@ documented in [PIANO reader](../parsers/piano_reader.md).
 PIANO exports contain no operating empty mass, and we cannot apply the BADA 3
 rule to estimate it. This field must be passed when creating the
 performance model file.
+
+## Hold fuel flow
+
+Similarly, `hold_flight_performance` is a required table for a PIANO performance model.
+It has one entry, `fuel_flow` corresponding to the total aircraft fuel flow in a hold
+at a reference condition, in kg/s. PIANO exports contain no hold fuel flow.
+Pass it in lb/h with `--hold-fuel-flow-lbperh` when you create the
+performance model file. The command converts it to kg/s.
+
+The reference condition is the initial fuel flow for a hold at 3000 ft with 'normal landing'
+mass (as estimated by PIANO) minimizing drag. Holding at 3000 ft mirrors the
+`LegacyPerformanceModel` / BADA approach of estimating hold fuel flow from cruise
+performance at FL30.
 
 ## Performance tables
 
@@ -277,6 +291,14 @@ cols = [
 ]
 
 data = []
+
+# ------------------------------------------------------------------------------
+#
+# Hold data
+#
+
+[hold_flight_performance]
+fuel_flow = 0.0 # kg/s - total aircraft fuel flow in hold
 ```
 
 ## Performance evaluation
@@ -296,5 +318,10 @@ Not yet implemented. {py:meth}`evaluate_impl
 ```{eval-rst}
 .. autoclass:: AEIC.performance.models.PianoPerformanceModel
    :members:
-   :exclude-members: model_config, model_type, require_operating_empty_mass
+   :exclude-members: model_config, model_type, require_operating_empty_mass,
+      require_hold_flight_performance
+
+.. autoclass:: AEIC.performance.models.piano.HoldPerformance
+   :members:
+   :exclude-members: model_config
 ```

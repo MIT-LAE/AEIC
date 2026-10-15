@@ -38,6 +38,7 @@ def piano_model(piano_data, lto) -> PianoPerformanceModel:
         number_of_engines=2,
         maximum_payload=18000,
         operating_empty_mass=37100,
+        hold_fuel_flow_lbperh=5000.0,
         apu_name='APU 131-9',
     )
 
@@ -156,3 +157,14 @@ def test_model_type_without_a_write_spec_raises(tmp_path, legacy_model):
     model = _UnregisteredModel(**legacy_model.model_dump())
     with pytest.raises(ValueError, match='No write spec'):
         write_performance_model(tmp_path / 'unregistered.toml', model)
+
+
+def test_hold_table_is_written_after_the_last_table(tmp_path, piano_model):
+    """The hold table is PIANO-specific data, so it closes the model-specific
+    section after the tabular data."""
+    data = read_toml(tmp_path, piano_model)
+
+    assert list(data)[-2:] == ['descent_idle_thrust', 'hold_flight_performance']
+    assert data['hold_flight_performance'] == {
+        'fuel_flow': piano_model.hold_flight_performance.fuel_flow
+    }

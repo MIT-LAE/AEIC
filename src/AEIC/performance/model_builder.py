@@ -28,7 +28,9 @@ from AEIC.performance.models import (
     PianoPerformanceModel,
 )
 from AEIC.performance.models.base import LTOPerformanceInput
+from AEIC.performance.models.piano import HoldPerformance
 from AEIC.performance.types import Speeds, TableInput
+from AEIC.units import POUNDS_PER_HOUR_TO_KG_PER_S
 
 if TYPE_CHECKING:
     from AEIC.parsers.piano_reader import PianoData
@@ -115,6 +117,7 @@ PIANO_WRITE_SPEC = (
     *_PHASE_TABLE_SPEC,
     ('cruise_reference_mach', 'cruise_reference_mach'),
     ('descent_idle_thrust', 'descent_idle_thrust'),
+    ('hold_flight_performance', 'hold_flight_performance'),
 )
 """Field order and output keys for a `PianoPerformanceModel` file."""
 
@@ -208,6 +211,18 @@ def _speeds_table(speeds: Speeds):
     return speeds_super
 
 
+def _hold_section(key: str, hold: HoldPerformance) -> str:
+    """Render hold data as a sub-bannered TOML table."""
+    doc = document()
+    _add_sub_banner(doc, 'Hold data')
+    doc.add(nl())
+    hold_tbl = table()
+    hold_tbl['fuel_flow'] = hold.fuel_flow
+    hold_tbl['fuel_flow'].comment('kg/s - total aircraft fuel flow in hold')
+    doc[key] = hold_tbl
+    return _fix_empty_comments(tomlkit.dumps(doc))
+
+
 def _lto_table(lto: LTOPerformanceInput):
     """Render LTO data as a nested TOML table, one sub-table per thrust mode."""
     lto_dump = lto.model_dump()
@@ -241,6 +256,7 @@ def write_performance_model(path: str | Path, model: BasePerformanceModel) -> No
     - Tabular data is written as a trailing ``[section]`` block with
       aligned numeric layout
     - Speed and LTO data are written as nested sub-tables
+    - Hold data is written as a table after the tabular data
     - Anything else is written inline.
 
     A field whose value is ``None`` is not written.
@@ -271,6 +287,7 @@ def write_performance_model(path: str | Path, model: BasePerformanceModel) -> No
     doc.add(nl())
 
     table_sections: list[tuple[str, TableInput]] = []
+    hold_sections: list[tuple[str, HoldPerformance]] = []
     for field, key in rest:
         value = getattr(model, field)
         if value is None:
@@ -285,6 +302,8 @@ def write_performance_model(path: str | Path, model: BasePerformanceModel) -> No
             doc.add(nl())
             _add_sub_banner(doc, 'LTO data')
             doc[key] = _lto_table(value)
+        elif isinstance(value, HoldPerformance):
+            hold_sections.append((key, value))
         else:
             _set_with_inline(doc, key, value)
 
@@ -304,6 +323,7 @@ def write_performance_model(path: str | Path, model: BasePerformanceModel) -> No
     sections = [
         _format_table_section(key, tbl.cols, tbl.data) for key, tbl in table_sections
     ]
+    sections += [_hold_section(key, hold) for key, hold in hold_sections]
 
     with open(path, 'w', encoding='utf-8') as fp:
         fp.write(body)
@@ -405,6 +425,7 @@ def build_piano_model(
     number_of_engines: int,
     maximum_payload: int,
     operating_empty_mass: float,
+    hold_fuel_flow_lbperh: float,
     apu_name: str | None = None,
     aircraft_name: str | None = None,
     maximum_altitude_ft: int | None = None,
@@ -417,8 +438,8 @@ def build_piano_model(
         aircraft_class: One of wide, narrow, small, freight.
         number_of_engines: Number of engines on the aircraft.
         maximum_payload: Maximum payload [kg].
-        operating_empty_mass: Operating empty mass [kg]. PIANO exports do not
-            contain one, so it must be supplied.
+        operating_empty_mass: Operating empty mass [kg].
+        hold_fuel_flow_lbperh: Total aircraft fuel flow in a hold [lb/h].
         apu_name: APU name, or None if the aircraft has no APU data.
         aircraft_name: Aircraft name, overriding the cruise file title.
         maximum_altitude_ft: Maximum altitude [feet], overriding the highest
@@ -454,4 +475,7 @@ def build_piano_model(
         descent_flight_performance=piano_data.descent.model_dump(),
         cruise_reference_mach=piano_data.cruise_reference_mach,
         descent_idle_thrust=piano_data.descent_idle_thrust,
+        hold_flight_performance=HoldPerformance(
+            fuel_flow=hold_fuel_flow_lbperh * POUNDS_PER_HOUR_TO_KG_PER_S
+        ),
     )

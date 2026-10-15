@@ -21,8 +21,10 @@ from AEIC.parsers.piano_reader.descent_reader import (
 )
 from AEIC.performance.model_builder import build_piano_model, write_performance_model
 from AEIC.performance.models import PerformanceModel, PianoPerformanceModel
+from AEIC.units import POUNDS_PER_HOUR_TO_KG_PER_S
 
 OPERATING_EMPTY_MASS = 37100
+HOLD_FUEL_FLOW_LBPERH = 5000.0
 
 
 @pytest.fixture
@@ -31,6 +33,7 @@ def write_model(tmp_path, piano_data, lto):
 
     def _write(name: str = 'piano.toml', **overrides) -> Path:
         overrides.setdefault('operating_empty_mass', OPERATING_EMPTY_MASS)
+        overrides.setdefault('hold_fuel_flow_lbperh', HOLD_FUEL_FLOW_LBPERH)
         model = build_piano_model(
             piano_data,
             lto,
@@ -98,6 +101,26 @@ def test_loading_fails_without_an_operating_empty_mass(write_model):
     )
 
     with pytest.raises(ValidationError, match='PIANO exports do not contain'):
+        PerformanceModel.load(out_file)
+
+
+def test_hold_fuel_flow_survives_the_round_trip_in_kg_per_s(build):
+    """The builder takes the hold fuel flow in lb/h, and every model file
+    states it in kg/s."""
+    model = build()
+    assert model.hold_flight_performance.fuel_flow == pytest.approx(
+        HOLD_FUEL_FLOW_LBPERH * POUNDS_PER_HOUR_TO_KG_PER_S
+    )
+
+
+def test_loading_fails_without_a_hold_flight_performance(write_model):
+    """A file that states no hold fuel flow is refused, and the error names
+    the option that supplies it."""
+    out_file = write_model()
+    text = out_file.read_text()
+    out_file.write_text(text[: text.index('[hold_flight_performance]')])
+
+    with pytest.raises(ValidationError, match='--hold-fuel-flow-lbperh'):
         PerformanceModel.load(out_file)
 
 

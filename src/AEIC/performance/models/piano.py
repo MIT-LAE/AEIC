@@ -18,8 +18,16 @@ from AEIC.performance.types import (
     SimpleFlightRules,
     TableInput,
 )
+from AEIC.utils.models import CIBaseModel
 
 from .base import BasePerformanceModel, PerformanceTableInput
+
+
+class HoldPerformance(CIBaseModel):
+    """Hold performance at a reference condition."""
+
+    fuel_flow: PositiveFloat
+    """Total aircraft fuel flow in a hold [kg/s]."""
 
 
 class PianoPerformanceModel(BasePerformanceModel[SimpleFlightRules]):
@@ -50,6 +58,14 @@ class PianoPerformanceModel(BasePerformanceModel[SimpleFlightRules]):
     for deriving it from the lowest tabulated mass, so it must be supplied.
     """
 
+    hold_flight_performance: HoldPerformance
+    """Hold performance.
+
+    PIANO can simulate hold performance directly, unlike BADA/LegacyPerformanceModel
+    which uses cruise performance at FL30. The representative datapoint is the initial
+    fuel flow for a hold at 3000 ft with 'normal landing' mass and minimizing drag.
+    """
+
     @model_validator(mode='before')
     @classmethod
     def require_operating_empty_mass(cls, data: Any) -> Any:
@@ -65,6 +81,24 @@ class PianoPerformanceModel(BasePerformanceModel[SimpleFlightRules]):
                 'PIANO exports do not contain an operating empty mass, so '
                 '"operating_empty_mass_kg" must be set in the performance '
                 'model file.'
+            )
+        return data
+
+    @model_validator(mode='before')
+    @classmethod
+    def require_hold_flight_performance(cls, data: Any) -> Any:
+        """Report a missing hold fuel flow with the option that supplies it.
+
+        Pydantic would report the field as required, which does not say where
+        the value comes from.
+        """
+        if isinstance(data, dict) and not any(
+            key.lower() == 'hold_flight_performance' for key in data
+        ):
+            raise ValueError(
+                'PIANO exports do not contain a hold fuel flow, so '
+                '"hold_flight_performance.fuel_flow" must be set in the '
+                'performance model file. Supply it with --hold-fuel-flow-lbperh.'
             )
         return data
 

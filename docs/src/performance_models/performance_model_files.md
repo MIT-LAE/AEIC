@@ -91,6 +91,7 @@ schedules all come from the PTF file.
 | `--climb-file` | Path | Yes | Input PIANO climb details export. |
 | `--descent-file` | Path | Yes | Input PIANO descent details export. |
 | `--operating-empty-mass` | Float | Yes | Operating empty mass [kg]. |
+| `--hold-fuel-flow-lbperh` | Float | Yes | Total aircraft fuel flow in a hold at a reference condition [lb/h]. The file stores it in kg/s. |
 | `--climb-masses` | Comma-separated floats | No | Initial mass [kg] of each climb block, in file order. |
 | `--climb-cas-low-kts` | Float | No | Climb calibrated airspeed below FL100 [knots]. |
 | `--climb-cas-high-kts` | Float | No | Climb calibrated airspeed above FL100 [knots]. |
@@ -119,6 +120,7 @@ aeic make-performance-model \
   --climb-file piano/B738-climb.txt \
   --descent-file piano/B738-descent.txt \
   --operating-empty-mass 41413 \
+  --hold-fuel-flow-lbperh 5000 \
   --apu-name 'APU 131-9' \
   --number-of-engines 2 \
   --aircraft-class narrow \
