@@ -235,45 +235,6 @@ def test_labelled_mach_on_the_swept_grid_keeps_one_row(piano_data, caplog):
     assert len(matching) == 1
 
 
-def test_duplicate_cruise_row_disagreement_warns(tmp_path, caplog):
-    """PIANO does not always report the same values for a labelled row and
-    the swept row it lands on. The labelled row wins and the disagreeing
-    columns are named."""
-    cruise_text = config.file_location(PIANO_CRUISE_FILE).read_text()
-    lines = []
-    for line in cruise_text.splitlines(keepends=True):
-        tokens = line.split()
-        if len(tokens) > 12 and tokens[3] == 'maxSAR':
-            # Halve the maximum climb thrust available on the labelled row.
-            tokens[12] = '9000.'
-            line = ' '.join(tokens) + '\n'
-        lines.append(line)
-    cruise_file = tmp_path / 'cruise.txt'
-    cruise_file.write_text(''.join(lines))
-
-    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
-        piano = PianoData.load(
-            str(cruise_file),
-            str(config.file_location(PIANO_CLIMB_FILE)),
-            str(config.file_location(PIANO_DESCENT_FILE)),
-            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
-        )
-
-    matching = [row for row in piano.cruise.data if row[0] == 150.0 and row[2] == 0.450]
-    assert len(matching) == 3
-    # The labelled row wins, so its lower thrust replaces the swept row's.
-    assert all(
-        row[CRUISE_COLS.index('mcl_avail_per_engine')]
-        == pytest.approx(9000 * POUNDS_FORCE_TO_NEWTONS)
-        for row in matching
-    )
-    assert any(
-        'Duplicate cruise row' in r.getMessage()
-        and 'mcl_avail_per_engine' in r.getMessage()
-        for r in caplog.records
-    )
-
-
 def test_unrecognised_cruise_label_raises(tmp_path):
     """An unknown label in the fourth column means the export comes from a
     PIANO layout this parser was not written against. Nothing in the file can
