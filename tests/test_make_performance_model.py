@@ -15,12 +15,18 @@ from AEIC.performance.models.base import LTOPerformanceInput
 ENGINE_FILE = 'engines/sample_edb.xlsx'
 ENGINE_UID = '01P11CM121'
 THRUST_FRACTIONS = (0.07, 0.30, 0.85, 1.0)
+# The reference TOML can be updated with scripts/make_golden_test_data.py
+REFERENCE_TOML = 'performance/legacy_golden.toml'
 
 
 def test_legacy_output_byte_identical(tmp_path, ptf_data, lto):
-    """The legacy writer's output is frozen. Any diff here is a regression."""
+    """The legacy writer's output is frozen. Any diff here is a regression.
 
-    reference_toml = config.file_location('performance/legacy_golden.toml')
+    If the performance model content / writer was intentionally changed then
+    the reference data needs to be updated with scripts/make_golden_test_data.py
+    """
+
+    reference_toml = config.file_location(REFERENCE_TOML)
     out_file = tmp_path / 'legacy_performance.toml'
 
     model = build_legacy_model(
@@ -85,6 +91,6 @@ def test_resolve_lto_from_edb_requires_both_engine_options(engine_file, engine_u
 
 def test_lto_from_toml_reads_an_lto_performance_table():
     """The reader accepts either a whole model file or a bare LTO table."""
-    reference_toml = config.file_location('performance/legacy_golden.toml')
+    reference_toml = config.file_location(REFERENCE_TOML)
     lto = lto_from_toml(reference_toml)
     assert lto.ICAO_UID == ENGINE_UID

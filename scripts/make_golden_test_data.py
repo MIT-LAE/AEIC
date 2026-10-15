@@ -4,8 +4,11 @@ import tomllib
 from pathlib import Path
 
 import AEIC.trajectories.builders as tb
+from AEIC.commands.make_performance_model import resolve_lto
 from AEIC.config import Config, config
 from AEIC.missions import Mission
+from AEIC.parsers.ptf_reader import PTFData
+from AEIC.performance.model_builder import build_legacy_model, write_performance_model
 from AEIC.performance.models import PerformanceModel
 from AEIC.trajectories import TrajectoryStore
 
@@ -44,8 +47,34 @@ def make_test_trajectories():
     ts.close()
 
 
+def make_legacy_perf_toml():
+    # Create the reference legacy performance toml file using sample performance
+    # PTF data. If any part of the performance TOML writer is updated this
+    # reference file should be re-generated.
+
+    output_file = TEST_DATA_DIR / 'performance' / 'legacy_golden.toml'
+    output_file.unlink(missing_ok=True)
+
+    sample_ptf = TEST_DATA_DIR / 'verification' / 'legacy' / 'legacy_performance.PTF'
+    sample_edb = config.file_location('engines/sample_edb.xlsx')
+
+    lto = resolve_lto('edb', sample_edb, '01P11CM121', (0.07, 0.30, 0.85, 1.0), None)
+    ptf_data = PTFData.load(str(sample_ptf))
+
+    model = build_legacy_model(
+        ptf_data,
+        lto,
+        aircraft_class='narrow',
+        number_of_engines=2,
+        maximum_payload=22422,
+        apu_name='APU 131-9',
+    )
+    write_performance_model(output_file, model)
+
+
 def run():
     make_test_trajectories()
+    make_legacy_perf_toml()
 
 
 if __name__ == '__main__':
