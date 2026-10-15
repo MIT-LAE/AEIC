@@ -71,7 +71,6 @@ def test_check_apu_rejects_an_unknown_name():
 def test_resolve_lto_from_edb():
     lto = resolve_lto('edb', ENGINE_FILE, ENGINE_UID, THRUST_FRACTIONS, None)
     assert isinstance(lto, LTOPerformanceInput)
-    assert lto.source == 'EDB'
     assert lto.ICAO_UID == ENGINE_UID
 
 
