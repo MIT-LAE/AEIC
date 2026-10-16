@@ -7,11 +7,15 @@ particular, the {py:class}`LegacyPerformanceModel <AEIC.performance.models.Legac
 class builds a fuel-flow, rate of climb/descent, and true airspeed performance
 table as a function of aircraft mass and altitude.
 
+A second table-based model, {py:class}`PianoPerformanceModel
+<AEIC.performance.models.PianoPerformanceModel>`, is built from PIANO
+aircraft performance outputs.
+
 ```{note}
 Some of the details of how this works will probably change as we implement
-new kinds of performance models. So far, we only have the table-based
-legacy performance model intended to replicate the behavior of the old
-Matlab code, but the organization of the performance table classes is
+new kinds of performance models. So far, only the table-based legacy
+performance model, intended to replicate the behavior of the old Matlab code,
+can be evaluated, but the organization of the performance table classes is
 intended to be extensible to more complex use cases.
 ```
 
@@ -20,5 +24,6 @@ intended to be extensible to more complex use cases.
 
 performance_model_api.md
 legacy_performance_model.md
+piano_performance_model.md
 performance_model_files.md
 ```
