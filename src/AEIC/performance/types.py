@@ -239,6 +239,14 @@ class SimpleFlightRules(CIStrEnum):
     DESCEND = 'descend'
 
 
+@dataclass(frozen=True)
+class CruiseMach:
+    """Flight rules for cruise at a given Mach number."""
+
+    mach: float
+    """Cruise Mach number."""
+
+
 @dataclass
 class LTOPerformance:
     """LTO performance data as used internally."""
