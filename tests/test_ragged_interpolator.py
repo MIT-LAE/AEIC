@@ -2,8 +2,10 @@
 
 import re
 
+import numpy as np
 import pandas as pd
 import pytest
+from scipy.interpolate import RegularGridInterpolator
 
 from AEIC.performance.models.ragged import RaggedInterpolator
 
@@ -90,6 +92,54 @@ def test_rectilinear_3d_is_trilinear():
     assert interp(350.0, 55.0, 0.775) == pytest.approx((0.5 * fl300 + 0.5 * fl400,))
 
 
+def test_regular_grid_matches_scipy():
+    # Can't test multilinear interpolation on a ragged grid directly vs scipy
+    # Instead we make synthetic data that is rectangular such that we can
+    # verify accuracy against scipy's RegularGridInterpolator
+    # The ragged-specific checks are tested in the other tests
+
+    # Uneven spacing on each axis.
+    grid = (
+        np.array([300.0, 330.0, 410.0]),
+        np.array([50.0, 58.0, 61.0, 75.0]),
+        np.array([0.7, 0.725, 0.78, 0.8, 0.85]),
+    )
+    rng = np.random.default_rng(0)
+    values = rng.uniform(1.0, 2.0, (*(len(g) for g in grid), 2))
+    mesh = np.meshgrid(*grid, indexing='ij')
+    df = pd.DataFrame(
+        {
+            'fl': mesh[0].ravel(),
+            'mass': mesh[1].ravel(),
+            'mach': mesh[2].ravel(),
+            'tas': values[..., 0].ravel(),
+            'fuel_flow': values[..., 1].ravel(),
+        }
+    )
+    # Give the rows in random order, so that the test also checks the sort.
+    df = df.sample(frac=1.0, random_state=0)
+    interp = RaggedInterpolator(
+        df, ('fl', 'mass', 'mach'), ('tas', 'fuel_flow'), 'test'
+    )
+
+    # On each axis, take every node and every midpoint, so that the points
+    # mix exact nodes on some axes with interpolation on the others. Add
+    # random points in the grid.
+    nodes_and_midpoints = [np.sort(np.r_[g, (g[:-1] + g[1:]) / 2]) for g in grid]
+    mixed = np.stack(
+        [m.ravel() for m in np.meshgrid(*nodes_and_midpoints, indexing='ij')],
+        axis=1,
+    )
+    lo = np.array([g[0] for g in grid])
+    hi = np.array([g[-1] for g in grid])
+    random = lo + rng.random((200, 3)) * (hi - lo)
+    points = np.concatenate([mixed, random])
+
+    expected = RegularGridInterpolator(grid, values)(points)
+    for point, value in zip(points, expected):
+        assert interp(*point) == pytest.approx(tuple(value), rel=1e-15, abs=0.0)
+
+
 @pytest.mark.parametrize(
     ('df', 'axes', 'outputs'),
     [
@@ -159,6 +209,19 @@ def test_ragged_lower_mach_bound_matters_only_at_a_corner():
     ],
 )
 def test_out_of_range_message(coords, message):
+    interp = RaggedInterpolator(RAGGED_2D, ('mass', 'fl'), ('tas',), 'test')
+    with raises_message(message):
+        interp(*coords)
+
+
+@pytest.mark.parametrize(
+    ('coords', 'message'),
+    [
+        ((float('nan'), 10.0), 'test table: mass=nan outside [1.0, 3.0]'),
+        ((1.0, float('nan')), 'test table: fl=nan outside [5.0, 20.0] for mass=1.0'),
+    ],
+)
+def test_nan_coordinate_raises(coords, message):
     interp = RaggedInterpolator(RAGGED_2D, ('mass', 'fl'), ('tas',), 'test')
     with raises_message(message):
         interp(*coords)
