@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-from enum import Enum, auto
 from typing import Any, ClassVar, Literal, Self
 
 import numpy as np
@@ -23,17 +22,13 @@ import pandas as pd
 from pydantic import PrivateAttr, model_validator
 from scipy.interpolate import interpn
 
-from AEIC.performance.models.base import BasePerformanceModel, PerformanceTableInput
+from AEIC.performance.models.base import (
+    BasePerformanceModel,
+    PerformanceTableInput,
+    ROCDFilter,
+)
 from AEIC.performance.types import AircraftState, Performance, SimpleFlightRules
 from AEIC.units import METERS_TO_FL
-
-
-class ROCDFilter(Enum):
-    """Rate of climb/descent filter for performance table subsetting."""
-
-    NEGATIVE = auto()
-    ZERO = auto()
-    POSITIVE = auto()
 
 
 class Interpolator:

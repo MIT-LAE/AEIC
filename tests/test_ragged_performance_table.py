@@ -6,8 +6,7 @@ import re
 import pandas as pd
 import pytest
 
-from AEIC.performance.models.base import PerformanceTableInput
-from AEIC.performance.models.legacy import ROCDFilter
+from AEIC.performance.models.base import PerformanceTableInput, ROCDFilter
 from AEIC.performance.models.ragged import RaggedPerformanceTable
 from AEIC.performance.types import AircraftState, Performance
 from AEIC.units import METERS_TO_FL

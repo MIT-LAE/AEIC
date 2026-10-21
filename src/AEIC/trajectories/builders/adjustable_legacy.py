@@ -9,7 +9,7 @@ import numpy as np
 from AEIC.config import config
 from AEIC.missions import Mission
 from AEIC.performance.models import LegacyPerformanceModel
-from AEIC.performance.models.legacy import ROCDFilter
+from AEIC.performance.models.base import ROCDFilter
 from AEIC.performance.types import AircraftState, SimpleFlightRules
 from AEIC.storage import FlightPhase
 from AEIC.units import (

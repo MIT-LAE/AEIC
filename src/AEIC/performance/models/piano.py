@@ -16,8 +16,11 @@ from typing import Any, ClassVar, Literal, Self
 
 from pydantic import PositiveFloat, PrivateAttr, model_validator
 
-from AEIC.performance.models.base import BasePerformanceModel, PerformanceTableInput
-from AEIC.performance.models.legacy import ROCDFilter
+from AEIC.performance.models.base import (
+    BasePerformanceModel,
+    PerformanceTableInput,
+    ROCDFilter,
+)
 from AEIC.performance.models.ragged import RaggedPerformanceTable
 from AEIC.performance.types import (
     AircraftState,
