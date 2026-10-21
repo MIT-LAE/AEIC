@@ -72,8 +72,8 @@ class RaggedInterpolator:
         # Rows store axis values then interpolation variables
         df = df.sort_values(list(axes), kind='stable')
         rows = df[list(axes) + list(interp_vars)].to_numpy(dtype=float).tolist()
-        # Build the interpolation tree from the root node which has no fixed axes
-        self._root = self._build(rows, 0, ())
+        # Build the interpolation tree from the root node which has no fixed coordinates
+        self._root = self._build(rows=rows, depth=0, outer_coords=())
 
     def _build(
         self, rows: list[list[float]], depth: int, outer_coords: tuple[float, ...]
@@ -106,14 +106,14 @@ class RaggedInterpolator:
         # additional level of interpolation
         for axis_value, rows_with_value in groupby(rows, key=value_on_this_axis):
             axis_values.append(axis_value)
-            children.append(
-                # Create a new node that is one interpolation axis deeper
-                self._build(
-                    list(rows_with_value), depth + 1, (*outer_coords, axis_value)
-                )
-            )
+            # Append the current axis value to the outer coords
+            new_coords = (*outer_coords, axis_value)
+            # Create a new node that is one interpolation axis deeper
+            child_node = self._build(list(rows_with_value), depth + 1, new_coords)
+            children.append(child_node)
+
         # We are not at the last interpolation axis so we create a new node with
-        # a child per next interpolation axis value
+        # a child per interpolation axis value
         return _InnerNode(
             axis_values=axis_values, outer_coords=outer_coords, children=children
         )
@@ -152,44 +152,69 @@ class RaggedInterpolator:
         # the range check accepts only that exact value.
         n_values = len(axis_values)
         if n_values == 1:
-            idx_low, interp_weight = 0, 0.0
+            # idx_high is never used in this branch but to be
+            # explicit set it to 0 anyway
+            idx_low, idx_high = 0, 0
+            interp_weight = 0.0
         else:
+            # Bisect right returns the idx of the first value in
+            # axis_values (sorted) > coord
+            # Then the lower point for interpolation is idx - 1
             idx_low = bisect_right(axis_values, coord) - 1
-            if idx_low > n_values - 2:
-                idx_low = n_values - 2
+            # Clamp idx_low so that idx_low + 1 is always valid
+            idx_low = min(idx_low, n_values - 2)
+            idx_high = idx_low + 1
+
             axis_value_low = axis_values[idx_low]
-            axis_value_high = axis_values[idx_low + 1]
+            axis_value_high = axis_values[idx_high]
+
             interp_weight = (coord - axis_value_low) / (
                 axis_value_high - axis_value_low
             )
 
-            # On the upper axis value, use only that value. Then a fraction of
-            # zero always means "exactly on the axis value at `lower_index`".
+            # If interp_weight == 1, it means coord is exactly
+            # axis_values[idx_high]. Setting idx_low = idx_high
+            # and interp_weight = 0.0 allows us to treat the
+            # cases:
+            #      coord == axis_values[idx_high]
+            #      coord == axis_values[idx_low]
+            # the same way afterwards
             if interp_weight == 1.0:
-                idx_low, interp_weight = idx_low + 1, 0.0
+                idx_low, interp_weight = idx_high, 0.0
 
         if isinstance(node, _LeafNode):
-            # data_low and data_high are tuples with one value for each variable in
-            # interp_vars
+            # data_low and data_high are tuples with one value for each
+            # variable in interp_vars
             data_low = node.interp_data[idx_low]
 
-            # On an exact axis value, return directly that value as idx_low + 1 could be
-            # out of range
+            # On an exact axis value (idx_low or idx_high thanks to
+            # earlier normalization) we return directly
             if interp_weight == 0.0:
                 return data_low
 
-            data_high = node.interp_data[idx_low + 1]
+            data_high = node.interp_data[idx_high]
 
         else:
             children = node.children
             data_low = self._evaluate(children[idx_low], coords, depth + 1)
 
-            # On an exact axis value, return directly that value as idx_low + 1 could be
-            # out of range
+            # On an exact axis value (idx_low or idx_high thanks to
+            # earlier normalization) we return directly but here this is because
+            # coords[depth + 1] could be out of range in children[idx_high].axis_values
+            # as there are no guarantees that two nodes have the same range of axis
+            # values (that's the point of the ragged interpolator):
+            # data_high is not needed (we are exactly at idx_low so interp_weight = 0)
+            # but the code could still throw in the subsequent call to
+            #   self._evaluate(children[idx_high], coords, depth + 1)
+            # because it could be that (true for any node down that subtree):
+            #   children[idx_high].axis_values[0] > coords[depth + 1]
+            #               AND / OR
+            #   children[idx_high].axis_values[-1] < coords[depth + 1]
+            # so we skip evaluating it entirely and return
             if interp_weight == 0.0:
                 return data_low
 
-            data_high = self._evaluate(children[idx_low + 1], coords, depth + 1)
+            data_high = self._evaluate(children[idx_high], coords, depth + 1)
 
         # Apply interpolation weight to each interpolation variable
         return tuple(
