@@ -16,6 +16,9 @@ from typing import Any, ClassVar, Literal, Self
 
 from pydantic import PositiveFloat, PrivateAttr, model_validator
 
+from AEIC.performance.models.base import BasePerformanceModel, PerformanceTableInput
+from AEIC.performance.models.legacy import ROCDFilter
+from AEIC.performance.models.ragged import RaggedPerformanceTable
 from AEIC.performance.types import (
     AircraftState,
     CruiseMach,
@@ -24,10 +27,6 @@ from AEIC.performance.types import (
     TableInput,
 )
 from AEIC.utils.models import CIBaseModel
-
-from .base import BasePerformanceModel, PerformanceTableInput
-from .legacy import ROCDFilter
-from .ragged import RaggedPerformanceTable
 
 PianoFlightRules = SimpleFlightRules | CruiseMach
 """Flight rules accepted by the PIANO performance model."""

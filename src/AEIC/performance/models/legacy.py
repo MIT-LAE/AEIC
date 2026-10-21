@@ -23,10 +23,9 @@ import pandas as pd
 from pydantic import PrivateAttr, model_validator
 from scipy.interpolate import interpn
 
+from AEIC.performance.models.base import BasePerformanceModel, PerformanceTableInput
 from AEIC.performance.types import AircraftState, Performance, SimpleFlightRules
 from AEIC.units import METERS_TO_FL
-
-from .base import BasePerformanceModel, PerformanceTableInput
 
 
 class ROCDFilter(Enum):
