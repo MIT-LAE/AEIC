@@ -11,10 +11,18 @@ Queries outside the data raise `ValueError`."""
 from __future__ import annotations
 
 from bisect import bisect_right
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import groupby
+from typing import ClassVar, Self
 
+import numpy as np
 import pandas as pd
+
+from AEIC.performance.types import AircraftState, Performance
+from AEIC.units import METERS_TO_FL
+
+from .base import PerformanceTableInput
+from .legacy import ROCDFilter
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,3 +243,142 @@ class RaggedInterpolator:
             )
             message += f' for {where}'
         return message
+
+
+@dataclass
+class RaggedPerformanceTable:
+    """Performance table for one flight phase, with ragged axes.
+
+    On construction, the class checks that every axis and output column is
+    present, that no key is duplicated over the axes, that no output value is
+    NaN, and that the sign of the ROCD values matches the flight phase. It does
+    not check that the table is dense."""
+
+    df: pd.DataFrame
+    """Performance table data."""
+
+    axes: tuple[str, ...]
+    """Interpolation axes, outer to inner."""
+
+    rocd_filter: ROCDFilter
+    """ROCD filter for this flight phase."""
+
+    _interpolator: RaggedInterpolator = field(init=False, repr=False)
+    """Interpolator over the table data."""
+
+    OUTPUTS: ClassVar[tuple[str, ...]] = ('tas', 'rocd', 'fuel_flow')
+    """Columns returned in `Performance`."""
+
+    ZERO_ROCD_TOL: ClassVar[float] = 1.0e-6
+    """Tolerance for zero rate of climb/descent comparisons."""
+
+    def __post_init__(self):
+        phase = self.phase
+
+        for col in (*self.axes, *self.OUTPUTS):
+            if col not in self.df.columns:
+                raise ValueError(f'Missing "{col}" column in {phase} performance table')
+
+        if self.df.duplicated(subset=list(self.axes)).any():
+            raise ValueError(
+                f'{phase} performance table has duplicate {self.axes} keys'
+            )
+
+        if self.df[list(self.OUTPUTS)].isna().any().any():
+            raise ValueError(f'{phase} performance table has NaN output values')
+
+        # Check the sign of the ROCD values in the table matches the ROCD
+        # filter for this flight phase.
+        rocd = self.df.rocd
+        match self.rocd_filter:
+            case ROCDFilter.NEGATIVE:
+                if not (rocd < -self.ZERO_ROCD_TOL).all():
+                    raise ValueError(
+                        'ROCD values in descent performance table are not all negative'
+                    )
+            case ROCDFilter.ZERO:
+                if not (rocd.abs() <= self.ZERO_ROCD_TOL).all():
+                    raise ValueError(
+                        'ROCD values in cruise performance table are not all zero'
+                    )
+            case ROCDFilter.POSITIVE:
+                # Climb ROCD values can be zero near the operating ceiling of
+                # an aircraft.
+                if not (rocd >= 0.0).all():
+                    raise ValueError(
+                        'some ROCD values in climb performance table are negative'
+                    )
+
+        self.df = self.df.sort_values(list(self.axes), kind='stable', ignore_index=True)
+        self._interpolator = RaggedInterpolator(self.df, self.axes, self.OUTPUTS, phase)
+
+    @classmethod
+    def from_input(
+        cls,
+        ptin: PerformanceTableInput,
+        rocd_filter: ROCDFilter,
+        axes: tuple[str, ...],
+    ) -> Self:
+        """Convert performance table data from the TOML input format."""
+
+        # Extra data columns are allowed, so cut each row to the labelled
+        # columns.
+        df = pd.DataFrame(
+            [row[: len(ptin.cols)] for row in ptin.data], columns=np.array(ptin.cols)
+        )
+        return cls(df=df, axes=axes, rocd_filter=rocd_filter)
+
+    @property
+    def phase(self) -> str:
+        """Name of the flight phase for this table."""
+        match self.rocd_filter:
+            case ROCDFilter.POSITIVE:
+                return 'climb'
+            case ROCDFilter.ZERO:
+                return 'cruise'
+            case ROCDFilter.NEGATIVE:
+                return 'descent'
+
+    def interpolate(self, state: AircraftState, **extra_coords: float) -> Performance:
+        """Interpolate performance at an aircraft state.
+
+        Flight level and mass come from `state`. Give a value for each other
+        axis of the table as a keyword argument, for example `mach=0.78`.
+
+        Raises:
+            ValueError: If the keyword arguments do not match the axes of the
+                table other than `fl` and `mass`. Also if the state is outside
+                the data.
+        """
+
+        # Validate coords
+        expected = set(self.axes) - {'fl', 'mass'}
+        if set(extra_coords) != expected:
+            raise ValueError(
+                f'{self.phase} performance needs coordinates {sorted(expected)}, '
+                f'got {sorted(extra_coords)}'
+            )
+
+        mass = state.aircraft_mass
+        if mass == 'min':
+            mass = self.df.mass.min()
+        elif mass == 'max':
+            mass = self.df.mass.max()
+
+        # Round FL to 1e-9 because the metric altitude for an FL
+        # does not convert exactly back to the FL which can cause
+        # out of bounds issues in the interpolator e.g.:
+        # FL400 => Meters => FL 400 + 1e-15
+        # And if interpolator bound is at FL400, this point
+        # would be considered out of bounds even though is it not really
+        # TODO 1e-9 works because FL in performance tables (BADA/PIANO)
+        # have at most 2-3 decimals, if they had 10 this rounding would fail
+        # to snap the points correctly to the interpolation grid
+        fl = round(state.altitude * METERS_TO_FL, 9)
+
+        # Unpack all interpolation coordinates passed by the caller
+        coords = {'fl': fl, 'mass': mass, **extra_coords}
+        # Reorder them to be consistent with what the interpolator expects
+        ordered_coords = tuple(coords[a] for a in self.axes)
+        tas, rocd, fuel_flow = self._interpolator(*ordered_coords)
+        return Performance(true_airspeed=tas, rate_of_climb=rocd, fuel_flow=fuel_flow)
