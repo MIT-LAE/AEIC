@@ -1,8 +1,9 @@
-"""Tests for `build_piano_model`.
+"""Tests for `build_piano_model` and `PianoPerformanceModel`.
 
 The fixtures in `tests/data/performance/piano` are dummy data, so
 these tests assert that the built model round-trips through the performance
-model loader, but do not check that its numbers are physically plausible.
+model loader and returns its tabulated values, but do not check that its
+numbers are physically plausible.
 """
 
 from pathlib import Path
@@ -21,7 +22,14 @@ from AEIC.parsers.piano_reader.descent_reader import (
 )
 from AEIC.performance.model_builder import build_piano_model, write_performance_model
 from AEIC.performance.models import PerformanceModel, PianoPerformanceModel
-from AEIC.units import POUNDS_PER_HOUR_TO_KG_PER_S
+from AEIC.performance.types import (
+    AircraftState,
+    CruiseMach,
+    Performance,
+    SimpleFlightRules,
+    TableInput,
+)
+from AEIC.units import METERS_TO_FL, POUNDS_PER_HOUR_TO_KG_PER_S
 
 OPERATING_EMPTY_MASS = 37100
 HOLD_FUEL_FLOW_LBPERH = 5000.0
@@ -141,3 +149,83 @@ def test_name_and_altitude_overrides(build):
 def test_isa_offset_comes_from_the_exports(build, piano_data):
     model = build()
     assert model.isa_offset == piano_data.isa_offset
+
+
+def _rows(table: TableInput) -> list[dict[str, float]]:
+    """Rows of a table input, keyed by column name."""
+    return [dict(zip(table.cols, row)) for row in table.data]
+
+
+def _state(row: dict[str, float]) -> AircraftState:
+    return AircraftState(altitude=row['fl'] / METERS_TO_FL, aircraft_mass=row['mass'])
+
+
+def _assert_tabulated(perf: Performance, row: dict[str, float]):
+    assert perf.true_airspeed == pytest.approx(row['tas'], rel=1e-12)
+    assert perf.rate_of_climb == pytest.approx(row['rocd'], rel=1e-12, abs=1e-12)
+    assert perf.fuel_flow == pytest.approx(row['fuel_flow'], rel=1e-12)
+
+
+@pytest.mark.parametrize(
+    'table_name, rules',
+    [
+        ('climb_flight_performance', SimpleFlightRules.CLIMB),
+        ('descent_flight_performance', SimpleFlightRules.DESCEND),
+    ],
+)
+def test_evaluate_at_every_climb_or_descent_row_returns_the_tabulated_values(
+    build, table_name, rules
+):
+    model = build()
+
+    for row in _rows(getattr(model, table_name)):
+        _assert_tabulated(model.evaluate(_state(row), rules), row)
+
+
+def test_evaluate_at_every_cruise_row_returns_the_tabulated_values(build):
+    model = build()
+
+    for row in _rows(model.cruise_flight_performance):
+        _assert_tabulated(model.evaluate(_state(row), CruiseMach(row['mach'])), row)
+
+
+def test_cruise_between_two_mach_points_is_between_the_tabulated_values(build):
+    # Interpolation is already tested in test_ragged_interpolator.py but simple
+    # check here as well
+    model = build()
+    rows = sorted(
+        _rows(model.cruise_flight_performance),
+        key=lambda r: (r['fl'], r['mass'], r['mach']),
+    )
+    # The fixture values are mostly constant in Mach. Use two neighbouring
+    # Mach points of one cell where the fuel flow differs.
+    low, high = next(
+        (a, b)
+        for a, b in zip(rows, rows[1:])
+        if (a['fl'], a['mass']) == (b['fl'], b['mass'])
+        and a['fuel_flow'] != b['fuel_flow']
+    )
+
+    perf = model.evaluate(_state(low), CruiseMach((low['mach'] + high['mach']) / 2))
+
+    # At the midpoint Mach, linear interpolation gives the mean of the rows.
+    for attr, col in (('true_airspeed', 'tas'), ('fuel_flow', 'fuel_flow')):
+        mean = (low[col] + high[col]) / 2
+        assert getattr(perf, attr) == pytest.approx(mean, rel=1e-12)
+
+
+def test_simple_cruise_rules_are_refused_with_a_pointer_to_cruise_mach(build):
+    model = build()
+    row = _rows(model.cruise_flight_performance)[0]
+
+    with pytest.raises(ValueError, match='CruiseMach'):
+        model.evaluate(_state(row), SimpleFlightRules.CRUISE)
+
+
+def test_altitude_above_the_climb_table_is_refused(build):
+    model = build()
+    top_fl = max(model.climb_flight_performance.column('fl'))
+    state = AircraftState(altitude=(top_fl + 10) / METERS_TO_FL, aircraft_mass='min')
+
+    with pytest.raises(ValueError, match='climb table: fl='):
+        model.evaluate(state, SimpleFlightRules.CLIMB)
