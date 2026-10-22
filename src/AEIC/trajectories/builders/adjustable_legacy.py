@@ -97,8 +97,9 @@ class AdjustableLegacyContext(Context):
           approximate flight time based on distance and nominal cruise speed).
 
         - `cruise_mach`: Simple adjustment for cruise Mach number. If not
-          provided, cruise uses `SimpleFlightRules.CRUISE`. Only performance
-          models with a Mach-swept cruise table (PIANO) support it.
+          provided, cruise uses `SimpleFlightRules.CRUISE`.
+          Not supported by legacy performance models.
+          Required by performance models with a Mach-swept cruise table (PIANO).
         """
 
         # The context constructor calculates all of the fixed information used
@@ -198,16 +199,19 @@ class AdjustableLegacyContext(Context):
         # A cruise Mach is only compatible with models with a Mach-swept
         # cruise table.
         self.cruise_rules: SimpleFlightRules | CruiseMach
-        if cruise_mach is None:
-            self.cruise_rules = SimpleFlightRules.CRUISE
-        elif isinstance(ac_performance, PianoPerformanceModel):
+
+        if isinstance(ac_performance, PianoPerformanceModel):
+            if cruise_mach is None:
+                raise ValueError('PIANO performance models require a cruise Mach')
             self.cruise_rules = CruiseMach(
                 mach=self.apply_adjustment(cruise_mach, mission, ac_performance)
             )
-        else:
+        elif cruise_mach is not None:
             raise ValueError(
                 f'cruise_mach is not supported by {ac_performance.model_type}'
             )
+        else:
+            self.cruise_rules = SimpleFlightRules.CRUISE
 
         # Initialize weather regridding when requested.
         self.weather: Weather | None = None
