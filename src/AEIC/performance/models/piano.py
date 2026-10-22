@@ -157,6 +157,32 @@ class PianoPerformanceModel(BasePerformanceModel[PianoFlightRules]):
         """Hold fuel flow [kg/s] is directly estimated by PIANO"""
         return self.hold_flight_performance.fuel_flow
 
+    @property
+    def maximum_rocd(self) -> float:
+        return max(
+            max(self._climb_table.df.rocd),
+            max(self._cruise_table.df.rocd),
+            max(self._descent_table.df.rocd),
+        )
+
+    @property
+    def minimum_tas(self) -> float:
+        return min(
+            min(self._climb_table.df.tas),
+            min(self._cruise_table.df.tas),
+            min(self._descent_table.df.tas),
+        )
+
+    def performance_table(self, rocd_filter: ROCDFilter) -> RaggedPerformanceTable:
+        """Performance table accessor."""
+        match rocd_filter:
+            case ROCDFilter.POSITIVE:
+                return self._climb_table
+            case ROCDFilter.ZERO:
+                return self._cruise_table
+            case ROCDFilter.NEGATIVE:
+                return self._descent_table
+
     def evaluate_impl(
         self, state: AircraftState, rules: PianoFlightRules
     ) -> Performance:
