@@ -289,3 +289,9 @@ class BasePerformanceModel[RulesT](CIBaseModel, ABC):
     def maximum_mass(self) -> float:
         """Aircraft maximum mass, to be implemented by subclasses."""
         ...
+
+    @property
+    @abstractmethod
+    def hold_fuel_flow(self) -> float:
+        """Hold fuel flow [kg/s], to be implemented by subclasses"""
+        ...

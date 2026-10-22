@@ -28,7 +28,7 @@ from AEIC.performance.models.base import (
     ROCDFilter,
 )
 from AEIC.performance.types import AircraftState, Performance, SimpleFlightRules
-from AEIC.units import METERS_TO_FL
+from AEIC.units import FL_TO_METERS, METERS_TO_FL
 
 
 class Interpolator:
@@ -340,6 +340,24 @@ class LegacyPerformanceModel(BasePerformanceModel[SimpleFlightRules]):
             max(self._cruise_performance_table.mass),
             max(self._descent_performance_table.mass),
         )
+
+    @property
+    def hold_fuel_flow(self) -> float:
+        """Hold fuel flow [kg/s] is the cruise fuel flow at the lowest
+        altitude in the legacy performance table"""
+        lowest_cruise_altitude = (
+            min(self.performance_table(ROCDFilter.ZERO).fl) * FL_TO_METERS
+        )
+
+        perf_low = self.evaluate(
+            AircraftState(
+                altitude=lowest_cruise_altitude,
+                aircraft_mass='min',
+            ),
+            SimpleFlightRules.CRUISE,
+        )
+
+        return perf_low.fuel_flow
 
     @property
     def maximum_rocd(self) -> float:

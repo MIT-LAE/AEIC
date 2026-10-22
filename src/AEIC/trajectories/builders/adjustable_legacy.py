@@ -9,12 +9,10 @@ import numpy as np
 from AEIC.config import config
 from AEIC.missions import Mission
 from AEIC.performance.models import LegacyPerformanceModel
-from AEIC.performance.models.base import ROCDFilter
 from AEIC.performance.types import AircraftState, SimpleFlightRules
 from AEIC.storage import FlightPhase
 from AEIC.units import (
     FEET_TO_METERS,
-    FL_TO_METERS,
     METERS_TO_FL,
     MINUTES_TO_SECONDS,
     NAUTICAL_MILES_TO_METERS,
@@ -274,19 +272,6 @@ class AdjustableLegacyBuilder(Builder):
             SimpleFlightRules.CRUISE,
         )
 
-        lowest_cruise_altitude = (
-            min(self.ac_performance.performance_table(ROCDFilter.ZERO).fl)
-            * FL_TO_METERS
-        )
-
-        perf_low = self.ac_performance.evaluate(
-            AircraftState(
-                altitude=lowest_cruise_altitude,
-                aircraft_mass='min',
-            ),
-            SimpleFlightRules.CRUISE,
-        )
-
         # Figure out startingMass components per AEIC v2:
         #
         #      |   empty weight
@@ -343,7 +328,7 @@ class AdjustableLegacyBuilder(Builder):
                 approx_time=approx_time,
             )
         divert_mass = divert_dist / perf.true_airspeed * perf.fuel_flow
-        hold_mass = hold_time * perf_low.fuel_flow
+        hold_mass = hold_time * self.ac_performance.hold_fuel_flow
 
         starting_mass = (
             self.ac_performance.empty_mass

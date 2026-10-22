@@ -152,6 +152,11 @@ class PianoPerformanceModel(BasePerformanceModel[PianoFlightRules]):
             max(self.descent_flight_performance.column('mass')),
         )
 
+    @property
+    def hold_fuel_flow(self) -> float:
+        """Hold fuel flow [kg/s] is directly estimated by PIANO"""
+        return self.hold_flight_performance.fuel_flow
+
     def evaluate_impl(
         self, state: AircraftState, rules: PianoFlightRules
     ) -> Performance:
