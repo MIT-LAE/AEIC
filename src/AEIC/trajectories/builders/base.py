@@ -1,6 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum, auto
 
 from AEIC.missions import Mission
 from AEIC.performance.model_selector import PerformanceModelSelector
@@ -12,6 +13,25 @@ from ..ground_track import GroundTrack
 from ..trajectory import Trajectory
 
 logger = logging.getLogger(__name__)
+
+
+class MassIterMethod(Enum):
+    """Type of mass iteration update scheme to use.
+
+    - NAIVE - If the mission ends with $dM$ more fuel burned than we initially
+        loaded, adjust the starting mass and fuel mass by $+dM$ and try flying the
+        mission again.
+    - RANGE_CORR - Using the range equation, account for the additional fuel
+        required to carry the $+dM$ extra while meeting the same range.
+    - AVERAGED - A simple arithmetic average of Naive and Range-Corrected
+        approaches. This is due to the Range-Corrected method tending to overestimate
+        the amount of fuel to be added/subtracted, leading to increased iterations vs.
+        the naive approach.
+    """
+
+    NAIVE = auto()
+    RANGE_CORR = auto()
+    AVERAGED = auto()
 
 
 @dataclass
@@ -30,11 +50,14 @@ class Options:
     use_weather: bool = False
     """Whether to use wind data for ground-speed calculations."""
 
-    max_mass_iters: int = 5
-    """Maximum number of mass iterations (if used). Defaults to 5."""
+    iter_method: MassIterMethod = MassIterMethod.NAIVE
+    """Whether to use the naive or range-corrected mass iteration scheme."""
 
-    mass_iter_reltol: float = 1e-2
-    """Desired relative tolerance for mass iteration. Defaults to 1e-2."""
+    max_mass_iters: int = 10
+    """Maximum number of mass iterations (if used). Defaults to 10."""
+
+    mass_iter_reltol: float = 1e-6
+    """Desired relative tolerance for mass iteration. Defaults to 1e-6."""
 
 
 @dataclass
@@ -206,7 +229,10 @@ class Builder(ABC):
 
             if self.options.iterate_mass:
                 # Iterate on starting mass to minimize mass residual.
-                traj = self._iterate_mass()
+                traj, iters = self._iterate_mass()
+
+                # Store the number of iterations required to converge.
+                self.iters = iters
             else:
                 # Otherwise, just fly a single iteration with the given starting
                 # mass.
@@ -250,9 +276,9 @@ class Builder(ABC):
             if abs(mass_res) < self.options.mass_iter_reltol:
                 mass_converged = True
             else:
-                # Perform a "dumb" correction of the starting mass.
-                self.starting_mass -= mass_res * self.total_fuel_mass
-                self.total_fuel_mass -= mass_res * self.total_fuel_mass
+                # Perform a correction of the starting mass.
+                self.starting_mass += mass_res * self.total_fuel_mass
+                self.total_fuel_mass += mass_res * self.total_fuel_mass
 
                 traj, mass_res = self._fly_iteration()
                 iter += 1
@@ -263,7 +289,7 @@ class Builder(ABC):
                 f"{mass_res:.2e} > {self.options.mass_iter_reltol:.2e}"
             )
 
-        return traj
+        return traj, iter
 
     def _start_point(self, traj: Trajectory) -> Container:
         # Set initial values, taking initial position and azimuth from ground
@@ -314,7 +340,18 @@ class Builder(ABC):
 
         # Calculate weight residual normalized by total_fuel_mass.
         fuelBurned = self.starting_mass - traj.aircraft_mass[-1]
-        mass_residual = (self.total_fuel_mass - fuelBurned) / self.total_fuel_mass
+        delta = (fuelBurned - self.total_fuel_mass) / self.total_fuel_mass
+        lamda = self.total_fuel_mass / self.starting_mass
+
+        # Determine the update step to take for mass iteration based on the
+        # naive, range-correected, or averaged approach.
+        match self.options.iter_method:
+            case MassIterMethod.NAIVE:
+                mass_residual = delta
+            case MassIterMethod.RANGE_CORR:
+                mass_residual = delta / (1 - lamda * (1 + delta))
+            case MassIterMethod.AVERAGED:
+                mass_residual = 0.5 * ((delta / (1 - lamda * (1 + delta))) + delta)
 
         return traj, mass_residual
 
