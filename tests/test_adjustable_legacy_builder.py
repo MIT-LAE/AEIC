@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import AEIC.trajectories.builders as tb
-from AEIC.performance.models.legacy import ROCDFilter
+from AEIC.performance.models.base import ROCDFilter
 from AEIC.performance.types import AircraftState, SimpleFlightRules
 from AEIC.trajectories import GroundTrack
 from AEIC.trajectories.builders.adjustable_legacy import AdjustableLegacyContext

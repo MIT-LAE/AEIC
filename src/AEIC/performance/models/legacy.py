@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-from enum import Enum, auto
 from typing import Any, ClassVar, Literal, Self
 
 import numpy as np
@@ -23,18 +22,13 @@ import pandas as pd
 from pydantic import PrivateAttr, model_validator
 from scipy.interpolate import interpn
 
+from AEIC.performance.models.base import (
+    BasePerformanceModel,
+    PerformanceTableInput,
+    ROCDFilter,
+)
 from AEIC.performance.types import AircraftState, Performance, SimpleFlightRules
-from AEIC.units import METERS_TO_FL
-
-from .base import BasePerformanceModel, PerformanceTableInput
-
-
-class ROCDFilter(Enum):
-    """Rate of climb/descent filter for performance table subsetting."""
-
-    NEGATIVE = auto()
-    ZERO = auto()
-    POSITIVE = auto()
+from AEIC.units import FL_TO_METERS, METERS_TO_FL
 
 
 class Interpolator:
@@ -346,6 +340,24 @@ class LegacyPerformanceModel(BasePerformanceModel[SimpleFlightRules]):
             max(self._cruise_performance_table.mass),
             max(self._descent_performance_table.mass),
         )
+
+    @property
+    def hold_fuel_flow(self) -> float:
+        """Hold fuel flow [kg/s] is the cruise fuel flow at the lowest
+        altitude in the legacy performance table"""
+        lowest_cruise_altitude = (
+            min(self.performance_table(ROCDFilter.ZERO).fl) * FL_TO_METERS
+        )
+
+        perf_low = self.evaluate(
+            AircraftState(
+                altitude=lowest_cruise_altitude,
+                aircraft_mass='min',
+            ),
+            SimpleFlightRules.CRUISE,
+        )
+
+        return perf_low.fuel_flow
 
     @property
     def maximum_rocd(self) -> float:

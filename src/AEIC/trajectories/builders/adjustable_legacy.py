@@ -8,13 +8,11 @@ import numpy as np
 
 from AEIC.config import config
 from AEIC.missions import Mission
-from AEIC.performance.models import LegacyPerformanceModel
-from AEIC.performance.models.legacy import ROCDFilter
-from AEIC.performance.types import AircraftState, SimpleFlightRules
+from AEIC.performance.models import LegacyPerformanceModel, PianoPerformanceModel
+from AEIC.performance.types import AircraftState, CruiseMach, SimpleFlightRules
 from AEIC.storage import FlightPhase
 from AEIC.units import (
     FEET_TO_METERS,
-    FL_TO_METERS,
     METERS_TO_FL,
     MINUTES_TO_SECONDS,
     NAUTICAL_MILES_TO_METERS,
@@ -40,7 +38,7 @@ class AdjustableLegacyContext(Context):
             self,
             context: AdjustableLegacyContext,
             mission: Mission,
-            performance: LegacyPerformanceModel,
+            performance: LegacyPerformanceModel | PianoPerformanceModel,
             **kwargs,
         ) -> float: ...
 
@@ -52,7 +50,7 @@ class AdjustableLegacyContext(Context):
     def __init__(
         self,
         builder: AdjustableLegacyBuilder,
-        ac_performance: LegacyPerformanceModel,
+        ac_performance: LegacyPerformanceModel | PianoPerformanceModel,
         mission: Mission,
         starting_mass: float | None,
         climb_start_altitude: ContextAdjustment = None,
@@ -62,6 +60,7 @@ class AdjustableLegacyContext(Context):
         reserve_fuel: ContextAdjustment = None,
         divert_distance: ContextAdjustment = None,
         hold_time: ContextAdjustment = None,
+        cruise_mach: ContextAdjustment = None,
     ):
         """Adjustment parameters (a "simple" adjustment is one that takes no
         additional arguments beyond the context, mission and performance
@@ -97,6 +96,10 @@ class AdjustableLegacyContext(Context):
           3 hours if not provided (additional parameter: `approx_time`,
           approximate flight time based on distance and nominal cruise speed).
 
+        - `cruise_mach`: Simple adjustment for cruise Mach number. If not
+          provided, cruise uses `SimpleFlightRules.CRUISE`.
+          Not supported by legacy performance models.
+          Required by performance models with a Mach-swept cruise table (PIANO).
         """
 
         # The context constructor calculates all of the fixed information used
@@ -193,6 +196,23 @@ class AdjustableLegacyContext(Context):
         if self.descent_dist_approx < 0:
             raise ValueError('Descent distance must be non-negative')
 
+        # A cruise Mach is only compatible with models with a Mach-swept
+        # cruise table.
+        self.cruise_rules: SimpleFlightRules | CruiseMach
+
+        if isinstance(ac_performance, PianoPerformanceModel):
+            if cruise_mach is None:
+                raise ValueError('PIANO performance models require a cruise Mach')
+            self.cruise_rules = CruiseMach(
+                mach=self.apply_adjustment(cruise_mach, mission, ac_performance)
+            )
+        elif cruise_mach is not None:
+            raise ValueError(
+                f'cruise_mach is not supported by {ac_performance.model_type}'
+            )
+        else:
+            self.cruise_rules = SimpleFlightRules.CRUISE
+
         # Initialize weather regridding when requested.
         self.weather: Weather | None = None
         if builder.options.use_weather:
@@ -223,7 +243,7 @@ class AdjustableLegacyContext(Context):
         self,
         adjustment: ContextAdjustment,
         mission: Mission,
-        performance: LegacyPerformanceModel,
+        performance: LegacyPerformanceModel | PianoPerformanceModel,
         **kwargs,
     ) -> float:
         """Helper function to apply a context adjustment."""
@@ -271,20 +291,7 @@ class AdjustableLegacyBuilder(Builder):
                 altitude=self.crz_start_altitude,
                 aircraft_mass='max',
             ),
-            SimpleFlightRules.CRUISE,
-        )
-
-        lowest_cruise_altitude = (
-            min(self.ac_performance.performance_table(ROCDFilter.ZERO).fl)
-            * FL_TO_METERS
-        )
-
-        perf_low = self.ac_performance.evaluate(
-            AircraftState(
-                altitude=lowest_cruise_altitude,
-                aircraft_mass='min',
-            ),
-            SimpleFlightRules.CRUISE,
+            self.cruise_rules,
         )
 
         # Figure out startingMass components per AEIC v2:
@@ -343,7 +350,7 @@ class AdjustableLegacyBuilder(Builder):
                 approx_time=approx_time,
             )
         divert_mass = divert_dist / perf.true_airspeed * perf.fuel_flow
-        hold_mass = hold_time * perf_low.fuel_flow
+        hold_mass = hold_time * self.ac_performance.hold_fuel_flow
 
         starting_mass = (
             self.ac_performance.empty_mass
@@ -577,7 +584,7 @@ class AdjustableLegacyBuilder(Builder):
                     rate_of_climb=0,
                     aircraft_mass=pt.aircraft_mass,  # type: ignore
                 ),
-                SimpleFlightRules.CRUISE,
+                self.cruise_rules,
             )
 
             if self.weather is not None:

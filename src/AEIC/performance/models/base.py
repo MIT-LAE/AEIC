@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum, auto
 from functools import cached_property
 from typing import TYPE_CHECKING, ClassVar, Self
 
@@ -151,6 +152,14 @@ class PerformanceTableInput(TableInput):
         return self
 
 
+class ROCDFilter(Enum):
+    """Rate of climb/descent filter for performance table subsetting."""
+
+    NEGATIVE = auto()
+    ZERO = auto()
+    POSITIVE = auto()
+
+
 class BasePerformanceModel[RulesT](CIBaseModel, ABC):
     """Base class for aircraft performance models.
 
@@ -279,4 +288,10 @@ class BasePerformanceModel[RulesT](CIBaseModel, ABC):
     @abstractmethod
     def maximum_mass(self) -> float:
         """Aircraft maximum mass, to be implemented by subclasses."""
+        ...
+
+    @property
+    @abstractmethod
+    def hold_fuel_flow(self) -> float:
+        """Hold fuel flow [kg/s], to be implemented by subclasses"""
         ...

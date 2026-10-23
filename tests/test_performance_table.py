@@ -5,11 +5,8 @@ import pytest
 
 from AEIC.config import config
 from AEIC.performance.models import LegacyPerformanceModel, PerformanceModel
-from AEIC.performance.models.legacy import (
-    PerformanceTable,
-    PerformanceTableInput,
-    ROCDFilter,
-)
+from AEIC.performance.models.base import PerformanceTableInput, ROCDFilter
+from AEIC.performance.models.legacy import PerformanceTable
 from AEIC.performance.types import AircraftState, TableInput
 from AEIC.units import METERS_TO_FL
 

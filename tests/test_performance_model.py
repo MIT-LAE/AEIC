@@ -10,7 +10,7 @@ import pytest
 from AEIC.config import config
 from AEIC.performance.model_selector import SimplePerformanceModelSelector
 from AEIC.performance.models import LegacyPerformanceModel, PerformanceModel
-from AEIC.performance.models.legacy import ROCDFilter
+from AEIC.performance.models.base import ROCDFilter
 from AEIC.performance.types import AircraftState, SimpleFlightRules, ThrustMode
 
 
