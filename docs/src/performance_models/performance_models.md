@@ -1,5 +1,9 @@
 # Performance models
 
+```{eval-rst}
+.. py:module:: AEIC.performance
+```
+
 The classes in the {py:mod}`AEIC.performance` module take aircraft
 performance, missions, and emissions configuration data as input and produce
 data structures needed by trajectory solvers and the emissions pipeline. In

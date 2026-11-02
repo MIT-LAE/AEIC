@@ -158,6 +158,12 @@ and `PIANO_WRITE_SPEC`) that defines the field order and the key each field is
 written under. Writing a model type that has no write spec raises a
 `ValueError`.
 
+```{eval-rst}
+.. py:module:: AEIC.performance.model_builder
+
+.. autofunction:: AEIC.performance.model_builder.write_performance_model
+```
+
 Then:
 
  * tabular data becomes a trailing `[section]` block, and an empty table

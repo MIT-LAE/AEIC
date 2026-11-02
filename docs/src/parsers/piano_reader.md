@@ -22,6 +22,8 @@ The package is split into one reader per file, plus shared helpers:
 Most users should only need `PianoData` and `PianoOverrides`.
 
 ```{eval-rst}
+.. py:module:: AEIC.parsers.piano_reader
+
 .. autoclass:: AEIC.parsers.piano_reader.PianoData
     :members:
 ```

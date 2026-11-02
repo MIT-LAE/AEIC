@@ -96,7 +96,7 @@ class PianoClimbDescentMassAxis:
     the initial mass between them.
 
     Args:
-        burns (list[_PianoClimbDescentBurn]): Cumulative burn of each climb or
+        burns (list): Cumulative burn of each climb or
             descent, sorted by initial mass from light to heavy.
         phase (~AEIC.storage.FlightPhase): Flight phase of the table. Used in
             error messages.
