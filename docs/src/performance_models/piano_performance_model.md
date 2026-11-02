@@ -5,13 +5,6 @@ The {py:class}`PianoPerformanceModel
 performance model built from PIANO climb, cruise and descent exports. Files
 for this model type use `model_type = "piano"`.
 
-```{warning}
-The file format and the model builder are implemented, but performance
-evaluation is not: {py:meth}`evaluate_impl
-<AEIC.performance.models.PianoPerformanceModel.evaluate_impl>` raises
-`NotImplementedError`.
-```
-
 The source data is read by {py:mod}`AEIC.parsers.piano_reader`, which is
 documented in [PIANO reader](../parsers/piano_reader.md).
 
@@ -316,15 +309,34 @@ fuel_flow = 0.0 # kg/s - total aircraft fuel flow in hold
 
 ## Performance evaluation
 
-% TODO: fill this in when evaluate_impl is implemented:
-% - which flight rules class the model accepts (currently SimpleFlightRules);
-% - how the cruise Mach dimension is collapsed, and whether the reference Mach
-%   table drives that choice;
-% - whether the idle thrust table affects descent fuel flow.
+The {py:meth}`evaluate_impl
+<AEIC.performance.models.PianoPerformanceModel.evaluate_impl>` method
+computes performance data for a given aircraft state by interpolating tabulated
+data. PIANO performance data for cruise are performance points as a function of
+`(current_mass, FL, mach)`, while climb/descent profile data are a function of
+`(initial_mass, FL)`. These performance tables are ragged e.g. there is no guarantee
+that a cruise point with a given `current_mass` valid for a particular
+`(FL, mach)` is also valid for another value `current_mass_2` (for example: the aircraft is
+too heavy at `current_mass_2` to fly at the same FL). Interpolation is handled
+by a generic {py:class}`RaggedInterpolator <AEIC.performance.models.ragged.RaggedInterpolator>`
+helper class and its generic performance model counterpart
+{py:class}`RaggedPerformanceModel <AEIC.performance.models.ragged.RaggedPerformanceModel>` that
+ensures query points are always bounded by tabulated data.
 
-Not yet implemented. {py:meth}`evaluate_impl
-<AEIC.performance.models.PianoPerformanceModel.evaluate_impl>` raises
-`NotImplementedError`.
+For cruise, interpolation is trilinear in `(current_mass, FL, mach)` and otherwise is
+similar to the legacy model. For climb/descent, the state's current mass must first be converted
+to the corresponding initial mass for the phase that would have led to this current mass at the
+state's FL. Then data is interpolated in `(initial_mass, FL)` space to retrieve climb/descent
+performance.
+
+Evaluating the model also requires passing flight rules. For climb/descent,
+{py:class}`PianoPerformanceModel <AEIC.performance.models.piano.PianoPerformanceModel>`
+accepts `SimpleFlightRules.CLIMB` and `SimpleFlightRules.DESCENT`. For cruise
+given the additional degree of freedom in the Mach number, it requires passing
+{py:class}`PianoConstantMachCruise <AEIC.performance.types.PianoConstantMachCruise>` which
+specifies the Mach number to cruise at, as well as the minimum rate of climb at max climb rating
+considered to be acceptable for level cruise.
+
 
 ## API reference
 
@@ -333,6 +345,9 @@ Not yet implemented. {py:meth}`evaluate_impl
    :members:
    :exclude-members: model_config, model_type, require_operating_empty_mass,
       require_hold_flight_performance
+
+.. autoclass:: AEIC.performance.types.PianoConstantMachCruise
+   :members:
 
 .. autoclass:: AEIC.performance.models.piano.HoldPerformance
    :members:
