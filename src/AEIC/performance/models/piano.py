@@ -93,20 +93,22 @@ class PianoClimbDescentMassAxis:
     row's values are for the current mass `initial_mass - burn`. At the query
     flight level, the conversion finds the two neighbouring initial masses
     whose current masses are on each side of the query mass. It then interpolates
-    the initial mass between them."""
+    the initial mass between them.
+
+    Args:
+        burns (list[_PianoClimbDescentBurn]): Cumulative burn of each climb or
+            descent, sorted by initial mass from light to heavy.
+        phase (~AEIC.storage.FlightPhase): Flight phase of the table. Used in
+            error messages.
+
+    Raises:
+        ValueError: If at some row FL a heavier initial mass does not give
+            a heavier current mass than the lighter one next to it.
+    """
 
     def __init__(self, burns: list[_PianoClimbDescentBurn], phase: FlightPhase):
-        """Make the mass axis for one climb or descent table.
-
-        Args:
-            burns: Cumulative burn of each climb or descent, sorted by
-                initial mass from light to heavy.
-            phase: Flight phase of the table. Used in error messages.
-
-        Raises:
-            ValueError: If at some row FL a heavier initial mass does not give
-                a heavier current mass than the lighter one next to it.
-        """
+        """Make the mass axis for one climb or descent table. See the class
+        docstring for the arguments."""
         self._burns = burns
         self._phase = phase.name.lower()
         self._check_current_mass_order()
