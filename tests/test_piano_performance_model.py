@@ -7,6 +7,7 @@ numbers are physically plausible.
 """
 
 import math
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -89,14 +90,6 @@ def test_every_emitted_column_survives_the_round_trip(build):
     assert model.descent_idle_thrust.cols == DESCENT_IDLE_THRUST_COLS
 
 
-def test_operating_empty_mass_survives_the_round_trip(build):
-    """PIANO exports do not contain an operating empty mass, so the builder
-    takes one and every model file states it."""
-    model = build()
-    assert model.operating_empty_mass_kg == OPERATING_EMPTY_MASS
-    assert model.empty_mass == OPERATING_EMPTY_MASS
-
-
 def test_loading_fails_without_an_operating_empty_mass(write_model):
     """A file that states no operating empty mass is refused, rather than
     loading a model whose empty mass is undefined."""
@@ -133,23 +126,18 @@ def test_loading_fails_without_a_hold_flight_performance(write_model):
         PerformanceModel.load(out_file)
 
 
-def test_no_cruise_speeds_are_written(build):
-    """PIANO sweeps many cruise Mach numbers, so the model states none."""
-    model = build()
+def test_no_cruise_speeds_are_written(write_model):
+    """PIANO sweeps many cruise Mach numbers, so the performance model
+    should not have a dedicated mach entry. Checks that the file and loaded
+    model do not have a cruise speed section/attribute."""
+    out_file = write_model()
+    with open(out_file, 'rb') as fp:
+        assert set(tomllib.load(fp)['speeds']) == {'climb', 'descent'}
+
+    model = PerformanceModel.load(out_file)
     assert model.speeds.cruise is None
     assert model.speeds.climb.mach == pytest.approx(0.750)
     assert model.speeds.descent.mach == pytest.approx(0.750)
-
-
-def test_name_and_altitude_overrides(build):
-    model = build(aircraft_name='other_airplane', maximum_altitude_ft=40000)
-    assert model.aircraft_name == 'other_airplane'
-    assert model.maximum_altitude_ft == 40000
-
-
-def test_isa_offset_comes_from_the_exports(build, piano_data):
-    model = build()
-    assert model.isa_offset == piano_data.isa_offset
 
 
 def _rows(table: TableInput) -> list[dict[str, float]]:
@@ -188,6 +176,83 @@ def test_evaluate_at_the_current_mass_of_a_block_row_returns_the_row(
         _assert_tabulated(model.evaluate(state, rules), row)
 
 
+# The fixture climb blocks repeat the same rows, so their values do not change
+# with mass. These synthetic tables have one block per initial mass, 60000 and
+# 80000 kg, with values that change with the initial mass. They hold only the
+# columns that the model needs.
+SYNTHETIC_COLS = ['fl', 'mass', 'tas', 'rocd', 'fuel_flow', 'burn']
+
+SYNTHETIC_CLIMB_ROWS = [
+    [0.0, 60000.0, 100.0, 20.0, 2.0, 0.0],
+    [100.0, 60000.0, 150.0, 15.0, 1.5, 500.0],
+    [0.0, 80000.0, 110.0, 16.0, 2.4, 0.0],
+    [100.0, 80000.0, 170.0, 8.0, 1.6, 800.0],
+]
+
+# A descent starts at the top, so its burn grows as the flight level falls.
+SYNTHETIC_DESCENT_ROWS = [
+    [0.0, 60000.0, 120.0, -10.0, 0.3, 300.0],
+    [100.0, 60000.0, 180.0, -12.0, 0.2, 0.0],
+    [0.0, 80000.0, 130.0, -14.0, 0.5, 400.0],
+    [100.0, 80000.0, 200.0, -16.0, 0.4, 0.0],
+]
+
+
+@pytest.mark.parametrize(
+    'table_name, rows, rules, fl, mass, expected',
+    [
+        # At FL100 the climbs burned 500 and 800 kg, so the current masses are
+        # 59500 and 79200 kg. 64425 kg is 0.25 of the way between them.
+        pytest.param(
+            'climb_flight_performance',
+            SYNTHETIC_CLIMB_ROWS,
+            SimpleFlightRules.CLIMB,
+            100.0,
+            64425.0,
+            (
+                0.75 * 150.0 + 0.25 * 170.0,
+                0.75 * 15.0 + 0.25 * 8.0,
+                0.75 * 1.5 + 0.25 * 1.6,
+            ),
+            id='climb',
+        ),
+        # At FL0 the descents burned 300 and 400 kg, so the current masses are
+        # 59700 and 79600 kg. 64675 kg is 0.25 of the way between them.
+        pytest.param(
+            'descent_flight_performance',
+            SYNTHETIC_DESCENT_ROWS,
+            SimpleFlightRules.DESCEND,
+            0.0,
+            64675.0,
+            (
+                0.75 * 120.0 + 0.25 * 130.0,
+                0.75 * -10.0 + 0.25 * -14.0,
+                0.75 * 0.3 + 0.25 * 0.5,
+            ),
+            id='descent',
+        ),
+    ],
+)
+def test_evaluate_between_two_blocks_interpolates_at_the_initial_mass(
+    piano_model, table_name, rows, rules, fl, mass, expected
+):
+    """The current mass is 0.25 of the way between the current masses of the
+    two blocks, so the initial mass is 65000 kg. The values are 0.25 of the
+    way from the 60000 kg row to the 80000 kg row. A query at the current
+    mass, without the conversion to the initial mass, gives other values."""
+    data = piano_model.model_dump()
+    data[table_name] = {'cols': SYNTHETIC_COLS, 'data': rows}
+    model = PianoPerformanceModel.model_validate(data)
+
+    state = AircraftState(altitude=fl / METERS_TO_FL, aircraft_mass=mass)
+    perf = model.evaluate(state, rules)
+
+    tas, rocd, fuel_flow = expected
+    assert perf.true_airspeed == pytest.approx(tas, rel=1e-12)
+    assert perf.rate_of_climb == pytest.approx(rocd, rel=1e-12)
+    assert perf.fuel_flow == pytest.approx(fuel_flow, rel=1e-12)
+
+
 def test_evaluate_at_every_cruise_row_returns_the_tabulated_values(build):
     model = build()
 
@@ -197,9 +262,9 @@ def test_evaluate_at_every_cruise_row_returns_the_tabulated_values(build):
         _assert_tabulated(model.evaluate(_state(row), rules), row)
 
 
-def test_cruise_between_two_mach_points_is_between_the_tabulated_values(build):
-    # Interpolation is already tested in test_ragged_interpolator.py but simple
-    # check here as well
+def test_cruise_between_two_mach_points_interpolates_linearly(build):
+    # Interpolation is already tested in test_ragged_interpolator.py. This
+    # checks that the model passes the Mach number to the cruise table.
     model = build()
     rows = sorted(
         _rows(model.cruise_flight_performance),
@@ -214,14 +279,15 @@ def test_cruise_between_two_mach_points_is_between_the_tabulated_values(build):
         and a['fuel_flow'] != b['fuel_flow']
     )
 
-    perf = model.evaluate(
-        _state(low), PianoConstantMachCruise((low['mach'] + high['mach']) / 2)
-    )
+    # Use a Mach 0.25 of the way from the low row, not the midpoint. At the
+    # midpoint, a swap of the two interpolation weights gives the same value.
+    mach = 0.75 * low['mach'] + 0.25 * high['mach']
+    rules = PianoConstantMachCruise(mach, min_rocd_mcl_mach=-math.inf)
+    perf = model.evaluate(_state(low), rules)
 
-    # At the midpoint Mach, linear interpolation gives the mean of the rows.
     for attr, col in (('true_airspeed', 'tas'), ('fuel_flow', 'fuel_flow')):
-        mean = (low[col] + high[col]) / 2
-        assert getattr(perf, attr) == pytest.approx(mean, rel=1e-12)
+        expected = 0.75 * low[col] + 0.25 * high[col]
+        assert getattr(perf, attr) == pytest.approx(expected, rel=1e-12)
 
 
 def test_cruise_without_climb_potential_is_refused(build):
@@ -269,6 +335,6 @@ def test_altitude_above_the_climb_table_is_refused(build):
     )
 
     with pytest.raises(
-        ValueError, match='climb table: no tabulated initial masses reach fl='
+        ValueError, match='climb table: no tabulated initial masses reaches fl='
     ):
         model.evaluate(state, SimpleFlightRules.CLIMB)

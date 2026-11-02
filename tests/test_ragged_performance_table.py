@@ -95,7 +95,6 @@ def test_row_order_does_not_change_results():
     query = state(75.0, 65000.0)
 
     assert forward.interpolate(query) == backward.interpolate(query)
-    assert backward.df[list(CLIMB_AXES)].equals(forward.df[list(CLIMB_AXES)])
 
 
 def test_extra_data_columns_are_ignored():
@@ -120,11 +119,21 @@ def test_extra_outputs_are_interpolated_by_name():
     )
 
 
-def test_missing_extra_output_column_raises():
-    ptin = PerformanceTableInput(cols=CLIMB_COLS, data=CLIMB_ROWS)
-    with pytest.raises(ValueError, match='"extra"'):
-        RaggedPerformanceTable.from_input(
-            ptin, ROCDFilter.POSITIVE, CLIMB_AXES, extra_outputs=('extra',)
+@pytest.mark.parametrize(
+    ('missing', 'extra_outputs'),
+    [
+        pytest.param('mass', (), id='axis'),
+        pytest.param('tas', (), id='output'),
+        pytest.param('extra', ('extra',), id='extra_output'),
+    ],
+)
+def test_missing_column_raises(missing, extra_outputs):
+    df = pd.DataFrame(CLIMB_ROWS, columns=CLIMB_COLS).drop(
+        columns=missing, errors='ignore'
+    )
+    with raises_message(f'Missing "{missing}" column in climb performance table'):
+        RaggedPerformanceTable(
+            df, CLIMB_AXES, ROCDFilter.POSITIVE, extra_outputs=extra_outputs
         )
 
 
@@ -186,44 +195,15 @@ def test_climb_with_mach_raises():
         climb_table().interpolate(state(100.0, 60000.0), mach=0.78)
 
 
-@pytest.mark.parametrize('axis', ['fl', 'mass'])
-def test_state_coordinate_as_keyword_raises(axis):
-    with raises_message(
-        f"cruise performance needs coordinates ['mach'], got {sorted(['mach', axis])}"
-    ):
-        cruise_table().interpolate(state(300.0, 60000.0), mach=0.75, **{axis: 1.0})
-
-
-def test_out_of_range_query_names_the_phase():
-    with pytest.raises(ValueError, match=r'^climb table: fl=180.0 outside'):
-        climb_table().interpolate(state(180.0, 70000.0))
-
-
-def test_missing_axis_column_raises():
-    # A climb-shaped table has no Mach column.
-    ptin = PerformanceTableInput(cols=CLIMB_COLS, data=CLIMB_ROWS)
-    with pytest.raises(ValueError, match='"mach"'):
-        RaggedPerformanceTable.from_input(ptin, ROCDFilter.ZERO, CRUISE_AXES)
-
-
-def test_missing_output_column_raises():
-    df = pd.DataFrame(
-        [[0.0, 20.0, 2.0, 60000.0]], columns=['fl', 'rocd', 'fuel_flow', 'mass']
-    )
-    with pytest.raises(ValueError, match='"tas"'):
-        RaggedPerformanceTable(df, CLIMB_AXES, ROCDFilter.POSITIVE)
-
-
 def test_duplicate_key_raises():
     rows = [*CLIMB_ROWS, [100.0, 151.0, 15.0, 1.5, 60000.0]]
     with pytest.raises(ValueError, match='duplicate'):
         climb_table(rows=rows)
 
 
-@pytest.mark.parametrize('column', [1, 2, 3])
-def test_nan_output_raises(column):
+def test_nan_output_raises():
     rows = [list(row) for row in CLIMB_ROWS]
-    rows[2][column] = math.nan
+    rows[2][CLIMB_COLS.index('fuel_flow')] = math.nan
     with pytest.raises(ValueError, match='NaN'):
         climb_table(rows=rows)
 

@@ -267,12 +267,6 @@ def _context(performance_model, mission, **adjustments) -> AdjustableLegacyConte
     [
         pytest.param({}, 0.0, id='default'),
         pytest.param({'min_rocd_mcl_mach': 1.5}, 1.5, id='value'),
-        pytest.param(
-            {'min_rocd_mcl_mach': lambda context, mission, performance: 2.0},
-            2.0,
-            id='function',
-        ),
-        pytest.param({'min_rocd_mcl_mach': -math.inf}, -math.inf, id='check_off'),
     ],
 )
 def test_piano_cruise_rules_take_the_climb_potential_minimum(

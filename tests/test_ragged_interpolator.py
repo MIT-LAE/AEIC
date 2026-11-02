@@ -281,6 +281,22 @@ TABLE_WITH_GAP = table(
 )
 
 
+# At Mach 0.72, the valid masses are [1, 1] and [3, 5] at FL300, and [1, 4]
+# at FL400. Mass 2 at FL300 and mass 5 at FL400 do not cover Mach 0.72.
+TABLE_WITH_GAPS_AT_TWO_FLS = table(
+    ('fl', 'mass', 'mach', 'fuel_flow'),
+    [
+        (fl, mass, mach, fl / 100 + mass + mach)
+        for fl, start_mach_by_mass in (
+            (300.0, {1.0: 0.70, 2.0: 0.75, 3.0: 0.70, 4.0: 0.70, 5.0: 0.70}),
+            (400.0, {1.0: 0.70, 2.0: 0.70, 3.0: 0.70, 4.0: 0.70, 5.0: 0.75}),
+        )
+        for mass, start_mach in start_mach_by_mass.items()
+        for mach in (start_mach, 0.80)
+    ],
+)
+
+
 def ragged_2d() -> RaggedInterpolator:
     return RaggedInterpolator(RAGGED_2D, ('mass', 'fl'), ('tas',), 'test')
 
@@ -357,6 +373,20 @@ def test_valid_range_has_a_gap_where_a_middle_node_does_not_cover():
     ]
 
 
+def test_valid_range_between_two_nodes_intersects_their_gapped_ranges():
+    """Between FL300 and FL400, a mass must be valid at both FLs. The first
+    FL300 interval ends before the FL400 interval, so the intersection must
+    move to the next FL300 interval and not stop."""
+    interp = RaggedInterpolator(
+        TABLE_WITH_GAPS_AT_TWO_FLS, ('fl', 'mass', 'mach'), ('fuel_flow',), 'test'
+    )
+
+    assert interp.valid_range('mass', fl=350.0, mach=0.72) == [
+        Interval(1.0, 1.0),
+        Interval(3.0, 4.0),
+    ]
+
+
 def test_valid_range_of_a_one_axis_table():
     df = table(('fl', 'tas'), [(0.0, 1.0), (10.0, 2.0)])
     interp = RaggedInterpolator(df, ('fl',), ('tas',), 'test')
@@ -371,22 +401,16 @@ def test_valid_range_of_an_empty_table_is_empty():
     assert interp.valid_range('fl') == []
 
 
-def test_valid_range_of_an_unknown_axis_raises():
-    with raises_message("test table: no axis \"mach\" in ('mass', 'fl')"):
-        ragged_2d().valid_range('mach', fl=10.0)
-
-
 @pytest.mark.parametrize(
-    'coords',
+    ('axis', 'coords', 'error', 'match'),
     [
-        pytest.param({}, id='missing'),
-        pytest.param({'fl': 10.0, 'mass': 1.0}, id='free_axis_given'),
-        pytest.param({'fl': 10.0, 'mach': 0.8}, id='unknown'),
+        pytest.param('mach', {'fl': 10.0}, ValueError, 'no axis "mach"', id='axis'),
+        pytest.param('mass', {}, TypeError, 'expected coordinates', id='coords'),
     ],
 )
-def test_valid_range_with_wrong_coordinates_raises(coords):
-    with pytest.raises(TypeError, match='expected coordinates'):
-        ragged_2d().valid_range('mass', **coords)
+def test_valid_range_with_wrong_arguments_raises(axis, coords, error, match):
+    with pytest.raises(error, match=match):
+        ragged_2d().valid_range(axis, **coords)
 
 
 @pytest.mark.parametrize(
@@ -395,6 +419,9 @@ def test_valid_range_with_wrong_coordinates_raises(coords):
         pytest.param(RAGGED_2D, ('mass', 'fl'), id='2d'),
         pytest.param(RAGGED_3D, ('fl', 'mass', 'mach'), id='3d'),
         pytest.param(TABLE_WITH_GAP, ('mass', 'mach'), id='gapped'),
+        pytest.param(
+            TABLE_WITH_GAPS_AT_TWO_FLS, ('fl', 'mass', 'mach'), id='gapped_3d'
+        ),
     ],
 )
 def test_valid_range_matches_evaluation(df, axes):

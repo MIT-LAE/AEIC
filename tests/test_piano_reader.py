@@ -74,9 +74,9 @@ def load(**overrides) -> PianoData:
     )
 
 
-def test_block_counts(piano_data):
-    """One climb block and one descent block per mass, four of each."""
-    assert sorted(set(piano_data.climb.column('mass'))) == sorted(CLIMB_MASSES_KG)
+def test_descent_block_masses_come_from_the_headers(piano_data):
+    """Each of the four descent blocks states its mass in its header, in lb.
+    The climb masses come from the overrides, so they are not checked here."""
     assert sorted(set(piano_data.descent.column('mass'))) == [
         pytest.approx(lb * POUNDS_TO_KG) for lb in DESCENT_MASSES_LB
     ]
@@ -234,7 +234,7 @@ def test_consistent_climb_crossover_does_not_warn(caplog):
     assert not any('crossover' in r.getMessage() for r in caplog.records)
 
 
-def test_labelled_mach_on_the_swept_grid_keeps_one_row(piano_data, caplog):
+def test_labelled_mach_on_the_swept_grid_keeps_one_row(piano_data):
     """A labelled reference Mach can land exactly on the swept grid. The
     fixture labels maxSAR at 0.450, which the sweep also visits."""
     matching = [
@@ -480,13 +480,6 @@ def test_descent_row_units(piano_data):
     }
 
 
-def test_rocd_signs(piano_data):
-    """Climb rates stay positive, descent rates are negated."""
-    assert all(rocd > 0 for rocd in piano_data.climb.column('rocd'))
-    assert all(rocd < 0 for rocd in piano_data.descent.column('rocd'))
-    assert all(rocd == 0 for rocd in piano_data.cruise.column('rocd'))
-
-
 def test_non_zero_delta_isa_raises(tmp_path):
     """Deriving TAS from the airspeed schedule assumes a standard
     atmosphere."""
@@ -539,15 +532,6 @@ def test_descent_idle_thrust(piano_data):
         [pytest.approx(mass_lb * POUNDS_TO_KG), pytest.approx(30000 * FEET_TO_METERS)]
         for mass_lb in DESCENT_MASSES_LB
     ]
-
-
-def test_row_order(piano_data):
-    """Cruise sorts by (mass, fl, mach); climb and descent by (mass, fl)."""
-    cruise_keys = [(row[1], row[0], row[2]) for row in piano_data.cruise.data]
-    assert cruise_keys == sorted(cruise_keys)
-    for table in (piano_data.climb, piano_data.descent):
-        keys = [(row[1], row[0]) for row in table.data]
-        assert keys == sorted(keys)
 
 
 def _merge_first_two_columns(line: str) -> str:

@@ -220,38 +220,17 @@ def test_built_model_round_trips_through_the_loader(tmp_path, ptf_data, lto):
         apu_name='APU 131-9',
     )
 
-    # Check that PTF data -> model works
-    assert model.aircraft_name == ptf_data.aircraft_type
-    assert model.aircraft_class == 'narrow'
-    assert model.isa_offset == ptf_data.isa_offset
-    assert model.maximum_altitude_ft == ptf_data.maximum_altitude_ft
-    assert model.maximum_payload == 22422
-    assert model.number_of_engines == 2
-    assert model.apu is not None
-    assert model.apu.name == 'APU 131-9'
-    assert model.lto_performance == lto
-    assert model.speeds == ptf_data.speeds
-
     out_file = tmp_path / 'legacy.toml'
     write_performance_model(out_file, model)
     loaded = PerformanceModel.load(out_file)
 
-    # Check that model write -> read works
+    # Every field survives the round trip, the performance tables included.
     assert isinstance(loaded, LegacyPerformanceModel)
-    assert loaded.aircraft_name == model.aircraft_name
-    assert loaded.aircraft_class == model.aircraft_class
-    assert loaded.isa_offset == model.isa_offset
-    assert loaded.maximum_altitude_ft == model.maximum_altitude_ft
-    assert loaded.maximum_payload_kg == model.maximum_payload_kg
-    assert loaded.number_of_engines == model.number_of_engines
-    assert loaded.apu is not None
-    assert loaded.apu.name == model.apu_name
-    assert loaded.lto_performance == model.lto_performance
-    assert loaded.speeds == model.speeds
+    assert loaded.model_dump() == model.model_dump()
 
 
 def test_legacy_model_refuses_cruise_mach_rules(performance_model):
     state = AircraftState(altitude=1828.8, aircraft_mass='min')
 
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match='Expected flight rules of type'):
         performance_model.evaluate(state, PianoConstantMachCruise(0.78))

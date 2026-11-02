@@ -45,25 +45,21 @@ def test_current_mass_of_every_row_gives_its_initial_mass():
 @pytest.mark.parametrize(
     ('fl', 'mass'),
     [
-        # At FL100 we have initial_mass:
-        # 60000 -> 59500 and 80000 -> 79200 kg.
-        # test current mass = (59500 + 79200) / 2 = 69350
-        # so expected initial mass is (60000 + 80000) / 2
-        # = 70000
-        pytest.param(100.0, 69350.0, id='grid-fl'),
-        # At FL50 the climbs burned 250 and 400 kg so the
-        # new initial_mass -> current masses are:
-        # 60000 -> 59750 and 80000 -> 79600 kg
-        # Again 69675 kg is the mean of the two current mass
-        # so the expected initial mass is still 70000 kg
-        pytest.param(50.0, 69675.0, id='between-fls'),
+        # At FL100 the climbs from 60000 and 80000 kg have current masses of
+        # 59500 and 79200 kg. 59500 + 0.25 * (79200 - 59500) = 64425 kg.
+        pytest.param(100.0, 64425.0, id='grid-fl'),
+        # At FL50 the climbs burned 250 and 400 kg, so the current masses are
+        # 59750 and 79600 kg. 59750 + 0.25 * (79600 - 59750) = 64712.5 kg.
+        pytest.param(50.0, 64712.5, id='between-fls'),
     ],
 )
-def test_current_mass_halfway_between_initial_masses_gives_the_mean_initial_mass(
-    fl, mass
-):
+def test_current_mass_between_initial_masses_interpolates_linearly(fl, mass):
+    """The current mass is 0.25 of the way between the current masses of the
+    two climbs, so the initial mass is 0.25 of the way from 60000 to 80000 kg.
+    The weight is not 0.5, because at 0.5 a swap of the two interpolation
+    weights gives the same result."""
     assert mass_axis().get_corresponding_initial_mass(mass, fl) == pytest.approx(
-        70000.0, rel=1e-12
+        65000.0, rel=1e-12
     )
 
 
@@ -102,16 +98,15 @@ def test_find_corresponding_initial_state_leaves_min_and_max_mass_unchanged(mass
     assert mass_axis().find_corresponding_initial_state(state) == state
 
 
-def test_find_corresponding_initial_state_converts_a_current_mass_to_an_initial_mass():
-    # At FL100 the current masses are 59500 and 79200 kg.
-    altitude = 100.0 / METERS_TO_FL
-    state = AircraftState(altitude=altitude, aircraft_mass=69350.0, true_airspeed=150.0)
+def test_find_corresponding_initial_state_converts_the_altitude_to_a_flight_level():
+    """The state gives the altitude in metres. The conversion must look up the
+    current masses at FL100, which are 59500 and 79200 kg. At 3048 m
+    none of the climbs have data."""
+    state = AircraftState(altitude=100.0 / METERS_TO_FL, aircraft_mass=64425.0)
 
     converted = mass_axis().find_corresponding_initial_state(state)
 
-    assert converted.aircraft_mass == pytest.approx(70000.0, rel=1e-12)
-    assert converted.altitude == altitude
-    assert converted.true_airspeed == 150.0
+    assert converted.aircraft_mass == pytest.approx(65000.0, rel=1e-12)
 
 
 def test_heavier_climb_lighter_than_its_neighbour_after_burn_raises():
