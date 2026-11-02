@@ -15,8 +15,7 @@ values:
  * `model_type = "tasopt"`: performance model based on TASOPT simulations.
 
 ```{note}
-Legacy and PIANO model files can both be generated and loaded. So far, only
-the legacy performance model can be evaluated.
+Only Legacy and PIANO model files can be generated, loaded and evaluated.
 ```
 
 ## Creating performance model files
@@ -55,6 +54,12 @@ properties.
 | `--number-of-engines` | Integer, 1 to 8 | Yes | | Number of engines on the aircraft. |
 | `--maximum-payload` | Integer | Yes | | Maximum payload [kg]. |
 | `--apu-name` | String | No | | APU name. Must be in the APU database. |
+
+With `--lto-source edb`, the engine UID must be in the "Gaseous Emissions and
+Smoke" sheet of the engine database. If the engine has no nvPM measurements,
+the command writes `EI_nvPM = 0.0` and `EI_nvPM_N = 0.0` for each LTO mode.
+At runtime, the emissions calculation then estimates the nvPM emission indices
+from the smoke numbers with the SCOPE11 method.
 
 ### `legacy` subcommand
 
@@ -96,6 +101,7 @@ schedules all come from the PTF file.
 | `--climb-cas-low-kts` | Float | No | Climb calibrated airspeed below FL100 [knots]. |
 | `--climb-cas-high-kts` | Float | No | Climb calibrated airspeed above FL100 [knots]. |
 | `--climb-mach` | Float | No | Climb Mach number above the crossover altitude. |
+| `--extrapolate-climb-to-halt` / `--no-extrapolate-climb-to-halt` | Flag | No | Extrapolate each climb block that PIANO halted above its last row to the halt altitude. On by default. |
 | `--aircraft-name` | String | No | Aircraft name, overriding the cruise file title. |
 | `--maximum-altitude-ft` | Integer | No | Maximum altitude [feet], overriding the highest altitude climbed. |
 
@@ -109,6 +115,14 @@ The optional options fill gaps that some PIANO files may have due to missing hea
  * The three schedule options override the climb airspeed schedule the file
    contains. Either all three are supplied or none. If none of the
    climbs in the provided file have a header, all three options are required.
+
+If PIANO halts a climb because the rate of climb gets too low, the last row
+of the block can be below the halt altitude. By default, the reader adds an
+extrapolated row at the halt altitude, so that the last row of the tabulated
+data matches the simulated climb ceiling.
+Use `--no-extrapolate-climb-to-halt` to keep only the rows
+that PIANO writes. See [PIANO reader](../parsers/piano_reader.md) for the
+method.
 
 A complete invocation looks like this:
 

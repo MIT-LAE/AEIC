@@ -13,10 +13,11 @@ aircraft performance outputs.
 
 ```{note}
 Some of the details of how this works will probably change as we implement
-new kinds of performance models. So far, only the table-based legacy
-performance model, intended to replicate the behavior of the old Matlab code,
-can be evaluated, but the organization of the performance table classes is
-intended to be extensible to more complex use cases.
+new kinds of performance models. So far, two table-based models can be
+evaluated: the legacy performance model, intended to replicate the behavior
+of the old Matlab code, and the PIANO performance model. The organization of
+the performance table classes is intended to be extensible to more complex
+use cases.
 ```
 
 ```{toctree}
