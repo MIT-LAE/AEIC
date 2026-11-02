@@ -390,12 +390,14 @@ that is valid at the flight level.
 ### Cruise
 
 Cruise interpolates the cruise table at `(fl, mass, mach)`, with the Mach
-number from the `PianoConstantMachCruise` flight rules. Here the mass is the
+number from the {py:class}`PianoConstantMachCruise
+<AEIC.performance.types.PianoConstantMachCruise>` flight rules. Here the mass is the
 current mass of the aircraft, same as in the legacy model.
 
 Cruise also checks that the rate of climb at max climb thrust rating is larger
 than what is considered the minimum potential rate of climb for level cruise.
-This minimum is set in `PianoConstantMachCruise`. If the climb potential is
+This minimum is set in {py:class}`PianoConstantMachCruise
+<AEIC.performance.types.PianoConstantMachCruise>`. If the climb potential is
 below that value, the model raises `ValueError`.
 
 ## API reference
@@ -405,9 +407,6 @@ below that value, the model raises `ValueError`.
    :members:
    :exclude-members: model_config, model_type, require_operating_empty_mass,
       require_hold_flight_performance, build_performance_tables
-
-.. autoclass:: AEIC.performance.types.PianoConstantMachCruise
-   :members:
 
 .. autodata:: AEIC.performance.models.piano.PianoFlightRules
 
