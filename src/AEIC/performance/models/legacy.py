@@ -343,8 +343,10 @@ class LegacyPerformanceModel(BasePerformanceModel[SimpleFlightRules]):
 
     @property
     def hold_fuel_flow(self) -> float:
-        """Hold fuel flow [kg/s] is the cruise fuel flow at the lowest
-        altitude in the legacy performance table"""
+        """Hold fuel flow [kg/s].
+
+        This is the cruise fuel flow at the lowest cruise flight level in the
+        performance table, at the minimum mass."""
         lowest_cruise_altitude = (
             min(self.performance_table(ROCDFilter.ZERO).fl) * FL_TO_METERS
         )

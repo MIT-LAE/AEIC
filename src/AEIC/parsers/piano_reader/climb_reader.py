@@ -115,7 +115,8 @@ def _parse_climb(
     altitude. See `_extrapolate_to_halt`.
 
     Returns the climb speed schedule, the ISA offset, the highest altitude
-    reached by any block and the climb table.
+    reached by any block and the climb table. The highest altitude includes
+    any extrapolated row at a halt altitude.
     """
     lines = _read_lines(path)
     nox_col = _nox_column(lines)

@@ -47,7 +47,8 @@ class PianoData:
     """Aircraft name, from the cruise table title."""
 
     maximum_altitude_ft: int
-    """Highest altitude any climb block reaches [feet]."""
+    """Highest altitude any climb block reaches [feet].
+    Includes rows to halt altitude if any."""
 
     isa_offset: int
     """ISA temperature offset [deg C]."""

@@ -103,16 +103,23 @@ class AdjustableLegacyContext(Context):
           3 hours if not provided (additional parameter: `approx_time`,
           approximate flight time based on distance and nominal cruise speed).
 
-        - `cruise_mach`: Simple adjustment for cruise Mach number. If not
-          provided, cruise uses `SimpleFlightRules.CRUISE`.
-          Not supported by legacy performance models.
-          Required by performance models with a Mach-swept cruise table (PIANO).
+        - `cruise_mach`: Simple adjustment for cruise Mach number.
+          A PIANO performance model requires it, and cruise uses
+          `PianoConstantMachCruise` at this Mach number.
+          A legacy performance model does not accept it, and cruise uses
+          `SimpleFlightRules.CRUISE`.
 
         - `min_rocd_mcl_mach`: Simple adjustment for the minimum rate of climb
-          at maximum climb thrust in cruise. If not provided, cruise uses the
-          default of `PianoConstantMachCruise.min_rocd_mcl_mach`. Give
-          `-math.inf` to turn off the check.
-          Not supported by legacy performance models.
+          at maximum climb thrust in cruise [m/s]. PIANO only. If not
+          provided, cruise uses the default of
+          `PianoConstantMachCruise.min_rocd_mcl_mach`. Give `-math.inf` to
+          turn off the check.
+          A legacy performance model does not support this argument.
+
+        Raises:
+            ValueError: If a PIANO performance model has no `cruise_mach`, or
+                if a legacy performance model has a `cruise_mach` or a
+                `min_rocd_mcl_mach`.
         """
 
         # The context constructor calculates all of the fixed information used
@@ -295,7 +302,10 @@ class AdjustableLegacyContext(Context):
 
 class AdjustableLegacyBuilder(Builder):
     """Model for determining flight trajectories using the legacy method
-    from AEIC v2.
+    from AEIC v2, with per-flight adjustments.
+
+    Accepts `LegacyPerformanceModel` or `PianoPerformanceModel`.
+    For a PIANO model, the `cruise_mach` adjustment passed in `fly` is required.
 
     Args:
         options (Options): Base options for trajectory building.

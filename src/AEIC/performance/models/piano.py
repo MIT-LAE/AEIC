@@ -96,7 +96,12 @@ class PianoClimbDescentMassAxis:
     the initial mass between them."""
 
     def __init__(self, burns: list[_PianoClimbDescentBurn], phase: FlightPhase):
-        """Fuel burn profiles for climb/descent in order of initial mass.
+        """Make the mass axis for one climb or descent table.
+
+        Args:
+            burns: Cumulative burn of each climb or descent, sorted by
+                initial mass from light to heavy.
+            phase: Flight phase of the table. Used in error messages.
 
         Raises:
             ValueError: If at some row FL a heavier initial mass does not give
@@ -269,9 +274,12 @@ class PianoPerformanceModel(BasePerformanceModel[PianoFlightRules]):
     hold_flight_performance: HoldPerformance
     """Hold performance.
 
-    PIANO can simulate hold performance directly, unlike BADA/LegacyPerformanceModel
-    which uses cruise performance at FL30. The representative datapoint is the initial
-    fuel flow for a hold at 3000 ft with 'normal landing' mass and minimizing drag.
+    PIANO can simulate a hold directly. `LegacyPerformanceModel` instead uses
+    the cruise fuel flow at the lowest tabulated cruise flight level and the
+    minimum mass. The representative datapoint is the initial fuel flow for a
+    hold at 3000 ft with 'normal landing' mass and minimizing drag.
+
+    PIANO exports do not contain this value, so it must be supplied.
     """
 
     @model_validator(mode='before')
@@ -371,7 +379,9 @@ class PianoPerformanceModel(BasePerformanceModel[PianoFlightRules]):
 
     @property
     def hold_fuel_flow(self) -> float:
-        """Hold fuel flow [kg/s] is directly estimated by PIANO"""
+        """Hold fuel flow [kg/s], from `hold_flight_performance`.
+
+        PIANO estimates this value directly."""
         return self.hold_flight_performance.fuel_flow
 
     @property
