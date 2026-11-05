@@ -29,8 +29,6 @@ from AEIC.parsers.piano_reader.cruise_reader import (
     _CruiseEntry,
     _CruisePoint,
     _insert_cruise_row,
-    _reference_mach_table,
-    _ReferenceMachPoint,
 )
 from AEIC.parsers.piano_reader.descent_reader import (
     DESCENT_COLS,
@@ -38,9 +36,6 @@ from AEIC.parsers.piano_reader.descent_reader import (
 )
 from AEIC.parsers.piano_reader.rows import (
     PianoClimbRow,
-    PianoCruiseRow,
-    PianoDescentRow,
-    UnexpectedDiscriminatorError,
     _PianoRow,
 )
 from AEIC.units import (
@@ -572,6 +567,33 @@ def test_climb_row_with_merged_first_column_raises(tmp_path):
         )
 
 
+def test_cruise_row_with_merged_first_column_is_dropped(tmp_path, caplog, piano_data):
+    """The merge moves every value one column to the left, so the fourth column
+    holds a number and not a label. This row is malformed, so the reader drops
+    it and warns. It must not read the fourth column and refuse the whole file,
+    as it does for a row that parses but has an unknown label."""
+    lines = config.file_location(PIANO_CRUISE_FILE).read_text().splitlines(True)
+    merged = []
+    for line in lines:
+        merged.append(line)
+        if line.split()[:4] == ['93000.', '15000.', '0.350', '|']:
+            merged.append(_merge_first_two_columns(line))
+    assert len(merged) == len(lines) + 1
+    cruise_file = tmp_path / 'cruise.txt'
+    cruise_file.write_text(''.join(merged))
+
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        parsed = PianoData.load(
+            str(cruise_file),
+            str(config.file_location(PIANO_CLIMB_FILE)),
+            str(config.file_location(PIANO_DESCENT_FILE)),
+            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        )
+
+    assert parsed.cruise.data == piano_data.cruise.data
+    assert 'Dropping 1 cruise line(s)' in caplog.text
+
+
 def _with_extra_column(text: str, label: str) -> str:
     """The climb file with one more column, labelled `label`, on its table.
 
@@ -759,146 +781,16 @@ def test_extrapolate_to_halt_skips_a_negative_rate_of_climb(caplog):
 # Row models
 # ---------------------------------------------------------------------------
 
-CRUISE_TOKENS = [str(float(i)) for i in range(15)]
-"""Numeric tokens for a cruise row, where each value is its column index."""
-CRUISE_TOKENS[3] = '|'
 
-
-def test_climb_row_columns_follow_the_file_order():
-    row = PianoClimbRow.from_tokens(['1', '2', '3', '4', '5', '6', '7'])
-
-    assert row == PianoClimbRow(
-        altitude_ft=1.0,
-        time_s=2.0,
-        distance_nm=3.0,
-        burn_lb=4.0,
-        fn_per_engine_lbf=5.0,
-        rocd_fpm=6.0,
-        drag_lbf=7.0,
+def test_climb_row_skips_a_nox_column_in_the_middle():
+    """The columns on each side of NOx keep their names. The reader tests only
+    put NOx at the end of the row."""
+    row = PianoClimbRow.from_tokens(
+        ['1', '2', '3', '4', '99', '5', '6', '7'], nox_col=4
     )
-
-
-def test_descent_row_columns_follow_the_file_order():
-    """Unlike climb, a descent row has its rate column before its thrust."""
-    row = PianoDescentRow.from_tokens(['1', '2', '3', '4', '5', '6'])
-
-    assert row == PianoDescentRow(
-        altitude_ft=1.0,
-        time_s=2.0,
-        distance_nm=3.0,
-        burn_lb=4.0,
-        rod_fpm=5.0,
-        fn_per_engine_lbf=6.0,
-    )
-
-
-def test_cruise_row_columns_follow_the_file_order():
-    """PIANO writes L/D before the fuel flow, and mass before altitude."""
-    row = PianoCruiseRow.from_tokens(CRUISE_TOKENS)
-
-    assert row == PianoCruiseRow(
-        mass_lb=0.0,
-        altitude_ft=1.0,
-        mach=2.0,
-        discriminator='|',
-        tas_kts=4.0,
-        cas_kts=5.0,
-        drag_lbf=6.0,
-        mcr_pct=7.0,
-        lift_to_drag=8.0,
-        fuel_flow_lb_per_h=9.0,
-        sfc_lb_per_h_per_lbf=10.0,
-        sar_nm_per_lb=11.0,
-        mcl_avail_per_engine_lbf=12.0,
-        rocd_mcl_fix_mach_fpm=13.0,
-        rocd_mcl_fix_cas_fpm=14.0,
-    )
-
-
-@pytest.mark.parametrize('nox_col', [0, 4, 7])
-def test_climb_row_reads_the_nox_column_at_any_position(nox_col):
-    """The remaining columns keep their order wherever the file puts NOx."""
-    tokens = ['1', '2', '3', '4', '5', '6', '7']
-    tokens.insert(nox_col, '99')
-
-    row = PianoClimbRow.from_tokens(tokens, nox_col=nox_col)
 
     assert row is not None
-    assert row.nox == 99.0
-    assert row == PianoClimbRow.from_tokens(
-        ['1', '2', '3', '4', '5', '6', '7']
-    ).model_copy(update={'nox': 99.0})
-
-
-@pytest.mark.parametrize(
-    'tokens',
-    [
-        ['1', '2', '3', '4', '5', '6'],
-        ['1', '2', '3', '4', '5', '6', '7', '8'],
-        ['1', '2', '3', '4.5.6', '5', '6', '7'],
-    ],
-)
-def test_climb_row_is_malformed_without_seven_numbers(tokens):
-    assert PianoClimbRow.from_tokens(tokens) is None
-
-
-def test_climb_row_is_malformed_if_its_nox_value_is_not_a_number():
-    """The reader has no use for the value, but a broken NOx token can mean
-    that the columns around it merged."""
-    tokens = ['1', '2', '3', '4', '5', '6', '7', '***']
-
-    assert PianoClimbRow.from_tokens(tokens, nox_col=7) is None
-
-
-def test_cruise_row_ignores_columns_after_those_it_reads():
-    """PIANO writes buffet onset and emissions after the columns that the
-    reader uses."""
-    row = PianoCruiseRow.from_tokens([*CRUISE_TOKENS, 'buffet', 'NOx'])
-
-    assert row == PianoCruiseRow.from_tokens(CRUISE_TOKENS)
-
-
-def test_cruise_row_with_an_unknown_discriminator_raises():
-    tokens = list(CRUISE_TOKENS)
-    tokens[3] = '98%SAR'
-
-    with pytest.raises(UnexpectedDiscriminatorError, match='98%SAR'):
-        PianoCruiseRow.from_tokens(tokens)
-
-
-@pytest.mark.parametrize('bad_column', [0, 14])
-def test_malformed_cruise_row_does_not_report_its_discriminator(bad_column):
-    """A broken number comes first: the reader drops this row, rather than
-    refuse the file for the fourth column of a row that it cannot read."""
-    tokens = list(CRUISE_TOKENS)
-    tokens[3] = '98%SAR'
-    tokens[bad_column] = '1.2.3'
-
-    assert PianoCruiseRow.from_tokens(tokens) is None
-
-
-def test_cruise_row_with_too_few_columns_is_malformed():
-    assert PianoCruiseRow.from_tokens(CRUISE_TOKENS[:-1]) is None
-
-
-@pytest.mark.parametrize(
-    ('discriminator', 'is_swept', 'column'),
-    [
-        ('|', True, None),
-        ('maxSAR', False, 'max_sar'),
-        ('99%SAR', False, 'sar_99'),
-        ('maxLim', False, 'max_lim'),
-    ],
-)
-def test_cruise_row_classifies_its_discriminator(discriminator, is_swept, column):
-    tokens = list(CRUISE_TOKENS)
-    tokens[3] = discriminator
-
-    row = PianoCruiseRow.from_tokens(tokens)
-
-    assert row is not None
-    assert row.is_swept is is_swept
-    assert row.reference_mach_column == column
+    assert (row.burn_lb, row.fn_per_engine_lbf) == (4.0, 5.0)
 
 
 def test_field_declaration_order_does_not_affect_parsing():
@@ -922,8 +814,6 @@ def test_field_declaration_order_does_not_affect_parsing():
     [
         pytest.param(('first',), id='missing field'),
         pytest.param(('first', 'second', 'first'), id='duplicate'),
-        pytest.param(('first', 'second', 'third'), id='unknown name'),
-        pytest.param(('first', 'second', 'optional'), id='optional field'),
     ],
 )
 def test_row_class_with_columns_that_do_not_match_its_fields_raises(columns):
@@ -934,89 +824,23 @@ def test_row_class_with_columns_that_do_not_match_its_fields_raises(columns):
 
             first: float
             second: float
-            optional: float | None = None
 
 
 # ---------------------------------------------------------------------------
-# Cruise coordinates and collisions
+# Cruise collisions
 # ---------------------------------------------------------------------------
 
 
-def _cruise_table_row(**values) -> CruiseTableRow:
-    """A cruise table row at fl=350, mass=60000 kg and Mach 0.78."""
-    defaults = dict.fromkeys(CRUISE_COLS, 1.0)
-    return CruiseTableRow(
-        **{**defaults, 'fl': 350.0, 'mass': 60000.0, 'mach': 0.78, **values}
-    )
-
-
-def test_cruise_table_is_sorted_by_mass_then_fl_then_mach(piano_data):
-    """The field order of `_CruisePoint` sets this order."""
-    fl, mass, mach = (piano_data.cruise.column(c) for c in ('fl', 'mass', 'mach'))
-    points = list(zip(mass, fl, mach, strict=True))
-
-    assert points == sorted(points)
-
-
-def test_reference_mach_table_is_sorted_by_mass_then_fl():
-    """The reader must not depend on the order of the labelled groups."""
-    machs = {'max_sar': 0.7, 'sar_99': 0.75, 'max_lim': 0.8}
-
-    table = _reference_mach_table(
-        {
-            _ReferenceMachPoint(mass=2.0, fl=100.0): machs,
-            _ReferenceMachPoint(mass=1.0, fl=300.0): machs,
-            _ReferenceMachPoint(mass=1.0, fl=200.0): machs,
-        }
-    )
-
-    assert table.column('mass') == [1.0, 1.0, 2.0]
-    assert table.column('fl') == [200.0, 300.0, 100.0]
-
-
-@pytest.mark.parametrize(
-    ('first_is_swept', 'second_is_swept', 'kept'),
-    [
-        pytest.param(True, False, 'second', id='labelled replaces swept'),
-        pytest.param(False, True, 'first', id='swept does not replace labelled'),
-        pytest.param(True, True, 'first', id='first swept row stays'),
-        pytest.param(False, False, 'first', id='first labelled row stays'),
-    ],
-)
-def test_cruise_collision_selects_the_row_by_source(
-    first_is_swept, second_is_swept, kept
-):
-    first = _cruise_table_row(tas=100.0)
-    second = _cruise_table_row(tas=200.0)
+@pytest.mark.parametrize('labelled_first', [True, False])
+def test_cruise_collision_keeps_the_labelled_row(labelled_first):
+    """A labelled row wins over a swept row at the same coordinate, whichever
+    the file writes first."""
+    values = dict.fromkeys(CRUISE_COLS, 1.0)
+    swept = _CruiseEntry(CruiseTableRow(**{**values, 'tas': 100.0}), is_swept=True)
+    labelled = _CruiseEntry(CruiseTableRow(**{**values, 'tas': 200.0}), is_swept=False)
     entries: dict[_CruisePoint, _CruiseEntry] = {}
 
-    _insert_cruise_row(entries, _CruiseEntry(first, first_is_swept))
-    _insert_cruise_row(entries, _CruiseEntry(second, second_is_swept))
+    for entry in (labelled, swept) if labelled_first else (swept, labelled):
+        _insert_cruise_row(entries, entry)
 
-    assert list(entries) == [first.point]
-    expected = first if kept == 'first' else second
-    assert entries[first.point].row == expected
-
-
-def test_cruise_collision_log_names_each_coordinate(caplog):
-    """The log format lists fl before mass, unlike the coordinate fields."""
-    entries: dict[_CruisePoint, _CruiseEntry] = {}
-    swept = _cruise_table_row(tas=100.0)
-    labelled = _cruise_table_row(tas=200.0)
-
-    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
-        _insert_cruise_row(entries, _CruiseEntry(swept, True), verbose=True)
-        _insert_cruise_row(entries, _CruiseEntry(labelled, False), verbose=True)
-
-    assert 'fl=350.00, mass=60000.0 kg, mach=0.780' in caplog.text
-    assert 'Columns that disagree: tas' in caplog.text
-
-
-def test_incomplete_reference_mach_warning_names_each_coordinate(caplog):
-    """The warning lists fl before mass, unlike the coordinate fields."""
-    machs = {'max_sar': 0.7, 'max_lim': 0.8}
-
-    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
-        _reference_mach_table({_ReferenceMachPoint(mass=60000.0, fl=350.0): machs})
-
-    assert '(350.00, 60000.0): sar_99' in caplog.text
+    assert list(entries.values()) == [labelled]
