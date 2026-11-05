@@ -17,15 +17,7 @@ import pytest
 from AEIC.config import config
 from AEIC.parsers.piano_reader import PianoData, PianoOverrides
 from AEIC.parsers.piano_reader.climb_reader import (
-    _CLIMB_ROW_COLS,
     CLIMB_COLS,
-    IDX_ALT,
-    IDX_BURN,
-    IDX_DIST,
-    IDX_DRAG,
-    IDX_FN,
-    IDX_ROCD,
-    IDX_TIME,
     _extrapolate_to_halt,
 )
 from AEIC.parsers.piano_reader.common import _Schedule
@@ -36,6 +28,12 @@ from AEIC.parsers.piano_reader.cruise_reader import (
 from AEIC.parsers.piano_reader.descent_reader import (
     DESCENT_COLS,
     DESCENT_IDLE_THRUST_COLS,
+)
+from AEIC.parsers.piano_reader.rows import (
+    ClimbRow,
+    CruiseRow,
+    DescentRow,
+    UnexpectedDiscriminatorError,
 )
 from AEIC.units import (
     FEET_TO_METERS,
@@ -650,7 +648,7 @@ def _fuel_flow_lbps(h: float) -> float:
     return 2.0 - 1.0e-4 * (h - 31000.0)
 
 
-def _synthetic_rows(altitudes_ft: list[float]) -> list[list[float]]:
+def _synthetic_rows(altitudes_ft: list[float]) -> list[ClimbRow]:
     """Climb rows in PIANO units on known functions of altitude.
 
     Each interval takes 100 s, and burns the fuel flow at its midpoint
@@ -658,24 +656,31 @@ def _synthetic_rows(altitudes_ft: list[float]) -> list[list[float]]:
     average fuel flow of each interval is the fuel flow at its midpoint. The
     first row is off every trend, so a fit that uses it fails the tests.
     """
-    first = [0.0] * _CLIMB_ROW_COLS
-    first[IDX_ALT] = altitudes_ft[0]
-    first[IDX_FN] = 99999.0
-    first[IDX_ROCD] = 9999.0
-    first[IDX_DRAG] = 99999.0
-    rows = [first]
+    rows = [
+        ClimbRow(
+            altitude_ft=altitudes_ft[0],
+            time_s=0.0,
+            distance_nm=0.0,
+            burn_lb=0.0,
+            fn_per_engine_lbf=99999.0,
+            rocd_fpm=9999.0,
+            drag_lbf=99999.0,
+        )
+    ]
     for h in altitudes_ft[1:]:
         below = rows[-1]
-        row = [0.0] * _CLIMB_ROW_COLS
-        row[IDX_ALT] = h
-        row[IDX_TIME] = below[IDX_TIME] + 100.0
-        row[IDX_DIST] = below[IDX_DIST] + 10.0
-        midpoint = (below[IDX_ALT] + h) / 2
-        row[IDX_BURN] = below[IDX_BURN] + 100.0 * _fuel_flow_lbps(midpoint)
-        row[IDX_FN] = _fn_lbf(h)
-        row[IDX_ROCD] = _rocd_fpm(h)
-        row[IDX_DRAG] = _drag_lbf(h)
-        rows.append(row)
+        midpoint = (below.altitude_ft + h) / 2
+        rows.append(
+            ClimbRow(
+                altitude_ft=h,
+                time_s=below.time_s + 100.0,
+                distance_nm=below.distance_nm + 10.0,
+                burn_lb=below.burn_lb + 100.0 * _fuel_flow_lbps(midpoint),
+                fn_per_engine_lbf=_fn_lbf(h),
+                rocd_fpm=_rocd_fpm(h),
+                drag_lbf=_drag_lbf(h),
+            )
+        )
     return rows
 
 
@@ -689,24 +694,24 @@ def test_extrapolate_to_halt_follows_the_fitted_forms():
 
     assert row is not None
     last = rows[-1]
-    assert row[IDX_ALT] == 35000.0
-    assert row[IDX_ROCD] == pytest.approx(_rocd_fpm(35000.0))
-    assert row[IDX_FN] == pytest.approx(_fn_lbf(35000.0))
-    assert row[IDX_DRAG] == pytest.approx(_drag_lbf(35000.0))
+    assert row.altitude_ft == 35000.0
+    assert row.rocd_fpm == pytest.approx(_rocd_fpm(35000.0))
+    assert row.fn_per_engine_lbf == pytest.approx(_fn_lbf(35000.0))
+    assert row.drag_lbf == pytest.approx(_drag_lbf(35000.0))
 
     # dh / ROCD for a rate of climb linear from 400 to 200 ft/min over 1000 ft.
     d_time = 60.0 * 1000.0 / (200.0 - 400.0) * math.log(200.0 / 400.0)
-    assert row[IDX_TIME] == pytest.approx(last[IDX_TIME] + d_time, rel=1e-4)
+    assert row.time_s == pytest.approx(last.time_s + d_time, rel=1e-4)
     # Integral of FF dh / ROCD, with u = h - 31000 feet from 3000 to 4000:
     # (2 - 1e-4 u) / (1000 - 0.2 u) = 5e-4 + 1.5 / (1000 - 0.2 u).
     d_burn = 60.0 * (5e-4 * 1000.0 + 1.5 / 0.2 * math.log(400.0 / 200.0))
-    assert row[IDX_BURN] == pytest.approx(last[IDX_BURN] + d_burn, rel=1e-4)
+    assert row.burn_lb == pytest.approx(last.burn_lb + d_burn, rel=1e-4)
 
     # The climb is at constant Mach and close to level, so the ground speed is
     # close to the TAS at the middle of the step.
     tas_kts = 0.75 * speed_of_sound_at_altitude(34500.0 * FEET_TO_METERS)
     tas_kts /= KNOTS_TO_MPS
-    assert row[IDX_DIST] - last[IDX_DIST] == pytest.approx(
+    assert row.distance_nm - last.distance_nm == pytest.approx(
         tas_kts * d_time / 3600, rel=1e-2
     )
 
@@ -717,7 +722,7 @@ def test_extrapolate_to_halt_needs_two_usable_fuel_flows(caplog):
     crossover, and the last interval spans no time. Only one interval is left
     for the fuel flow, which is too few to fit."""
     rows = _synthetic_rows([30000.0, 31000.0, 32000.0, 33000.0])
-    rows[-1][IDX_TIME] = rows[-2][IDX_TIME]
+    rows[-1] = rows[-1].model_copy(update={'time_s': rows[-2].time_s})
 
     with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
         row = _extrapolate_to_halt('block', rows, 34000.0, SCHEDULE)
@@ -740,3 +745,149 @@ def test_extrapolate_to_halt_skips_a_negative_rate_of_climb(caplog):
         and 'skipping extrapolation' in r.getMessage()
         for r in caplog.records
     )
+
+
+# ---------------------------------------------------------------------------
+# Row models
+# ---------------------------------------------------------------------------
+
+CRUISE_TOKENS = [str(float(i)) for i in range(15)]
+"""Numeric tokens for a cruise row, where each value is its column index."""
+CRUISE_TOKENS[3] = '|'
+
+
+def test_climb_row_columns_follow_the_file_order():
+    row = ClimbRow.from_tokens(['1', '2', '3', '4', '5', '6', '7'])
+
+    assert row == ClimbRow(
+        altitude_ft=1.0,
+        time_s=2.0,
+        distance_nm=3.0,
+        burn_lb=4.0,
+        fn_per_engine_lbf=5.0,
+        rocd_fpm=6.0,
+        drag_lbf=7.0,
+    )
+
+
+def test_descent_row_columns_follow_the_file_order():
+    """Unlike climb, a descent row has its rate column before its thrust."""
+    row = DescentRow.from_tokens(['1', '2', '3', '4', '5', '6'])
+
+    assert row == DescentRow(
+        altitude_ft=1.0,
+        time_s=2.0,
+        distance_nm=3.0,
+        burn_lb=4.0,
+        rod_fpm=5.0,
+        fn_per_engine_lbf=6.0,
+    )
+
+
+def test_cruise_row_columns_follow_the_file_order():
+    """PIANO writes L/D before the fuel flow, and mass before altitude."""
+    row = CruiseRow.from_tokens(CRUISE_TOKENS)
+
+    assert row == CruiseRow(
+        mass_lb=0.0,
+        altitude_ft=1.0,
+        mach=2.0,
+        discriminator='|',
+        tas_kts=4.0,
+        cas_kts=5.0,
+        drag_lbf=6.0,
+        mcr_pct=7.0,
+        lift_to_drag=8.0,
+        fuel_flow_lb_per_h=9.0,
+        sfc_lb_per_h_per_lbf=10.0,
+        sar_nm_per_lb=11.0,
+        mcl_avail_per_engine_lbf=12.0,
+        rocd_mcl_fix_mach_fpm=13.0,
+        rocd_mcl_fix_cas_fpm=14.0,
+    )
+
+
+@pytest.mark.parametrize('nox_col', [0, 4, 7])
+def test_climb_row_reads_the_nox_column_at_any_position(nox_col):
+    """The remaining columns keep their order wherever the file puts NOx."""
+    tokens = ['1', '2', '3', '4', '5', '6', '7']
+    tokens.insert(nox_col, '99')
+
+    row = ClimbRow.from_tokens(tokens, nox_col=nox_col)
+
+    assert row is not None
+    assert row.nox == 99.0
+    assert row == ClimbRow.from_tokens(['1', '2', '3', '4', '5', '6', '7']).model_copy(
+        update={'nox': 99.0}
+    )
+
+
+@pytest.mark.parametrize(
+    'tokens',
+    [
+        ['1', '2', '3', '4', '5', '6'],
+        ['1', '2', '3', '4', '5', '6', '7', '8'],
+        ['1', '2', '3', '4.5.6', '5', '6', '7'],
+    ],
+)
+def test_climb_row_is_malformed_without_seven_numbers(tokens):
+    assert ClimbRow.from_tokens(tokens) is None
+
+
+def test_climb_row_is_malformed_if_its_nox_value_is_not_a_number():
+    """The reader has no use for the value, but a broken NOx token can mean
+    that the columns around it merged."""
+    tokens = ['1', '2', '3', '4', '5', '6', '7', '***']
+
+    assert ClimbRow.from_tokens(tokens, nox_col=7) is None
+
+
+def test_cruise_row_ignores_columns_after_those_it_reads():
+    """PIANO writes buffet onset and emissions after the columns that the
+    reader uses."""
+    row = CruiseRow.from_tokens([*CRUISE_TOKENS, 'buffet', 'NOx'])
+
+    assert row == CruiseRow.from_tokens(CRUISE_TOKENS)
+
+
+def test_cruise_row_with_an_unknown_discriminator_raises():
+    tokens = list(CRUISE_TOKENS)
+    tokens[3] = '98%SAR'
+
+    with pytest.raises(UnexpectedDiscriminatorError, match='98%SAR'):
+        CruiseRow.from_tokens(tokens)
+
+
+@pytest.mark.parametrize('bad_column', [0, 14])
+def test_malformed_cruise_row_does_not_report_its_discriminator(bad_column):
+    """A broken number comes first: the reader drops this row, rather than
+    refuse the file for the fourth column of a row that it cannot read."""
+    tokens = list(CRUISE_TOKENS)
+    tokens[3] = '98%SAR'
+    tokens[bad_column] = '1.2.3'
+
+    assert CruiseRow.from_tokens(tokens) is None
+
+
+def test_cruise_row_with_too_few_columns_is_malformed():
+    assert CruiseRow.from_tokens(CRUISE_TOKENS[:-1]) is None
+
+
+@pytest.mark.parametrize(
+    ('discriminator', 'is_swept', 'column'),
+    [
+        ('|', True, None),
+        ('maxSAR', False, 'max_sar'),
+        ('99%SAR', False, 'sar_99'),
+        ('maxLim', False, 'max_lim'),
+    ],
+)
+def test_cruise_row_classifies_its_discriminator(discriminator, is_swept, column):
+    tokens = list(CRUISE_TOKENS)
+    tokens[3] = discriminator
+
+    row = CruiseRow.from_tokens(tokens)
+
+    assert row is not None
+    assert row.is_swept is is_swept
+    assert row.reference_mach_column == column

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import re
+from functools import partial
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -24,6 +25,7 @@ from AEIC.parsers.piano_reader.common import (
     _split_blocks,
     _tas_from_schedule,
 )
+from AEIC.parsers.piano_reader.rows import ClimbRow
 from AEIC.performance.types import SpeedData, TableInput
 from AEIC.units import (
     FEET_TO_METERS,
@@ -72,16 +74,6 @@ _CLIMB_SCHEDULE_CROSS_CHECK_TOLERANCE = 0.001
 # crossover of its CAS and Mach up to 0.1%
 _CLIMB_CROSSOVER_CROSS_CHECK_TOLERANCE = 0.001
 
-# Columns of a PIANO climb row, once any NOx column is dropped
-IDX_ALT = 0  # Alt. [feet]
-IDX_TIME = 1  # Time [s], cumulative
-IDX_DIST = 2  # Dist. [nautical miles], cumulative
-IDX_BURN = 3  # Burn [lb], cumulative
-IDX_FN = 4  # FN/eng [lbf]
-IDX_ROCD = 5  # R.o.C. [feet/min]
-IDX_DRAG = 6  # Drag [lbf]
-_CLIMB_ROW_COLS = 7
-
 # The line of column labels that opens a climb table, and the label of the
 # NOx column some exports add to it.
 _CLIMB_LABELS_RE = re.compile(r'^\s*Alt\.')
@@ -120,8 +112,10 @@ def _parse_climb(
     """
     lines = _read_lines(path)
     nox_col = _nox_column(lines)
-    row_cols = _CLIMB_ROW_COLS if nox_col is None else _CLIMB_ROW_COLS + 1
-    blocks = _split_blocks(lines, 'Climb details', row_cols, drop_col=nox_col)
+    row_cols = len(ClimbRow.columns(nox_col))
+    blocks = _split_blocks(
+        lines, 'Climb details', partial(ClimbRow.from_tokens, nox_col=nox_col)
+    )
 
     isa_offset = _parse_isa_offset(lines)
     masses = _climb_masses(blocks, overrides)
@@ -142,18 +136,18 @@ def _parse_climb(
         tas, rocd, d_time, d_distance, fuel_flow = _derived_columns(rows, schedule)
         _cross_check_tas(label, tas, d_distance, d_time, rocd)
         _cross_check_fuel_burn(
-            label, rows[-1][IDX_BURN] * POUNDS_TO_KG, block.header_lines
+            label, rows[-1].burn_lb * POUNDS_TO_KG, block.header_lines
         )
 
         halt_ft = _halt_altitude_ft(block)
-        if halt_ft is not None and halt_ft - rows[-1][IDX_ALT] > _HALT_GAP_MIN_FT:
+        if halt_ft is not None and halt_ft - rows[-1].altitude_ft > _HALT_GAP_MIN_FT:
             if not extrapolate_to_halt:
                 logger.info(
                     '%s: PIANO halted the climb at %.0f feet, %.0f feet above '
                     'the last row, so the block stops at its last row',
                     label,
                     halt_ft,
-                    halt_ft - rows[-1][IDX_ALT],
+                    halt_ft - rows[-1].altitude_ft,
                 )
             else:
                 row = _extrapolate_to_halt(label, rows, halt_ft, schedule)
@@ -164,7 +158,7 @@ def _parse_climb(
                         'halt altitude',
                         label,
                         halt_ft,
-                        halt_ft - rows[-1][IDX_ALT],
+                        halt_ft - rows[-1].altitude_ft,
                     )
                     rows = [*rows, row]
                     tas, rocd, d_time, d_distance, fuel_flow = _derived_columns(
@@ -172,7 +166,7 @@ def _parse_climb(
                     )
 
         maximum_altitude_ft = max(
-            maximum_altitude_ft, max(row[IDX_ALT] for row in rows)
+            maximum_altitude_ft, max(row.altitude_ft for row in rows)
         )
 
         for i, row in enumerate(rows):
@@ -181,21 +175,21 @@ def _parse_climb(
                     '%s: dropping the row at %.0f feet, whose fuel flow '
                     'difference spans no time so is not defined',
                     label,
-                    row[IDX_ALT],
+                    row.altitude_ft,
                 )
                 continue
             data.append(
                 [
-                    row[IDX_ALT] / 100,
+                    row.altitude_ft / 100,
                     mass,
                     tas[i],
                     rocd[i],
                     fuel_flow[i],
-                    row[IDX_TIME],
-                    row[IDX_DIST] * NAUTICAL_MILES_TO_METERS,
-                    row[IDX_BURN] * POUNDS_TO_KG,
-                    row[IDX_FN] * POUNDS_FORCE_TO_NEWTONS,
-                    row[IDX_DRAG] * POUNDS_FORCE_TO_NEWTONS,
+                    row.time_s,
+                    row.distance_nm * NAUTICAL_MILES_TO_METERS,
+                    row.burn_lb * POUNDS_TO_KG,
+                    row.fn_per_engine_lbf * POUNDS_FORCE_TO_NEWTONS,
+                    row.drag_lbf * POUNDS_FORCE_TO_NEWTONS,
                 ]
             )
 
@@ -211,24 +205,26 @@ def _parse_climb(
 
 
 def _derived_columns(
-    rows: list[list[float]], schedule: _Schedule
+    rows: list[ClimbRow], schedule: _Schedule
 ) -> tuple[list[float], list[float], list[float], list[float], list[float | None]]:
     """TAS [m/s], rate of climb [m/s], the per-row time [s] and distance [m]
     steps, and the fuel flow [kg/s] of a climb block.
 
     The fuel flow of a row is None if it is not defined, see
     `_row_fuel_flows`."""
-    tas = [_tas_from_schedule(row[IDX_ALT] * FEET_TO_METERS, schedule) for row in rows]
-    rocd = [row[IDX_ROCD] * FPM_TO_MPS for row in rows]
-    d_time = _deltas([row[IDX_TIME] for row in rows])
-    d_distance = _deltas([row[IDX_DIST] * NAUTICAL_MILES_TO_METERS for row in rows])
+    tas = [
+        _tas_from_schedule(row.altitude_ft * FEET_TO_METERS, schedule) for row in rows
+    ]
+    rocd = [row.rocd_fpm * FPM_TO_MPS for row in rows]
+    d_time = _deltas([row.time_s for row in rows])
+    d_distance = _deltas([row.distance_nm * NAUTICAL_MILES_TO_METERS for row in rows])
     fuel_flow = _row_fuel_flows(
-        [row[IDX_TIME] for row in rows], [row[IDX_BURN] * POUNDS_TO_KG for row in rows]
+        [row.time_s for row in rows], [row.burn_lb * POUNDS_TO_KG for row in rows]
     )
     return tas, rocd, d_time, d_distance, fuel_flow
 
 
-def _halt_altitude_ft(block: _Block) -> float | None:
+def _halt_altitude_ft(block: _Block[ClimbRow]) -> float | None:
     """Altitude at which PIANO halted a block's climb [feet], or None if the
     climb reached its target. PIANO writes the halt message just before the
     table of the block it applies to, so it is in that block's header lines."""
@@ -237,8 +233,8 @@ def _halt_altitude_ft(block: _Block) -> float | None:
 
 
 def _extrapolate_to_halt(
-    label: str, rows: list[list[float]], halt_ft: float, schedule: _Schedule
-) -> list[float] | None:
+    label: str, rows: list[ClimbRow], halt_ft: float, schedule: _Schedule
+) -> ClimbRow | None:
     """Extrapolate a halted climb block to its halt altitude.
 
     PIANO halts a climb when its rate of climb gets too low, but tabulated values
@@ -257,12 +253,12 @@ def _extrapolate_to_halt(
       integral of the ground speed over that time, and burn is the integral
       of the fuel flow over that time.
 
-    Returns the row in the units and column order of the PIANO table, or
-    None if there are fewer than three rows above the crossover, fewer than
-    two fuel flows to fit, or if the rate of climb, net thrust, drag or fuel
-    flow at the halt altitude is not positive.
+    Returns the row in the units of the PIANO table, or None if there are fewer
+    than three rows above the crossover, fewer than two fuel flows to fit, or if
+    the rate of climb, net thrust, drag or fuel flow at the halt altitude is not
+    positive.
     """
-    above = [row for row in rows if row[IDX_ALT] > schedule.crossover_ft]
+    above = [row for row in rows if row.altitude_ft > schedule.crossover_ft]
     fuel_flow = _interval_fuel_flows(rows, schedule.crossover_ft)
 
     # Check we have enough data points to extrapolate
@@ -279,11 +275,13 @@ def _extrapolate_to_halt(
 
     # Construct interpolants for all variables
     rocd_fpm = _polynomial_through(
-        [(row[IDX_ALT], row[IDX_ROCD]) for row in above[-2:]]
+        [(row.altitude_ft, row.rocd_fpm) for row in above[-2:]]
     )
-    fn_lbf = _polynomial_through([(row[IDX_ALT], row[IDX_FN]) for row in above[-2:]])
+    fn_lbf = _polynomial_through(
+        [(row.altitude_ft, row.fn_per_engine_lbf) for row in above[-2:]]
+    )
     drag_lbf = _polynomial_through(
-        [(row[IDX_ALT], row[IDX_DRAG]) for row in above[-3:]]
+        [(row.altitude_ft, row.drag_lbf) for row in above[-3:]]
     )
     ff_lbfps = _polynomial_through(fuel_flow[-2:])
 
@@ -312,7 +310,7 @@ def _extrapolate_to_halt(
 
     # Time and distance are cumulative metrics so we need to integrate
     # dt/dh = 1 / ROCD and ground_speed * dt/dh, over some discretization of dh
-    altitude_ft = np.linspace(last[IDX_ALT], halt_ft, _HALT_GAP_INTEGRATION_POINTS)
+    altitude_ft = np.linspace(last.altitude_ft, halt_ft, _HALT_GAP_INTEGRATION_POINTS)
 
     rocd_mps = np.array([rocd_fpm(h) for h in altitude_ft]) * FPM_TO_MPS
     # We need dt/dh in s/ft to integrate with dh in ft
@@ -334,19 +332,19 @@ def _extrapolate_to_halt(
 
     # Everything needs to be in PIANO raw data units
     # ft, s, nm, lb, lbf, fp/min, lbf
-    row = [0.0] * _CLIMB_ROW_COLS
-    row[IDX_ALT] = halt_ft
-    row[IDX_TIME] = last[IDX_TIME] + d_time
-    row[IDX_DIST] = last[IDX_DIST] + d_distance_m / NAUTICAL_MILES_TO_METERS
-    row[IDX_BURN] = last[IDX_BURN] + d_burn
-    row[IDX_FN] = values['net thrust']
-    row[IDX_ROCD] = values['rocd']
-    row[IDX_DRAG] = values['drag']
-    return row
+    return ClimbRow(
+        altitude_ft=halt_ft,
+        time_s=last.time_s + d_time,
+        distance_nm=last.distance_nm + d_distance_m / NAUTICAL_MILES_TO_METERS,
+        burn_lb=last.burn_lb + d_burn,
+        fn_per_engine_lbf=values['net thrust'],
+        rocd_fpm=values['rocd'],
+        drag_lbf=values['drag'],
+    )
 
 
 def _interval_fuel_flows(
-    rows: list[list[float]], crossover_ft: float
+    rows: list[ClimbRow], crossover_ft: float
 ) -> list[tuple[float, float]]:
     """(Altitude [feet], fuel flow [lb/s]) of each climb interval above the
     crossover, in row order.
@@ -357,11 +355,11 @@ def _interval_fuel_flows(
     """
     return [
         (
-            (below[IDX_ALT] + row[IDX_ALT]) / 2,
-            (row[IDX_BURN] - below[IDX_BURN]) / (row[IDX_TIME] - below[IDX_TIME]),
+            (below.altitude_ft + row.altitude_ft) / 2,
+            (row.burn_lb - below.burn_lb) / (row.time_s - below.time_s),
         )
         for below, row in zip(rows, rows[1:])
-        if below[IDX_ALT] > crossover_ft and row[IDX_TIME] != below[IDX_TIME]
+        if below.altitude_ft > crossover_ft and row.time_s != below.time_s
     ]
 
 
@@ -395,7 +393,7 @@ def _nox_column(lines: list[str]) -> int | None:
         if _CLIMB_LABELS_RE.match(line) is None:
             continue
         labels = line.split()
-        if len(labels) != _CLIMB_ROW_COLS + 1:
+        if len(labels) != len(ClimbRow.columns()) + 1:
             return None
         for i, label in enumerate(labels):
             if _NOX_LABEL_RE.match(label) is not None:
@@ -423,14 +421,16 @@ def _parse_isa_offset(lines: list[str]) -> int:
     return int(offset)
 
 
-def _header_climb_mass(block: _Block) -> float | None:
+def _header_climb_mass(block: _Block[ClimbRow]) -> float | None:
     """Initial mass a climb block's header states [kg], or None if it states
     none. PIANO omits the header of a block whose climb halted."""
     match = _find(_CLIMB_MASS_RE, block.header_lines)
     return None if match is None else float(match.group(1)) * POUNDS_TO_KG
 
 
-def _climb_masses(blocks: list[_Block], overrides: PianoOverrides) -> list[float]:
+def _climb_masses(
+    blocks: list[_Block[ClimbRow]], overrides: PianoOverrides
+) -> list[float]:
     """Resolve the initial mass of each climb block, in file order.
 
     A supplied mass wins over the header, because a user supplies masses
@@ -478,7 +478,9 @@ def _climb_masses(blocks: list[_Block], overrides: PianoOverrides) -> list[float
     return masses
 
 
-def _climb_schedule(blocks: list[_Block], overrides: PianoOverrides) -> _Schedule:
+def _climb_schedule(
+    blocks: list[_Block[ClimbRow]], overrides: PianoOverrides
+) -> _Schedule:
     """Resolve the climb airspeed schedule.
 
     The schedule is a property of the file, so the first block that has one supplies it

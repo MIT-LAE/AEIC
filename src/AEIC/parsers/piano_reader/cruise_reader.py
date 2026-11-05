@@ -8,6 +8,7 @@ import math
 import re
 
 from AEIC.parsers.piano_reader.common import _find, _is_data_row, _read_lines
+from AEIC.parsers.piano_reader.rows import CruiseRow, UnexpectedDiscriminatorError
 from AEIC.performance.types import TableInput
 from AEIC.units import (
     FPM_TO_MPS,
@@ -42,32 +43,6 @@ CRUISE_COLS = [
 
 # Cruise reference Mach table columns
 CRUISE_REFERENCE_MACH_COLS = ['fl', 'mass', 'max_sar', 'sar_99', 'max_lim']
-
-# PIANO cruise reference Mach specific points mapped to their column name
-_REFERENCE_MACH_LABELS = {
-    'maxSAR': 'max_sar',
-    '99%SAR': 'sar_99',
-    'maxLim': 'max_lim',
-}
-
-# Columns of a PIANO cruise row. PIANO writes more columns after these
-# (buffet onset and emissions), which the reader does not use.
-IDX_MASS = 0  # Mass [lb]
-IDX_ALT = 1  # Altitude [feet]
-IDX_MACH = 2  # Mach
-IDX_DISCRIMINATOR = 3  # "|" for a swept row, or a reference Mach label
-IDX_TAS = 4  # TAS [knots]
-IDX_CAS = 5  # CAS [knots]
-IDX_DRAG = 6  # Drag [lbf]
-IDX_MCR_PCT = 7  # MCR.% [percent of maximum cruise thrust]
-IDX_LIFT_TO_DRAG = 8  # L/D
-IDX_FUEL_FLOW = 9  # FuelFlow [lb/h]
-IDX_SFC = 10  # SFC [lb/h/lbf]
-IDX_SAR = 11  # SAR [nautical miles/lb]
-IDX_MCL_AVAIL = 12  # MCL/eng avail. [lbf]
-IDX_ROCD_MCL_FIX_MACH = 13  # RoC@MCL fix.Mach [feet/min]
-IDX_ROCD_MCL_FIX_CAS = 14  # RoC@MCL fix.CAS [feet/min]
-_CRUISE_ROW_COLS = 15
 
 _AIRCRAFT_NAME_RE = re.compile(r'Cruise table for\s+(.+?)\s*$')
 
@@ -107,56 +82,54 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
         tokens = line.split()
         if not _is_data_row(tokens):
             continue
-        values = _cruise_values(tokens)
-        if values is None:
+        try:
+            # ValidationError means that the row is malformed
+            # and CruiseRow.from_tokens(tokens) returns None.
+            # This is fine and we skip the row.
+            # But if a there is an unexpected discriminator it means
+            # that the file itself does not use the convention we expect
+            # so raise ValueError instead.
+            piano_row = CruiseRow.from_tokens(tokens)
+        except UnexpectedDiscriminatorError as error:
+            raise ValueError(f'Cruise row in {path} {error}: {line.strip()}') from error
+        if piano_row is None:
             malformed.append(line)
             continue
 
-        # The fourth column holds the "|" separator or a reference Mach label.
-        # If the discriminator is another symbol then raise as this not the
-        # expected schema.
-        discriminator = tokens[IDX_DISCRIMINATOR]
-        is_swept = discriminator == '|'
-        row_type = _REFERENCE_MACH_LABELS.get(discriminator)
-        if not is_swept and row_type is None:
-            labels = ', '.join(f'"{label}"' for label in _REFERENCE_MACH_LABELS)
-            raise ValueError(
-                f'Cruise row in {path} holds "{discriminator}" where "|" or a '
-                f'reference Mach label ({labels}) is expected, so the row does '
-                f'not match the PIANO cruise layout: {line.strip()}'
-            )
-
-        fl = values[IDX_ALT] / 100
-        mass = values[IDX_MASS] * POUNDS_TO_KG
-        mach = values[IDX_MACH]
+        fl = piano_row.altitude_ft / 100
+        mass = piano_row.mass_lb * POUNDS_TO_KG
+        mach = piano_row.mach
         row = [
             fl,
             mass,
             mach,
-            values[IDX_TAS] * KNOTS_TO_MPS,
-            values[IDX_CAS] * KNOTS_TO_MPS,
+            piano_row.tas_kts * KNOTS_TO_MPS,
+            piano_row.cas_kts * KNOTS_TO_MPS,
             # Cruise is level flight so rate of climb/descend is 0.
             0.0,
-            values[IDX_FUEL_FLOW] * POUNDS_PER_HOUR_TO_KG_PER_S,
-            values[IDX_DRAG] * POUNDS_FORCE_TO_NEWTONS,
-            values[IDX_MCR_PCT],
-            values[IDX_LIFT_TO_DRAG],
+            piano_row.fuel_flow_lb_per_h * POUNDS_PER_HOUR_TO_KG_PER_S,
+            piano_row.drag_lbf * POUNDS_FORCE_TO_NEWTONS,
+            piano_row.mcr_pct,
+            piano_row.lift_to_drag,
             # lb/(h.lbf) -> kg/(N.s)
-            values[IDX_SFC] * POUNDS_PER_HOUR_TO_KG_PER_S / POUNDS_FORCE_TO_NEWTONS,
+            piano_row.sfc_lb_per_h_per_lbf
+            * POUNDS_PER_HOUR_TO_KG_PER_S
+            / POUNDS_FORCE_TO_NEWTONS,
             # nm/lb -> m/kg
-            values[IDX_SAR] * NAUTICAL_MILES_TO_METERS / POUNDS_TO_KG,
-            values[IDX_MCL_AVAIL] * POUNDS_FORCE_TO_NEWTONS,
+            piano_row.sar_nm_per_lb * NAUTICAL_MILES_TO_METERS / POUNDS_TO_KG,
+            piano_row.mcl_avail_per_engine_lbf * POUNDS_FORCE_TO_NEWTONS,
             # PIANO already reports these signed, so keep its sign.
-            values[IDX_ROCD_MCL_FIX_MACH] * FPM_TO_MPS,
-            values[IDX_ROCD_MCL_FIX_CAS] * FPM_TO_MPS,
+            piano_row.rocd_mcl_fix_mach_fpm * FPM_TO_MPS,
+            piano_row.rocd_mcl_fix_cas_fpm * FPM_TO_MPS,
         ]
 
+        row_type = piano_row.reference_mach_column
         if row_type is not None:
             # Create the inner dict if it does not exist yet
             # and store the mapping row_type to corresponding mach
             labelled.setdefault((fl, mass), {})[row_type] = mach
 
-        _insert_cruise_row(rows, (fl, mass, mach), row, is_swept)
+        _insert_cruise_row(rows, (fl, mass, mach), row, piano_row.is_swept)
 
     if malformed:
         logger.warning(
@@ -164,7 +137,7 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
             '%d numeric columns, which thins the interpolation grid. The '
             'first is: "%s"',
             len(malformed),
-            _CRUISE_ROW_COLS,
+            len(CruiseRow.columns()),
             malformed[0].strip(),
         )
 
@@ -178,24 +151,6 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
         ],
     )
     return aircraft_name, cruise, _reference_mach_table(labelled)
-
-
-def _cruise_values(tokens: list[str]) -> list[float] | None:
-    """Parse the numeric columns of a cruise row, or return None.
-
-    The values keep the column positions of the row, so the `IDX_` constants
-    index them. The discriminator column holds a separator or a label rather
-    than a number, so it is NaN here and left to the caller.
-    """
-    if len(tokens) < _CRUISE_ROW_COLS:
-        return None
-    try:
-        return [
-            math.nan if i == IDX_DISCRIMINATOR else float(token)
-            for i, token in enumerate(tokens[:_CRUISE_ROW_COLS])
-        ]
-    except ValueError:
-        return None
 
 
 def _insert_cruise_row(

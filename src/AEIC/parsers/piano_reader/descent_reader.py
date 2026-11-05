@@ -19,6 +19,7 @@ from AEIC.parsers.piano_reader.common import (
     _split_blocks,
     _tas_from_schedule,
 )
+from AEIC.parsers.piano_reader.rows import DescentRow
 from AEIC.performance.types import SpeedData, TableInput
 from AEIC.units import (
     FEET_TO_METERS,
@@ -47,15 +48,6 @@ DESCENT_COLS = [
 # Descent idle thrust table columns
 DESCENT_IDLE_THRUST_COLS = ['mass', 'idle_thrust_altitude']
 
-# Columns of a PIANO descent row
-IDX_ALT = 0  # Alt. [feet]
-IDX_TIME = 1  # Time [s], cumulative
-IDX_DIST = 2  # Dist. [nautical miles], cumulative
-IDX_BURN = 3  # Burn [lb], cumulative
-IDX_ROD = 4  # R.o.D. [feet/min], positive when descending
-IDX_FN = 5  # FN/eng [lbf]
-_DESCENT_ROW_COLS = 6
-
 _DESCENT_MASS_RE = re.compile(r'^\s*Mass\s+([\d.]+)')
 _IDLE_THRUST_RE = re.compile(r'Idle thrust below\s+([\d.]+)feet')
 
@@ -78,7 +70,7 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
             schedule must be the same across the file.
     """
     lines = _read_lines(path)
-    blocks = _split_blocks(lines, 'Descent details', _DESCENT_ROW_COLS)
+    blocks = _split_blocks(lines, 'Descent details', DescentRow.from_tokens)
 
     data = []
     idle_thrust = []
@@ -86,7 +78,7 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
 
     for n, block in enumerate(blocks):
         label = f'Descent block {n + 1}'
-        _reject_malformed(label, block, _DESCENT_ROW_COLS)
+        _reject_malformed(label, block, len(DescentRow.columns()))
 
         mass_match = _find(_DESCENT_MASS_RE, block.header_lines)
         if mass_match is None:
@@ -116,21 +108,23 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
             logger.warning('%s: no data rows', label)
             continue
 
-        altitude_m = [row[IDX_ALT] * FEET_TO_METERS for row in rows]
+        altitude_m = [row.altitude_ft * FEET_TO_METERS for row in rows]
         tas = [_tas_from_schedule(alt, schedule) for alt in altitude_m]
         # PIANO reports rate of descent as a positive number.
-        rocd = [-row[IDX_ROD] * FPM_TO_MPS for row in rows]
+        rocd = [-row.rod_fpm * FPM_TO_MPS for row in rows]
 
-        d_time = _deltas([row[IDX_TIME] for row in rows])
-        d_distance = _deltas([row[IDX_DIST] * NAUTICAL_MILES_TO_METERS for row in rows])
+        d_time = _deltas([row.time_s for row in rows])
+        d_distance = _deltas(
+            [row.distance_nm * NAUTICAL_MILES_TO_METERS for row in rows]
+        )
         fuel_flow = _row_fuel_flows(
-            [row[IDX_TIME] for row in rows],
-            [row[IDX_BURN] * POUNDS_TO_KG for row in rows],
+            [row.time_s for row in rows],
+            [row.burn_lb * POUNDS_TO_KG for row in rows],
         )
 
         _cross_check_tas(label, tas, d_distance, d_time, rocd)
         _cross_check_fuel_burn(
-            label, rows[-1][IDX_BURN] * POUNDS_TO_KG, block.header_lines
+            label, rows[-1].burn_lb * POUNDS_TO_KG, block.header_lines
         )
 
         for i, row in enumerate(rows):
@@ -139,20 +133,20 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
                     '%s: dropping the row at %.0f feet, whose fuel flow '
                     'difference spans no time so is not defined',
                     label,
-                    row[IDX_ALT],
+                    row.altitude_ft,
                 )
                 continue
             data.append(
                 [
-                    row[IDX_ALT] / 100,
+                    row.altitude_ft / 100,
                     mass,
                     tas[i],
                     rocd[i],
                     fuel_flow[i],
-                    row[IDX_TIME],
-                    row[IDX_DIST] * NAUTICAL_MILES_TO_METERS,
-                    row[IDX_BURN] * POUNDS_TO_KG,
-                    row[IDX_FN] * POUNDS_FORCE_TO_NEWTONS,
+                    row.time_s,
+                    row.distance_nm * NAUTICAL_MILES_TO_METERS,
+                    row.burn_lb * POUNDS_TO_KG,
+                    row.fn_per_engine_lbf * POUNDS_FORCE_TO_NEWTONS,
                 ]
             )
 

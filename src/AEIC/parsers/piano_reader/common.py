@@ -7,6 +7,7 @@ import logging
 import math
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from AEIC.performance.types import SpeedData
 from AEIC.units import (
@@ -19,6 +20,9 @@ from AEIC.utils.standard_atmosphere import (
     cas_to_tas,
     speed_of_sound_at_altitude,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -150,36 +154,22 @@ def _tas_from_schedule(altitude_m: float, schedule: _Schedule) -> float:
 
 
 @dataclass(frozen=True)
-class _Block:
+class _Block[RowT]:
     """One detail block of a PIANO climb or descent file."""
 
     header_lines: list[str]
     """Lines between the previous block's marker and this block's."""
 
-    rows: list[list[float]]
+    rows: list[RowT]
     """Data lines that parsed, in file order."""
 
     malformed: list[str]
     """Data lines that did not parse, in file order."""
 
 
-def _numeric_row(tokens: list[str], ncols: int) -> list[float] | None:
-    """Parse `tokens` as a row of exactly `ncols` numbers, or return None.
-
-    Call this only on a row `_is_data_row` accepts. None then means the row is
-    malformed, rather than that the line was never a row.
-    """
-    if len(tokens) != ncols:
-        return None
-    try:
-        return [float(t) for t in tokens]
-    except ValueError:
-        return None
-
-
-def _split_blocks(
-    lines: list[str], marker: str, ncols: int, drop_col: int | None = None
-) -> list[_Block]:
+def _split_blocks[RowT](
+    lines: list[str], marker: str, parse_row: Callable[[list[str]], RowT | None]
+) -> list[_Block[RowT]]:
     """Split a PIANO detail file into the blocks introduced by `marker`.
 
     A block's header lines are those between the previous block's marker and
@@ -187,9 +177,8 @@ def _split_blocks(
     Blocks that follow a halted climb have no metadata there, so their header
     lines hold none.
 
-    `ncols` is the number of columns the file writes. If `drop_col` is set,
-    the column at that index is dropped from every row that parses, so a
-    caller reads rows one column narrower than the file writes.
+    `parse_row` builds a row from the tokens of a data line, or returns None if
+    the tokens are malformed.
 
     Raises:
         ValueError: If the file contains no block.
@@ -208,18 +197,16 @@ def _split_blocks(
             tokens = line.split()
             if not _is_data_row(tokens):
                 continue
-            row = _numeric_row(tokens, ncols)
+            row = parse_row(tokens)
             if row is None:
                 malformed.append(line)
                 continue
-            if drop_col is not None:
-                row = row[:drop_col] + row[drop_col + 1 :]
             rows.append(row)
         blocks.append(_Block(lines[header_start:start], rows, malformed))
     return blocks
 
 
-def _reject_malformed(label: str, block: _Block, ncols: int) -> None:
+def _reject_malformed[RowT](label: str, block: _Block[RowT], ncols: int) -> None:
     """Refuse a block holding a data line that did not parse.
 
     Dropping the line would lose more than one row. `_deltas` differences the
