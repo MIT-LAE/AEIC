@@ -594,7 +594,7 @@ def test_cruise_row_with_merged_first_column_is_dropped(tmp_path, caplog, piano_
     assert 'Dropping 1 cruise line(s)' in caplog.text
 
 
-def _with_extra_column(text: str, label: str) -> str:
+def _with_extra_column(text: str, label: str, value: str = '12.') -> str:
     """The climb file with one more column, labelled `label`, on its table.
 
     Appends the column to the line of column labels, to the line of units and
@@ -608,7 +608,7 @@ def _with_extra_column(text: str, label: str) -> str:
         elif stripped.startswith('(feet)'):
             lines.append(f'{line.rstrip()}     (gm.)\n')
         elif stripped[:1].isdigit():
-            lines.append(f'{line.rstrip()}      12.\n')
+            lines.append(f'{line.rstrip()}      {value}\n')
         else:
             lines.append(line)
     return ''.join(lines)
@@ -625,12 +625,16 @@ def _load_climb(climb_file: Path, **overrides) -> PianoData:
     )
 
 
-def test_climb_nox_column_is_dropped(tmp_path, piano_data):
+@pytest.mark.parametrize('value', ['12.', '***'])
+def test_climb_nox_column_is_dropped(tmp_path, piano_data, value):
     """Some PIANO climb exports carry an eighth NOx column. The reader has no
-    use for it, so it drops the column and reads the rest as before."""
+    use for it, so it drops the column and reads the rest as before, whatever
+    the column holds."""
     climb_file = tmp_path / 'climb.txt'
     climb_file.write_text(
-        _with_extra_column(config.file_location(PIANO_CLIMB_FILE).read_text(), 'NOx')
+        _with_extra_column(
+            config.file_location(PIANO_CLIMB_FILE).read_text(), 'NOx', value
+        )
     )
 
     parsed = _load_climb(climb_file)
@@ -648,7 +652,22 @@ def test_climb_extra_column_that_is_not_nox_raises(tmp_path):
         _with_extra_column(config.file_location(PIANO_CLIMB_FILE).read_text(), 'HC')
     )
 
-    with pytest.raises(ValueError, match='do not hold 7 numbers'):
+    with pytest.raises(ValueError, match='do not hold 7 valid columns'):
+        _load_climb(climb_file)
+
+
+def test_climb_row_without_its_nox_token_raises(tmp_path):
+    """If the table declares a NOx column, every row must hold the token. The
+    reader cannot tell which column a shorter row lost."""
+    text = _with_extra_column(config.file_location(PIANO_CLIMB_FILE).read_text(), 'NOx')
+    lines = [
+        line.rsplit(None, 1)[0] + '\n' if line.split()[:2] == ['1417.', '60.'] else line
+        for line in text.splitlines(True)
+    ]
+    climb_file = tmp_path / 'climb.txt'
+    climb_file.write_text(''.join(lines))
+
+    with pytest.raises(ValueError, match=r'do not hold 8 valid columns'):
         _load_climb(climb_file)
 
 

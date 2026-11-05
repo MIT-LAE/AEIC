@@ -72,24 +72,18 @@ class _PianoRow(BaseModel):
         return list(cls.COLUMNS)
 
     @classmethod
-    def _from_columns(cls, columns: list[str], tokens: list[str]) -> Self | None:
-        """Build a row with one token for each column, or return None if the
-        tokens are malformed."""
-        if len(tokens) != len(columns):
-            return None
-        try:
-            return cls.model_validate(dict(zip(columns, tokens, strict=True)))
-        except ValidationError:
-            return None
-
-    @classmethod
     def from_tokens(cls, tokens: list[str]) -> Self | None:
         """Parse the tokens of a data line, or return None if they are malformed.
 
         Call this only on a line that `_is_data_row` accepts. None then means
         that the row is malformed, rather than that the line is not a data row.
         """
-        return cls._from_columns(cls.columns(), tokens)
+        if len(tokens) != len(cls.COLUMNS):
+            return None
+        try:
+            return cls.model_validate(dict(zip(cls.COLUMNS, tokens, strict=True)))
+        except ValidationError:
+            return None
 
 
 class PianoClimbRow(_PianoRow):
@@ -115,19 +109,6 @@ class PianoClimbRow(_PianoRow):
     fn_per_engine_lbf: float
     rocd_fpm: float
     drag_lbf: float
-    nox: float | None = None
-    """NOx column. Only some exports write it, and its position varies."""
-
-    @classmethod
-    def columns(cls, nox_col: int | None = None) -> list[str]:
-        """Names of the columns of a row, in file order.
-
-        Set `nox_col` to the index of the NOx column if the file has one.
-        """
-        columns = super().columns()
-        if nox_col is not None:
-            columns.insert(nox_col, 'nox')
-        return columns
 
     @classmethod
     def from_tokens(
@@ -135,9 +116,16 @@ class PianoClimbRow(_PianoRow):
     ) -> PianoClimbRow | None:
         """Parse the tokens of a data line, or return None if they are malformed.
 
-        Set `nox_col` to the index of the NOx column if the file writes one.
+        Set `nox_col` to the index of the NOx column if the table declares one.
+        The reader ignores the value of that token, so it can hold anything. The
+        row must still hold the token. If it does not, the reader cannot tell
+        which column is missing, so the row is malformed.
         """
-        return cls._from_columns(cls.columns(nox_col), tokens)
+        if nox_col is None:
+            return super().from_tokens(tokens)
+        if len(tokens) != len(cls.COLUMNS) + 1:
+            return None
+        return super().from_tokens(tokens[:nox_col] + tokens[nox_col + 1 :])
 
 
 class PianoDescentRow(_PianoRow):
@@ -233,8 +221,7 @@ class PianoCruiseRow(_PianoRow):
         Raises:
             UnexpectedDiscriminatorError: See the class documentation.
         """
-        columns = cls.columns()
-        return cls._from_columns(columns, tokens[: len(columns)])
+        return super().from_tokens(tokens[: len(cls.COLUMNS)])
 
     @property
     def is_swept(self) -> bool:

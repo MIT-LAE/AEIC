@@ -309,7 +309,7 @@ The reader raises `ValueError` in the following cases.
 
 | Case | File |
 |------|------|
-| Line is a data row but does not contain exactly seven (climb) or six (descent) numbers | climb, descent |
+| Line is a data row but does not contain exactly seven (climb) or six (descent) numbers, plus any token in a declared `NOx` column | climb, descent |
 | The file holds no block marker | climb, descent |
 | The file has no `Cruise table for` title | cruise |
 | The fourth column is neither `\|` nor a known reference Mach label | cruise |

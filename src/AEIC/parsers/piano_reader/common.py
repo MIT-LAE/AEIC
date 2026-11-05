@@ -224,7 +224,7 @@ def _reject_malformed[RowT](label: str, block: _Block[RowT], ncols: int) -> None
         return
     raise ValueError(
         f'{label}: {len(block.malformed)} line(s) open a data row but do '
-        f'not hold {ncols} numbers, and dropping a row would silently average '
+        f'not hold {ncols} valid columns, and dropping a row would silently average '
         'the fuel flow of the row after it. First such line: '
         f'"{block.malformed[0].strip()}"'
     )

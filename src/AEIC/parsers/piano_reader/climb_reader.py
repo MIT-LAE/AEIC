@@ -116,7 +116,7 @@ def _parse_climb(
     """
     lines = _read_lines(path)
     nox_col = _nox_column(lines)
-    row_cols = len(PianoClimbRow.columns(nox_col))
+    row_cols = len(PianoClimbRow.COLUMNS) + (0 if nox_col is None else 1)
     blocks = _split_blocks(
         lines, 'Climb details', partial(PianoClimbRow.from_tokens, nox_col=nox_col)
     )
