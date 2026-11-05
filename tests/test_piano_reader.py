@@ -25,6 +25,12 @@ from AEIC.parsers.piano_reader.common import _Schedule
 from AEIC.parsers.piano_reader.cruise_reader import (
     CRUISE_COLS,
     CRUISE_REFERENCE_MACH_COLS,
+    CruiseTableRow,
+    _CruiseEntry,
+    _CruisePoint,
+    _insert_cruise_row,
+    _reference_mach_table,
+    _ReferenceMachPoint,
 )
 from AEIC.parsers.piano_reader.descent_reader import (
     DESCENT_COLS,
@@ -929,3 +935,88 @@ def test_row_class_with_columns_that_do_not_match_its_fields_raises(columns):
             first: float
             second: float
             optional: float | None = None
+
+
+# ---------------------------------------------------------------------------
+# Cruise coordinates and collisions
+# ---------------------------------------------------------------------------
+
+
+def _cruise_table_row(**values) -> CruiseTableRow:
+    """A cruise table row at fl=350, mass=60000 kg and Mach 0.78."""
+    defaults = dict.fromkeys(CRUISE_COLS, 1.0)
+    return CruiseTableRow(
+        **{**defaults, 'fl': 350.0, 'mass': 60000.0, 'mach': 0.78, **values}
+    )
+
+
+def test_cruise_table_is_sorted_by_mass_then_fl_then_mach(piano_data):
+    """The field order of `_CruisePoint` sets this order."""
+    fl, mass, mach = (piano_data.cruise.column(c) for c in ('fl', 'mass', 'mach'))
+    points = list(zip(mass, fl, mach, strict=True))
+
+    assert points == sorted(points)
+
+
+def test_reference_mach_table_is_sorted_by_mass_then_fl():
+    """The reader must not depend on the order of the labelled groups."""
+    machs = {'max_sar': 0.7, 'sar_99': 0.75, 'max_lim': 0.8}
+
+    table = _reference_mach_table(
+        {
+            _ReferenceMachPoint(mass=2.0, fl=100.0): machs,
+            _ReferenceMachPoint(mass=1.0, fl=300.0): machs,
+            _ReferenceMachPoint(mass=1.0, fl=200.0): machs,
+        }
+    )
+
+    assert table.column('mass') == [1.0, 1.0, 2.0]
+    assert table.column('fl') == [200.0, 300.0, 100.0]
+
+
+@pytest.mark.parametrize(
+    ('first_is_swept', 'second_is_swept', 'kept'),
+    [
+        pytest.param(True, False, 'second', id='labelled replaces swept'),
+        pytest.param(False, True, 'first', id='swept does not replace labelled'),
+        pytest.param(True, True, 'first', id='first swept row stays'),
+        pytest.param(False, False, 'first', id='first labelled row stays'),
+    ],
+)
+def test_cruise_collision_selects_the_row_by_source(
+    first_is_swept, second_is_swept, kept
+):
+    first = _cruise_table_row(tas=100.0)
+    second = _cruise_table_row(tas=200.0)
+    entries: dict[_CruisePoint, _CruiseEntry] = {}
+
+    _insert_cruise_row(entries, _CruiseEntry(first, first_is_swept))
+    _insert_cruise_row(entries, _CruiseEntry(second, second_is_swept))
+
+    assert list(entries) == [first.point]
+    expected = first if kept == 'first' else second
+    assert entries[first.point].row == expected
+
+
+def test_cruise_collision_log_names_each_coordinate(caplog):
+    """The log format lists fl before mass, unlike the coordinate fields."""
+    entries: dict[_CruisePoint, _CruiseEntry] = {}
+    swept = _cruise_table_row(tas=100.0)
+    labelled = _cruise_table_row(tas=200.0)
+
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        _insert_cruise_row(entries, _CruiseEntry(swept, True), verbose=True)
+        _insert_cruise_row(entries, _CruiseEntry(labelled, False), verbose=True)
+
+    assert 'fl=350.00, mass=60000.0 kg, mach=0.780' in caplog.text
+    assert 'Columns that disagree: tas' in caplog.text
+
+
+def test_incomplete_reference_mach_warning_names_each_coordinate(caplog):
+    """The warning lists fl before mass, unlike the coordinate fields."""
+    machs = {'max_sar': 0.7, 'max_lim': 0.8}
+
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        _reference_mach_table({_ReferenceMachPoint(mass=60000.0, fl=350.0): machs})
+
+    assert '(350.00, 60000.0): sar_99' in caplog.text

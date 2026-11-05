@@ -27,6 +27,26 @@ from AEIC.units import (
 logger = logging.getLogger(__name__)
 
 
+class _ReferenceMachPoint(NamedTuple):
+    """A coordinate of the reference Mach table."""
+
+    mass: float
+    fl: float
+
+
+class _CruisePoint(NamedTuple):
+    """A coordinate of the cruise table."""
+
+    mass: float
+    fl: float
+    mach: float
+
+    @property
+    def reference_point(self) -> _ReferenceMachPoint:
+        """The coordinate of this point in the reference Mach table."""
+        return _ReferenceMachPoint(mass=self.mass, fl=self.fl)
+
+
 class CruiseTableRow(NamedTuple):
     """A row of the output cruise table, in SI units except for the flight level.
     The field order defines the order of the cruise table columns.
@@ -47,6 +67,24 @@ class CruiseTableRow(NamedTuple):
     mcl_avail_per_engine: float
     rocd_mcl_fix_mach: float
     rocd_mcl_fix_cas: float
+
+    @property
+    def point(self) -> _CruisePoint:
+        """The coordinate of this row in the cruise table."""
+        return _CruisePoint(mass=self.mass, fl=self.fl, mach=self.mach)
+
+
+class _CruiseEntry(NamedTuple):
+    """A cruise row and the source of that row, while the reader builds the table.
+
+    A swept row and a labelled row can have the same coordinate but PIANO does not
+    always report the same values for the two, so we need to select one.
+    Currently we keep the Mach reference point (see `_insert_cruise_row`)
+    """
+
+    row: CruiseTableRow
+    is_swept: bool
+    """True for a row from the Mach sweep, False for a labelled reference Mach."""
 
 
 class CruiseReferenceMachTableRow(NamedTuple):
@@ -91,12 +129,11 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
         raise ValueError(f'No "Cruise table for" title found in {path}')
     aircraft_name = name_match.group(1).strip()
 
-    # Keyed on (fl, mass, mach), so a labelled row landing exactly on the swept
-    # grid can be detected rather than silently duplicating a key.
-    rows: dict[tuple[float, float, float], tuple[CruiseTableRow, bool]] = {}
+    # Keyed on the cruise point, so a labelled row that coincides can be handled
+    entries: dict[_CruisePoint, _CruiseEntry] = {}
     # Labelled rows are the rows for the specific operating points saved by PIANO
-    # A dict: (fl, mass) -> another dict keyed (row_type) -> mach
-    labelled: dict[tuple[float, float], dict[str, float]] = {}
+    # A dict: reference Mach point -> another dict keyed (row_type) -> mach
+    labelled: dict[_ReferenceMachPoint, dict[str, float]] = {}
 
     malformed = []
     for line in lines:
@@ -117,13 +154,10 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
             malformed.append(line)
             continue
 
-        fl = piano_row.altitude_ft / 100
-        mass = piano_row.mass_lb * POUNDS_TO_KG
-        mach = piano_row.mach
         row = CruiseTableRow(
-            fl=fl,
-            mass=mass,
-            mach=mach,
+            fl=piano_row.altitude_ft / 100,
+            mass=piano_row.mass_lb * POUNDS_TO_KG,
+            mach=piano_row.mach,
             tas=piano_row.tas_kts * KNOTS_TO_MPS,
             cas=piano_row.cas_kts * KNOTS_TO_MPS,
             # Cruise is level flight so rate of climb/descend is 0.
@@ -149,9 +183,9 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
         if row_type is not None:
             # Create the inner dict if it does not exist yet
             # and store the mapping row_type to corresponding mach
-            labelled.setdefault((fl, mass), {})[row_type] = mach
+            labelled.setdefault(row.point.reference_point, {})[row_type] = row.mach
 
-        _insert_cruise_row(rows, (fl, mass, mach), row, piano_row.is_swept)
+        _insert_cruise_row(entries, _CruiseEntry(row, piano_row.is_swept))
 
     if malformed:
         logger.warning(
@@ -165,22 +199,14 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
 
     cruise = TableInput(
         cols=CRUISE_COLS,
-        data=[
-            list(row)
-            for row in sorted(
-                (row for row, _ in rows.values()),
-                key=lambda r: (r.mass, r.fl, r.mach),
-            )
-        ],
+        data=[list(entries[point].row) for point in sorted(entries)],
     )
     return aircraft_name, cruise, _reference_mach_table(labelled)
 
 
 def _insert_cruise_row(
-    rows: dict[tuple[float, float, float], tuple[CruiseTableRow, bool]],
-    key: tuple[float, float, float],
-    row: CruiseTableRow,
-    is_swept: bool,
+    entries: dict[_CruisePoint, _CruiseEntry],
+    entry: _CruiseEntry,
     verbose: bool = False,
 ) -> None:
     """Add a cruise row, resolving a collision in favour of the labelled row.
@@ -190,36 +216,39 @@ def _insert_cruise_row(
     operating point PIANO solved for, while the swept row only shares its key
     because the export rounds Mach, so the labelled row is kept over the sweep.
     """
-    existing = rows.get(key)
+    point = entry.row.point
+    existing = entries.get(point)
     if existing is None:
-        rows[key] = (row, is_swept)
+        entries[point] = entry
         return
-
-    existing_row, existing_is_swept = existing
 
     # Log the rows where the labeled point and swept point differ
     # Off by default because it produces a lot of noise
     if verbose:
         differing = [
             column
-            for column, old, new in zip(CRUISE_COLS, existing_row, row, strict=True)
+            for column, old, new in zip(
+                CRUISE_COLS, existing.row, entry.row, strict=True
+            )
             if old != new
         ]
         if differing:
             logger.warning(
                 'Duplicate cruise row at (fl=%.2f, mass=%.1f kg, mach=%.3f); '
                 'keeping the labelled row. Columns that disagree: %s',
-                *key,
+                point.fl,
+                point.mass,
+                point.mach,
                 ', '.join(differing),
             )
 
     # Replace the swept point by the labeled point
-    if existing_is_swept and not is_swept:
-        rows[key] = (row, is_swept)
+    if existing.is_swept and not entry.is_swept:
+        entries[point] = entry
 
 
 def _reference_mach_table(
-    labelled: dict[tuple[float, float], dict[str, float]],
+    labelled: dict[_ReferenceMachPoint, dict[str, float]],
 ) -> TableInput:
     """Build the reference Mach table from the labelled cruise rows.
 
@@ -230,17 +259,18 @@ def _reference_mach_table(
     required = _REFERENCE_MACH_LABELS.values()
     data: list[CruiseReferenceMachTableRow] = []
     incomplete = []
-    for (fl, mass), machs in labelled.items():
+    for point in sorted(labelled):
+        machs = labelled[point]
         data.append(
             CruiseReferenceMachTableRow(
-                fl=fl,
-                mass=mass,
+                fl=point.fl,
+                mass=point.mass,
                 **{column: machs.get(column, math.nan) for column in required},
             )
         )
         missing = [column for column in required if column not in machs]
         if missing:
-            incomplete.append((fl, mass, missing))
+            incomplete.append((point, missing))
 
     if incomplete:
         logger.warning(
@@ -248,12 +278,12 @@ def _reference_mach_table(
             'group(s), at (fl, mass) of %s',
             len(incomplete),
             ', '.join(
-                f'({fl:.2f}, {mass:.1f}): {", ".join(missing)}'
-                for fl, mass, missing in sorted(incomplete)
+                f'({point.fl:.2f}, {point.mass:.1f}): {", ".join(missing)}'
+                for point, missing in incomplete
             ),
         )
 
     return TableInput(
         cols=CRUISE_REFERENCE_MACH_COLS,
-        data=[list(row) for row in sorted(data, key=lambda r: (r.mass, r.fl))],
+        data=[list(row) for row in data],
     )
