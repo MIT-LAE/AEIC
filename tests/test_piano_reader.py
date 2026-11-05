@@ -11,6 +11,7 @@ units here, never physical plausibility.
 import logging
 import math
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -34,6 +35,7 @@ from AEIC.parsers.piano_reader.rows import (
     CruiseRow,
     DescentRow,
     UnexpectedDiscriminatorError,
+    _PianoRow,
 )
 from AEIC.units import (
     FEET_TO_METERS,
@@ -255,7 +257,7 @@ def test_unrecognised_cruise_label_raises(tmp_path):
     cruise_file = tmp_path / 'cruise.txt'
     cruise_file.write_text(text)
 
-    with pytest.raises(ValueError, match='does not match the PIANO cruise'):
+    with pytest.raises(ValueError, match='does not match the expected PIANO cruise'):
         PianoData.load(
             str(cruise_file),
             str(config.file_location(PIANO_CLIMB_FILE)),
@@ -275,7 +277,7 @@ def test_cruise_row_without_the_separator_raises(tmp_path):
         '  0.7000  0.08000  19000.  1000.  2000.  1.0\n'
     )
 
-    with pytest.raises(ValueError, match='does not match the PIANO cruise'):
+    with pytest.raises(ValueError, match='does not match the expected PIANO cruise'):
         PianoData.load(
             str(cruise_file),
             str(config.file_location(PIANO_CLIMB_FILE)),
@@ -891,3 +893,39 @@ def test_cruise_row_classifies_its_discriminator(discriminator, is_swept, column
     assert row is not None
     assert row.is_swept is is_swept
     assert row.reference_mach_column == column
+
+
+def test_field_declaration_order_does_not_affect_parsing():
+    """Only `COLUMNS` states the file order, so a refactor that reorders the
+    fields cannot swap two columns."""
+
+    class Row(_PianoRow):
+        COLUMNS: ClassVar[tuple[str, ...]] = ('first', 'second')
+
+        second: float
+        first: float
+
+    row = Row.from_tokens(['1', '2'])
+
+    assert row is not None
+    assert (row.first, row.second) == (1.0, 2.0)
+
+
+@pytest.mark.parametrize(
+    'columns',
+    [
+        pytest.param(('first',), id='missing field'),
+        pytest.param(('first', 'second', 'first'), id='duplicate'),
+        pytest.param(('first', 'second', 'third'), id='unknown name'),
+        pytest.param(('first', 'second', 'optional'), id='optional field'),
+    ],
+)
+def test_row_class_with_columns_that_do_not_match_its_fields_raises(columns):
+    with pytest.raises(TypeError, match='must name each required field once'):
+
+        class Row(_PianoRow):
+            COLUMNS: ClassVar[tuple[str, ...]] = columns
+
+            first: float
+            second: float
+            optional: float | None = None

@@ -1,14 +1,13 @@
 """Typed data rows of the PIANO climb, descent and cruise tables.
 
-These models define the layout of a row. The required fields of a model are the
-columns of its table and are in the same order as they are expected to appear in
-the file.
+These models represent the layout of a row and the `COLUMNS` tuple
+of a model defines the order of the columns in the file.
 """
 
 # TODO: Remove this when we migrate to Python 3.14+.
 from __future__ import annotations
 
-from typing import Self
+from typing import Any, ClassVar, Self
 
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
@@ -42,10 +41,33 @@ class _PianoRow(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    COLUMNS: ClassVar[tuple[str, ...]] = ()
+    """Names of the columns for every row in file order.
+    This defines how a row is parsed
+    """
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Refuse a subclass if `COLUMNS` does not name each required field once.
+
+        Raises:
+            TypeError: If `COLUMNS` holds a duplicate, a name that is not a
+                required field, or does not hold a required field.
+        """
+        super().__pydantic_init_subclass__(**kwargs)
+        required = {
+            name for name, field in cls.model_fields.items() if field.is_required()
+        }
+        if len(set(cls.COLUMNS)) != len(cls.COLUMNS) or set(cls.COLUMNS) != required:
+            raise TypeError(
+                f'{cls.__name__}.COLUMNS must name each required field once. '
+                f'COLUMNS: {cls.COLUMNS}. Required fields: {sorted(required)}'
+            )
+
     @classmethod
     def columns(cls) -> list[str]:
         """Names of the columns that every row holds, in file order."""
-        return [name for name, field in cls.model_fields.items() if field.is_required()]
+        return list(cls.COLUMNS)
 
     @classmethod
     def _from_columns(cls, columns: list[str], tokens: list[str]) -> Self | None:
@@ -70,6 +92,16 @@ class _PianoRow(BaseModel):
 
 class ClimbRow(_PianoRow):
     """A row of a PIANO climb table."""
+
+    COLUMNS: ClassVar[tuple[str, ...]] = (
+        'altitude_ft',
+        'time_s',
+        'distance_nm',
+        'burn_lb',
+        'fn_per_engine_lbf',
+        'rocd_fpm',
+        'drag_lbf',
+    )
 
     altitude_ft: float
     time_s: float
@@ -109,6 +141,15 @@ class ClimbRow(_PianoRow):
 class DescentRow(_PianoRow):
     """A row of a PIANO descent table."""
 
+    COLUMNS: ClassVar[tuple[str, ...]] = (
+        'altitude_ft',
+        'time_s',
+        'distance_nm',
+        'burn_lb',
+        'rod_fpm',
+        'fn_per_engine_lbf',
+    )
+
     altitude_ft: float
     time_s: float
     """Cumulative time."""
@@ -131,6 +172,24 @@ class CruiseRow(_PianoRow):
         UnexpectedDiscriminatorError: If the numeric columns are valid, but
             `discriminator` is neither "|" nor a reference Mach label.
     """
+
+    COLUMNS: ClassVar[tuple[str, ...]] = (
+        'mass_lb',
+        'altitude_ft',
+        'mach',
+        'discriminator',
+        'tas_kts',
+        'cas_kts',
+        'drag_lbf',
+        'mcr_pct',
+        'lift_to_drag',
+        'fuel_flow_lb_per_h',
+        'sfc_lb_per_h_per_lbf',
+        'sar_nm_per_lb',
+        'mcl_avail_per_engine_lbf',
+        'rocd_mcl_fix_mach_fpm',
+        'rocd_mcl_fix_cas_fpm',
+    )
 
     mass_lb: float
     altitude_ft: float
