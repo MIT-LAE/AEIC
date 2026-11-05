@@ -1,7 +1,9 @@
-"""Typed data rows of the PIANO climb, descent and cruise tables.
+"""Typed data rows of the PIANO climb, descent and cruise file formats.
 
 These models represent the layout of a row and the `COLUMNS` tuple
 of a model defines the order of the columns in the file.
+
+The readers convert these rows to the `TableRow` tuples of the output tables.
 """
 
 # TODO: Remove this when we migrate to Python 3.14+.
@@ -90,7 +92,7 @@ class _PianoRow(BaseModel):
         return cls._from_columns(cls.columns(), tokens)
 
 
-class ClimbRow(_PianoRow):
+class PianoClimbRow(_PianoRow):
     """A row of a PIANO climb table."""
 
     COLUMNS: ClassVar[tuple[str, ...]] = (
@@ -130,7 +132,7 @@ class ClimbRow(_PianoRow):
     @classmethod
     def from_tokens(
         cls, tokens: list[str], nox_col: int | None = None
-    ) -> ClimbRow | None:
+    ) -> PianoClimbRow | None:
         """Parse the tokens of a data line, or return None if they are malformed.
 
         Set `nox_col` to the index of the NOx column if the file writes one.
@@ -138,7 +140,7 @@ class ClimbRow(_PianoRow):
         return cls._from_columns(cls.columns(nox_col), tokens)
 
 
-class DescentRow(_PianoRow):
+class PianoDescentRow(_PianoRow):
     """A row of a PIANO descent table."""
 
     COLUMNS: ClassVar[tuple[str, ...]] = (
@@ -162,7 +164,7 @@ class DescentRow(_PianoRow):
     fn_per_engine_lbf: float
 
 
-class CruiseRow(_PianoRow):
+class PianoCruiseRow(_PianoRow):
     """A row of a PIANO cruise table.
 
     PIANO writes more columns after these (buffet onset and emissions). The
@@ -225,7 +227,7 @@ class CruiseRow(_PianoRow):
         return self
 
     @classmethod
-    def from_tokens(cls, tokens: list[str]) -> CruiseRow | None:
+    def from_tokens(cls, tokens: list[str]) -> PianoCruiseRow | None:
         """Parse the tokens of a data line, or return None if they are malformed.
 
         Raises:

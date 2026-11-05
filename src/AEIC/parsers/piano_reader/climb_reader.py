@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 import re
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 
@@ -25,7 +25,7 @@ from AEIC.parsers.piano_reader.common import (
     _split_blocks,
     _tas_from_schedule,
 )
-from AEIC.parsers.piano_reader.rows import ClimbRow
+from AEIC.parsers.piano_reader.rows import PianoClimbRow
 from AEIC.performance.types import SpeedData, TableInput
 from AEIC.units import (
     FEET_TO_METERS,
@@ -47,20 +47,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# See PIANO parser doc for expected schema
-# Climb table columns
-CLIMB_COLS = [
-    'fl',
-    'mass',
-    'tas',
-    'rocd',
-    'fuel_flow',
-    'time',
-    'distance',
-    'burn',
-    'fn_per_engine',
-    'drag',
-]
+class ClimbTableRow(NamedTuple):
+    """A row of the output climb table, in SI units except for the flight level.
+    The field order defines the order of the climb table columns.
+    """
+
+    fl: float
+    mass: float
+    tas: float
+    rocd: float
+    fuel_flow: float
+    time: float
+    distance: float
+    burn: float
+    fn_per_engine: float
+    drag: float
+
+
+CLIMB_COLS = list(ClimbTableRow._fields)
 
 # If user supplied masses and PIANO header masses are both present
 # we check that they are consistent up to 0.1%
@@ -112,16 +116,16 @@ def _parse_climb(
     """
     lines = _read_lines(path)
     nox_col = _nox_column(lines)
-    row_cols = len(ClimbRow.columns(nox_col))
+    row_cols = len(PianoClimbRow.columns(nox_col))
     blocks = _split_blocks(
-        lines, 'Climb details', partial(ClimbRow.from_tokens, nox_col=nox_col)
+        lines, 'Climb details', partial(PianoClimbRow.from_tokens, nox_col=nox_col)
     )
 
     isa_offset = _parse_isa_offset(lines)
     masses = _climb_masses(blocks, overrides)
     schedule = _climb_schedule(blocks, overrides)
 
-    data = []
+    data: list[ClimbTableRow] = []
     maximum_altitude_ft = 0.0
     for n, (block, mass) in enumerate(zip(blocks, masses, strict=True)):
         label = f'Climb block {n + 1}'
@@ -170,7 +174,8 @@ def _parse_climb(
         )
 
         for i, row in enumerate(rows):
-            if fuel_flow[i] is None:
+            row_fuel_flow = fuel_flow[i]
+            if row_fuel_flow is None:
                 logger.warning(
                     '%s: dropping the row at %.0f feet, whose fuel flow '
                     'difference spans no time so is not defined',
@@ -179,22 +184,23 @@ def _parse_climb(
                 )
                 continue
             data.append(
-                [
-                    row.altitude_ft / 100,
-                    mass,
-                    tas[i],
-                    rocd[i],
-                    fuel_flow[i],
-                    row.time_s,
-                    row.distance_nm * NAUTICAL_MILES_TO_METERS,
-                    row.burn_lb * POUNDS_TO_KG,
-                    row.fn_per_engine_lbf * POUNDS_FORCE_TO_NEWTONS,
-                    row.drag_lbf * POUNDS_FORCE_TO_NEWTONS,
-                ]
+                ClimbTableRow(
+                    fl=row.altitude_ft / 100,
+                    mass=mass,
+                    tas=tas[i],
+                    rocd=rocd[i],
+                    fuel_flow=row_fuel_flow,
+                    time=row.time_s,
+                    distance=row.distance_nm * NAUTICAL_MILES_TO_METERS,
+                    burn=row.burn_lb * POUNDS_TO_KG,
+                    fn_per_engine=row.fn_per_engine_lbf * POUNDS_FORCE_TO_NEWTONS,
+                    drag=row.drag_lbf * POUNDS_FORCE_TO_NEWTONS,
+                )
             )
 
     table = TableInput(
-        cols=CLIMB_COLS, data=sorted(data, key=lambda row: (row[1], row[0]))
+        cols=CLIMB_COLS,
+        data=[list(row) for row in sorted(data, key=lambda r: (r.mass, r.fl))],
     )
     return (
         schedule.to_speed_data(),
@@ -205,7 +211,7 @@ def _parse_climb(
 
 
 def _derived_columns(
-    rows: list[ClimbRow], schedule: _Schedule
+    rows: list[PianoClimbRow], schedule: _Schedule
 ) -> tuple[list[float], list[float], list[float], list[float], list[float | None]]:
     """TAS [m/s], rate of climb [m/s], the per-row time [s] and distance [m]
     steps, and the fuel flow [kg/s] of a climb block.
@@ -224,7 +230,7 @@ def _derived_columns(
     return tas, rocd, d_time, d_distance, fuel_flow
 
 
-def _halt_altitude_ft(block: _Block[ClimbRow]) -> float | None:
+def _halt_altitude_ft(block: _Block[PianoClimbRow]) -> float | None:
     """Altitude at which PIANO halted a block's climb [feet], or None if the
     climb reached its target. PIANO writes the halt message just before the
     table of the block it applies to, so it is in that block's header lines."""
@@ -233,8 +239,8 @@ def _halt_altitude_ft(block: _Block[ClimbRow]) -> float | None:
 
 
 def _extrapolate_to_halt(
-    label: str, rows: list[ClimbRow], halt_ft: float, schedule: _Schedule
-) -> ClimbRow | None:
+    label: str, rows: list[PianoClimbRow], halt_ft: float, schedule: _Schedule
+) -> PianoClimbRow | None:
     """Extrapolate a halted climb block to its halt altitude.
 
     PIANO halts a climb when its rate of climb gets too low, but tabulated values
@@ -332,7 +338,7 @@ def _extrapolate_to_halt(
 
     # Everything needs to be in PIANO raw data units
     # ft, s, nm, lb, lbf, fp/min, lbf
-    return ClimbRow(
+    return PianoClimbRow(
         altitude_ft=halt_ft,
         time_s=last.time_s + d_time,
         distance_nm=last.distance_nm + d_distance_m / NAUTICAL_MILES_TO_METERS,
@@ -344,7 +350,7 @@ def _extrapolate_to_halt(
 
 
 def _interval_fuel_flows(
-    rows: list[ClimbRow], crossover_ft: float
+    rows: list[PianoClimbRow], crossover_ft: float
 ) -> list[tuple[float, float]]:
     """(Altitude [feet], fuel flow [lb/s]) of each climb interval above the
     crossover, in row order.
@@ -393,7 +399,7 @@ def _nox_column(lines: list[str]) -> int | None:
         if _CLIMB_LABELS_RE.match(line) is None:
             continue
         labels = line.split()
-        if len(labels) != len(ClimbRow.columns()) + 1:
+        if len(labels) != len(PianoClimbRow.columns()) + 1:
             return None
         for i, label in enumerate(labels):
             if _NOX_LABEL_RE.match(label) is not None:
@@ -421,7 +427,7 @@ def _parse_isa_offset(lines: list[str]) -> int:
     return int(offset)
 
 
-def _header_climb_mass(block: _Block[ClimbRow]) -> float | None:
+def _header_climb_mass(block: _Block[PianoClimbRow]) -> float | None:
     """Initial mass a climb block's header states [kg], or None if it states
     none. PIANO omits the header of a block whose climb halted."""
     match = _find(_CLIMB_MASS_RE, block.header_lines)
@@ -429,7 +435,7 @@ def _header_climb_mass(block: _Block[ClimbRow]) -> float | None:
 
 
 def _climb_masses(
-    blocks: list[_Block[ClimbRow]], overrides: PianoOverrides
+    blocks: list[_Block[PianoClimbRow]], overrides: PianoOverrides
 ) -> list[float]:
     """Resolve the initial mass of each climb block, in file order.
 
@@ -479,7 +485,7 @@ def _climb_masses(
 
 
 def _climb_schedule(
-    blocks: list[_Block[ClimbRow]], overrides: PianoOverrides
+    blocks: list[_Block[PianoClimbRow]], overrides: PianoOverrides
 ) -> _Schedule:
     """Resolve the climb airspeed schedule.
 

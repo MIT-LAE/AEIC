@@ -6,9 +6,14 @@ from __future__ import annotations
 import logging
 import math
 import re
+from typing import NamedTuple
 
 from AEIC.parsers.piano_reader.common import _find, _is_data_row, _read_lines
-from AEIC.parsers.piano_reader.rows import CruiseRow, UnexpectedDiscriminatorError
+from AEIC.parsers.piano_reader.rows import (
+    _REFERENCE_MACH_LABELS,
+    PianoCruiseRow,
+    UnexpectedDiscriminatorError,
+)
 from AEIC.performance.types import TableInput
 from AEIC.units import (
     FPM_TO_MPS,
@@ -21,28 +26,44 @@ from AEIC.units import (
 
 logger = logging.getLogger(__name__)
 
-# See PIANO parser doc for expected schema
-# Cruise table columns
-CRUISE_COLS = [
-    'fl',
-    'mass',
-    'mach',
-    'tas',
-    'cas',
-    'rocd',
-    'fuel_flow',
-    'drag',
-    'mcr_pct',
-    'lift_to_drag',
-    'sfc',
-    'sar',
-    'mcl_avail_per_engine',
-    'rocd_mcl_fix_mach',
-    'rocd_mcl_fix_cas',
-]
 
-# Cruise reference Mach table columns
-CRUISE_REFERENCE_MACH_COLS = ['fl', 'mass', 'max_sar', 'sar_99', 'max_lim']
+class CruiseTableRow(NamedTuple):
+    """A row of the output cruise table, in SI units except for the flight level.
+    The field order defines the order of the cruise table columns.
+    """
+
+    fl: float
+    mass: float
+    mach: float
+    tas: float
+    cas: float
+    rocd: float
+    fuel_flow: float
+    drag: float
+    mcr_pct: float
+    lift_to_drag: float
+    sfc: float
+    sar: float
+    mcl_avail_per_engine: float
+    rocd_mcl_fix_mach: float
+    rocd_mcl_fix_cas: float
+
+
+class CruiseReferenceMachTableRow(NamedTuple):
+    """A row of the output cruise reference Mach table.
+
+    The fields after `mass` are the values of `_REFERENCE_MACH_LABELS`.
+    """
+
+    fl: float
+    mass: float
+    max_sar: float
+    sar_99: float
+    max_lim: float
+
+
+CRUISE_COLS = list(CruiseTableRow._fields)
+CRUISE_REFERENCE_MACH_COLS = list(CruiseReferenceMachTableRow._fields)
 
 _AIRCRAFT_NAME_RE = re.compile(r'Cruise table for\s+(.+?)\s*$')
 
@@ -72,7 +93,7 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
 
     # Keyed on (fl, mass, mach), so a labelled row landing exactly on the swept
     # grid can be detected rather than silently duplicating a key.
-    rows: dict[tuple[float, float, float], tuple[list[float], bool]] = {}
+    rows: dict[tuple[float, float, float], tuple[CruiseTableRow, bool]] = {}
     # Labelled rows are the rows for the specific operating points saved by PIANO
     # A dict: (fl, mass) -> another dict keyed (row_type) -> mach
     labelled: dict[tuple[float, float], dict[str, float]] = {}
@@ -84,12 +105,12 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
             continue
         try:
             # ValidationError means that the row is malformed
-            # and CruiseRow.from_tokens(tokens) returns None.
+            # and PianoCruiseRow.from_tokens(tokens) returns None.
             # This is fine and we skip the row.
             # But if a there is an unexpected discriminator it means
             # that the file itself does not use the convention we expect
             # so raise ValueError instead.
-            piano_row = CruiseRow.from_tokens(tokens)
+            piano_row = PianoCruiseRow.from_tokens(tokens)
         except UnexpectedDiscriminatorError as error:
             raise ValueError(f'Cruise row in {path} {error}: {line.strip()}') from error
         if piano_row is None:
@@ -99,29 +120,30 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
         fl = piano_row.altitude_ft / 100
         mass = piano_row.mass_lb * POUNDS_TO_KG
         mach = piano_row.mach
-        row = [
-            fl,
-            mass,
-            mach,
-            piano_row.tas_kts * KNOTS_TO_MPS,
-            piano_row.cas_kts * KNOTS_TO_MPS,
+        row = CruiseTableRow(
+            fl=fl,
+            mass=mass,
+            mach=mach,
+            tas=piano_row.tas_kts * KNOTS_TO_MPS,
+            cas=piano_row.cas_kts * KNOTS_TO_MPS,
             # Cruise is level flight so rate of climb/descend is 0.
-            0.0,
-            piano_row.fuel_flow_lb_per_h * POUNDS_PER_HOUR_TO_KG_PER_S,
-            piano_row.drag_lbf * POUNDS_FORCE_TO_NEWTONS,
-            piano_row.mcr_pct,
-            piano_row.lift_to_drag,
+            rocd=0.0,
+            fuel_flow=piano_row.fuel_flow_lb_per_h * POUNDS_PER_HOUR_TO_KG_PER_S,
+            drag=piano_row.drag_lbf * POUNDS_FORCE_TO_NEWTONS,
+            mcr_pct=piano_row.mcr_pct,
+            lift_to_drag=piano_row.lift_to_drag,
             # lb/(h.lbf) -> kg/(N.s)
-            piano_row.sfc_lb_per_h_per_lbf
+            sfc=piano_row.sfc_lb_per_h_per_lbf
             * POUNDS_PER_HOUR_TO_KG_PER_S
             / POUNDS_FORCE_TO_NEWTONS,
             # nm/lb -> m/kg
-            piano_row.sar_nm_per_lb * NAUTICAL_MILES_TO_METERS / POUNDS_TO_KG,
-            piano_row.mcl_avail_per_engine_lbf * POUNDS_FORCE_TO_NEWTONS,
+            sar=piano_row.sar_nm_per_lb * NAUTICAL_MILES_TO_METERS / POUNDS_TO_KG,
+            mcl_avail_per_engine=piano_row.mcl_avail_per_engine_lbf
+            * POUNDS_FORCE_TO_NEWTONS,
             # PIANO already reports these signed, so keep its sign.
-            piano_row.rocd_mcl_fix_mach_fpm * FPM_TO_MPS,
-            piano_row.rocd_mcl_fix_cas_fpm * FPM_TO_MPS,
-        ]
+            rocd_mcl_fix_mach=piano_row.rocd_mcl_fix_mach_fpm * FPM_TO_MPS,
+            rocd_mcl_fix_cas=piano_row.rocd_mcl_fix_cas_fpm * FPM_TO_MPS,
+        )
 
         row_type = piano_row.reference_mach_column
         if row_type is not None:
@@ -137,16 +159,17 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
             '%d numeric columns, which thins the interpolation grid. The '
             'first is: "%s"',
             len(malformed),
-            len(CruiseRow.columns()),
+            len(PianoCruiseRow.columns()),
             malformed[0].strip(),
         )
 
     cruise = TableInput(
         cols=CRUISE_COLS,
         data=[
-            row
-            for _, (row, _) in sorted(
-                rows.items(), key=lambda item: (item[0][1], item[0][0], item[0][2])
+            list(row)
+            for row in sorted(
+                (row for row, _ in rows.values()),
+                key=lambda r: (r.mass, r.fl, r.mach),
             )
         ],
     )
@@ -154,9 +177,9 @@ def _parse_cruise(path: str) -> tuple[str, TableInput, TableInput]:
 
 
 def _insert_cruise_row(
-    rows: dict[tuple[float, float, float], tuple[list[float], bool]],
+    rows: dict[tuple[float, float, float], tuple[CruiseTableRow, bool]],
     key: tuple[float, float, float],
-    row: list[float],
+    row: CruiseTableRow,
     is_swept: bool,
     verbose: bool = False,
 ) -> None:
@@ -178,7 +201,9 @@ def _insert_cruise_row(
     # Off by default because it produces a lot of noise
     if verbose:
         differing = [
-            CRUISE_COLS[i] for i in range(len(CRUISE_COLS)) if existing_row[i] != row[i]
+            column
+            for column, old, new in zip(CRUISE_COLS, existing_row, row, strict=True)
+            if old != new
         ]
         if differing:
             logger.warning(
@@ -202,11 +227,17 @@ def _reference_mach_table(
     hold for a group is written as NaN, so a group keeps the reference Machs
     PIANO did report.
     """
-    required = CRUISE_REFERENCE_MACH_COLS[2:]
-    data = []
+    required = _REFERENCE_MACH_LABELS.values()
+    data: list[CruiseReferenceMachTableRow] = []
     incomplete = []
     for (fl, mass), machs in labelled.items():
-        data.append([fl, mass] + [machs.get(column, math.nan) for column in required])
+        data.append(
+            CruiseReferenceMachTableRow(
+                fl=fl,
+                mass=mass,
+                **{column: machs.get(column, math.nan) for column in required},
+            )
+        )
         missing = [column for column in required if column not in machs]
         if missing:
             incomplete.append((fl, mass, missing))
@@ -224,5 +255,5 @@ def _reference_mach_table(
 
     return TableInput(
         cols=CRUISE_REFERENCE_MACH_COLS,
-        data=sorted(data, key=lambda row: (row[1], row[0])),
+        data=[list(row) for row in sorted(data, key=lambda r: (r.mass, r.fl))],
     )

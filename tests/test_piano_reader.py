@@ -31,9 +31,9 @@ from AEIC.parsers.piano_reader.descent_reader import (
     DESCENT_IDLE_THRUST_COLS,
 )
 from AEIC.parsers.piano_reader.rows import (
-    ClimbRow,
-    CruiseRow,
-    DescentRow,
+    PianoClimbRow,
+    PianoCruiseRow,
+    PianoDescentRow,
     UnexpectedDiscriminatorError,
     _PianoRow,
 )
@@ -650,7 +650,7 @@ def _fuel_flow_lbps(h: float) -> float:
     return 2.0 - 1.0e-4 * (h - 31000.0)
 
 
-def _synthetic_rows(altitudes_ft: list[float]) -> list[ClimbRow]:
+def _synthetic_rows(altitudes_ft: list[float]) -> list[PianoClimbRow]:
     """Climb rows in PIANO units on known functions of altitude.
 
     Each interval takes 100 s, and burns the fuel flow at its midpoint
@@ -659,7 +659,7 @@ def _synthetic_rows(altitudes_ft: list[float]) -> list[ClimbRow]:
     first row is off every trend, so a fit that uses it fails the tests.
     """
     rows = [
-        ClimbRow(
+        PianoClimbRow(
             altitude_ft=altitudes_ft[0],
             time_s=0.0,
             distance_nm=0.0,
@@ -673,7 +673,7 @@ def _synthetic_rows(altitudes_ft: list[float]) -> list[ClimbRow]:
         below = rows[-1]
         midpoint = (below.altitude_ft + h) / 2
         rows.append(
-            ClimbRow(
+            PianoClimbRow(
                 altitude_ft=h,
                 time_s=below.time_s + 100.0,
                 distance_nm=below.distance_nm + 10.0,
@@ -759,9 +759,9 @@ CRUISE_TOKENS[3] = '|'
 
 
 def test_climb_row_columns_follow_the_file_order():
-    row = ClimbRow.from_tokens(['1', '2', '3', '4', '5', '6', '7'])
+    row = PianoClimbRow.from_tokens(['1', '2', '3', '4', '5', '6', '7'])
 
-    assert row == ClimbRow(
+    assert row == PianoClimbRow(
         altitude_ft=1.0,
         time_s=2.0,
         distance_nm=3.0,
@@ -774,9 +774,9 @@ def test_climb_row_columns_follow_the_file_order():
 
 def test_descent_row_columns_follow_the_file_order():
     """Unlike climb, a descent row has its rate column before its thrust."""
-    row = DescentRow.from_tokens(['1', '2', '3', '4', '5', '6'])
+    row = PianoDescentRow.from_tokens(['1', '2', '3', '4', '5', '6'])
 
-    assert row == DescentRow(
+    assert row == PianoDescentRow(
         altitude_ft=1.0,
         time_s=2.0,
         distance_nm=3.0,
@@ -788,9 +788,9 @@ def test_descent_row_columns_follow_the_file_order():
 
 def test_cruise_row_columns_follow_the_file_order():
     """PIANO writes L/D before the fuel flow, and mass before altitude."""
-    row = CruiseRow.from_tokens(CRUISE_TOKENS)
+    row = PianoCruiseRow.from_tokens(CRUISE_TOKENS)
 
-    assert row == CruiseRow(
+    assert row == PianoCruiseRow(
         mass_lb=0.0,
         altitude_ft=1.0,
         mach=2.0,
@@ -815,13 +815,13 @@ def test_climb_row_reads_the_nox_column_at_any_position(nox_col):
     tokens = ['1', '2', '3', '4', '5', '6', '7']
     tokens.insert(nox_col, '99')
 
-    row = ClimbRow.from_tokens(tokens, nox_col=nox_col)
+    row = PianoClimbRow.from_tokens(tokens, nox_col=nox_col)
 
     assert row is not None
     assert row.nox == 99.0
-    assert row == ClimbRow.from_tokens(['1', '2', '3', '4', '5', '6', '7']).model_copy(
-        update={'nox': 99.0}
-    )
+    assert row == PianoClimbRow.from_tokens(
+        ['1', '2', '3', '4', '5', '6', '7']
+    ).model_copy(update={'nox': 99.0})
 
 
 @pytest.mark.parametrize(
@@ -833,7 +833,7 @@ def test_climb_row_reads_the_nox_column_at_any_position(nox_col):
     ],
 )
 def test_climb_row_is_malformed_without_seven_numbers(tokens):
-    assert ClimbRow.from_tokens(tokens) is None
+    assert PianoClimbRow.from_tokens(tokens) is None
 
 
 def test_climb_row_is_malformed_if_its_nox_value_is_not_a_number():
@@ -841,15 +841,15 @@ def test_climb_row_is_malformed_if_its_nox_value_is_not_a_number():
     that the columns around it merged."""
     tokens = ['1', '2', '3', '4', '5', '6', '7', '***']
 
-    assert ClimbRow.from_tokens(tokens, nox_col=7) is None
+    assert PianoClimbRow.from_tokens(tokens, nox_col=7) is None
 
 
 def test_cruise_row_ignores_columns_after_those_it_reads():
     """PIANO writes buffet onset and emissions after the columns that the
     reader uses."""
-    row = CruiseRow.from_tokens([*CRUISE_TOKENS, 'buffet', 'NOx'])
+    row = PianoCruiseRow.from_tokens([*CRUISE_TOKENS, 'buffet', 'NOx'])
 
-    assert row == CruiseRow.from_tokens(CRUISE_TOKENS)
+    assert row == PianoCruiseRow.from_tokens(CRUISE_TOKENS)
 
 
 def test_cruise_row_with_an_unknown_discriminator_raises():
@@ -857,7 +857,7 @@ def test_cruise_row_with_an_unknown_discriminator_raises():
     tokens[3] = '98%SAR'
 
     with pytest.raises(UnexpectedDiscriminatorError, match='98%SAR'):
-        CruiseRow.from_tokens(tokens)
+        PianoCruiseRow.from_tokens(tokens)
 
 
 @pytest.mark.parametrize('bad_column', [0, 14])
@@ -868,11 +868,11 @@ def test_malformed_cruise_row_does_not_report_its_discriminator(bad_column):
     tokens[3] = '98%SAR'
     tokens[bad_column] = '1.2.3'
 
-    assert CruiseRow.from_tokens(tokens) is None
+    assert PianoCruiseRow.from_tokens(tokens) is None
 
 
 def test_cruise_row_with_too_few_columns_is_malformed():
-    assert CruiseRow.from_tokens(CRUISE_TOKENS[:-1]) is None
+    assert PianoCruiseRow.from_tokens(CRUISE_TOKENS[:-1]) is None
 
 
 @pytest.mark.parametrize(
@@ -888,7 +888,7 @@ def test_cruise_row_classifies_its_discriminator(discriminator, is_swept, column
     tokens = list(CRUISE_TOKENS)
     tokens[3] = discriminator
 
-    row = CruiseRow.from_tokens(tokens)
+    row = PianoCruiseRow.from_tokens(tokens)
 
     assert row is not None
     assert row.is_swept is is_swept

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import NamedTuple
 
 from AEIC.parsers.piano_reader.common import (
     _cross_check_fuel_burn,
@@ -19,7 +20,7 @@ from AEIC.parsers.piano_reader.common import (
     _split_blocks,
     _tas_from_schedule,
 )
-from AEIC.parsers.piano_reader.rows import DescentRow
+from AEIC.parsers.piano_reader.rows import PianoDescentRow
 from AEIC.performance.types import SpeedData, TableInput
 from AEIC.units import (
     FEET_TO_METERS,
@@ -31,22 +32,34 @@ from AEIC.units import (
 
 logger = logging.getLogger(__name__)
 
-# See PIANO parser doc for expected schema
-# Descent table columns
-DESCENT_COLS = [
-    'fl',
-    'mass',
-    'tas',
-    'rocd',
-    'fuel_flow',
-    'time',
-    'distance',
-    'burn',
-    'fn_per_engine',
-]
 
-# Descent idle thrust table columns
-DESCENT_IDLE_THRUST_COLS = ['mass', 'idle_thrust_altitude']
+class DescentTableRow(NamedTuple):
+    """A row of the output descent table, in SI units except for the flight level.
+
+    See the PIANO parser doc for the expected schema. Consumers read this table
+    by column name, so the field order only sets the column order of the output.
+    """
+
+    fl: float
+    mass: float
+    tas: float
+    rocd: float
+    fuel_flow: float
+    time: float
+    distance: float
+    burn: float
+    fn_per_engine: float
+
+
+class DescentIdleThrustTableRow(NamedTuple):
+    """A row of the output descent idle thrust table, in SI units."""
+
+    mass: float
+    idle_thrust_altitude: float
+
+
+DESCENT_COLS = list(DescentTableRow._fields)
+DESCENT_IDLE_THRUST_COLS = list(DescentIdleThrustTableRow._fields)
 
 _DESCENT_MASS_RE = re.compile(r'^\s*Mass\s+([\d.]+)')
 _IDLE_THRUST_RE = re.compile(r'Idle thrust below\s+([\d.]+)feet')
@@ -70,15 +83,15 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
             schedule must be the same across the file.
     """
     lines = _read_lines(path)
-    blocks = _split_blocks(lines, 'Descent details', DescentRow.from_tokens)
+    blocks = _split_blocks(lines, 'Descent details', PianoDescentRow.from_tokens)
 
-    data = []
-    idle_thrust = []
+    data: list[DescentTableRow] = []
+    idle_thrust: list[DescentIdleThrustTableRow] = []
     schedule: _Schedule | None = None
 
     for n, block in enumerate(blocks):
         label = f'Descent block {n + 1}'
-        _reject_malformed(label, block, len(DescentRow.columns()))
+        _reject_malformed(label, block, len(PianoDescentRow.columns()))
 
         mass_match = _find(_DESCENT_MASS_RE, block.header_lines)
         if mass_match is None:
@@ -101,7 +114,12 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
         if idle_match is None:
             logger.warning('%s has no "Idle thrust below" header', label)
         else:
-            idle_thrust.append([mass, float(idle_match.group(1)) * FEET_TO_METERS])
+            idle_thrust.append(
+                DescentIdleThrustTableRow(
+                    mass=mass,
+                    idle_thrust_altitude=float(idle_match.group(1)) * FEET_TO_METERS,
+                )
+            )
 
         rows = block.rows
         if not rows:
@@ -128,7 +146,8 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
         )
 
         for i, row in enumerate(rows):
-            if fuel_flow[i] is None:
+            row_fuel_flow = fuel_flow[i]
+            if row_fuel_flow is None:
                 logger.warning(
                     '%s: dropping the row at %.0f feet, whose fuel flow '
                     'difference spans no time so is not defined',
@@ -137,17 +156,17 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
                 )
                 continue
             data.append(
-                [
-                    row.altitude_ft / 100,
-                    mass,
-                    tas[i],
-                    rocd[i],
-                    fuel_flow[i],
-                    row.time_s,
-                    row.distance_nm * NAUTICAL_MILES_TO_METERS,
-                    row.burn_lb * POUNDS_TO_KG,
-                    row.fn_per_engine_lbf * POUNDS_FORCE_TO_NEWTONS,
-                ]
+                DescentTableRow(
+                    fl=row.altitude_ft / 100,
+                    mass=mass,
+                    tas=tas[i],
+                    rocd=rocd[i],
+                    fuel_flow=row_fuel_flow,
+                    time=row.time_s,
+                    distance=row.distance_nm * NAUTICAL_MILES_TO_METERS,
+                    burn=row.burn_lb * POUNDS_TO_KG,
+                    fn_per_engine=row.fn_per_engine_lbf * POUNDS_FORCE_TO_NEWTONS,
+                )
             )
 
     if schedule is None:
@@ -156,10 +175,11 @@ def _parse_descent(path: str) -> tuple[SpeedData, TableInput, TableInput]:
     return (
         schedule.to_speed_data(),
         TableInput(
-            cols=DESCENT_COLS, data=sorted(data, key=lambda row: (row[1], row[0]))
+            cols=DESCENT_COLS,
+            data=[list(row) for row in sorted(data, key=lambda r: (r.mass, r.fl))],
         ),
         TableInput(
             cols=DESCENT_IDLE_THRUST_COLS,
-            data=sorted(idle_thrust, key=lambda row: row[0]),
+            data=[list(row) for row in sorted(idle_thrust, key=lambda r: r.mass)],
         ),
     )
