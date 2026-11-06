@@ -35,6 +35,11 @@ The legacy model derives the aircraft empty mass from the performance tables
 using the BADA 3 rule `OEM = min_mass / 1.2`. It ignores an
 `operating_empty_mass_kg` field, and warns if a file sets one.
 
+## Hold fuel flow
+
+The legacy model estimates hold fuel flow as the fuel flow at the minimum
+mass and flight level in the the cruise table.
+
 ## Performance table
 
 Within the {py:class}`LegacyPerformanceModel
@@ -85,10 +90,6 @@ class, instances of which are created lazily for each flight phase as needed
 .. autoclass:: AEIC.performance.models.legacy.PerformanceTable
    :members:
    :private-members: _interpolators
-```
-
-```{eval-rst}
-.. autoenum:: AEIC.performance.models.legacy.ROCDFilter
 ```
 
 ```{eval-rst}

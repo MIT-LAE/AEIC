@@ -1,9 +1,15 @@
+import math
+
 import numpy as np
 import pytest
 
 import AEIC.trajectories.builders as tb
-from AEIC.performance.models.legacy import ROCDFilter
-from AEIC.performance.types import AircraftState, SimpleFlightRules
+from AEIC.performance.models.base import ROCDFilter
+from AEIC.performance.types import (
+    AircraftState,
+    PianoConstantMachCruise,
+    SimpleFlightRules,
+)
 from AEIC.trajectories import GroundTrack
 from AEIC.trajectories.builders.adjustable_legacy import AdjustableLegacyContext
 from AEIC.units import FL_TO_METERS
@@ -247,3 +253,43 @@ def test_invalid_adjustments_raise_value_error(
         tb.AdjustableLegacyBuilder(options=tb.Options(iterate_mass=False)).fly(
             performance_model, sample_missions[0], **kwargs
         )
+
+
+def _context(performance_model, mission, **adjustments) -> AdjustableLegacyContext:
+    builder = tb.AdjustableLegacyBuilder(options=tb.Options(iterate_mass=False))
+    return AdjustableLegacyContext(
+        builder, performance_model, mission, starting_mass=None, **adjustments
+    )
+
+
+@pytest.mark.parametrize(
+    'adjustments,expected_minimum',
+    [
+        pytest.param({}, 0.0, id='default'),
+        pytest.param({'min_rocd_mcl_mach': 1.5}, 1.5, id='value'),
+    ],
+)
+def test_piano_cruise_rules_take_the_climb_potential_minimum(
+    sample_missions, piano_model, adjustments, expected_minimum
+):
+    context = _context(piano_model, sample_missions[0], cruise_mach=0.78, **adjustments)
+
+    assert context.cruise_rules == PianoConstantMachCruise(0.78, expected_minimum)
+
+
+def test_piano_starting_mass_estimate_skips_the_climb_potential_check(
+    sample_missions, piano_model
+):
+    """The estimate uses the maximum table mass, which is not a flown state."""
+    context = _context(
+        piano_model, sample_missions[0], cruise_mach=0.78, min_rocd_mcl_mach=1.5
+    )
+
+    assert context.cruise_estimate_rules == PianoConstantMachCruise(0.78, -math.inf)
+
+
+def test_legacy_model_refuses_a_climb_potential_minimum(
+    sample_missions, performance_model
+):
+    with pytest.raises(ValueError, match='min_rocd_mcl_mach is not supported'):
+        _context(performance_model, sample_missions[0], min_rocd_mcl_mach=1.5)

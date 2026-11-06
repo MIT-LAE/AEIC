@@ -67,15 +67,6 @@ the optional values, some may not. The legacy table-based performance model
 does not: all return values from the legacy model depend only on aircraft
 altitude, aircraft mass and a simple climb/cruise/descent flight rule.
 
-```{warning}
-The {py:class}`PianoPerformanceModel
-<AEIC.performance.models.PianoPerformanceModel>` class does not yet implement
-{py:meth}`evaluate_impl
-<AEIC.performance.models.BasePerformanceModel.evaluate_impl>`. Calling
-{py:meth}`evaluate <AEIC.performance.models.BasePerformanceModel.evaluate>` on
-a PIANO model raises `NotImplementedError`.
-```
-
 The performance data returned from the {py:meth}`evaluate
 <AEIC.performance.models.BasePerformanceModel.evaluate>` method contains
 actual achievable true airspeed, actual achievable rate of climb/descent and
@@ -123,6 +114,27 @@ print(perf)
 # )
 ```
 
+A PIANO performance model evaluates climb and descent with
+{py:class}`SimpleFlightRules <AEIC.performance.types.SimpleFlightRules>` in
+the same way. For cruise, it needs a Mach number, which is set by the
+{py:class}`PianoConstantMachCruise
+<AEIC.performance.types.PianoConstantMachCruise>` flight rule. See
+[PIANO performance model](piano_performance_model.md) for details.
+
+```python
+from AEIC.performance.models import PerformanceModel, PianoPerformanceModel
+from AEIC.performance.types import AircraftState, PianoConstantMachCruise
+from AEIC.units import FL_TO_METERS
+
+# Load a PIANO performance model.
+model = PerformanceModel.load('example.toml')
+assert isinstance(model, PianoPerformanceModel)
+
+# Evaluate cruise at FL350 and Mach 0.78.
+state = AircraftState(altitude=350 * FL_TO_METERS, aircraft_mass=65000)
+perf = model.evaluate(state, PianoConstantMachCruise(mach=0.78))
+```
+
 ## Performance model members
 
 After a performance model instance is created (of any type derived from
@@ -147,6 +159,11 @@ After a performance model instance is created (of any type derived from
   and a high calibrated airspeed, a Mach number and the crossover altitude
   above which the schedule flies that Mach number. The `cruise` phase is
   optional as a model does not necessarily impose a cruise Mach number.
+- {py:attr}`hold_fuel_flow
+  <AEIC.performance.models.BasePerformanceModel.hold_fuel_flow>`: the total
+  aircraft fuel flow in a hold, in kg/s. The trajectory builders use it to
+  compute the hold fuel of the starting mass. Implemented by each performance
+  model.
 
 ## API reference
 
@@ -185,6 +202,15 @@ After a performance model instance is created (of any type derived from
 
 ```{eval-rst}
 .. autoenum:: AEIC.performance.types.SimpleFlightRules
+```
+
+```{eval-rst}
+.. autoclass:: AEIC.performance.types.PianoConstantMachCruise
+   :members:
+```
+
+```{eval-rst}
+.. autoenum:: AEIC.performance.models.base.ROCDFilter
 ```
 
 ```{eval-rst}

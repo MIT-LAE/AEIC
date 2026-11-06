@@ -28,7 +28,7 @@ def lto_from_edb(engine_file, engine_uid, thrust_fractions) -> LTOPerformance:
             'Both --engine-file and --engine-uid must be provided when '
             'using "edb" as the LTO source.'
         )
-    edb_data = EDBEntry.get_engine(engine_file, engine_uid)
+    edb_data = EDBEntry.get_engine(engine_file, engine_uid, strict=False)
     return edb_data.make_lto_performance(thrust_fractions)
 
 
@@ -269,6 +269,13 @@ def parse_climb_masses(value: str | None) -> list[float] | None:
     'Supply the three climb schedule options together.',
 )
 @click.option(
+    '--extrapolate-climb-to-halt/--no-extrapolate-climb-to-halt',
+    default=True,
+    show_default=True,
+    help='Extrapolate each climb block that PIANO halted above its last row '
+    'to the halt altitude.',
+)
+@click.option(
     '--operating-empty-mass',
     type=float,
     required=True,
@@ -309,6 +316,7 @@ def piano(
     climb_cas_low_kts,
     climb_cas_high_kts,
     climb_mach,
+    extrapolate_climb_to_halt,
     operating_empty_mass,
     hold_fuel_flow_lbperh,
     aircraft_name,
@@ -330,6 +338,7 @@ def piano(
                 climb_cas_high_kts=climb_cas_high_kts,
                 climb_mach=climb_mach,
             ),
+            extrapolate_climb_to_halt=extrapolate_climb_to_halt,
         )
 
         model = build_piano_model(

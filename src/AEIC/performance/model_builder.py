@@ -262,6 +262,7 @@ def write_performance_model(path: str | Path, model: BasePerformanceModel) -> No
 
     Fields are written in the order given by the model type's entry in
     `WRITE_SPECS`, under the output key that entry names.
+
     - Tabular data is written as a trailing ``[section]`` block with
       aligned numeric layout
     - Speed and LTO data are written as nested sub-tables

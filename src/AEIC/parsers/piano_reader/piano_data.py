@@ -47,7 +47,8 @@ class PianoData:
     """Aircraft name, from the cruise table title."""
 
     maximum_altitude_ft: int
-    """Highest altitude any climb block reaches [feet]."""
+    """Highest altitude any climb block reaches [feet].
+    Includes rows to halt altitude if any."""
 
     isa_offset: int
     """ISA temperature offset [deg C]."""
@@ -81,6 +82,7 @@ class PianoData:
         descent_file: str,
         *,
         overrides: PianoOverrides | None = None,
+        extrapolate_climb_to_halt: bool = True,
     ) -> Self:
         """Read a set of PIANO cruise, climb and descent exports.
 
@@ -89,6 +91,8 @@ class PianoData:
             climb_file: Path to the PIANO climb details export.
             descent_file: Path to the PIANO descent details export.
             overrides: Values PIANO does not always write to the files.
+            extrapolate_climb_to_halt: Extrapolate each climb block that
+                halted above its last row to its halt altitude.
 
         Raises:
             ValueError: If the files cannot be parsed, if the climb mass count
@@ -99,7 +103,7 @@ class PianoData:
 
         aircraft_name, cruise, reference_mach = _parse_cruise(cruise_file)
         climb_speeds, isa_offset, maximum_altitude_ft, climb = _parse_climb(
-            climb_file, overrides
+            climb_file, overrides, extrapolate_climb_to_halt
         )
         descent_speeds, descent, idle_thrust = _parse_descent(descent_file)
 

@@ -16,11 +16,14 @@ The package is split into one reader per file, plus shared helpers:
  * `climb_reader.py` parses the per-mass climb detail blocks
  * `descent_reader.py` parses the per-mass descent detail blocks
  * `common.py` holds block splitting, airspeed schedule parsing, delta
-   calculation and the cross-checks.
+   calculation, the per-row fuel flow (`_row_fuel_flows`) and the
+   cross-checks.
 
 Most users should only need `PianoData` and `PianoOverrides`.
 
 ```{eval-rst}
+.. py:module:: AEIC.parsers.piano_reader
+
 .. autoclass:: AEIC.parsers.piano_reader.PianoData
     :members:
 ```
@@ -118,6 +121,11 @@ all:
     -----------------------------------------
 ```
 
+The reader takes the halt altitude from this note. The last row of the block
+can be below the halt altitude. By default, the reader then extrapolates the
+block to the halt altitude. See
+[Climb halt extrapolation](#climb-halt-extrapolation).
+
 ### Descent details export
 
 A descent file has the same block shape as a climb file, split on the
@@ -189,23 +197,80 @@ True airspeed at a given altitude then follows three regimes:
 ## Fuel flow and cumulative columns
 
 PIANO does not tabulate fuel flow for climb and descent. The reader derives it
-from the cumulative burn and time columns of consecutive rows:
+from the cumulative burn and time columns.
+
+The trajectory builder needs the fuel flow at the flight level and mass of each
+row. Interior rows take the central difference of cumulative fuel burn:
 
 ```{math}
-\dot{m}_i = \frac{B_i - B_{i-1}}{t_i - t_{i-1}}
+\dot{m}_i = \frac{B_{i+1} - B_{i-1}}{t_{i+1} - t_{i-1}}
 ```
 
-This is a **backward** difference: row {math}`i` is the average fuel flow
-over the step that ends at row {math}`i`, and not the instantaneous value at
-that row's altitude.
+The first and the last rows of a block take the one-sided difference of their
+only step. These two values are the average over that step.
 
-The first row of a block is the exception. It takes
-a **forward** difference instead and is assigned the same step as the second
-row.
+The `time` and `burn` columns stay as PIANO writes them. The `burn` column is
+the exact cumulative burn at the row, so `mass - burn` is the mass of the
+aircraft at the row.
 
-```{admonition} Question
-Double check if this is the correct thing to do
+## Climb halt extrapolation
+
+PIANO halts a climb when its rate of climb gets too low and does not reach
+the target altitude. The last row of the `Climb details` table can then be up
+1000 ft below the halt altitude. Without a correction, the climb ceiling of the
+model is too low. Because the halt altitude is a valid altitude that the climb
+reached, the reader adds an extrapolated row at the halt altitude.
+
+The extrapolation runs only if all of these conditions are true:
+
+ * the block has a halt note;
+ * the halt altitude is more than 10 ft above the last row
+   (`_HALT_GAP_MIN_FT`);
+ * the extrapolation is on. It is on by default. To turn it off, pass
+   `extrapolate_climb_to_halt=False` to {py:meth}`PianoData.load
+   <AEIC.parsers.piano_reader.PianoData.load>`, or
+   `--no-extrapolate-climb-to-halt` to {command}`make-performance-model`.
+
+The fit uses only the rows above the crossover altitude, where the climb is at
+constant Mach number. Each value at the halt altitude comes from a polynomial
+through the last rows:
+
+| Value | Fit |
+|-------|-----|
+| Rate of climb | Linear through the last two rows. |
+| Net thrust per engine | Linear through the last two rows. |
+| Drag | Quadratic through the last three rows. |
+| Fuel flow | Linear through the average fuel flows of the last two intervals, each at the midpoint altitude of its interval. |
+
+Time, distance and burn are cumulative, so the reader integrates them from the
+last row {math}`h_n` to the halt altitude {math}`h_\mathrm{halt}`:
+
+```{math}
+\Delta t &= \int_{h_n}^{h_\mathrm{halt}} \frac{dh}{\mathrm{ROCD}(h)} \\
+\Delta d &= \int_{h_n}^{h_\mathrm{halt}}
+    \frac{\sqrt{\mathrm{TAS}(h)^2 - \mathrm{ROCD}(h)^2}}{\mathrm{ROCD}(h)} \, dh \\
+\Delta B &= \int_{h_n}^{h_\mathrm{halt}} \frac{\dot{m}(h)}{\mathrm{ROCD}(h)} \, dh
 ```
+
+{math}`\mathrm{ROCD}(h)` and {math}`\dot{m}(h)` are the fits above.
+{math}`\mathrm{TAS}(h)` comes from the airspeed schedule. The integrals use
+the trapezoidal rule on 101 altitude points.
+
+The reader skips the extrapolation, with a warning, in these cases:
+
+ * fewer than three rows are above the crossover altitude, or fewer than two
+   interval fuel flows are available to fit;
+ * the rate of climb, the net thrust, the drag or the fuel flow at the halt
+   altitude is zero or negative, which is not physical.
+
+The block then stops at its last row, as PIANO wrote it.
+
+After the reader adds the row, it derives the fuel flow of every row of the
+block again. The extrapolated row takes the one-sided difference of its step.
+The last row that PIANO wrote now takes a central difference, which uses the
+extrapolated row.
+
+The cross-checks run on the rows that PIANO wrote, before the extrapolation.
 
 ## Dropped rows and parse failures
 
@@ -219,11 +284,13 @@ the line is a data row in case of field overflows that merge columns.
 |------|------|-----------|
 | Line is a data row but holds fewer than fifteen columns | cruise | Dropped. One aggregate warning gives the count and the first offending line. |
 | Line is a data row but at least one of the first fifteen numeric columns is not a number | cruise | Dropped. One aggregate warning gives the count and the first offending line. |
-| Row spans no time, so {math}`\Delta t = 0` | climb, descent | Dropped, with one warning per row. Fuel flow is undefined over a zero-length step. |
+| The difference of a row spans no time: {math}`t_{i+1} = t_{i-1}`, or a zero-length step at the first or last row | climb, descent | Dropped, with one warning per row. Fuel flow is undefined. Real PIANO exports have no zero-length steps. |
 | Block holds no data rows at all | climb, descent | Skipped, with one warning. |
 | Block states no `Idle thrust below` altitude | descent | No idle thrust row is emitted for that mass. |
 | Duplicate row at the same (flight level, mass, Mach) | cruise | (Off by default) The labelled row overrides the swept row and the warning lists the columns that disagree. |
 | Missing mach number for a reference performance point | cruise |  Put a NaN for the missing Mach number in the `cruise_reference_mach` table |
+| Halted block with fewer than three rows above the crossover altitude, or fewer than two interval fuel flows | climb | No row is extrapolated to the halt altitude, with one warning. The block stops at its last row. |
+| Halted block whose rate of climb, net thrust, drag or fuel flow at the halt altitude extrapolates to zero or less | climb | No row is extrapolated to the halt altitude, with one warning. The block stops at its last row. |
 
 Due to rounding in the PIANO output, a `(fl, mass, Mach)` triplet might be
 the same for a row coming from the PIANO Mach sweep, and a row coming from
@@ -242,7 +309,7 @@ The reader raises `ValueError` in the following cases.
 
 | Case | File |
 |------|------|
-| Line is a data row but does not contain exactly seven (climb) or six (descent) numbers | climb, descent |
+| Line is a data row but does not contain exactly seven (climb) or six (descent) numbers, plus any token in a declared `NOx` column | climb, descent |
 | The file holds no block marker | climb, descent |
 | The file has no `Cruise table for` title | cruise |
 | The fourth column is neither `\|` nor a known reference Mach label | cruise |

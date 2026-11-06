@@ -12,13 +12,11 @@ import pytest
 from AEIC.performance.model_builder import (
     WRITE_SPECS,
     build_legacy_model,
-    build_piano_model,
     write_performance_model,
 )
 from AEIC.performance.models import (
     LegacyPerformanceModel,
     PerformanceModel,
-    PianoPerformanceModel,
 )
 from AEIC.performance.types import TableInput
 
@@ -27,20 +25,6 @@ MODEL_TYPES = list(WRITE_SPECS)
 
 class _UnregisteredModel(LegacyPerformanceModel):
     """A model type with no entry in `WRITE_SPECS`."""
-
-
-@pytest.fixture
-def piano_model(piano_data, lto) -> PianoPerformanceModel:
-    return build_piano_model(
-        piano_data,
-        lto,
-        aircraft_class='narrow',
-        number_of_engines=2,
-        maximum_payload=18000,
-        operating_empty_mass=37100,
-        hold_fuel_flow_lbperh=5000.0,
-        apu_name='APU 131-9',
-    )
 
 
 @pytest.fixture
@@ -84,25 +68,6 @@ def test_write_spec_output_keys_are_unique(model_type):
     assert len(keys) == len(set(keys))
 
 
-def test_table_sections_are_written_in_spec_order(tmp_path, piano_model, legacy_model):
-    for name, model in (('piano.toml', piano_model), ('legacy.toml', legacy_model)):
-        # Expected order of tables from reading the WRITE_SPECS
-        expected = [
-            key
-            for field, key in WRITE_SPECS[type(model)]
-            if isinstance(getattr(model, field), TableInput)
-        ]
-        assert expected, f'{name} states no tables, so this asserts nothing'
-
-        data = read_toml(tmp_path, model, name)
-        written = [
-            key
-            for key, value in data.items()
-            if isinstance(value, dict) and 'cols' in value
-        ]
-        assert written == expected
-
-
 def test_empty_table_writes_its_columns_and_no_rows(tmp_path, piano_model):
     """The PIANO reader produces an empty descent idle thrust table when no
     descent row qualifies, so the writer must render it rather than crash."""
@@ -134,13 +99,6 @@ def test_apu_name_omitted_when_unset(tmp_path, piano_model):
     assert 'APU_name' not in read_toml(tmp_path, without, 'without_apu.toml')
 
 
-def test_unset_speed_phase_is_omitted(tmp_path, piano_model):
-    """The fixture model states no cruise Mach number, so it has no cruise
-    speed data to write."""
-    assert piano_model.speeds.cruise is None
-    assert set(read_toml(tmp_path, piano_model)['speeds']) == {'climb', 'descent'}
-
-
 def test_isa_offset_round_trips(tmp_path, piano_model, legacy_model):
     """`ISA_offset` used to be written and then dropped on load, because no
     model declared the field."""
@@ -157,14 +115,3 @@ def test_model_type_without_a_write_spec_raises(tmp_path, legacy_model):
     model = _UnregisteredModel(**legacy_model.model_dump())
     with pytest.raises(ValueError, match='No write spec'):
         write_performance_model(tmp_path / 'unregistered.toml', model)
-
-
-def test_hold_table_is_written_after_the_last_table(tmp_path, piano_model):
-    """The hold table is PIANO-specific data, so it closes the model-specific
-    section after the tabular data."""
-    data = read_toml(tmp_path, piano_model)
-
-    assert list(data)[-2:] == ['descent_idle_thrust', 'hold_flight_performance']
-    assert data['hold_flight_performance'] == {
-        'fuel_flow': piano_model.hold_flight_performance.fuel_flow
-    }

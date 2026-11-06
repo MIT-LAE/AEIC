@@ -11,19 +11,32 @@ units here, never physical plausibility.
 import logging
 import math
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
 from AEIC.config import config
 from AEIC.parsers.piano_reader import PianoData, PianoOverrides
-from AEIC.parsers.piano_reader.climb_reader import CLIMB_COLS
+from AEIC.parsers.piano_reader.climb_reader import (
+    CLIMB_COLS,
+    _extrapolate_to_halt,
+)
+from AEIC.parsers.piano_reader.common import _Schedule
 from AEIC.parsers.piano_reader.cruise_reader import (
     CRUISE_COLS,
     CRUISE_REFERENCE_MACH_COLS,
+    CruiseTableRow,
+    _CruiseEntry,
+    _CruisePoint,
+    _insert_cruise_row,
 )
 from AEIC.parsers.piano_reader.descent_reader import (
     DESCENT_COLS,
     DESCENT_IDLE_THRUST_COLS,
+)
+from AEIC.parsers.piano_reader.rows import (
+    PianoClimbRow,
+    _PianoRow,
 )
 from AEIC.units import (
     FEET_TO_METERS,
@@ -62,9 +75,9 @@ def load(**overrides) -> PianoData:
     )
 
 
-def test_block_counts(piano_data):
-    """One climb block and one descent block per mass, four of each."""
-    assert sorted(set(piano_data.climb.column('mass'))) == sorted(CLIMB_MASSES_KG)
+def test_descent_block_masses_come_from_the_headers(piano_data):
+    """Each of the four descent blocks states its mass in its header, in lb.
+    The climb masses come from the overrides, so they are not checked here."""
     assert sorted(set(piano_data.descent.column('mass'))) == [
         pytest.approx(lb * POUNDS_TO_KG) for lb in DESCENT_MASSES_LB
     ]
@@ -222,7 +235,7 @@ def test_consistent_climb_crossover_does_not_warn(caplog):
     assert not any('crossover' in r.getMessage() for r in caplog.records)
 
 
-def test_labelled_mach_on_the_swept_grid_keeps_one_row(piano_data, caplog):
+def test_labelled_mach_on_the_swept_grid_keeps_one_row(piano_data):
     """A labelled reference Mach can land exactly on the swept grid. The
     fixture labels maxSAR at 0.450, which the sweep also visits."""
     matching = [
@@ -245,7 +258,7 @@ def test_unrecognised_cruise_label_raises(tmp_path):
     cruise_file = tmp_path / 'cruise.txt'
     cruise_file.write_text(text)
 
-    with pytest.raises(ValueError, match='does not match the PIANO cruise'):
+    with pytest.raises(ValueError, match='does not match the expected PIANO cruise'):
         PianoData.load(
             str(cruise_file),
             str(config.file_location(PIANO_CLIMB_FILE)),
@@ -265,7 +278,7 @@ def test_cruise_row_without_the_separator_raises(tmp_path):
         '  0.7000  0.08000  19000.  1000.  2000.  1.0\n'
     )
 
-    with pytest.raises(ValueError, match='does not match the PIANO cruise'):
+    with pytest.raises(ValueError, match='does not match the expected PIANO cruise'):
         PianoData.load(
             str(cruise_file),
             str(config.file_location(PIANO_CLIMB_FILE)),
@@ -317,16 +330,94 @@ def test_cruise_reference_mach_fills_missing_labels_with_nan(tmp_path, caplog):
 
 
 def test_zero_time_rows_are_dropped(piano_data, caplog):
-    """The fixture's `Time` column repeats values, so most rows span no time
-    and have no defined fuel flow. Of each block's 30 rows, the four at 0,
-    1417, 7086 and 35431 feet are the only ones that advance the clock."""
+    """The fixture's `Time` column repeats values, so the difference of most
+    rows spans no time and they have no defined fuel flow. The clock reads
+    0 s, then 60 s from 1417 feet, 600 s from 7086 feet and 6000 s from 35431
+    feet. A row keeps its fuel flow if the time differs between the rows on
+    each side of it, or between the edge row and its neighbour."""
     for mass in CLIMB_MASSES_KG:
         kept = [row for row in piano_data.climb.data if row[1] == mass]
-        assert [row[0] for row in kept] == [0.0, 14.17, 70.86, 354.31]
+        assert [row[0] for row in kept] == [
+            0.0,
+            14.17,
+            56.69,
+            70.86,
+            340.14,
+            354.31,
+        ]
 
     with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
         load()
     assert any('spans no time' in r.getMessage() for r in caplog.records)
+
+
+def _first_block_header(path: str) -> str:
+    """The lines of a fixture file up to the first data row of its first
+    block."""
+    lines = config.file_location(path).read_text().splitlines(keepends=True)
+    start = next(i for i, line in enumerate(lines) if 'details' in line)
+    first_row = next(
+        i
+        for i in range(start + 1, len(lines))
+        if lines[i].split() and lines[i].split()[0][0].isdigit()
+    )
+    return ''.join(lines[:first_row])
+
+
+def _rows_text(rows: list[list[float]]) -> str:
+    return ''.join(' '.join(f'{value:10.1f}' for value in row) + '\n' for row in rows)
+
+
+def test_climb_fuel_flow_is_the_central_difference_of_burn(tmp_path):
+    """The burn is B(t) = 2 t + 0.01 t^2 lb at 60 s steps, so the fuel flow
+    is B'(t) = 2 + 0.02 t lb/s. The central difference is exact at the two
+    interior rows: 3.2 lb/s at 60 s and 4.4 lb/s at 120 s. The edge rows take
+    the one-sided difference: 156 lb over the first 60 s, 300 lb over the
+    last 60 s."""
+    # Alt., Time, Dist., Burn, FN/eng, R.o.C., Drag
+    rows = [
+        [0.0, 0.0, 0.0, 0.0, 30000.0, 1000.0, 1000.0],
+        [1000.0, 60.0, 1.0, 156.0, 30000.0, 1000.0, 1000.0],
+        [2000.0, 120.0, 2.0, 384.0, 30000.0, 1000.0, 1000.0],
+        [3000.0, 180.0, 3.0, 684.0, 30000.0, 1000.0, 1000.0],
+    ]
+    climb_file = tmp_path / 'climb.txt'
+    climb_file.write_text(_first_block_header(PIANO_CLIMB_FILE) + _rows_text(rows))
+
+    piano = _load_climb(climb_file, climb_masses_kg=CLIMB_MASSES_KG[:1])
+
+    assert piano.climb.column('fuel_flow') == pytest.approx(
+        [ff * POUNDS_TO_KG for ff in (2.6, 3.2, 4.4, 5.0)]
+    )
+
+
+def test_descent_fuel_flow_is_the_central_difference_of_burn(tmp_path):
+    """The burn is B(t) = 0.4 t + 0.002 t^2 lb at 60 s steps, so the fuel
+    flow is B'(t) = 0.4 + 0.004 t lb/s: 0.64 lb/s at 60 s and 0.88 lb/s at
+    120 s. The edge rows take the one-sided difference: 31.2 lb over the first
+    60 s, 60 lb over the last 60 s. Rows are in flight order, from the top of
+    descent down."""
+    # Alt., Time, Dist., Burn, R.o.D., FN/eng
+    rows = [
+        [29000.0, 0.0, 0.0, 0.0, 1000.0, 1500.0],
+        [28000.0, 60.0, 4.0, 31.2, 1000.0, 1500.0],
+        [27000.0, 120.0, 8.0, 76.8, 1000.0, 1500.0],
+        [26000.0, 180.0, 12.0, 136.8, 1000.0, 1500.0],
+    ]
+    descent_file = tmp_path / 'descent.txt'
+    descent_file.write_text(_first_block_header(PIANO_DESCENT_FILE) + _rows_text(rows))
+
+    piano = PianoData.load(
+        str(config.file_location(PIANO_CRUISE_FILE)),
+        str(config.file_location(PIANO_CLIMB_FILE)),
+        str(descent_file),
+        overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+    )
+
+    # The table is sorted by flight level, so the bottom row comes first.
+    assert piano.descent.column('fuel_flow') == pytest.approx(
+        [ff * POUNDS_TO_KG for ff in (1.0, 0.88, 0.64, 0.52)]
+    )
 
 
 def test_cruise_row_units(piano_data):
@@ -390,13 +481,6 @@ def test_descent_row_units(piano_data):
     }
 
 
-def test_rocd_signs(piano_data):
-    """Climb rates stay positive, descent rates are negated."""
-    assert all(rocd > 0 for rocd in piano_data.climb.column('rocd'))
-    assert all(rocd < 0 for rocd in piano_data.descent.column('rocd'))
-    assert all(rocd == 0 for rocd in piano_data.cruise.column('rocd'))
-
-
 def test_non_zero_delta_isa_raises(tmp_path):
     """Deriving TAS from the airspeed schedule assumes a standard
     atmosphere."""
@@ -451,15 +535,6 @@ def test_descent_idle_thrust(piano_data):
     ]
 
 
-def test_row_order(piano_data):
-    """Cruise sorts by (mass, fl, mach); climb and descent by (mass, fl)."""
-    cruise_keys = [(row[1], row[0], row[2]) for row in piano_data.cruise.data]
-    assert cruise_keys == sorted(cruise_keys)
-    for table in (piano_data.climb, piano_data.descent):
-        keys = [(row[1], row[0]) for row in table.data]
-        assert keys == sorted(keys)
-
-
 def _merge_first_two_columns(line: str) -> str:
     """Rewrite a data line as PIANO writes it when column 1 overflows.
 
@@ -492,7 +567,34 @@ def test_climb_row_with_merged_first_column_raises(tmp_path):
         )
 
 
-def _with_extra_column(text: str, label: str) -> str:
+def test_cruise_row_with_merged_first_column_is_dropped(tmp_path, caplog, piano_data):
+    """The merge moves every value one column to the left, so the fourth column
+    holds a number and not a label. This row is malformed, so the reader drops
+    it and warns. It must not read the fourth column and refuse the whole file,
+    as it does for a row that parses but has an unknown label."""
+    lines = config.file_location(PIANO_CRUISE_FILE).read_text().splitlines(True)
+    merged = []
+    for line in lines:
+        merged.append(line)
+        if line.split()[:4] == ['93000.', '15000.', '0.350', '|']:
+            merged.append(_merge_first_two_columns(line))
+    assert len(merged) == len(lines) + 1
+    cruise_file = tmp_path / 'cruise.txt'
+    cruise_file.write_text(''.join(merged))
+
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        parsed = PianoData.load(
+            str(cruise_file),
+            str(config.file_location(PIANO_CLIMB_FILE)),
+            str(config.file_location(PIANO_DESCENT_FILE)),
+            overrides=PianoOverrides(climb_masses_kg=CLIMB_MASSES_KG),
+        )
+
+    assert parsed.cruise.data == piano_data.cruise.data
+    assert 'Dropping 1 cruise line(s)' in caplog.text
+
+
+def _with_extra_column(text: str, label: str, value: str = '12.') -> str:
     """The climb file with one more column, labelled `label`, on its table.
 
     Appends the column to the line of column labels, to the line of units and
@@ -506,7 +608,7 @@ def _with_extra_column(text: str, label: str) -> str:
         elif stripped.startswith('(feet)'):
             lines.append(f'{line.rstrip()}     (gm.)\n')
         elif stripped[:1].isdigit():
-            lines.append(f'{line.rstrip()}      12.\n')
+            lines.append(f'{line.rstrip()}      {value}\n')
         else:
             lines.append(line)
     return ''.join(lines)
@@ -523,12 +625,16 @@ def _load_climb(climb_file: Path, **overrides) -> PianoData:
     )
 
 
-def test_climb_nox_column_is_dropped(tmp_path, piano_data):
+@pytest.mark.parametrize('value', ['12.', '***'])
+def test_climb_nox_column_is_dropped(tmp_path, piano_data, value):
     """Some PIANO climb exports carry an eighth NOx column. The reader has no
-    use for it, so it drops the column and reads the rest as before."""
+    use for it, so it drops the column and reads the rest as before, whatever
+    the column holds."""
     climb_file = tmp_path / 'climb.txt'
     climb_file.write_text(
-        _with_extra_column(config.file_location(PIANO_CLIMB_FILE).read_text(), 'NOx')
+        _with_extra_column(
+            config.file_location(PIANO_CLIMB_FILE).read_text(), 'NOx', value
+        )
     )
 
     parsed = _load_climb(climb_file)
@@ -546,5 +652,214 @@ def test_climb_extra_column_that_is_not_nox_raises(tmp_path):
         _with_extra_column(config.file_location(PIANO_CLIMB_FILE).read_text(), 'HC')
     )
 
-    with pytest.raises(ValueError, match='do not hold 7 numbers'):
+    with pytest.raises(ValueError, match='do not hold 7 valid columns'):
         _load_climb(climb_file)
+
+
+def test_climb_row_without_its_nox_token_raises(tmp_path):
+    """If the table declares a NOx column, every row must hold the token. The
+    reader cannot tell which column a shorter row lost."""
+    text = _with_extra_column(config.file_location(PIANO_CLIMB_FILE).read_text(), 'NOx')
+    lines = [
+        line.rsplit(None, 1)[0] + '\n' if line.split()[:2] == ['1417.', '60.'] else line
+        for line in text.splitlines(True)
+    ]
+    climb_file = tmp_path / 'climb.txt'
+    climb_file.write_text(''.join(lines))
+
+    with pytest.raises(ValueError, match=r'do not hold 8 valid columns'):
+        _load_climb(climb_file)
+
+
+# ---------------------------------------------------------------------------
+# Extrapolation of a halted climb to its halt altitude
+# ---------------------------------------------------------------------------
+
+SCHEDULE = _Schedule(
+    cas_low_kts=250.0, cas_high_kts=280.0, mach=0.75, crossover_ft=30523.0
+)
+"""280 kcas and Mach 0.750 cross over at 30523 feet."""
+
+
+def _rocd_fpm(h: float) -> float:
+    return 1000.0 - 0.2 * (h - 31000.0)
+
+
+def _fn_lbf(h: float) -> float:
+    return 8000.0 - 0.5 * (h - 31000.0)
+
+
+def _drag_lbf(h: float) -> float:
+    return 10000.0 + 1.0e-4 * (h - 32000.0) ** 2
+
+
+def _fuel_flow_lbps(h: float) -> float:
+    return 2.0 - 1.0e-4 * (h - 31000.0)
+
+
+def _synthetic_rows(altitudes_ft: list[float]) -> list[PianoClimbRow]:
+    """Climb rows in PIANO units on known functions of altitude.
+
+    Each interval takes 100 s, and burns the fuel flow at its midpoint
+    altitude over that time. The fuel flow is linear in altitude, so the
+    average fuel flow of each interval is the fuel flow at its midpoint. The
+    first row is off every trend, so a fit that uses it fails the tests.
+    """
+    rows = [
+        PianoClimbRow(
+            altitude_ft=altitudes_ft[0],
+            time_s=0.0,
+            distance_nm=0.0,
+            burn_lb=0.0,
+            fn_per_engine_lbf=99999.0,
+            rocd_fpm=9999.0,
+            drag_lbf=99999.0,
+        )
+    ]
+    for h in altitudes_ft[1:]:
+        below = rows[-1]
+        midpoint = (below.altitude_ft + h) / 2
+        rows.append(
+            PianoClimbRow(
+                altitude_ft=h,
+                time_s=below.time_s + 100.0,
+                distance_nm=below.distance_nm + 10.0,
+                burn_lb=below.burn_lb + 100.0 * _fuel_flow_lbps(midpoint),
+                fn_per_engine_lbf=_fn_lbf(h),
+                rocd_fpm=_rocd_fpm(h),
+                drag_lbf=_drag_lbf(h),
+            )
+        )
+    return rows
+
+
+def test_extrapolate_to_halt_follows_the_fitted_forms():
+    """Rate of climb, thrust and fuel flow are linear and drag is quadratic,
+    so the extrapolation reproduces them. Time is the integral of dh / ROCD,
+    and burn is the integral of the fuel flow over that time."""
+    rows = _synthetic_rows([30000.0, 31000.0, 32000.0, 33000.0, 34000.0])
+
+    row = _extrapolate_to_halt('block', rows, 35000.0, SCHEDULE)
+
+    assert row is not None
+    last = rows[-1]
+    assert row.altitude_ft == 35000.0
+    assert row.rocd_fpm == pytest.approx(_rocd_fpm(35000.0))
+    assert row.fn_per_engine_lbf == pytest.approx(_fn_lbf(35000.0))
+    assert row.drag_lbf == pytest.approx(_drag_lbf(35000.0))
+
+    # dh / ROCD for a rate of climb linear from 400 to 200 ft/min over 1000 ft.
+    d_time = 60.0 * 1000.0 / (200.0 - 400.0) * math.log(200.0 / 400.0)
+    assert row.time_s == pytest.approx(last.time_s + d_time, rel=1e-4)
+    # Integral of FF dh / ROCD, with u = h - 31000 feet from 3000 to 4000:
+    # (2 - 1e-4 u) / (1000 - 0.2 u) = 5e-4 + 1.5 / (1000 - 0.2 u).
+    d_burn = 60.0 * (5e-4 * 1000.0 + 1.5 / 0.2 * math.log(400.0 / 200.0))
+    assert row.burn_lb == pytest.approx(last.burn_lb + d_burn, rel=1e-4)
+
+    # The climb is at constant Mach and close to level, so the ground speed is
+    # close to the TAS at the middle of the step.
+    tas_kts = 0.75 * speed_of_sound_at_altitude(34500.0 * FEET_TO_METERS)
+    tas_kts /= KNOTS_TO_MPS
+    assert row.distance_nm - last.distance_nm == pytest.approx(
+        tas_kts * d_time / 3600, rel=1e-2
+    )
+
+
+def test_extrapolate_to_halt_needs_two_usable_fuel_flows(caplog):
+    """Three rows are above the crossover, so rate of climb, thrust and drag
+    could be fitted. But the first of their intervals starts below the
+    crossover, and the last interval spans no time. Only one interval is left
+    for the fuel flow, which is too few to fit."""
+    rows = _synthetic_rows([30000.0, 31000.0, 32000.0, 33000.0])
+    rows[-1] = rows[-1].model_copy(update={'time_s': rows[-2].time_s})
+
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        row = _extrapolate_to_halt('block', rows, 34000.0, SCHEDULE)
+
+    assert row is None
+    assert any('too few rows' in r.getMessage() for r in caplog.records)
+
+
+def test_extrapolate_to_halt_skips_a_negative_rate_of_climb(caplog):
+    """The rate of climb reaches zero at 36000 feet, so it is negative at a
+    halt altitude above that. The climb is not extrapolated."""
+    rows = _synthetic_rows([30000.0, 31000.0, 32000.0, 33000.0, 34000.0])
+
+    with caplog.at_level(logging.WARNING, logger='AEIC.parsers.piano_reader'):
+        row = _extrapolate_to_halt('block', rows, 36500.0, SCHEDULE)
+
+    assert row is None
+    assert any(
+        'extrapolated rocd' in r.getMessage()
+        and 'skipping extrapolation' in r.getMessage()
+        for r in caplog.records
+    )
+
+
+# ---------------------------------------------------------------------------
+# Row models
+# ---------------------------------------------------------------------------
+
+
+def test_climb_row_skips_a_nox_column_in_the_middle():
+    """The columns on each side of NOx keep their names. The reader tests only
+    put NOx at the end of the row."""
+    row = PianoClimbRow.from_tokens(
+        ['1', '2', '3', '4', '99', '5', '6', '7'], nox_col=4
+    )
+
+    assert row is not None
+    assert (row.burn_lb, row.fn_per_engine_lbf) == (4.0, 5.0)
+
+
+def test_field_declaration_order_does_not_affect_parsing():
+    """Only `COLUMNS` states the file order, so a refactor that reorders the
+    fields cannot swap two columns."""
+
+    class Row(_PianoRow):
+        COLUMNS: ClassVar[tuple[str, ...]] = ('first', 'second')
+
+        second: float
+        first: float
+
+    row = Row.from_tokens(['1', '2'])
+
+    assert row is not None
+    assert (row.first, row.second) == (1.0, 2.0)
+
+
+@pytest.mark.parametrize(
+    'columns',
+    [
+        pytest.param(('first',), id='missing field'),
+        pytest.param(('first', 'second', 'first'), id='duplicate'),
+    ],
+)
+def test_row_class_with_columns_that_do_not_match_its_fields_raises(columns):
+    with pytest.raises(TypeError, match='must name each required field once'):
+
+        class Row(_PianoRow):
+            COLUMNS: ClassVar[tuple[str, ...]] = columns
+
+            first: float
+            second: float
+
+
+# ---------------------------------------------------------------------------
+# Cruise collisions
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize('labelled_first', [True, False])
+def test_cruise_collision_keeps_the_labelled_row(labelled_first):
+    """A labelled row wins over a swept row at the same coordinate, whichever
+    the file writes first."""
+    values = dict.fromkeys(CRUISE_COLS, 1.0)
+    swept = _CruiseEntry(CruiseTableRow(**{**values, 'tas': 100.0}), is_swept=True)
+    labelled = _CruiseEntry(CruiseTableRow(**{**values, 'tas': 200.0}), is_swept=False)
+    entries: dict[_CruisePoint, _CruiseEntry] = {}
+
+    for entry in (labelled, swept) if labelled_first else (swept, labelled):
+        _insert_cruise_row(entries, entry)
+
+    assert list(entries.values()) == [labelled]

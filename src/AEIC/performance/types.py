@@ -239,6 +239,23 @@ class SimpleFlightRules(CIStrEnum):
     DESCEND = 'descend'
 
 
+@dataclass(frozen=True)
+class PianoConstantMachCruise:
+    """Flight rules for level cruise at a constant Mach number."""
+
+    mach: float
+    """Cruise Mach number."""
+
+    min_rocd_mcl_mach: float = 0.0
+    """Minimum rate of climb at maximum climb (MCL) thrust and constant Mach
+    in cruise [m/s].
+
+    If the climb potential at a cruise state is lower, `evaluate` raises
+    `ValueError`. The default of 0 refuses states where the aircraft cannot
+    hold level flight at MCL thrust. Set `-math.inf` to turn off the check.
+    """
+
+
 @dataclass
 class LTOPerformance:
     """LTO performance data as used internally."""

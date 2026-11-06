@@ -87,9 +87,13 @@ or workflows where the basic AEIC v2 trajectory model is still desired but
 where cruise altitude, reserve policy, descent planning, or similar inputs need
 to vary by mission.
 
-With no adjustment arguments, `AdjustableLegacyBuilder` should produce the same
-trajectory as `LegacyBuilder` for the same mission, performance model, and
-builder options.
+`AdjustableLegacyBuilder` accepts a {py:class}`LegacyPerformanceModel
+<AEIC.performance.models.LegacyPerformanceModel>` or a
+{py:class}`PianoPerformanceModel
+<AEIC.performance.models.PianoPerformanceModel>`. With a legacy performance
+model and no adjustment arguments, `AdjustableLegacyBuilder` should produce
+the same trajectory as `LegacyBuilder` for the same mission, performance model,
+and builder options.
 
 ```python
 import AEIC.trajectories.builders as tb
@@ -113,7 +117,7 @@ Adjustments are passed as keyword arguments to `fly`. Each adjustment may be:
 
 The supported adjustment keywords are:
 
-| Keyword | Units | Legacy default |
+| Keyword | Units | Default |
 | --- | --- | --- |
 | `climb_start_altitude` | m | departure airport altitude + $3000\,\text{ft}$ |
 | `cruise_altitude` | m | aircraft maximum altitude - $7000\,\text{ft}$ |
@@ -122,6 +126,12 @@ The supported adjustment keywords are:
 | `reserve_fuel` | kg | 5% of nominal trip fuel |
 | `divert_distance` | m | 100 NM for flights up to 3 hours, otherwise 200 NM |
 | `hold_time` | s | 45 minutes for flights up to 3 hours, otherwise 30 minutes |
+| `cruise_mach` | - | PIANO model only, and required: no default |
+| `min_rocd_mcl_mach` | m/s | PIANO model only: 0 (the default of `PianoConstantMachCruise`) |
+
+`cruise_mach` and `min_rocd_mcl_mach` apply only to a PIANO performance model.
+If you pass either of them with a legacy performance model, `fly` raises a
+`ValueError`.
 
 For example, fixed values can be used to pin a scenario:
 
@@ -172,7 +182,8 @@ The fuel-policy callables receive additional keyword-only inputs:
 
 ### Validation and clamping
 
-The adjustable builder preserves the legacy guardrails where possible:
+The adjustable builder preserves the legacy guardrails where possible, and
+adds checks for the PIANO adjustments:
 
 - a climb start altitude at or above the aircraft ceiling is reset to the
   departure airport altitude;
@@ -182,7 +193,10 @@ The adjustable builder preserves the legacy guardrails where possible:
 - a descent end altitude at or above the ceiling is lowered to the ceiling;
 - a descent end altitude above the descent start altitude raises a
   `ValueError`;
-- a negative descent distance raises a `ValueError`.
+- a negative descent distance raises a `ValueError`;
+- a PIANO performance model without `cruise_mach` raises a `ValueError`;
+- a legacy performance model with `cruise_mach` or `min_rocd_mcl_mach` raises a
+  `ValueError`.
 
 ```{eval-rst}
 .. automodule:: AEIC.trajectories.builders.adjustable_legacy

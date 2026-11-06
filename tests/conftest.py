@@ -10,8 +10,9 @@ from AEIC.missions import Mission
 from AEIC.parsers.piano_reader import PianoData, PianoOverrides
 from AEIC.parsers.ptf_reader import PTFData
 from AEIC.performance.edb import EDBEntry
+from AEIC.performance.model_builder import build_piano_model
 from AEIC.performance.model_selector import SimplePerformanceModelSelector
-from AEIC.performance.models import PerformanceModel
+from AEIC.performance.models import PerformanceModel, PianoPerformanceModel
 from AEIC.performance.models.base import LTOPerformanceInput
 from AEIC.types import Fuel
 
@@ -202,6 +203,21 @@ def piano_data(_piano_data) -> PianoData:
     """Parsed sample PIANO exports, with a copy per test."""
     # Deepcopy is cheap and makes sure each tests gets an indepedent copy
     return deepcopy(_piano_data)
+
+
+@pytest.fixture
+def piano_model(piano_data, lto) -> PianoPerformanceModel:
+    """PIANO performance model built from the sample PIANO exports."""
+    return build_piano_model(
+        piano_data,
+        lto,
+        aircraft_class='narrow',
+        number_of_engines=2,
+        maximum_payload=18000,
+        operating_empty_mass=37100,
+        hold_fuel_flow_lbperh=5000.0,
+        apu_name='APU 131-9',
+    )
 
 
 @pytest.fixture(scope='module')

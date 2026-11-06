@@ -225,11 +225,17 @@ class Builder(ABC):
             # logger so the caller can control filtering / log-level —
             # `print()` here would dump unconditionally for every bad
             # mission in a multi-million-mission run.
+            #
+            # The starting mass is the mass of the failed mass iteration. It
+            # is None if the failure happened before the mass was set.
+            starting_mass = getattr(self, 'starting_mass', None)
             logger.exception(
-                'Error during trajectory simulation for flight %s (%s -> %s)',
+                'Error during trajectory simulation for flight %s (%s -> %s), '
+                'starting mass %s kg',
                 mission.flight_id,
                 mission.origin,
                 mission.destination,
+                None if starting_mass is None else f'{starting_mass:.0f}',
             )
             raise
         finally:
